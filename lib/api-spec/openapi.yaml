@@ -1,22 +1,35 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: A3 Partner Portal API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: partners
+    description: Partner management
+  - name: requests
+    description: Request management
+  - name: assets
+    description: Asset management
+  - name: pricing
+    description: Pricing rules
+  - name: public
+    description: Public partner portal
+  - name: dashboard
+    description: Admin dashboard
+  - name: Storage
+    description: Object storage upload and serving endpoints.
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +37,660 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /partners:
+    get:
+      operationId: listPartners
+      tags: [partners]
+      summary: List all partners
+      parameters:
+        - name: active
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of partners
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Partner"
+    post:
+      operationId: createPartner
+      tags: [partners]
+      summary: Create a new partner
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePartnerBody"
+      responses:
+        "201":
+          description: Created partner
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Partner"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /partners/{id}:
+    get:
+      operationId: getPartner
+      tags: [partners]
+      summary: Get partner by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Partner details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Partner"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    patch:
+      operationId: updatePartner
+      tags: [partners]
+      summary: Update a partner
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePartnerBody"
+      responses:
+        "200":
+          description: Updated partner
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Partner"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    delete:
+      operationId: deletePartner
+      tags: [partners]
+      summary: Delete a partner
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /partners/{id}/assets:
+    get:
+      operationId: listPartnerAssets
+      tags: [assets]
+      summary: List assets for a partner
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of partner assets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PartnerAsset"
+    post:
+      operationId: createPartnerAsset
+      tags: [assets]
+      summary: Add asset to partner
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePartnerAssetBody"
+      responses:
+        "201":
+          description: Created asset
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerAsset"
+
+  /partners/{id}/assets/{assetId}:
+    delete:
+      operationId: deletePartnerAsset
+      tags: [assets]
+      summary: Delete a partner asset
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: assetId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /public/partners/{slug}:
+    get:
+      operationId: getPublicPartner
+      tags: [public]
+      summary: Get public partner page data
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Public partner data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicPartner"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /public/partners/{slug}/requests:
+    post:
+      operationId: submitPublicRequest
+      tags: [public]
+      summary: Submit a public request through partner portal
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitRequestBody"
+      responses:
+        "201":
+          description: Request submitted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubmitRequestResponse"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Partner not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /public/pricing:
+    get:
+      operationId: getPublicPricing
+      tags: [public]
+      summary: Get public starting-at pricing
+      responses:
+        "200":
+          description: Public pricing data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PublicPricingItem"
+
+  /requests:
+    get:
+      operationId: listRequests
+      tags: [requests]
+      summary: List all requests with filters
+      parameters:
+        - name: partnerId
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: List of requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RequestListResponse"
+
+  /requests/{id}:
+    get:
+      operationId: getRequest
+      tags: [requests]
+      summary: Get request detail
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Full request detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RequestDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    patch:
+      operationId: updateRequest
+      tags: [requests]
+      summary: Update request status or fields
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRequestBody"
+      responses:
+        "200":
+          description: Updated request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RequestDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /requests/{id}/notes:
+    get:
+      operationId: listRequestNotes
+      tags: [requests]
+      summary: List notes for a request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of notes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminNote"
+    post:
+      operationId: createRequestNote
+      tags: [requests]
+      summary: Add a note to a request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateNoteBody"
+      responses:
+        "201":
+          description: Created note
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminNote"
+
+  /requests/{id}/regenerate-ai:
+    post:
+      operationId: regenerateAiSummary
+      tags: [requests]
+      summary: Regenerate AI summary for a request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Regenerated summaries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RequestDetail"
+
+  /requests/{id}/regenerate-pdf:
+    post:
+      operationId: regeneratePdf
+      tags: [requests]
+      summary: Regenerate PDF summary for a request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: PDF URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PdfResponse"
+
+  /pricing-rules:
+    get:
+      operationId: listPricingRules
+      tags: [pricing]
+      summary: List all pricing rules
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: active
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of pricing rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PricingRule"
+    post:
+      operationId: createPricingRule
+      tags: [pricing]
+      summary: Create a pricing rule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePricingRuleBody"
+      responses:
+        "201":
+          description: Created pricing rule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PricingRule"
+
+  /pricing-rules/{id}:
+    patch:
+      operationId: updatePricingRule
+      tags: [pricing]
+      summary: Update a pricing rule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePricingRuleBody"
+      responses:
+        "200":
+          description: Updated pricing rule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PricingRule"
+    delete:
+      operationId: deletePricingRule
+      tags: [pricing]
+      summary: Delete a pricing rule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get admin dashboard summary
+      responses:
+        "200":
+          description: Dashboard summary data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /dashboard/recent-requests:
+    get:
+      operationId: getRecentRequests
+      tags: [dashboard]
+      summary: Get recent requests for dashboard
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Recent requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RequestSummary"
+
+  /dashboard/requests-by-status:
+    get:
+      operationId: getRequestsByStatus
+      tags: [dashboard]
+      summary: Get request counts grouped by status
+      responses:
+        "200":
+          description: Status breakdown
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StatusCount"
+
+  /assets/library:
+    get:
+      operationId: getAssetsLibrary
+      tags: [assets]
+      summary: Get all assets grouped by partner and request
+      responses:
+        "200":
+          description: Assets library
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssetsLibrary"
+
+  /storage/uploads/request-url:
+    post:
+      tags: [Storage]
+      operationId: requestUploadUrl
+      summary: Request a presigned URL for file upload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadUrlRequest'
+      responses:
+        '200':
+          description: Presigned upload URL generated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadUrlResponse'
+        '400':
+          description: Missing or invalid required fields.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Failed to generate upload URL.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /storage/public-objects/{filePath}:
+    get:
+      tags: [Storage]
+      operationId: getPublicObject
+      summary: Serve a public asset
+      parameters:
+        - name: filePath
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Object content streamed.
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: File not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /storage/objects/{objectPath}:
+    get:
+      tags: [Storage]
+      operationId: getStorageObject
+      summary: Serve an object entity
+      parameters:
+        - name: objectPath
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Object content streamed.
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Object not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +701,687 @@ components:
       required:
         - status
 
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    Partner:
+      type: object
+      required: [id, companyName, slug, isActive, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        companyName:
+          type: string
+        slug:
+          type: string
+        logoUrl:
+          type: ["string", "null"]
+        smallA3BadgeEnabled:
+          type: boolean
+        introHeadline:
+          type: ["string", "null"]
+        introText:
+          type: ["string", "null"]
+        contactName:
+          type: ["string", "null"]
+        contactEmail:
+          type: ["string", "null"]
+        contactPhone:
+          type: ["string", "null"]
+        venueAddress:
+          type: ["string", "null"]
+        industryFocus:
+          type: ["string", "null"]
+        useCaseOptionsJson:
+          type: ["array", "null"]
+          items:
+            type: string
+        globalSizzleReelUrl:
+          type: ["string", "null"]
+        partnerVideoUrl:
+          type: ["string", "null"]
+        pricingDisplayEnabled:
+          type: boolean
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreatePartnerBody:
+      type: object
+      required: [companyName, slug]
+      properties:
+        companyName:
+          type: string
+        slug:
+          type: string
+        logoUrl:
+          type: string
+        smallA3BadgeEnabled:
+          type: boolean
+        introHeadline:
+          type: string
+        introText:
+          type: string
+        contactName:
+          type: string
+        contactEmail:
+          type: string
+        contactPhone:
+          type: string
+        venueAddress:
+          type: string
+        industryFocus:
+          type: string
+        useCaseOptionsJson:
+          type: array
+          items:
+            type: string
+        globalSizzleReelUrl:
+          type: string
+        partnerVideoUrl:
+          type: string
+        pricingDisplayEnabled:
+          type: boolean
+        isActive:
+          type: boolean
+
+    UpdatePartnerBody:
+      type: object
+      properties:
+        companyName:
+          type: string
+        slug:
+          type: string
+        logoUrl:
+          type: ["string", "null"]
+        smallA3BadgeEnabled:
+          type: boolean
+        introHeadline:
+          type: ["string", "null"]
+        introText:
+          type: ["string", "null"]
+        contactName:
+          type: ["string", "null"]
+        contactEmail:
+          type: ["string", "null"]
+        contactPhone:
+          type: ["string", "null"]
+        venueAddress:
+          type: ["string", "null"]
+        industryFocus:
+          type: ["string", "null"]
+        useCaseOptionsJson:
+          type: ["array", "null"]
+          items:
+            type: string
+        globalSizzleReelUrl:
+          type: ["string", "null"]
+        partnerVideoUrl:
+          type: ["string", "null"]
+        pricingDisplayEnabled:
+          type: boolean
+        isActive:
+          type: boolean
+
+    PartnerAsset:
+      type: object
+      required: [id, partnerId, assetType, fileUrl, fileName, createdAt]
+      properties:
+        id:
+          type: integer
+        partnerId:
+          type: integer
+        assetType:
+          type: string
+        fileUrl:
+          type: string
+        fileName:
+          type: string
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    CreatePartnerAssetBody:
+      type: object
+      required: [assetType, fileUrl, fileName]
+      properties:
+        assetType:
+          type: string
+        fileUrl:
+          type: string
+        fileName:
+          type: string
+        notes:
+          type: string
+
+    PublicPartner:
+      type: object
+      required: [id, companyName, slug, isActive]
+      properties:
+        id:
+          type: integer
+        companyName:
+          type: string
+        slug:
+          type: string
+        logoUrl:
+          type: ["string", "null"]
+        smallA3BadgeEnabled:
+          type: boolean
+        introHeadline:
+          type: ["string", "null"]
+        introText:
+          type: ["string", "null"]
+        contactName:
+          type: ["string", "null"]
+        contactEmail:
+          type: ["string", "null"]
+        contactPhone:
+          type: ["string", "null"]
+        venueAddress:
+          type: ["string", "null"]
+        industryFocus:
+          type: ["string", "null"]
+        useCaseOptionsJson:
+          type: ["array", "null"]
+          items:
+            type: string
+        globalSizzleReelUrl:
+          type: ["string", "null"]
+        partnerVideoUrl:
+          type: ["string", "null"]
+        pricingDisplayEnabled:
+          type: boolean
+        isActive:
+          type: boolean
+        pricingRules:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicPricingItem"
+
+    SubmitRequestBody:
+      type: object
+      required: [companyName, contactName, email, eventName]
+      properties:
+        companyName:
+          type: string
+        contactName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        eventName:
+          type: string
+        eventDate:
+          type: string
+        venueName:
+          type: string
+        venueAddress:
+          type: string
+        installDatetime:
+          type: string
+        removalDatetime:
+          type: string
+        postEventDisposition:
+          type: string
+        industry:
+          type: string
+        useCase:
+          type: string
+        designAssistanceRequested:
+          type: boolean
+        customFabricationRequested:
+          type: boolean
+        immersiveRequested:
+          type: boolean
+        promotionalItemsRequested:
+          type: boolean
+        additionalNotes:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/RequestItemInput"
+        uploads:
+          type: array
+          items:
+            $ref: "#/components/schemas/RequestUploadInput"
+
+    RequestItemInput:
+      type: object
+      required: [category, itemName]
+      properties:
+        category:
+          type: string
+        itemName:
+          type: string
+        quantityNote:
+          type: string
+        sizeNote:
+          type: string
+
+    RequestUploadInput:
+      type: object
+      required: [uploadType, fileUrl, fileName]
+      properties:
+        uploadType:
+          type: string
+        fileUrl:
+          type: string
+        fileName:
+          type: string
+        mimeType:
+          type: string
+
+    SubmitRequestResponse:
+      type: object
+      required: [id, message]
+      properties:
+        id:
+          type: integer
+        message:
+          type: string
+
+    RequestSummary:
+      type: object
+      required: [id, partnerName, companyName, contactName, eventName, status, createdAt]
+      properties:
+        id:
+          type: integer
+        partnerId:
+          type: integer
+        partnerName:
+          type: string
+        companyName:
+          type: string
+        contactName:
+          type: string
+        email:
+          type: string
+        eventName:
+          type: string
+        eventDate:
+          type: ["string", "null"]
+        status:
+          type: string
+        estimatedScopeLevel:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    RequestListResponse:
+      type: object
+      required: [requests, total]
+      properties:
+        requests:
+          type: array
+          items:
+            $ref: "#/components/schemas/RequestSummary"
+        total:
+          type: integer
+
+    RequestDetail:
+      type: object
+      required: [id, partnerId, companyName, contactName, email, eventName, status, createdAt]
+      properties:
+        id:
+          type: integer
+        partnerId:
+          type: integer
+        partnerName:
+          type: string
+        companyName:
+          type: string
+        contactName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: ["string", "null"]
+        eventName:
+          type: string
+        eventDate:
+          type: ["string", "null"]
+        venueName:
+          type: ["string", "null"]
+        venueAddress:
+          type: ["string", "null"]
+        installDatetime:
+          type: ["string", "null"]
+        removalDatetime:
+          type: ["string", "null"]
+        postEventDisposition:
+          type: ["string", "null"]
+        industry:
+          type: ["string", "null"]
+        useCase:
+          type: ["string", "null"]
+        designAssistanceRequested:
+          type: boolean
+        customFabricationRequested:
+          type: boolean
+        immersiveRequested:
+          type: boolean
+        promotionalItemsRequested:
+          type: boolean
+        additionalNotes:
+          type: ["string", "null"]
+        status:
+          type: string
+        aiSummary:
+          type: ["string", "null"]
+        internalSummary:
+          type: ["string", "null"]
+        estimatedScopeLevel:
+          type: ["string", "null"]
+        recommendedUpsellsJson:
+          type: ["array", "null"]
+          items:
+            type: string
+        pdfSummaryUrl:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/RequestItem"
+        uploads:
+          type: array
+          items:
+            $ref: "#/components/schemas/RequestUpload"
+        notes:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminNote"
+
+    RequestItem:
+      type: object
+      required: [id, requestId, category, itemName]
+      properties:
+        id:
+          type: integer
+        requestId:
+          type: integer
+        category:
+          type: string
+        itemName:
+          type: string
+        quantityNote:
+          type: ["string", "null"]
+        sizeNote:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    RequestUpload:
+      type: object
+      required: [id, requestId, uploadType, fileUrl, fileName]
+      properties:
+        id:
+          type: integer
+        requestId:
+          type: integer
+        uploadType:
+          type: string
+        fileUrl:
+          type: string
+        fileName:
+          type: string
+        mimeType:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    AdminNote:
+      type: object
+      required: [id, requestId, noteBody, createdAt]
+      properties:
+        id:
+          type: integer
+        requestId:
+          type: integer
+        noteBody:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateNoteBody:
+      type: object
+      required: [noteBody]
+      properties:
+        noteBody:
+          type: string
+
+    UpdateRequestBody:
+      type: object
+      properties:
+        status:
+          type: string
+        internalSummary:
+          type: ["string", "null"]
+
+    PricingRule:
+      type: object
+      required: [id, category, itemName, isActive, createdAt]
+      properties:
+        id:
+          type: integer
+        category:
+          type: string
+        itemName:
+          type: string
+        startingPrice:
+          type: ["number", "null"]
+        internalCostBasis:
+          type: ["number", "null"]
+        rushFeeRule:
+          type: ["string", "null"]
+        installFeeRule:
+          type: ["string", "null"]
+        removalFeeRule:
+          type: ["string", "null"]
+        designFeeRule:
+          type: ["string", "null"]
+        upsellTagsJson:
+          type: ["array", "null"]
+          items:
+            type: string
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreatePricingRuleBody:
+      type: object
+      required: [category, itemName]
+      properties:
+        category:
+          type: string
+        itemName:
+          type: string
+        startingPrice:
+          type: number
+        internalCostBasis:
+          type: number
+        rushFeeRule:
+          type: string
+        installFeeRule:
+          type: string
+        removalFeeRule:
+          type: string
+        designFeeRule:
+          type: string
+        upsellTagsJson:
+          type: array
+          items:
+            type: string
+        isActive:
+          type: boolean
+
+    UpdatePricingRuleBody:
+      type: object
+      properties:
+        category:
+          type: string
+        itemName:
+          type: string
+        startingPrice:
+          type: ["number", "null"]
+        internalCostBasis:
+          type: ["number", "null"]
+        rushFeeRule:
+          type: ["string", "null"]
+        installFeeRule:
+          type: ["string", "null"]
+        removalFeeRule:
+          type: ["string", "null"]
+        designFeeRule:
+          type: ["string", "null"]
+        upsellTagsJson:
+          type: ["array", "null"]
+          items:
+            type: string
+        isActive:
+          type: boolean
+
+    PublicPricingItem:
+      type: object
+      required: [category, itemName]
+      properties:
+        category:
+          type: string
+        itemName:
+          type: string
+        startingPrice:
+          type: ["number", "null"]
+        displayNote:
+          type: ["string", "null"]
+
+    PdfResponse:
+      type: object
+      required: [pdfUrl]
+      properties:
+        pdfUrl:
+          type: string
+
+    DashboardSummary:
+      type: object
+      required: [totalPartners, totalRequests, newRequestsToday, requestsByStatus]
+      properties:
+        totalPartners:
+          type: integer
+        activePartners:
+          type: integer
+        totalRequests:
+          type: integer
+        newRequestsToday:
+          type: integer
+        requestsByStatus:
+          type: array
+          items:
+            $ref: "#/components/schemas/StatusCount"
+        recentPartners:
+          type: array
+          items:
+            $ref: "#/components/schemas/Partner"
+
+    StatusCount:
+      type: object
+      required: [status, count]
+      properties:
+        status:
+          type: string
+        count:
+          type: integer
+
+    AssetsLibrary:
+      type: object
+      required: [partnerAssets, requestUploads]
+      properties:
+        partnerAssets:
+          type: array
+          items:
+            $ref: "#/components/schemas/PartnerAssetGroup"
+        requestUploads:
+          type: array
+          items:
+            $ref: "#/components/schemas/RequestUploadGroup"
+
+    PartnerAssetGroup:
+      type: object
+      required: [partnerId, partnerName, assets]
+      properties:
+        partnerId:
+          type: integer
+        partnerName:
+          type: string
+        assets:
+          type: array
+          items:
+            $ref: "#/components/schemas/PartnerAsset"
+
+    RequestUploadGroup:
+      type: object
+      required: [requestId, eventName, partnerName, uploads]
+      properties:
+        requestId:
+          type: integer
+        eventName:
+          type: string
+        partnerName:
+          type: string
+        uploads:
+          type: array
+          items:
+            $ref: "#/components/schemas/RequestUpload"
+
+    UploadUrlRequest:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        size:
+          type: integer
+          minimum: 1
+        contentType:
+          type: string
+          minLength: 1
+
+    UploadUrlResponse:
+      type: object
+      required: [uploadURL, objectPath]
+      properties:
+        uploadURL:
+          type: string
+          format: uri
+        objectPath:
+          type: string
+        metadata:
+          $ref: '#/components/schemas/UploadUrlRequest'
