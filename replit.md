@@ -91,6 +91,15 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 ## Request Statuses
 New, Reviewing, Waiting for files, Waiting for dimensions, Quote prep, Quote sent, Follow up, Closed won, Closed lost
 
+## Design System
+- **Primary color**: Dark navy (`222 47% 11%`) — professional, premium
+- **Dark mode accent**: Warm gold (`45 93% 58%`)
+- **Typography**: Inter (Google Fonts), with font-feature-settings for refined glyphs
+- **Border radius**: 0.625rem base
+- **Status badges**: Color-coded (blue=New, amber=Reviewing, violet=Quote prep, emerald=Quote sent, green=Won, red=Lost)
+- **Partner portal**: Partner branding primary, "Powered by A3" subtle badge; trust signals on step 1; animated step transitions
+- **Admin**: Compact horizontal nav with backdrop blur header; rounded card-based layouts; icon + text for section headers
+
 ## Seed Data
 2 sample partners (Move Miami, Hilton) and 34 pricing rules across 6 categories.
 
