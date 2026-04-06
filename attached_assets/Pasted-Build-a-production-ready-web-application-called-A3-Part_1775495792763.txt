@@ -1,0 +1,493 @@
+Build a production ready web application called A3 Partner Portal.
+
+The application is a simple partner intake and internal request management portal for A3 Visual. It must be clean, premium, modern, easy to use, and optimized for fast intake and internal quote preparation. Keep the interface simple and frictionless. Do not over engineer the first version.
+
+Core goal:
+Allow an internal admin to create partner specific portal pages for companies such as Move Miami, Swarm, One One Marketplace, Hilton, and future partners. Each partner portal page should be public and shareable. Their vendors or clients can submit event and project needs through that page. The system stores the request, uploads, AI summary, internal summary, recommended upsells, and a downloadable PDF summary. Only the internal admin receives notification emails.
+
+Technical requirements:
+Use React, TypeScript, Tailwind, and a clean component system. Use Supabase for database, storage, and admin auth. Public partner pages do not require login. Internal admin pages require auth. Use Resend for outbound email notifications. Notifications must go to the admin's A3 Outlook inbox. Add an internal AI summary generator and a PDF summary generator.
+
+Application sections:
+1. Internal Admin Dashboard
+2. Partner Builder
+3. Public Partner Portal Pages
+4. Requests Dashboard
+5. Request Detail View
+6. Assets Library
+7. Pricing Rules
+8. PDF summary generation
+9. AI summary and upsell recommendation logic
+
+Visual direction:
+The design should feel premium, modern, polished, and easy to use. Partner brand should feel primary, with a small A3 partner badge presence. The portal should feel elegant and conversion focused. Use a clean layout, subtle motion, large buttons, strong whitespace, premium cards, and intuitive progress flow. Keep it impressive but not complicated.
+
+Routing:
+Create these routes:
+/login
+/admin
+/admin/partners
+/admin/partners/new
+/admin/partners/:id/edit
+/admin/requests
+/admin/requests/:id
+/admin/assets
+/admin/pricing
+/partner/:slug
+
+Authentication:
+Use Supabase auth for admin only.
+Public partner pages must be accessible without login.
+
+Database schema:
+Create the following tables with proper types, relations, timestamps, and indexes.
+
+Table: partners
+Fields:
+id
+company_name
+slug
+logo_url
+small_a3_badge_enabled
+intro_headline
+intro_text
+contact_name
+contact_email
+contact_phone
+venue_address
+industry_focus
+use_case_options_json
+global_sizzle_reel_url
+partner_video_url
+pricing_display_enabled
+is_active
+created_at
+updated_at
+
+Table: partner_assets
+Fields:
+id
+partner_id
+asset_type
+file_url
+file_name
+notes
+created_at
+
+Table: requests
+Fields:
+id
+partner_id
+company_name
+contact_name
+email
+phone
+event_name
+event_date
+venue_name
+venue_address
+install_datetime
+removal_datetime
+post_event_disposition
+industry
+use_case
+design_assistance_requested
+custom_fabrication_requested
+immersive_requested
+promotional_items_requested
+additional_notes
+status
+ai_summary
+internal_summary
+estimated_scope_level
+recommended_upsells_json
+pdf_summary_url
+created_at
+updated_at
+
+Table: request_items
+Fields:
+id
+request_id
+category
+item_name
+quantity_note
+size_note
+created_at
+
+Table: request_uploads
+Fields:
+id
+request_id
+upload_type
+file_url
+file_name
+mime_type
+created_at
+
+Table: pricing_rules
+Fields:
+id
+category
+item_name
+starting_price
+internal_cost_basis
+rush_fee_rule
+install_fee_rule
+removal_fee_rule
+design_fee_rule
+upsell_tags_json
+is_active
+created_at
+updated_at
+
+Table: admin_notes
+Fields:
+id
+request_id
+note_body
+created_at
+
+Seed data:
+Seed pricing rules and common service items for these categories.
+
+Printing:
+Step and repeat
+Pull up banner
+Vinyl graphics
+Foam board signage
+Event signage
+Wayfinding
+Window graphics
+Table throws
+Backdrops
+Decals
+Large format prints
+
+Rentals:
+Easy up tent
+Easels
+Stanchions
+Pipe and drape
+Display structures
+Screens
+LED furniture
+Event barriers
+
+Design and artwork:
+I have final artwork
+I need edits to existing artwork
+I need full design support
+
+Custom fabrication:
+Custom fabrication needed
+Concept development needed
+
+Immersive experiences:
+Projection mapping
+Scenic environment
+Branded experience
+Interactive activation
+LED visual support
+
+Promotional items:
+Branded giveaways
+Apparel
+Packaging
+Printed collateral
+Custom promo item request
+
+Internal statuses:
+Use these request statuses:
+New
+Reviewing
+Waiting for files
+Waiting for dimensions
+Quote prep
+Quote sent
+Follow up
+Closed won
+Closed lost
+
+Partner Builder requirements:
+Build an admin page where the user can create and edit partner pages.
+
+Fields:
+Partner company name
+Slug
+Partner logo
+Intro headline
+Intro text
+Main contact
+Contact email
+Contact phone
+Venue address
+Industry focus
+Use case options
+Global A3 sizzle reel URL
+Optional partner specific video URL
+Toggle for showing starting at pricing
+Active or inactive toggle
+Upload partner assets such as floor maps, measurements, decks, and related files
+
+When a partner is saved, automatically generate the corresponding public page at /partner/:slug
+
+Public Partner Portal requirements:
+Each partner portal page must:
+Show partner first branding with a small A3 partner badge
+Show intro content
+Embed global A3 sizzle reel
+Optionally show partner specific video if present
+Show a guided multi step intake form
+Show starting at pricing sections if enabled
+End with a submit button
+On successful submit show a modal popup with this exact copy:
+
+Request submitted successfully
+
+Thank you. Your project request has been received. We will review the details and follow up as needed. If you have questions, please email [CONFIGURABLE_ADMIN_EMAIL].
+
+Multi step intake form:
+Step 1: Contact and event details
+
+Fields:
+Company name
+Contact name
+Email
+Phone
+Event name
+Event date
+Venue name
+Venue address
+Install date and time
+Removal date and time
+Post event disposition with options Keep, Remove, Discard
+
+Step 2: Industry and use case
+
+Fields:
+Industry dropdown
+Use case dropdown or cards
+Additional use case notes optional
+
+Step 3: Service selection
+
+Use large cards and selectable options.
+
+Categories:
+Printing
+Rentals
+Design and artwork
+Custom fabrication
+Immersive experiences
+Promotional items
+
+For design and artwork include a clear note that additional fees may apply.
+
+Step 4: Uploads
+
+Separate upload sections for:
+Floor maps
+Measurements
+Decks
+Artwork
+Inspiration and concept files
+
+Accepted file types:
+PDF
+JPG
+JPEG
+PNG
+SVG
+AI
+EPS
+XLS
+XLSX
+DOC
+DOCX
+
+No strict upload count limit. Use reasonable storage validation and file size handling.
+
+Step 5: Review and submit
+
+Show a summary of the request and allow submit.
+
+Conditional logic:
+If custom fabrication is selected, show concept upload and concept details
+If immersive is selected, show immersive details field
+If design support is selected, show design assistance confirmation
+If print items are selected and no artwork uploaded, warn user before submit
+
+Submission workflow:
+When a public form is submitted:
+1. Save request record
+2. Save request items
+3. Upload files to Supabase storage
+4. Save request upload records
+5. Generate internal summary text
+6. Generate AI summary text
+7. Generate recommended upsells based on selected services
+8. Estimate scope level as Small, Medium, or High
+9. Generate downloadable PDF summary and store URL
+10. Send email notification only to the internal admin
+11. Show confirmation popup
+
+Internal summary requirements:
+Create a concise quote prep summary that Sean or the admin could use to prepare an estimate quickly. Do not generate a formal quote. The summary should organize:
+Contact summary
+Event summary
+Requested items
+Uploads received
+Design needs
+Fabrication needs
+Immersive needs
+Promo needs
+Missing information
+Suggested next action
+
+AI summary requirements:
+Generate a helpful internal summary for the admin that includes:
+Project overview
+Complexity estimate
+Timeline sensitivity
+Potential risk flags
+Missing details
+Recommended next step
+
+Upsell recommendation logic:
+Build rules based recommendations.
+
+Examples:
+Step and repeat should recommend stanchions, lighting, branded carpet, and photo signage
+Easy up tent should recommend table throws, feather flags, and branded walls
+Pull up banner should recommend registration signage and foam boards
+Event signage should recommend decals and collateral
+Projection mapping should recommend scenic fabrication and video loops
+Fabrication should recommend concept development and premium install
+Promotional items should recommend packaging and display items
+
+Requests Dashboard:
+Build an admin requests list page with:
+Search
+Filter by partner
+Filter by status
+Sort by newest
+Status badges
+Quick view of event name, partner, contact, event date, scope level, and created date
+
+Request Detail View:
+Build an admin request detail page with:
+Full request details
+Uploaded files grouped by type
+Selected services
+Internal summary
+AI summary
+Recommended upsells
+Generated PDF link
+Status dropdown
+Internal notes section
+
+Assets Library:
+Build a simple admin view of uploaded partner assets and request assets grouped by partner and request.
+
+Pricing Rules:
+Build a simple admin page to manage internal starting prices and internal fee rules. These prices are not public except for public starting at values where enabled.
+
+Public pricing display:
+Show only simple starting at pricing on public pages. For custom fabrication and immersive services show language such as quoted based on scope.
+
+Email integration requirements:
+For version 1, use Resend as the outbound email service and route all notifications to the admin's A3 Outlook inbox.
+
+The app must support these environment variables:
+SUPABASE_URL
+SUPABASE_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY
+RESEND_API_KEY
+ADMIN_EMAIL
+NOTIFICATION_FROM_EMAIL
+OPENAI_API_KEY
+APP_BASE_URL
+
+Email behavior:
+1. On every partner request submission, send a notification email to ADMIN_EMAIL
+2. The admin email will be an Outlook mailbox, but the app should not require Microsoft Graph for version 1
+3. Use Resend to send the email
+4. Set the Reply To header to the submitter's email when available so the admin can reply directly from Outlook
+5. Include the partner name, contact name, company name, event name, event date, requested categories, and direct internal admin link to the request detail page
+6. Leave submitter confirmation email off by default in version 1, but structure the code so it can be enabled later
+
+Important email architecture requirement:
+Design the email service layer so that it can later be swapped from Resend to Microsoft Graph without rewriting the whole app.
+
+Create a modular email adapter interface with:
+sendAdminNotification()
+sendSubmitterConfirmation()
+sendStatusUpdate()
+
+Implement ResendEmailAdapter now.
+Create a placeholder MicrosoftGraphEmailAdapter for future use.
+
+Use this admin email subject format:
+New A3 Partner Request | [Partner Name] | [Event Name] | [Event Date]
+
+PDF summary:
+Generate a polished, downloadable internal PDF summary after request submission with:
+Partner name
+Contact and event details
+Selected services
+Upload list
+Internal summary
+AI summary
+Recommended upsells
+Timestamp
+
+Admin configuration:
+Add a config area or environment variables for:
+SUPABASE_URL
+SUPABASE_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY
+RESEND_API_KEY
+ADMIN_EMAIL
+NOTIFICATION_FROM_EMAIL
+OPENAI_API_KEY
+APP_BASE_URL
+
+Deliverables:
+1. Full app scaffold
+2. Clean database integration
+3. Public partner portals
+4. Admin dashboard
+5. Request management
+6. Email notification workflow
+7. AI summary workflow
+8. PDF generation workflow
+9. Seed data
+10. Setup instructions in README
+11. Clear environment variable instructions
+12. Example seeded partner pages for Move Miami and Hilton
+
+Important implementation notes:
+Keep the code modular and clean
+Use reusable components
+Keep the public form frictionless
+Make admin flows simple and fast
+Optimize for quote prep and partnership scaling
+Do not add payment collection
+Do not add complex multi role permissions
+Do not add customer login in version 1
+Do not add live quote generation in version 1
+
+Also create a polished README that explains:
+What the app does
+How to run it
+How to connect Supabase
+How to connect Resend
+How to set ADMIN_EMAIL to my A3 Outlook inbox
+How to set NOTIFICATION_FROM_EMAIL for the verified sending domain
+How Reply To works so I can answer leads directly from Outlook
+How to create partners
+How public partner pages work
+How request intake works
+How AI summaries and PDFs are generated
+How to evolve the email adapter later for Microsoft Graph
