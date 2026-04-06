@@ -68,7 +68,11 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `/admin/requests/:id` — Request detail with AI summary, notes, PDF
 - `/admin/assets` — Assets library
 - `/admin/pricing` — Pricing rules CRUD
-- `/partner/:slug` — Public multi-step intake form (5 steps)
+- `/partner/:slug` — Public multi-step intake form (5 steps: Details → Context → Services → Uploads → Review)
+  - Step 1: Contact info + event details + install/removal datetime + post-event disposition (Keep/Remove/Discard)
+  - Step 3: Service selection with conditional panels (fabrication details, immersive details, design fee note) + "Starting at" pricing from partner.pricingRules
+  - Step 4: 5 categorized upload sections (Floor Maps, Measurements, Decks, Artwork, Inspiration) with "Recommended" badge when fabrication selected
+  - Step 5: Review with artwork warning when printing selected without design assistance
 
 ## Key Commands
 
