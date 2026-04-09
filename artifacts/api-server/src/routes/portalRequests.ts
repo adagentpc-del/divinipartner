@@ -92,6 +92,30 @@ const BrandingLocationRequestBody = z.object({
   })).optional(),
 });
 
+const VALID_STATUSES = ["new", "reviewing", "quoted", "awaiting artwork", "in production", "completed", "archived"] as const;
+const VALID_QUOTE_STATUSES = ["needs_review", "quoting", "quote_sent", "awaiting_approval", "approved", "declined"] as const;
+const VALID_PRIORITIES = ["normal", "high", "urgent"] as const;
+const VALID_INSTALL = ["yes", "no", "tbd"] as const;
+
+const QuoteAndProductionPatch = z.object({
+  status: z.enum(VALID_STATUSES).optional(),
+  adminNotes: z.string().optional(),
+  estimatedPrice: z.string().regex(/^\d+(\.\d{1,2})?$/, "Must be a valid price").optional().nullable(),
+  costNotes: z.string().optional().nullable(),
+  quoteSummary: z.string().optional().nullable(),
+  turnaroundNotes: z.string().optional().nullable(),
+  quoteReady: z.boolean().optional(),
+  quoteStatus: z.enum(VALID_QUOTE_STATUSES).optional(),
+  productionOwner: z.string().optional().nullable(),
+  installRequired: z.enum(VALID_INSTALL).optional().nullable(),
+  productionNotes: z.string().optional().nullable(),
+  fulfillmentNotes: z.string().optional().nullable(),
+  vendorNotes: z.string().optional().nullable(),
+  productionDeadline: z.string().optional().nullable(),
+  priority: z.enum(VALID_PRIORITIES).optional(),
+  recurringEvent: z.boolean().optional(),
+});
+
 function isValidStoragePath(url: string): boolean {
   if (url.startsWith("http://") || url.startsWith("https://")) return false;
   if (url.includes("..") || url.startsWith("/")) return false;
@@ -148,6 +172,22 @@ ${eventName ? `<p><strong>Event:</strong> ${eventName}</p>` : ""}
   } catch (e) {
     console.error("Notification email failed:", e);
   }
+}
+
+function buildPatchData(body: any): Record<string, any> {
+  const updateData: Record<string, any> = {};
+  const fields = [
+    "status", "adminNotes", "estimatedPrice", "costNotes", "quoteSummary",
+    "turnaroundNotes", "quoteReady", "quoteStatus", "productionOwner",
+    "installRequired", "productionNotes", "fulfillmentNotes", "vendorNotes",
+    "productionDeadline", "priority", "recurringEvent"
+  ];
+  for (const field of fields) {
+    if (body[field] !== undefined) {
+      updateData[field] = body[field];
+    }
+  }
+  return updateData;
 }
 
 router.post("/public/partners/:slug/portal-requests", async (req, res): Promise<void> => {
@@ -267,10 +307,11 @@ router.patch("/portal-requests/:id", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
-  const { status, adminNotes } = req.body;
-  const updateData: any = {};
-  if (status) updateData.status = status;
-  if (adminNotes !== undefined) updateData.adminNotes = adminNotes;
+  const parsed = QuoteAndProductionPatch.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+
+  const updateData = buildPatchData(parsed.data);
+  if (Object.keys(updateData).length === 0) { res.status(400).json({ error: "No fields to update" }); return; }
 
   const [request] = await db.update(portalRequestsTable).set(updateData).where(eq(portalRequestsTable.id, id)).returning();
   if (!request) { res.status(404).json({ error: "Request not found" }); return; }
@@ -292,6 +333,8 @@ router.get("/product-requests", async (req, res): Promise<void> => {
     quantity: productRequestsTable.quantity,
     selectedSize: productRequestsTable.selectedSize,
     status: productRequestsTable.status,
+    quoteStatus: productRequestsTable.quoteStatus,
+    priority: productRequestsTable.priority,
     createdAt: productRequestsTable.createdAt,
     productName: productCatalogTable.name,
   }).from(productRequestsTable)
@@ -335,10 +378,11 @@ router.patch("/product-requests/:id", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
-  const { status, adminNotes } = req.body;
-  const updateData: any = {};
-  if (status) updateData.status = status;
-  if (adminNotes !== undefined) updateData.adminNotes = adminNotes;
+  const parsed = QuoteAndProductionPatch.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+
+  const updateData = buildPatchData(parsed.data);
+  if (Object.keys(updateData).length === 0) { res.status(400).json({ error: "No fields to update" }); return; }
 
   const [request] = await db.update(productRequestsTable).set(updateData).where(eq(productRequestsTable.id, id)).returning();
   if (!request) { res.status(404).json({ error: "Request not found" }); return; }
@@ -358,6 +402,8 @@ router.get("/branding-requests", async (req, res): Promise<void> => {
     eventDate: brandingLocationRequestsTable.eventDate,
     neededByDate: brandingLocationRequestsTable.neededByDate,
     status: brandingLocationRequestsTable.status,
+    quoteStatus: brandingLocationRequestsTable.quoteStatus,
+    priority: brandingLocationRequestsTable.priority,
     createdAt: brandingLocationRequestsTable.createdAt,
     locationName: partnerBrandingLocationsTable.name,
   }).from(brandingLocationRequestsTable)
@@ -405,10 +451,11 @@ router.patch("/branding-requests/:id", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
-  const { status, adminNotes } = req.body;
-  const updateData: any = {};
-  if (status) updateData.status = status;
-  if (adminNotes !== undefined) updateData.adminNotes = adminNotes;
+  const parsed = QuoteAndProductionPatch.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+
+  const updateData = buildPatchData(parsed.data);
+  if (Object.keys(updateData).length === 0) { res.status(400).json({ error: "No fields to update" }); return; }
 
   const [request] = await db.update(brandingLocationRequestsTable).set(updateData).where(eq(brandingLocationRequestsTable.id, id)).returning();
   if (!request) { res.status(404).json({ error: "Request not found" }); return; }

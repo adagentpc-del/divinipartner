@@ -57,6 +57,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 ### API Routes (all under `/api`)
 - `GET/POST /partners`, `GET/PATCH/DELETE /partners/:id` — full partner CRUD with expanded fields
+- `POST /partners/:id/duplicate` — Duplicate partner with theme + sections
 - `GET/POST /partners/:id/assets`, `DELETE /partners/:id/assets/:assetId`
 - `GET/PUT /partners/:id/theme` — Partner theme CRUD
 - `GET/POST /partners/:id/sections`, `PATCH/DELETE /partners/:id/sections/:sectionId`, `PUT /partners/:id/sections/bulk` — Section management
@@ -131,6 +132,12 @@ New, Reviewing, Waiting for files, Waiting for dimensions, Quote prep, Quote sen
 ### Portal requests (new):
 new, reviewing, quoted, awaiting artwork, in production, completed, archived
 
+### Quote statuses:
+needs_review, quoting, quote_sent, awaiting_approval, approved, declined
+
+### Priority levels:
+normal, high, urgent
+
 ## Design System
 - **Primary color**: Dark navy (`222 47% 11%`) — professional, premium
 - **Dark mode accent**: Warm gold (`45 93% 58%`)
@@ -139,6 +146,14 @@ new, reviewing, quoted, awaiting artwork, in production, completed, archived
 - **Status badges**: Color-coded (blue=New, amber=Reviewing, violet=Quote prep, emerald=Quote sent, green=Won, red=Lost)
 - **Partner portal**: Partner branding primary, "Powered by A3" subtle badge; trust signals on step 1; animated step transitions
 - **Admin**: Compact horizontal nav with backdrop blur header; rounded card-based layouts; icon + text for section headers
+
+## Quote & Production Workflow
+- All portal/product/branding request tables include: estimatedPrice, costNotes, quoteSummary, turnaroundNotes, quoteReady, quoteStatus
+- Production handoff fields: productionOwner, installRequired, productionNotes, fulfillmentNotes, vendorNotes, productionDeadline, priority, recurringEvent
+- Legacy requests table has: estimatedPrice, quoteStatus, quoteSummary, quoteReady, productionOwner, priority
+- Admin detail page has collapsible "Quote & Pricing" and "Production & Handoff" panels
+- Quote summary generator builds structured text block from request data, copy-to-clipboard
+- All internal fields are never exposed to public portal
 
 ## Security & Hardening
 - **File upload validation**: Client-side (50MB limit, extension whitelist) + server-side (`isValidStoragePath` rejects external URLs, path traversal)

@@ -1,12 +1,35 @@
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useListPartners } from "@workspace/api-client-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Loader2, Users, ExternalLink } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Plus, Loader2, Users, ExternalLink, Copy, Eye } from "lucide-react";
 
 export default function PartnersList() {
-  const { data: partners, isLoading } = useListPartners();
+  const { data: partners, isLoading, refetch } = useListPartners();
+  const { toast } = useToast();
+  const [, navigate] = useLocation();
+  const [duplicating, setDuplicating] = useState<number | null>(null);
+
+  const handleDuplicate = async (id: number) => {
+    setDuplicating(id);
+    try {
+      const res = await fetch(`/api/partners/${id}/duplicate`, { method: "POST" });
+      if (res.ok) {
+        const newPartner = await res.json();
+        toast({ title: "Partner duplicated" });
+        refetch();
+        navigate(`/admin/partners/${newPartner.id}/edit`);
+      } else {
+        toast({ title: "Failed to duplicate partner", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Failed to duplicate partner", variant: "destructive" });
+    }
+    setDuplicating(null);
+  };
 
   if (isLoading) {
     return (
@@ -55,12 +78,12 @@ export default function PartnersList() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Link href={`/partner/${partner.slug}`}>
+                    <a href={`/partner/${partner.slug}`} target="_blank" rel="noopener noreferrer">
                       <span className="text-sm text-primary hover:underline cursor-pointer inline-flex items-center gap-1">
                         /partner/{partner.slug}
                         <ExternalLink className="h-3 w-3" />
                       </span>
-                    </Link>
+                    </a>
                   </TableCell>
                   <TableCell>
                     <div>
@@ -74,9 +97,26 @@ export default function PartnersList() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Link href={`/admin/partners/${partner.id}/edit`}>
-                      <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">Edit</Button>
-                    </Link>
+                    <div className="flex items-center justify-end gap-1">
+                      <a href={`/partner/${partner.slug}`} target="_blank" rel="noopener noreferrer">
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-primary" title="Preview portal">
+                          <Eye className="h-3.5 w-3.5" />
+                        </Button>
+                      </a>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-primary"
+                        title="Duplicate partner"
+                        onClick={() => handleDuplicate(partner.id)}
+                        disabled={duplicating === partner.id}
+                      >
+                        {duplicating === partner.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Copy className="h-3.5 w-3.5" />}
+                      </Button>
+                      <Link href={`/admin/partners/${partner.id}/edit`}>
+                        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">Edit</Button>
+                      </Link>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

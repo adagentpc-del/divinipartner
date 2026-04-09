@@ -1,0 +1,114 @@
+Good. Core build and hardening are complete.
+
+Next phase: quote workflow, internal production handoff, and live readiness for the first real partner. The goal is to make this usable for actual sales operations, not just intake.
+
+Priority order
+
+1. Quote workflow foundation
+Build the first internal quote management layer tied to requests.
+
+Requirements
+- Add quote status fields to requests or create a related quotes table if cleaner
+- Support statuses such as:
+  - needs review
+  - quoting
+  - quote sent
+  - awaiting approval
+  - approved
+  - declined
+- In admin request detail pages, add:
+  - estimated price field
+  - internal cost notes
+  - quote summary textarea
+  - turnaround notes
+  - send quote later flag or quote-ready indicator
+- Keep this phase simple: no full ecommerce checkout yet
+
+2. Internal production handoff fields
+Add ops-friendly internal fields so approved requests can move toward execution.
+
+Requirements
+- production owner / assigned user field
+- install required yes/no/internal confirmation
+- production notes
+- fulfillment notes
+- vendor notes optional
+- due date / production deadline
+- priority flag
+- recurring event flag if useful
+
+These should be internal only and never exposed publicly.
+
+3. Request type specific detail improvements
+Make request detail views truly usable by request type.
+
+Requirements
+For product requests:
+- show selected size, quantity, selected options, product image, product category
+
+For branding location requests:
+- show branding location image, dimensions, category, source page if available
+
+For portal/inquiry requests:
+- show section source clearly such as collateral, immersive, fabrication, or open request
+
+4. Quote document / summary generation
+Create a simple structured quote summary block in admin that can be copied or sent manually.
+
+Requirements
+- client name
+- partner name
+- event name
+- request type
+- requested items or location
+- timeline
+- design help status
+- summary of scope
+- pricing notes
+- estimated total
+- next steps
+
+This can be an internal admin-generated quote summary first. Do not overbuild PDFs unless already easy in current stack.
+
+5. Live readiness for Move Miami
+Set up one real partner end to end so the system is deployment ready.
+
+Requirements
+- verify Move Miami partner record is complete
+- verify theme, sections, assets, products, and branding locations are populated correctly
+- verify public route is clean
+- verify no placeholder content remains
+- verify at least one usable happy path for:
+  - standard product request
+  - branding location request
+  - collateral request
+
+6. Admin quality of life
+Add the minimum productivity improvements needed for real usage.
+
+Requirements
+- duplicate partner action
+- duplicate branding location action if not already present everywhere needed
+- bulk activate/deactivate branding locations
+- bulk status update for requests if practical
+- better empty states and no-data guidance
+- obvious public portal preview button from partner admin
+
+7. Acceptance criteria for this phase
+This phase is complete only when:
+- every request can move from intake to quote-ready state in admin
+- admin can add pricing and internal notes without workarounds
+- request details show the operational information needed to quote
+- one real partner, ideally Move Miami, is fully configured and presentable
+- the system is usable for real intake and quoting even without live checkout
+
+Important
+Do not start building full checkout, invoice processing, or complex user roles yet.
+Keep this phase focused on converting requests into organized quote-ready work.
+
+After completion report:
+- schema changes
+- admin pages updated
+- what is quote-ready
+- what still requires manual human quoting
+- the cleanest path from request submission to paid project

@@ -1,22 +1,33 @@
 import { useParams } from "wouter";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import {
   ArrowLeft, Loader2, User, Mail, Phone, Calendar, MapPin, Clock,
   FileText, Globe, MessageSquare, ShoppingBag, Palette, Hammer, Sparkles,
-  Download, ExternalLink, Pencil, Save
+  Download, ExternalLink, Pencil, Save, DollarSign, Truck, Flag,
+  ClipboardCopy, ChevronDown, ChevronRight, AlertCircle
 } from "lucide-react";
 import { Link } from "wouter";
 
 const STATUS_OPTIONS = [
   "new", "reviewing", "quoted", "awaiting artwork", "in production", "completed", "archived"
 ];
+
+const QUOTE_STATUS_OPTIONS = [
+  "needs_review", "quoting", "quote_sent", "awaiting_approval", "approved", "declined"
+];
+
+const PRIORITY_OPTIONS = ["normal", "high", "urgent"];
 
 const STATUS_STYLES: Record<string, string> = {
   "new": "bg-blue-50 text-blue-700 border-blue-200",
@@ -26,6 +37,21 @@ const STATUS_STYLES: Record<string, string> = {
   "in production": "bg-indigo-50 text-indigo-700 border-indigo-200",
   "completed": "bg-green-50 text-green-700 border-green-200",
   "archived": "bg-gray-50 text-gray-600 border-gray-200",
+};
+
+const QUOTE_STATUS_STYLES: Record<string, string> = {
+  "needs_review": "bg-slate-50 text-slate-700 border-slate-200",
+  "quoting": "bg-amber-50 text-amber-700 border-amber-200",
+  "quote_sent": "bg-violet-50 text-violet-700 border-violet-200",
+  "awaiting_approval": "bg-orange-50 text-orange-700 border-orange-200",
+  "approved": "bg-green-50 text-green-700 border-green-200",
+  "declined": "bg-red-50 text-red-700 border-red-200",
+};
+
+const PRIORITY_STYLES: Record<string, string> = {
+  "normal": "bg-slate-50 text-slate-600",
+  "high": "bg-amber-50 text-amber-700",
+  "urgent": "bg-red-50 text-red-700",
 };
 
 const TYPE_ICONS: Record<string, any> = {
@@ -50,6 +76,29 @@ export default function PortalRequestDetail() {
   const [editingNotes, setEditingNotes] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const [quoteOpen, setQuoteOpen] = useState(true);
+  const [productionOpen, setProductionOpen] = useState(false);
+
+  const [quoteFields, setQuoteFields] = useState({
+    estimatedPrice: "",
+    costNotes: "",
+    quoteSummary: "",
+    turnaroundNotes: "",
+    quoteReady: false,
+    quoteStatus: "needs_review",
+  });
+
+  const [prodFields, setProdFields] = useState({
+    productionOwner: "",
+    installRequired: "",
+    productionNotes: "",
+    fulfillmentNotes: "",
+    vendorNotes: "",
+    productionDeadline: "",
+    priority: "normal",
+    recurringEvent: false,
+  });
+
   const endpointMap: Record<string, string> = {
     portal: "portal-requests",
     product: "product-requests",
@@ -65,6 +114,24 @@ export default function PortalRequestDetail() {
       .then(data => {
         setRequest(data);
         setAdminNotes(data.adminNotes || "");
+        setQuoteFields({
+          estimatedPrice: data.estimatedPrice || "",
+          costNotes: data.costNotes || "",
+          quoteSummary: data.quoteSummary || "",
+          turnaroundNotes: data.turnaroundNotes || "",
+          quoteReady: data.quoteReady || false,
+          quoteStatus: data.quoteStatus || "needs_review",
+        });
+        setProdFields({
+          productionOwner: data.productionOwner || "",
+          installRequired: data.installRequired || "",
+          productionNotes: data.productionNotes || "",
+          fulfillmentNotes: data.fulfillmentNotes || "",
+          vendorNotes: data.vendorNotes || "",
+          productionDeadline: data.productionDeadline || "",
+          priority: data.priority || "normal",
+          recurringEvent: data.recurringEvent || false,
+        });
         if (data.partnerId) {
           fetch(`/api/partners/${data.partnerId}`)
             .then(r => r.ok ? r.json() : null)
@@ -111,6 +178,116 @@ export default function PortalRequestDetail() {
     setSaving(false);
   };
 
+  const patchFields = useCallback(async (fields: Record<string, any>, label: string) => {
+    setSaving(true);
+    const endpoint = endpointMap[requestType];
+    const res = await fetch(`/api/${endpoint}/${requestId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(fields),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setRequest((prev: any) => ({ ...prev, ...updated }));
+      toast({ title: `${label} saved` });
+    } else {
+      toast({ title: `Failed to save ${label.toLowerCase()}`, variant: "destructive" });
+    }
+    setSaving(false);
+  }, [requestType, requestId]);
+
+  const handleSaveQuote = () => {
+    const payload = {
+      ...quoteFields,
+      estimatedPrice: quoteFields.estimatedPrice || null,
+    };
+    patchFields(payload, "Quote details");
+  };
+  const handleSaveProduction = () => {
+    const payload = {
+      ...prodFields,
+      productionOwner: prodFields.productionOwner || null,
+      productionNotes: prodFields.productionNotes || null,
+      fulfillmentNotes: prodFields.fulfillmentNotes || null,
+      vendorNotes: prodFields.vendorNotes || null,
+      productionDeadline: prodFields.productionDeadline || null,
+      installRequired: prodFields.installRequired || null,
+    };
+    patchFields(payload, "Production details");
+  };
+
+  const generateQuoteSummary = useCallback(() => {
+    const r = request;
+    if (!r) return;
+    const lines: string[] = [];
+    lines.push("=== QUOTE SUMMARY ===");
+    lines.push("");
+    lines.push(`Client: ${r.mainContactName || r.contactName || "—"}`);
+    if (r.companyName) lines.push(`Company: ${r.companyName}`);
+    if (partner) lines.push(`Partner: ${partner.companyName}`);
+    lines.push(`Request Type: ${requestType === "product" ? "Product Order" : requestType === "branding" ? "Venue Branding" : (r.requestType || "Portal Request").replace(/_/g, " ")}`);
+    if (r.eventName) lines.push(`Event: ${r.eventName}`);
+    if (r.eventDate) lines.push(`Event Date: ${r.eventDate}`);
+    if (r.neededByDate) lines.push(`Needed By: ${r.neededByDate}`);
+    lines.push("");
+    if (requestType === "product" && r.product) {
+      lines.push("--- Product ---");
+      lines.push(`Product: ${r.product.name}`);
+      if (r.product.category) lines.push(`Category: ${r.product.category}`);
+      if (r.quantity) lines.push(`Quantity: ${r.quantity}`);
+      if (r.selectedSize) lines.push(`Size: ${r.selectedSize}`);
+      if (r.selectedOptionsJson && Object.keys(r.selectedOptionsJson).length > 0) {
+        lines.push(`Options: ${Object.entries(r.selectedOptionsJson).map(([k, v]) => `${k}: ${v}`).join(", ")}`);
+      }
+      lines.push("");
+    }
+    if (requestType === "branding" && r.location) {
+      lines.push("--- Branding Location ---");
+      lines.push(`Location: ${r.location.name}`);
+      if (r.location.category) lines.push(`Category: ${r.location.category}`);
+      if (r.location.sizeWidth && r.location.sizeHeight) {
+        lines.push(`Dimensions: ${r.location.sizeWidth} x ${r.location.sizeHeight} ${r.location.sizeUnit || "inches"}`);
+      }
+      lines.push("");
+    }
+    if (requestType === "portal" && r.requestCategory) {
+      lines.push(`Section: ${(r.requestCategory || "").replace(/_/g, " ")}`);
+      lines.push("");
+    }
+    lines.push("--- Scope ---");
+    if (r.description || r.notes) lines.push(`Description: ${r.description || r.notes}`);
+    lines.push(`Design Help: ${r.designHelpNeeded ? "Yes" : "No"}`);
+    if (r.artworkStatus) lines.push(`Artwork: ${r.artworkStatus.replace(/_/g, " ")}`);
+    if (r.budgetRange) lines.push(`Client Budget: ${r.budgetRange}`);
+    lines.push("");
+    lines.push("--- Pricing ---");
+    lines.push(`Estimated Total: ${quoteFields.estimatedPrice ? `$${quoteFields.estimatedPrice}` : "TBD"}`);
+    if (quoteFields.costNotes) lines.push(`Cost Notes: ${quoteFields.costNotes}`);
+    if (quoteFields.turnaroundNotes) lines.push(`Turnaround: ${quoteFields.turnaroundNotes}`);
+    lines.push("");
+    lines.push(`Quote Status: ${(quoteFields.quoteStatus || "needs_review").replace(/_/g, " ")}`);
+    lines.push(`Quote Ready: ${quoteFields.quoteReady ? "Yes" : "No"}`);
+    lines.push("");
+    lines.push("--- Next Steps ---");
+    if (quoteFields.quoteStatus === "needs_review") lines.push("• Review request details and prepare pricing");
+    if (quoteFields.quoteStatus === "quoting") lines.push("• Finalize pricing and send quote to client");
+    if (quoteFields.quoteStatus === "quote_sent") lines.push("• Awaiting client response to quote");
+    if (quoteFields.quoteStatus === "approved") lines.push("• Begin production planning");
+    lines.push("");
+    lines.push(`Generated: ${format(new Date(), "MMMM d, yyyy h:mm a")}`);
+
+    const summary = lines.join("\n");
+    setQuoteFields(prev => ({ ...prev, quoteSummary: summary }));
+    toast({ title: "Quote summary generated" });
+  }, [request, partner, requestType, quoteFields]);
+
+  const copyQuoteSummary = useCallback(() => {
+    if (quoteFields.quoteSummary) {
+      navigator.clipboard.writeText(quoteFields.quoteSummary);
+      toast({ title: "Copied to clipboard" });
+    }
+  }, [quoteFields.quoteSummary]);
+
   if (loading) return (
     <div className="flex items-center justify-center py-24">
       <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -152,6 +329,11 @@ export default function PortalRequestDetail() {
                 <MapPin className="h-3 w-3" /> {request.location.name}
               </Badge>
             )}
+            {request.priority && request.priority !== "normal" && (
+              <Badge className={`text-xs gap-1 ${PRIORITY_STYLES[request.priority] || ""}`}>
+                <Flag className="h-3 w-3" /> {request.priority}
+              </Badge>
+            )}
           </div>
           <p className="text-sm text-muted-foreground mt-1">
             From <span className="font-medium text-foreground">{request.mainContactName || request.contactName}</span>
@@ -174,16 +356,18 @@ export default function PortalRequestDetail() {
             </div>
           )}
         </div>
-        <Select value={request.status} onValueChange={handleStatusChange}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            {STATUS_OPTIONS.map(s => (
-              <SelectItem key={s} value={s}>{s}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Select value={request.status} onValueChange={handleStatusChange}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_OPTIONS.map(s => (
+                <SelectItem key={s} value={s}>{s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -328,6 +512,18 @@ export default function PortalRequestDetail() {
                       <p className="font-medium">{request.selectedSize}</p>
                     </div>
                   )}
+                  {request.selectedOptionsJson && Object.keys(request.selectedOptionsJson).length > 0 && (
+                    <div className="sm:col-span-2">
+                      <p className="text-xs text-muted-foreground mb-1">Selected Options</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {Object.entries(request.selectedOptionsJson).map(([key, val]) => (
+                          <Badge key={key} variant="outline" className="text-xs">
+                            {key}: {val as string}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -460,6 +656,206 @@ export default function PortalRequestDetail() {
               </CardContent>
             </Card>
           )}
+
+          <Card className="border-emerald-200">
+            <CardHeader className="pb-3 cursor-pointer" onClick={() => setQuoteOpen(!quoteOpen)}>
+              <CardTitle className="text-base flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-emerald-600" /> Quote & Pricing
+                  {request.quoteReady && <Badge className="bg-emerald-100 text-emerald-700 text-[10px]">Ready</Badge>}
+                </span>
+                {quoteOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              </CardTitle>
+            </CardHeader>
+            {quoteOpen && (
+              <CardContent className="space-y-4">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Quote Status</Label>
+                    <Select value={quoteFields.quoteStatus} onValueChange={v => setQuoteFields(p => ({ ...p, quoteStatus: v }))}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {QUOTE_STATUS_OPTIONS.map(s => (
+                          <SelectItem key={s} value={s}>{s.replace(/_/g, " ")}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Estimated Price ($)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={quoteFields.estimatedPrice}
+                      onChange={e => setQuoteFields(p => ({ ...p, estimatedPrice: e.target.value }))}
+                      className="h-9"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Cost Notes (internal)</Label>
+                  <Textarea
+                    value={quoteFields.costNotes}
+                    onChange={e => setQuoteFields(p => ({ ...p, costNotes: e.target.value }))}
+                    className="min-h-[60px] text-sm resize-none"
+                    placeholder="Internal cost breakdown, vendor pricing..."
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Turnaround Notes</Label>
+                  <Textarea
+                    value={quoteFields.turnaroundNotes}
+                    onChange={e => setQuoteFields(p => ({ ...p, turnaroundNotes: e.target.value }))}
+                    className="min-h-[60px] text-sm resize-none"
+                    placeholder="Production timeline, lead times..."
+                  />
+                </div>
+                <div className="flex items-center gap-3">
+                  <Switch
+                    checked={quoteFields.quoteReady}
+                    onCheckedChange={v => setQuoteFields(p => ({ ...p, quoteReady: v }))}
+                  />
+                  <Label className="text-sm">Quote Ready to Send</Label>
+                </div>
+                <Separator />
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">Quote Summary</Label>
+                    <div className="flex gap-1.5">
+                      <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={generateQuoteSummary}>
+                        <Sparkles className="h-3 w-3" /> Generate
+                      </Button>
+                      {quoteFields.quoteSummary && (
+                        <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={copyQuoteSummary}>
+                          <ClipboardCopy className="h-3 w-3" /> Copy
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  <Textarea
+                    value={quoteFields.quoteSummary}
+                    onChange={e => setQuoteFields(p => ({ ...p, quoteSummary: e.target.value }))}
+                    className="min-h-[120px] text-sm resize-none font-mono text-xs"
+                    placeholder="Click Generate to create a structured quote summary, or type manually..."
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <Button size="sm" onClick={handleSaveQuote} disabled={saving} className="gap-1.5">
+                    {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                    Save Quote Details
+                  </Button>
+                </div>
+              </CardContent>
+            )}
+          </Card>
+
+          <Card className="border-indigo-200">
+            <CardHeader className="pb-3 cursor-pointer" onClick={() => setProductionOpen(!productionOpen)}>
+              <CardTitle className="text-base flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <Truck className="h-4 w-4 text-indigo-600" /> Production & Handoff
+                </span>
+                {productionOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              </CardTitle>
+            </CardHeader>
+            {productionOpen && (
+              <CardContent className="space-y-4">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Production Owner</Label>
+                    <Input
+                      value={prodFields.productionOwner}
+                      onChange={e => setProdFields(p => ({ ...p, productionOwner: e.target.value }))}
+                      placeholder="Assigned team member"
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Priority</Label>
+                    <Select value={prodFields.priority} onValueChange={v => setProdFields(p => ({ ...p, priority: v }))}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PRIORITY_OPTIONS.map(p => (
+                          <SelectItem key={p} value={p}>
+                            <span className="capitalize">{p}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Install Required</Label>
+                    <Select value={prodFields.installRequired || "tbd"} onValueChange={v => setProdFields(p => ({ ...p, installRequired: v }))}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="tbd">TBD</SelectItem>
+                        <SelectItem value="yes">Yes</SelectItem>
+                        <SelectItem value="no">No</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Production Deadline</Label>
+                    <Input
+                      type="date"
+                      value={prodFields.productionDeadline}
+                      onChange={e => setProdFields(p => ({ ...p, productionDeadline: e.target.value }))}
+                      className="h-9"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Production Notes</Label>
+                  <Textarea
+                    value={prodFields.productionNotes}
+                    onChange={e => setProdFields(p => ({ ...p, productionNotes: e.target.value }))}
+                    className="min-h-[60px] text-sm resize-none"
+                    placeholder="Internal production instructions..."
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Fulfillment Notes</Label>
+                  <Textarea
+                    value={prodFields.fulfillmentNotes}
+                    onChange={e => setProdFields(p => ({ ...p, fulfillmentNotes: e.target.value }))}
+                    className="min-h-[60px] text-sm resize-none"
+                    placeholder="Shipping, delivery, on-site logistics..."
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Vendor Notes</Label>
+                  <Textarea
+                    value={prodFields.vendorNotes}
+                    onChange={e => setProdFields(p => ({ ...p, vendorNotes: e.target.value }))}
+                    className="min-h-[60px] text-sm resize-none"
+                    placeholder="Third-party vendor details..."
+                  />
+                </div>
+                <div className="flex items-center gap-3">
+                  <Switch
+                    checked={prodFields.recurringEvent}
+                    onCheckedChange={v => setProdFields(p => ({ ...p, recurringEvent: v }))}
+                  />
+                  <Label className="text-sm">Recurring Event</Label>
+                </div>
+                <div className="flex justify-end">
+                  <Button size="sm" onClick={handleSaveProduction} disabled={saving} className="gap-1.5">
+                    {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                    Save Production Details
+                  </Button>
+                </div>
+              </CardContent>
+            )}
+          </Card>
         </div>
 
         <div className="space-y-6">
@@ -468,11 +864,27 @@ export default function PortalRequestDetail() {
               <CardTitle className="text-base">Status</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className={`inline-flex items-center px-3 py-1.5 rounded-md text-xs font-medium border ${STATUS_STYLES[request.status] || "bg-muted"}`}>
                   {request.status}
                 </span>
+                {request.quoteStatus && request.quoteStatus !== "needs_review" && (
+                  <span className={`inline-flex items-center px-2 py-1 rounded text-[10px] font-medium border ${QUOTE_STATUS_STYLES[request.quoteStatus] || "bg-muted"}`}>
+                    {(request.quoteStatus || "").replace(/_/g, " ")}
+                  </span>
+                )}
               </div>
+              {request.estimatedPrice && (
+                <div className="flex items-center gap-1.5 text-sm">
+                  <DollarSign className="h-3.5 w-3.5 text-emerald-600" />
+                  <span className="font-semibold text-emerald-700">${parseFloat(request.estimatedPrice).toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                </div>
+              )}
+              {request.productionOwner && (
+                <div className="text-xs text-muted-foreground flex items-center gap-1.5">
+                  <User className="h-3 w-3" /> Owner: <span className="font-medium text-foreground">{request.productionOwner}</span>
+                </div>
+              )}
               <div className="text-xs text-muted-foreground space-y-1">
                 <div className="flex items-center gap-1.5">
                   <Clock className="h-3 w-3" />

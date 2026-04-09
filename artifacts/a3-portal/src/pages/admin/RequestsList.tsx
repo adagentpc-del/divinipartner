@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
-import { Loader2, FileText, ArrowUpRight, Search, ShoppingBag, MapPin, Palette, MessageSquare, Filter } from "lucide-react";
+import { Loader2, FileText, ArrowUpRight, Search, ShoppingBag, MapPin, Palette, MessageSquare, Filter, Flag } from "lucide-react";
 
 interface UnifiedRequest {
   id: number;
@@ -19,6 +19,8 @@ interface UnifiedRequest {
   email: string;
   eventName?: string;
   status: string;
+  quoteStatus?: string;
+  priority?: string;
   requestType?: string;
   productName?: string;
   locationName?: string;
@@ -93,6 +95,7 @@ export default function RequestsList() {
           partnerName: partnerMap.get(r.partnerId) || "Unknown",
           contactName: r.mainContactName, companyName: r.companyName, email: r.email,
           eventName: r.eventName, status: r.status, requestType: r.requestType,
+          quoteStatus: r.quoteStatus, priority: r.priority,
           createdAt: r.createdAt, neededByDate: r.neededByDate, eventDate: r.eventDate,
         });
       }
@@ -104,6 +107,7 @@ export default function RequestsList() {
           contactName: r.mainContactName, companyName: r.companyName, email: r.email,
           eventName: r.eventName, status: r.status,
           productName: r.productName || undefined,
+          quoteStatus: r.quoteStatus, priority: r.priority,
           createdAt: r.createdAt, neededByDate: r.neededByDate, eventDate: r.eventDate,
         });
       }
@@ -115,6 +119,7 @@ export default function RequestsList() {
           contactName: r.mainContactName, companyName: r.companyName, email: r.email,
           eventName: r.eventName, status: r.status,
           locationName: r.locationName || undefined,
+          quoteStatus: r.quoteStatus, priority: r.priority,
           createdAt: r.createdAt, neededByDate: r.neededByDate, eventDate: r.eventDate,
         });
       }
@@ -259,9 +264,19 @@ export default function RequestsList() {
                       {r.locationName && <p className="text-[11px] text-muted-foreground">{r.locationName}</p>}
                     </TableCell>
                     <TableCell>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium border ${STATUS_STYLES[r.status] || "bg-muted text-muted-foreground border-border"}`}>
-                        {r.status}
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium border w-fit ${STATUS_STYLES[r.status] || "bg-muted text-muted-foreground border-border"}`}>
+                          {r.status}
+                        </span>
+                        {r.quoteStatus && r.quoteStatus !== "needs_review" && (
+                          <span className="text-[10px] text-muted-foreground">{r.quoteStatus.replace(/_/g, " ")}</span>
+                        )}
+                        {r.priority && r.priority !== "normal" && (
+                          <span className={`inline-flex items-center gap-0.5 text-[10px] font-medium ${r.priority === "urgent" ? "text-red-600" : "text-amber-600"}`}>
+                            <Flag className="h-2.5 w-2.5" /> {r.priority}
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-xs tabular-nums">
                       <span className="text-muted-foreground">{format(new Date(r.createdAt), "MMM d, yyyy")}</span>

@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, boolean, timestamp, jsonb, numeric } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { partnersTable } from "./partners";
@@ -30,6 +30,14 @@ export const requestsTable = pgTable("requests", {
   estimatedScopeLevel: text("estimated_scope_level"),
   recommendedUpsellsJson: jsonb("recommended_upsells_json").$type<string[]>(),
   pdfSummaryUrl: text("pdf_summary_url"),
+
+  estimatedPrice: numeric("estimated_price", { precision: 12, scale: 2 }),
+  quoteStatus: text("quote_status").notNull().default("needs_review"),
+  quoteSummary: text("quote_summary"),
+  quoteReady: boolean("quote_ready").notNull().default(false),
+  productionOwner: text("production_owner"),
+  priority: text("priority").notNull().default("normal"),
+
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

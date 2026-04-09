@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
-import { db, partnersTable, partnerAssetsTable } from "@workspace/db";
+import { db, partnersTable, partnerAssetsTable, partnerThemesTable, partnerSectionsTable } from "@workspace/db";
 import { z } from "zod";
 import {
   ListPartnersQueryParams,
@@ -100,6 +100,37 @@ router.patch("/partners/:id", async (req, res): Promise<void> => {
   }
 
   res.json(partner);
+});
+
+router.post("/partners/:id/duplicate", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [source] = await db.select().from(partnersTable).where(eq(partnersTable.id, id));
+  if (!source) { res.status(404).json({ error: "Partner not found" }); return; }
+
+  const { id: _id, createdAt: _ca, updatedAt: _ua, ...fields } = source;
+  const newSlug = `${source.slug}-copy-${Date.now().toString(36)}`;
+  const [newPartner] = await db.insert(partnersTable).values({
+    ...fields,
+    slug: newSlug,
+    companyName: `${source.companyName} (Copy)`,
+    isActive: false,
+  }).returning();
+
+  const theme = await db.select().from(partnerThemesTable).where(eq(partnerThemesTable.partnerId, id));
+  if (theme.length > 0) {
+    const { id: _tid, partnerId: _pid, createdAt: _tca, updatedAt: _tua, ...themeFields } = theme[0];
+    await db.insert(partnerThemesTable).values({ ...themeFields, partnerId: newPartner.id });
+  }
+
+  const sections = await db.select().from(partnerSectionsTable).where(eq(partnerSectionsTable.partnerId, id));
+  for (const section of sections) {
+    const { id: _sid, partnerId: _spid, createdAt: _sca, updatedAt: _sua, ...sectionFields } = section;
+    await db.insert(partnerSectionsTable).values({ ...sectionFields, partnerId: newPartner.id });
+  }
+
+  res.status(201).json(newPartner);
 });
 
 router.delete("/partners/:id", async (req, res): Promise<void> => {
