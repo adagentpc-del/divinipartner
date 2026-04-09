@@ -1,0 +1,726 @@
+Build on our existing A3 partner portal system and upgrade it into a scalable, AI assisted, white labeled partner portal generator for A3 Visual.
+
+Core objective
+
+Create a reusable co branded partner portal system where each partner, such as Move Miami, Swarm, Wynwood Marketplace, and future partners, gets a branded client facing portal that feels like their brand first and A3 Visual second. The portal should allow clients to browse standard event products, venue specific branding opportunities pulled from a site survey and branding deck, branded event collateral, immersive upgrades, fabrication requests, and open ended custom event requests.
+
+This must be built inside our existing system, not as a separate disconnected app.
+
+Primary product goals
+
+1. Fast partner setup
+When creating a partner, I need to upload their logo, website, branding deck, and site survey or venue branding deck PDF. The system should use AI to extract colors and styling from the logo and website, suggest the partner theme, and extract venue branding locations and measurements from the uploaded deck. I then review and approve everything before it publishes.
+
+2. White labeled co branded portals
+Each partner portal should feel like the partner brand, using their visual style, colors, and approved branding, while clearly showing that A3 Visual is the production partner.
+
+3. Two ordering paths
+A. Standard standalone products where the client selects product, size, quantity, uploads artwork, and requests design if needed
+B. Venue specific branding areas where the client selects an approved branded location from the site survey driven venue map and uploads artwork or requests design support. The client should not choose installation specs, mounting, lamination, grommets, or other technical production details for mapped venue locations because that is already handled by A3 from the site survey and backend data.
+
+4. AI assisted deck ingestion
+When a partner is created and I upload the venue branding deck PDF, the system should automatically analyze it, detect branding locations, measurements, and page references, then show me an admin review screen where I confirm, edit, delete, rename, merge, or approve the extracted locations before they go live in the portal.
+
+5. Operational simplicity
+For phase one, this is not full ecommerce checkout. This is a premium configured order request and quote workflow. Clients configure or select what they need, upload artwork, and submit. The system stores everything, notifies admin, and makes the request visible in the dashboard for review and quoting.
+
+Design direction
+
+The portal should look premium, polished, modern, and partner branded. It should not look like a cheap commodity print shop. It should feel like a strategic event branding portal.
+
+Use a clean, luxury modern aesthetic with strong visual hierarchy, branded cards, section based modular design, strong buttons, image galleries, and configurable layout blocks.
+
+Tech assumptions
+
+Use the existing stack already in the project where possible.
+Use Supabase for database and storage if the existing project already uses it.
+Use server actions or API routes within the current Replit architecture.
+Do not rebuild the whole app from scratch.
+Extend the current codebase cleanly and modularly.
+Create reusable components and admin workflows.
+
+Major features to build
+
+PART 1. PARTNER ADMIN CREATION AND EDITING
+
+Create or expand a partner admin setup flow with the following fields:
+
+Basic partner info
+partner name
+portal slug
+partner website URL
+partner logo upload
+optional secondary logo upload
+intro headline
+intro paragraph
+thank you or welcome copy
+A3 capabilities link
+partner deck upload
+site survey or venue branding deck PDF upload
+partner contact routing email
+active or inactive toggle
+
+Branding and theme
+manual fields
+primary color
+secondary color
+accent color
+background color
+heading font
+body font
+button style
+border radius
+tone preset such as luxury, modern, energetic, playful, corporate
+
+automatic AI assisted branding extraction
+when logo and website are added, run an AI or utility workflow that suggests
+primary color
+secondary color
+accent color
+background color
+font suggestions
+visual style notes
+
+do not auto publish this blindly
+show a theme review card with the suggested palette and typography
+allow me to edit and approve before saving
+
+Partner content sections
+For each partner, support enabling or disabling the following sections:
+standard products
+venue branding map
+branded event materials
+immersive upgrades
+custom fabrication
+open creative request
+partner deck section
+A3 capabilities section
+
+Each section should allow custom heading, subheading, description, featured images, and optional videos.
+
+PART 2. AI ASSISTED VENUE DECK INGESTION
+
+When I upload the venue branding deck PDF during partner creation or editing, the system should analyze the file and attempt to extract venue branding opportunities.
+
+Extraction goals
+Detect and structure:
+location name
+category
+description if detectable
+width
+height
+unit
+source page number
+extracted text
+preview image from the PDF page
+confidence score
+notes or technical clues if present
+
+Possible categories
+wall graphic
+window decal
+column wrap
+pole banner
+fence banner
+floor graphic
+door graphic
+directional signage
+registration branding
+step and repeat zone
+sponsor zone
+custom other
+
+Important rule
+Never auto publish extracted branding locations without admin confirmation.
+
+Build an admin review screen after extraction with:
+table of extracted locations
+preview thumbnails
+source page number
+detected dimensions
+category
+confidence
+actions for approve, edit, duplicate, hide, delete
+
+Allow editing:
+public location name
+internal location code
+short client facing description
+size
+category
+featured preview image
+sort order
+active toggle
+internal production notes
+internal install notes
+template file upload optional
+artwork guidelines text optional
+
+If extraction confidence is low or content is unclear, place the item in a needs review state.
+
+If possible, also create PDF page previews and crop area previews where practical. If smart region crops are not reliable, use full page preview thumbnails with source page traceability.
+
+PART 3. PORTAL GENERATION ENGINE
+
+After partner creation and approval, automatically generate a client facing partner portal using the saved theme, approved sections, standard products, and approved venue branding locations.
+
+Portal structure
+
+1. Co branded hero section
+Partner logo prominently displayed
+A3 Visual as production partner
+welcome or thank you headline
+intro paragraph
+buttons for view A3 capabilities and view partner deck
+use the partner theme colors and typography
+
+2. Quick action area
+Order standard event products
+Brand this venue
+Request event collateral
+Explore immersive upgrades
+Request custom fabrication
+
+3. Standard event products section
+This is the standalone print and display catalog where users can select products not tied to a mapped venue location.
+
+Examples:
+step and repeat
+retractable banner
+banner
+backdrop
+a frame
+light box
+wall vinyl
+window graphics
+floor graphics
+foam board signs
+PVC signs
+acrylic signs
+flyers
+cards
+auction paddles
+awards
+menus
+programs
+badges
+lanyards
+table signage
+sponsor boards
+
+Each product card should show:
+image
+title
+short description
+button such as configure request or start order
+
+When clicked, open a product configuration drawer or modal.
+
+Client configurable fields for standard products:
+size selector
+quantity
+event date
+needed by date
+artwork upload
+design help yes or no
+artwork status with choices
+I have print ready artwork
+I need design help
+I have partial assets and need assistance
+notes field
+
+If design help is selected, show additional fields:
+design brief
+logo upload
+brand guide upload optional
+inspiration upload
+text or copy for design
+style notes
+proof deadline
+
+Do not expose technical production fields like grommets, lamination, mounting type, or install specs here unless we later intentionally enable specific simple options. Keep phase one lean.
+
+4. Venue branding map section
+This is the most important new section.
+Build a section called Brand This Venue or Brand This Event Space.
+
+This section should display the approved branding locations that were extracted from the site survey and venue deck and then approved in admin.
+
+The client should see grouped location cards such as:
+Exterior branding
+Interior branding
+Sponsor areas
+Registration areas
+Premium feature zones
+
+Each card should show:
+location name
+preview image
+short description
+approximate dimensions if available
+a note that A3 handles production and installation specifications based on the site survey
+button to upload artwork or request design
+
+When clicked, the client should submit a simple request tied to that approved branding location.
+
+Client fields for mapped venue branding locations:
+main contact name
+company name
+email
+phone
+website
+event page optional
+event name
+event date
+needed by date
+upload artwork
+design help yes or no
+notes
+
+If design help is selected, show design support fields similar to the standard products flow.
+
+Do not ask the client for technical details already handled from the site survey such as
+mounting
+grommets
+lamination
+finishing
+hardware
+install method
+substrate
+field measurements
+
+Those belong to the backend only.
+
+If template files exist for a location, show a download artwork template link.
+
+5. Branded event materials section
+Create a section for branded collateral and supporting print pieces.
+
+Examples:
+awards
+cards
+flyers
+auction paddles
+programs
+menus
+invitations
+presentation pieces
+name badges
+lanyards
+sponsor boards
+tent cards
+
+Allow a visual gallery plus a lightweight request box.
+The client can describe what they need, upload files, and submit.
+
+Required fields:
+main contact
+email
+phone
+event name
+event date
+needed by date
+description of what is needed
+upload files
+design help yes or no
+
+6. Immersive upgrades section
+Create a premium event enhancement section with images and optional videos.
+
+Examples:
+LED walls
+interactive screens
+projection mapping
+digital displays
+photo moments
+branded scenic elements
+touchscreen experiences
+
+This section is inquiry based, not standard product ordering.
+Allow the client to describe their event goals, upload inspiration, and request consultation.
+
+7. Custom fabrication section
+Create a section for custom built event pieces, structures, scenic builds, and unique installs.
+
+Allow:
+description box
+image upload
+video upload
+reference file upload
+event date
+needed by date
+venue
+budget optional
+design help yes or no
+
+8. Open creative request section
+Create an anything else request section for unique event ideas or needs not listed elsewhere.
+This should allow text plus uploads and route into the admin dashboard as a custom request.
+
+PART 4. PRODUCT AND REQUEST DATA MODEL
+
+Create or expand Supabase tables and relationships cleanly.
+
+Required tables or equivalent structures
+
+partners
+id
+name
+slug
+website_url
+logo_url
+secondary_logo_url
+intro_headline
+intro_text
+thank_you_text
+capabilities_link
+partner_deck_file_url
+site_survey_deck_file_url
+routing_email
+theme_id
+is_active
+created_at
+updated_at
+
+partner_themes
+id
+partner_id
+primary_color
+secondary_color
+accent_color
+background_color
+heading_font
+body_font
+button_style
+border_radius
+tone_preset
+theme_notes
+created_at
+updated_at
+
+partner_sections
+id
+partner_id
+section_type
+title
+subtitle
+description
+is_enabled
+sort_order
+created_at
+updated_at
+
+partner_assets
+id
+partner_id
+asset_type
+title
+description
+image_url
+video_url
+file_url
+category
+sort_order
+is_active
+created_at
+updated_at
+
+product_catalog
+id
+name
+slug
+category
+description
+image_url
+is_orderable
+allows_design_request
+active
+created_at
+updated_at
+
+product_options
+id
+product_id
+option_type
+option_label
+option_values_json
+required
+sort_order
+created_at
+updated_at
+
+partner_product_overrides
+id
+partner_id
+product_id
+custom_title
+custom_description
+custom_image_url
+is_visible
+sort_order
+created_at
+updated_at
+
+partner_branding_locations
+id
+partner_id
+name
+internal_code
+category
+description
+size_width
+size_height
+size_unit
+source_page_number
+source_file_url
+preview_image_url
+confidence_score
+production_notes_internal
+install_notes_internal
+template_file_url
+artwork_guidelines
+is_active
+sort_order
+created_at
+updated_at
+
+portal_requests
+id
+partner_id
+request_type
+request_category
+main_contact_name
+company_name
+email
+phone
+website_url
+event_page_url
+event_name
+event_date
+needed_by_date
+venue_name
+venue_location
+attendee_count
+description
+design_help_needed
+artwork_status
+status
+admin_notes
+created_at
+updated_at
+
+product_requests
+id
+partner_id
+product_id
+main_contact_name
+company_name
+email
+phone
+website_url
+event_page_url
+event_name
+event_date
+needed_by_date
+quantity
+selected_options_json
+design_help_needed
+artwork_status
+notes
+status
+admin_notes
+created_at
+updated_at
+
+branding_location_requests
+id
+partner_id
+branding_location_id
+main_contact_name
+company_name
+email
+phone
+website_url
+event_page_url
+event_name
+event_date
+needed_by_date
+design_help_needed
+notes
+status
+admin_notes
+created_at
+updated_at
+
+request_files
+id
+request_type
+request_id
+file_url
+file_type
+label
+created_at
+
+PART 5. ADMIN DASHBOARD
+
+Expand the admin dashboard so I can manage everything in one place.
+
+Dashboard areas needed
+
+A. Partner management
+create partner
+edit partner
+preview portal
+enable or disable sections
+upload decks
+run AI extraction again
+review extracted branding locations
+edit theme
+publish or unpublish portal
+
+B. Requests management
+Show all incoming requests with filters by:
+partner
+request type
+status
+event date
+needed by date
+design help needed
+
+Support statuses such as:
+new
+reviewing
+quoted
+awaiting artwork
+in production
+completed
+archived
+
+C. Request detail view
+For each request, show:
+contact info
+event details
+selected product or branding location
+uploaded files
+design support status
+admin notes
+source partner
+source section
+
+D. Branding location manager
+Allow manual add, edit, reorder, hide, archive, duplicate, and bulk activate or deactivate approved venue branding locations.
+
+E. Product manager
+Allow adding and editing standard products, sizes, descriptions, images, and partner specific overrides.
+
+PART 6. NOTIFICATIONS
+
+When a client submits any request, do all of the following:
+save to database
+store uploaded files
+send notification email to the assigned A3 or partner routing email
+show success message to the client
+
+Notification email should include:
+partner name
+portal source
+request type
+contact info
+event name
+event date
+needed by date
+selected product or branding location
+design help status
+request notes
+link to admin dashboard entry if available
+
+For now, use the current notification system already in the project. If Resend is already integrated, use it. If not, add it in a clean way that fits the current stack.
+
+PART 7. AI AND UTILITIES
+
+Implement two AI assisted utilities:
+
+1. Theme suggestion utility
+Inputs:
+partner logo
+partner website URL
+
+Outputs:
+suggested color palette
+font suggestions
+style notes
+
+2. Venue branding deck extraction utility
+Inputs:
+uploaded PDF
+optional file type metadata
+
+Outputs:
+structured branding locations with measurements, categories, page references, preview images, and confidence scores
+
+Important:
+Both AI features must require manual admin approval before publishing changes to the live portal.
+
+If AI services are too expensive or unreliable for phase one, create the architecture in a way that allows a first pass utility using PDF text extraction and basic parsing, while keeping the code ready for stronger vision and AI upgrades later.
+
+PART 8. UX REQUIREMENTS
+
+Client facing portal UX should be:
+mobile responsive
+premium looking
+easy to scan
+visually driven
+simple forms
+strong calls to action
+clear section separation
+partner branded
+
+Admin UX should be:
+fast
+clear
+practical
+built for rapid partner onboarding
+built for fast quote preparation and production workflow
+
+PART 9. IMPLEMENTATION REQUIREMENTS
+
+Use modular reusable components.
+Keep code organized by domain.
+Do not break the current working system.
+Refactor where necessary but preserve existing useful functionality.
+Add loading states, empty states, success states, and error handling.
+Validate all required fields.
+Validate file uploads and accepted formats.
+Use secure storage and database practices.
+Use server side protection for admin actions.
+Document the new architecture and setup notes inside the repo.
+
+PART 10. ACCEPTANCE CRITERIA
+
+The build is complete when all of the following work:
+
+1. I can create a new partner with logo, website, theme info, partner deck, and venue branding deck.
+2. The system suggests a brand theme and lets me approve or edit it.
+3. The system parses the venue branding deck and shows me extracted branding locations and dimensions for review.
+4. I can approve the extracted locations and generate the partner portal quickly.
+5. The partner portal shows:
+co branded hero
+standard event products
+venue branding map
+branded event materials
+immersive upgrades
+custom fabrication
+open creative request
+6. Standard product requests allow size selection, quantity, artwork upload, and design support requests.
+7. Venue branding requests let clients choose pre approved branding locations and upload artwork without exposing technical production details.
+8. Every request stores in the database and appears in the admin dashboard.
+9. Every request triggers a notification email.
+10. The portal visually reflects the partner brand and feels premium.
+
+Build this now inside the existing project. First inspect the current codebase and preserve whatever is already working. Then implement the new database changes, admin workflows, AI assisted extraction and review flow, portal generation logic, client request flows, and dashboard management.
+
+After building, provide:
+A. any required environment variables
+B. any required Supabase schema migrations
+C. setup notes for AI extraction services if placeholders are used
+D. a short admin user guide for creating a partner and publishing a portal
