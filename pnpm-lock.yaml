@@ -40,7 +40,7 @@ catalogs:
       specifier: ^2.1.1
       version: 2.1.1
     drizzle-orm:
-      specifier: ^0.45.1
+      specifier: 0.45.1
       version: 0.45.1
     framer-motion:
       specifier: ^12.23.24
@@ -67,7 +67,7 @@ catalogs:
       specifier: ^7.3.0
       version: 7.3.1
     zod:
-      specifier: ^3.25.76
+      specifier: 3.25.76
       version: 3.25.76
 
 overrides:
@@ -404,6 +404,9 @@ importers:
       resend:
         specifier: 4.0.0
         version: 4.0.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      zod:
+        specifier: 'catalog:'
+        version: 3.25.76
     devDependencies:
       '@types/cookie-parser':
         specifier: ^1.4.10
@@ -675,6 +678,9 @@ importers:
       '@workspace/db':
         specifier: workspace:*
         version: link:../lib/db
+      drizzle-orm:
+        specifier: 'catalog:'
+        version: 0.45.1(@types/pg@8.18.0)(pg@8.20.0)
     devDependencies:
       '@types/node':
         specifier: 'catalog:'

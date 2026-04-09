@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and } from "drizzle-orm";
-import { db, partnersTable, requestsTable, requestItemsTable, requestUploadsTable, pricingRulesTable } from "@workspace/db";
+import { db, partnersTable, requestsTable, requestItemsTable, requestUploadsTable, pricingRulesTable, partnerThemesTable, partnerSectionsTable, partnerBrandingLocationsTable, productCatalogTable, partnerProductOverridesTable } from "@workspace/db";
 import {
   GetPublicPartnerParams,
   SubmitPublicRequestParams,
@@ -48,6 +48,96 @@ router.get("/public/partners/:slug", async (req, res): Promise<void> => {
   }
 
   res.json({ ...partner, pricingRules });
+});
+
+router.get("/public/partners/:slug/portal", async (req, res): Promise<void> => {
+  const { slug } = req.params;
+  const [partner] = await db.select().from(partnersTable)
+    .where(and(eq(partnersTable.slug, slug), eq(partnersTable.isActive, true)));
+
+  if (!partner) { res.status(404).json({ error: "Partner not found" }); return; }
+
+  const [theme] = await db.select().from(partnerThemesTable)
+    .where(eq(partnerThemesTable.partnerId, partner.id));
+
+  const sections = await db.select().from(partnerSectionsTable)
+    .where(and(eq(partnerSectionsTable.partnerId, partner.id), eq(partnerSectionsTable.isEnabled, true)))
+    .orderBy(partnerSectionsTable.sortOrder);
+
+  const brandingLocations = await db.select({
+    id: partnerBrandingLocationsTable.id,
+    name: partnerBrandingLocationsTable.name,
+    category: partnerBrandingLocationsTable.category,
+    description: partnerBrandingLocationsTable.description,
+    sizeWidth: partnerBrandingLocationsTable.sizeWidth,
+    sizeHeight: partnerBrandingLocationsTable.sizeHeight,
+    sizeUnit: partnerBrandingLocationsTable.sizeUnit,
+    previewImageUrl: partnerBrandingLocationsTable.previewImageUrl,
+    templateFileUrl: partnerBrandingLocationsTable.templateFileUrl,
+    artworkGuidelines: partnerBrandingLocationsTable.artworkGuidelines,
+    sortOrder: partnerBrandingLocationsTable.sortOrder,
+  }).from(partnerBrandingLocationsTable)
+    .where(and(eq(partnerBrandingLocationsTable.partnerId, partner.id), eq(partnerBrandingLocationsTable.isActive, true)))
+    .orderBy(partnerBrandingLocationsTable.sortOrder);
+
+  const allProducts = await db.select().from(productCatalogTable)
+    .where(eq(productCatalogTable.isActive, true));
+
+  const overrides = await db.select().from(partnerProductOverridesTable)
+    .where(eq(partnerProductOverridesTable.partnerId, partner.id));
+
+  const overrideMap = new Map(overrides.map(o => [o.productId, o]));
+  const products = allProducts.map(p => {
+    const override = overrideMap.get(p.id);
+    if (override && !override.isVisible) return null;
+    return {
+      id: p.id,
+      name: override?.customTitle || p.name,
+      slug: p.slug,
+      category: p.category,
+      description: override?.customDescription || p.description,
+      imageUrl: override?.customImageUrl || p.imageUrl,
+      isOrderable: p.isOrderable,
+      allowsDesignRequest: p.allowsDesignRequest,
+      sizeOptionsJson: p.sizeOptionsJson,
+      sortOrder: override?.sortOrder ?? p.sortOrder,
+    };
+  }).filter(Boolean);
+
+  let pricingRules: any[] = [];
+  if (partner.pricingDisplayEnabled) {
+    const rules = await db.select().from(pricingRulesTable).where(eq(pricingRulesTable.isActive, true));
+    pricingRules = rules.map(r => ({
+      category: r.category,
+      itemName: r.itemName,
+      startingPrice: r.startingPrice,
+    }));
+  }
+
+  res.json({
+    partner: {
+      id: partner.id,
+      companyName: partner.companyName,
+      slug: partner.slug,
+      logoUrl: partner.logoUrl,
+      secondaryLogoUrl: partner.secondaryLogoUrl,
+      websiteUrl: partner.websiteUrl,
+      smallA3BadgeEnabled: partner.smallA3BadgeEnabled,
+      introHeadline: partner.introHeadline,
+      introText: partner.introText,
+      thankYouText: partner.thankYouText,
+      capabilitiesLink: partner.capabilitiesLink,
+      partnerDeckFileUrl: partner.partnerDeckFileUrl,
+      globalSizzleReelUrl: partner.globalSizzleReelUrl,
+      partnerVideoUrl: partner.partnerVideoUrl,
+      portalMode: partner.portalMode,
+    },
+    theme: theme || null,
+    sections,
+    products,
+    brandingLocations,
+    pricingRules,
+  });
 });
 
 router.get("/public/pricing", async (_req, res): Promise<void> => {

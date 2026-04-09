@@ -6,6 +6,7 @@ import {
   FileText, 
   FolderOpen, 
   Tags,
+  Package,
   Menu,
   ChevronRight
 } from "lucide-react";
@@ -15,6 +16,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 const navigation = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { name: "Partners", href: "/admin/partners", icon: Users },
+  { name: "Products", href: "/admin/products", icon: Package },
   { name: "Requests", href: "/admin/requests", icon: FileText },
   { name: "Assets", href: "/admin/assets", icon: FolderOpen },
   { name: "Pricing", href: "/admin/pricing", icon: Tags },

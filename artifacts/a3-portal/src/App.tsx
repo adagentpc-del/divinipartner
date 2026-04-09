@@ -14,6 +14,10 @@ import RequestsList from "@/pages/admin/RequestsList";
 import RequestDetail from "@/pages/admin/RequestDetail";
 import AssetsLibrary from "@/pages/admin/AssetsLibrary";
 import PricingRules from "@/pages/admin/PricingRules";
+import PartnerThemeEditor from "@/pages/admin/PartnerThemeEditor";
+import PartnerSections from "@/pages/admin/PartnerSections";
+import BrandingLocations from "@/pages/admin/BrandingLocations";
+import ProductCatalog from "@/pages/admin/ProductCatalog";
 
 import PublicLayout from "@/components/layout/PublicLayout";
 import PartnerPortal from "@/pages/public/PartnerPortal";
@@ -110,6 +114,18 @@ function ClerkProviderWithRoutes() {
             </Route>
             <Route path="/admin/partners/:id/edit">
               {() => <AdminRoute component={PartnerForm} />}
+            </Route>
+            <Route path="/admin/partners/:id/theme">
+              {() => <AdminRoute component={PartnerThemeEditor} />}
+            </Route>
+            <Route path="/admin/partners/:id/sections">
+              {() => <AdminRoute component={PartnerSections} />}
+            </Route>
+            <Route path="/admin/partners/:id/branding-locations">
+              {() => <AdminRoute component={BrandingLocations} />}
+            </Route>
+            <Route path="/admin/products">
+              {() => <AdminRoute component={ProductCatalog} />}
             </Route>
             <Route path="/admin/requests">
               {() => <AdminRoute component={RequestsList} />}

@@ -1,18 +1,42 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
 import { db, partnersTable, partnerAssetsTable } from "@workspace/db";
+import { z } from "zod";
 import {
-  CreatePartnerBody,
-  GetPartnerParams,
-  UpdatePartnerParams,
-  UpdatePartnerBody,
-  DeletePartnerParams,
   ListPartnersQueryParams,
   ListPartnerAssetsParams,
   CreatePartnerAssetParams,
   CreatePartnerAssetBody,
   DeletePartnerAssetParams,
 } from "@workspace/api-zod";
+
+const PartnerBody = z.object({
+  companyName: z.string().min(1),
+  slug: z.string().min(1),
+  logoUrl: z.string().optional().nullable(),
+  secondaryLogoUrl: z.string().optional().nullable(),
+  websiteUrl: z.string().optional().nullable(),
+  introHeadline: z.string().optional().nullable(),
+  introText: z.string().optional().nullable(),
+  thankYouText: z.string().optional().nullable(),
+  capabilitiesLink: z.string().optional().nullable(),
+  contactName: z.string().optional().nullable(),
+  contactEmail: z.string().optional().nullable(),
+  contactPhone: z.string().optional().nullable(),
+  routingEmail: z.string().optional().nullable(),
+  venueAddress: z.string().optional().nullable(),
+  industryFocus: z.string().optional().nullable(),
+  globalSizzleReelUrl: z.string().optional().nullable(),
+  partnerVideoUrl: z.string().optional().nullable(),
+  partnerDeckFileUrl: z.string().optional().nullable(),
+  siteSurveyDeckFileUrl: z.string().optional().nullable(),
+  portalMode: z.string().optional().nullable(),
+  isActive: z.boolean().optional(),
+  smallA3BadgeEnabled: z.boolean().optional(),
+  pricingDisplayEnabled: z.boolean().optional(),
+});
+
+const UpdatePartnerBodySchema = PartnerBody.partial();
 
 const router: IRouter = Router();
 
@@ -31,7 +55,7 @@ router.get("/partners", async (req, res): Promise<void> => {
 });
 
 router.post("/partners", async (req, res): Promise<void> => {
-  const parsed = CreatePartnerBody.safeParse(req.body);
+  const parsed = PartnerBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
@@ -42,13 +66,10 @@ router.post("/partners", async (req, res): Promise<void> => {
 });
 
 router.get("/partners/:id", async (req, res): Promise<void> => {
-  const params = GetPartnerParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
-  const [partner] = await db.select().from(partnersTable).where(eq(partnersTable.id, params.data.id));
+  const [partner] = await db.select().from(partnersTable).where(eq(partnersTable.id, id));
   if (!partner) {
     res.status(404).json({ error: "Partner not found" });
     return;
@@ -58,13 +79,10 @@ router.get("/partners/:id", async (req, res): Promise<void> => {
 });
 
 router.patch("/partners/:id", async (req, res): Promise<void> => {
-  const params = UpdatePartnerParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
-  const parsed = UpdatePartnerBody.safeParse(req.body);
+  const parsed = UpdatePartnerBodySchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
@@ -73,7 +91,7 @@ router.patch("/partners/:id", async (req, res): Promise<void> => {
   const [partner] = await db
     .update(partnersTable)
     .set(parsed.data)
-    .where(eq(partnersTable.id, params.data.id))
+    .where(eq(partnersTable.id, id))
     .returning();
 
   if (!partner) {

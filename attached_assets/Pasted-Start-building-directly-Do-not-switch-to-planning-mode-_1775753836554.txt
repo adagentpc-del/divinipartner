@@ -1,0 +1,118 @@
+Start building directly. Do not switch to planning mode and do not ask me for another decision point.
+
+Use a phased execution approach inside the existing codebase, but actually implement each phase, not just outline it.
+
+Execution rules
+
+1. Preserve the current working A3 partner portal system and extend it cleanly
+2. Do not restart from scratch
+3. Build in phases, but complete each phase with real code before moving to the next
+4. After each phase, give me:
+   a. what was built
+   b. any schema or file changes
+   c. any env vars needed
+   d. any blockers or placeholders
+5. Use placeholders only where absolutely necessary for advanced AI extraction or OCR/vision, but still build the full architecture now so those pieces can be upgraded later without refactoring
+6. For phase one, this is a configured request and quote system, not full ecommerce checkout
+7. Make reasonable implementation decisions and keep moving unless there is a true blocker
+
+Build order
+
+Phase 1
+Database schema and backend foundation
+Implement all required tables, migrations, relationships, storage structure, and request models
+Extend existing partner models instead of replacing them where possible
+Create the API routes or server actions needed for:
+partner create and update
+partner theme save and update
+partner section save and update
+product catalog CRUD
+partner branding location CRUD
+portal request creation
+product request creation
+branding location request creation
+request file handling
+
+Phase 2
+Partner admin expansion
+Upgrade the existing partner admin/create flow to support:
+partner branding fields
+partner deck upload
+venue branding deck upload
+theme editing
+section toggles
+partner content editing
+Add admin UI for:
+partner management
+section management
+theme preview and editing
+portal preview link
+
+Phase 3
+Product catalog and standard product request flow
+Build the standard event product catalog manager and public client flow
+Allow clients to:
+select product
+select size
+enter quantity
+upload artwork
+request design help
+submit request
+Store requests in the database and route notifications properly
+
+Phase 4
+Venue branding system
+Build the partner branding locations data model and admin manager
+Build venue branding deck ingestion architecture
+For now, use the best practical first pass extraction available in the current stack, such as PDF text parsing and structured detection
+If advanced vision parsing is not yet reliable, still build:
+upload flow
+extraction pipeline
+admin review table
+manual edit and approval workflow
+public venue branding map section
+The extraction system must output a reviewable list of locations with:
+name
+category
+dimensions
+source page
+preview reference
+confidence or review status
+
+Phase 5
+Dynamic portal generation
+Expand the public partner portal into a modular multi section branded portal with:
+co branded hero
+quick actions
+standard products
+brand this venue
+branded event materials
+immersive upgrades
+custom fabrication
+open creative request
+Apply partner theme dynamically from saved theme settings
+
+Phase 6
+Notifications and dashboard refinement
+Ensure every request type:
+saves to DB
+stores files
+appears in admin dashboard
+sends notification email
+Add request filtering and statuses in admin
+
+Phase 7
+AI utilities and polish
+Add theme suggestion architecture from logo and website
+Add better deck extraction architecture for future AI/vision upgrades
+If full AI extraction is not production ready yet, implement a clean placeholder service layer and wire the admin review flow now
+
+Important constraints
+
+1. The client should never see technical production fields for mapped venue branding locations such as mounting, grommets, lamination, install method, substrate, or field notes
+2. Those technical details belong in backend/admin only
+3. Standard products should stay simple and premium
+4. Venue branding locations should be chosen from pre approved mapped areas
+5. Keep the UI premium and partner branded, not generic print shop style
+
+Start with Phase 1 now and then continue sequentially. Do not stop after planning.
