@@ -1,0 +1,185 @@
+Good. This is the right direction.
+
+Now stop expanding admin settings unless required for a working flow and move into the public portal and request pipeline.
+
+Next build target
+
+Create the first fully working end to end partner portal flow using the admin data already built.
+
+Priority for this phase
+
+1. Public partner portal rendering
+Build the client facing dynamic portal page for each partner using the saved partner data, theme, sections, products, and approved venue branding locations.
+
+Requirements
+- Render partner by slug
+- Apply saved partner theme dynamically
+- Show co branded hero section with:
+  - partner logo
+  - optional secondary logo
+  - A3 Visual as production partner
+  - intro headline
+  - intro text
+  - thank you text if present
+  - capabilities link button if present
+  - partner deck button if present
+- Render enabled sections in configured order from partner_sections
+- Keep UI premium, clean, partner branded, and mobile responsive
+
+2. Quick actions block
+Add clear CTAs near the top for:
+- Order Standard Products
+- Brand This Venue
+- Request Event Materials
+- Explore Immersive Upgrades
+- Request Custom Fabrication
+
+3. Standard product request flow
+Use product catalog entries marked visible/orderable for this partner.
+Build the public product cards and request drawer/modal.
+
+Public fields for standard products
+- main contact name
+- company name
+- email
+- phone
+- website URL
+- event page URL optional
+- event name
+- event date
+- needed by date
+- size selector from product options
+- quantity
+- artwork status
+- design help yes/no
+- notes
+- artwork upload
+
+If design help is yes, reveal:
+- design brief
+- logo upload
+- brand guide upload optional
+- inspiration upload
+- text/copy
+- style notes
+
+Store requests in product_requests and request_files.
+
+4. Venue branding public flow
+Build the Brand This Venue section from approved partner_branding_locations only.
+Group by category where practical.
+
+Each public location card should show only:
+- location name
+- preview image if present
+- short description
+- approximate dimensions if available
+- artwork template download if present
+- note that A3 handles technical production and installation planning
+
+Do not expose:
+- internal production notes
+- install notes
+- substrate
+- mounting
+- grommets
+- lamination
+- technical backend details
+
+Request form for venue branding locations
+- main contact name
+- company name
+- email
+- phone
+- website URL
+- event page URL optional
+- event name
+- event date
+- needed by date
+- design help yes/no
+- notes
+- artwork upload
+
+If design help is yes, reveal design support fields as above.
+
+Store requests in branding_location_requests and request_files.
+
+5. Branded event materials request section
+Build a public section for awards, cards, flyers, auction paddles, programs, menus, badges, sponsor boards, etc.
+This can be inquiry based rather than catalog based for now.
+
+Required fields
+- main contact name
+- company name
+- email
+- phone
+- website URL
+- event name
+- event date
+- needed by date
+- description
+- design help yes/no
+- file upload
+
+Store in portal_requests with request_category = collateral_print.
+
+6. Immersive, fabrication, and open request sections
+Build these as inquiry forms now, not product carts.
+
+Immersive
+- event goals
+- event date
+- needed by date
+- venue
+- budget optional
+- uploads
+
+Fabrication
+- description
+- event date
+- needed by date
+- venue
+- budget optional
+- uploads
+
+Open request
+- description
+- uploads
+- event details
+
+Store in portal_requests with appropriate request_category values.
+
+7. Request success and admin visibility
+After any public submission:
+- save to DB
+- save uploaded files
+- show clear success state
+- make request immediately visible in admin dashboard
+- associate request with partner and section source
+
+8. Notification wiring
+Wire notification emails for all request types using the current project email system if already available.
+If full email wiring is blocked, still complete the DB and dashboard flow and add a placeholder notification service layer so this can be finished fast.
+
+9. Acceptance criteria for this phase
+This phase is complete only when:
+- I can open a partner portal by slug
+- The partner theme and enabled sections render publicly
+- I can submit a standard product request
+- I can submit a venue branding location request
+- I can submit a branded event materials request
+- I can submit immersive/fabrication/open requests
+- Each request is stored correctly and visible in admin
+- Files upload and associate correctly
+- Internal technical venue notes remain hidden from the public portal
+
+Important
+Do not go back into planning mode.
+Do not just scaffold pages.
+Finish the working end to end flow for one partner portal architecture using the existing admin data and database schema.
+After this phase, report:
+- pages/components added
+- routes/actions added
+- DB tables actually used
+- what is fully working
+- what still uses placeholder logic

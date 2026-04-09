@@ -3,7 +3,7 @@ import { eq, desc, and, ilike, sql } from "drizzle-orm";
 import {
   db, portalRequestsTable, productRequestsTable,
   brandingLocationRequestsTable, requestFilesTable,
-  partnersTable, partnerBrandingLocationsTable
+  partnersTable, partnerBrandingLocationsTable, productCatalogTable
 } from "@workspace/db";
 import { z } from "zod";
 
@@ -167,6 +167,12 @@ router.post("/public/partners/:slug/product-requests", async (req, res): Promise
   const parsed = ProductRequestBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
 
+  if (parsed.data.productId) {
+    const [product] = await db.select().from(productCatalogTable)
+      .where(and(eq(productCatalogTable.id, parsed.data.productId), eq(productCatalogTable.isActive, true)));
+    if (!product) { res.status(400).json({ error: "Invalid product" }); return; }
+  }
+
   const { files, ...data } = parsed.data;
   const [request] = await db.insert(productRequestsTable).values({ ...data, partnerId: partner.id }).returning();
 
@@ -184,6 +190,16 @@ router.post("/public/partners/:slug/branding-requests", async (req, res): Promis
 
   const parsed = BrandingLocationRequestBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+
+  if (parsed.data.brandingLocationId) {
+    const [loc] = await db.select().from(partnerBrandingLocationsTable)
+      .where(and(
+        eq(partnerBrandingLocationsTable.id, parsed.data.brandingLocationId),
+        eq(partnerBrandingLocationsTable.partnerId, partner.id),
+        eq(partnerBrandingLocationsTable.isActive, true)
+      ));
+    if (!loc) { res.status(400).json({ error: "Invalid branding location" }); return; }
+  }
 
   const { files, ...data } = parsed.data;
   const [request] = await db.insert(brandingLocationRequestsTable).values({ ...data, partnerId: partner.id }).returning();

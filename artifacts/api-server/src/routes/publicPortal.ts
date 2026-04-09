@@ -81,7 +81,7 @@ router.get("/public/partners/:slug/portal", async (req, res): Promise<void> => {
     .orderBy(partnerBrandingLocationsTable.sortOrder);
 
   const allProducts = await db.select().from(productCatalogTable)
-    .where(eq(productCatalogTable.isActive, true));
+    .where(and(eq(productCatalogTable.isActive, true), eq(productCatalogTable.isOrderable, true)));
 
   const overrides = await db.select().from(partnerProductOverridesTable)
     .where(eq(partnerProductOverridesTable.partnerId, partner.id));

@@ -90,11 +90,10 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `/admin/requests/:id` — Request detail with AI summary, notes, PDF
 - `/admin/assets` — Assets library
 - `/admin/pricing` — Pricing rules CRUD
-- `/partner/:slug` — Public multi-step intake form (5 steps: Details → Context → Services → Uploads → Review)
-  - Step 1: Contact info + event details + install/removal datetime + post-event disposition (Keep/Remove/Discard)
-  - Step 3: Service selection with conditional panels (fabrication details, immersive details, design fee note) + "Starting at" pricing from partner.pricingRules
-  - Step 4: 5 categorized upload sections (Floor Maps, Measurements, Decks, Artwork, Inspiration) with "Recommended" badge when fabrication selected
-  - Step 5: Review with artwork warning when printing selected without design assistance
+- `/partner/:slug` — Public portal (auto-routes by partner portalMode):
+  - **intake mode**: Original 5-step intake form (Details → Context → Services → Uploads → Review)
+  - **full mode**: Multi-section portal with hero, sizzle reel, quick-action buttons, product catalog grid with per-product order dialogs, venue branding map with artwork submission, event materials/immersive/fabrication/open request section cards, partner deck/capabilities links, themed footer
+  - `RequestFormDialog` — Unified dialog for all request types with contact info, event details, size/quantity selectors, artwork status, design help toggle (brief + style notes + text copy + file uploads), multi-file upload to presigned URLs
 
 ## Portal Modes
 - `intake` — Original 5-step intake form

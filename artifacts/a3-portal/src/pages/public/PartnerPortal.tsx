@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useGetPublicPartner, useSubmitPublicRequest } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import {
   Hammer, Sparkles, Gift, Upload, Shield, Clock, Star, AlertTriangle,
   Map, Ruler, Presentation, Image, Lightbulb, Info, DollarSign
 } from "lucide-react";
+import FullPortal from "./portal/FullPortal";
 
 const step1Schema = z.object({
   contactName: z.string().min(1, "Name is required"),
@@ -80,6 +81,27 @@ const DISPOSITION_OPTIONS = [
 
 export default function PartnerPortal({ slug }: { slug: string }) {
   const { data: partner, isLoading } = useGetPublicPartner(slug);
+
+  const portalMode = (partner as any)?.portalMode;
+  if (!isLoading && portalMode === "full") {
+    return <FullPortal slug={slug} />;
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-muted/30">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return <IntakePortal slug={slug} partner={partner} />;
+}
+
+function IntakePortal({ slug, partner }: { slug: string; partner: any }) {
   const submitMutation = useSubmitPublicRequest();
   const { toast } = useToast();
 
@@ -121,17 +143,6 @@ export default function PartnerPortal({ slug }: { slug: string }) {
   const hasPricing = partner?.pricingDisplayEnabled && Object.keys(pricingByCategory).length > 0;
 
   const hasPrintingNoArtwork = selectedServices.includes("printing") && !selectedServices.includes("design");
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-muted/30">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
-  }
 
   if (!partner) {
     return (
