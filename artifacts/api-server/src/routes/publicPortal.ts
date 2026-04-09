@@ -77,7 +77,7 @@ router.get("/public/partners/:slug/portal", async (req, res): Promise<void> => {
     artworkGuidelines: partnerBrandingLocationsTable.artworkGuidelines,
     sortOrder: partnerBrandingLocationsTable.sortOrder,
   }).from(partnerBrandingLocationsTable)
-    .where(and(eq(partnerBrandingLocationsTable.partnerId, partner.id), eq(partnerBrandingLocationsTable.isActive, true)))
+    .where(and(eq(partnerBrandingLocationsTable.partnerId, partner.id), eq(partnerBrandingLocationsTable.isActive, true), eq(partnerBrandingLocationsTable.reviewStatus, "approved")))
     .orderBy(partnerBrandingLocationsTable.sortOrder);
 
   const allProducts = await db.select().from(productCatalogTable)

@@ -43,6 +43,8 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `product_catalog` — Global product catalog (22 products across categories like Displays & Backdrops, Signage, etc.)
 - `partner_product_overrides` — Per-partner product customization
 - `partner_branding_locations` — Venue branding map locations per partner (extracted from site survey decks)
+- `deck_extractions` — PDF deck extraction jobs per partner (status, source file, page count)
+- `deck_extraction_items` — Extracted location candidates from decks (name, category, dimensions, confidence, review status)
 - `portal_requests` — Multi-section portal requests (open creative requests)
 - `product_requests` — Product order requests from the catalog
 - `branding_location_requests` — Branding location artwork submission requests
@@ -59,6 +61,9 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `GET/PUT /partners/:id/theme` — Partner theme CRUD
 - `GET/POST /partners/:id/sections`, `PATCH/DELETE /partners/:id/sections/:sectionId`, `PUT /partners/:id/sections/bulk` — Section management
 - `GET/POST /partners/:id/branding-locations`, `PATCH/DELETE /partners/:id/branding-locations/:locationId`, `POST .../bulk`, `POST .../bulk-update` — Venue branding locations
+- `GET/POST /partners/:partnerId/deck-extractions` — Deck extraction jobs (upload PDF, trigger extraction)
+- `GET /deck-extractions/:id` — Single extraction with items
+- `PATCH/DELETE /deck-extraction-items/:id`, `POST .../duplicate`, `POST .../approve` — Extraction item CRUD + bulk approve → creates branding locations
 - `GET/POST /products`, `PATCH/DELETE /products/:id` — Product catalog CRUD
 - `GET /public/partners/:slug` — Public partner page data
 - `GET /public/partners/:slug/portal` — Full portal data (partner + theme + sections + products + branding locations)
@@ -86,8 +91,10 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `/admin/partners/:id/sections` — Section manager (add/remove/reorder portal sections)
 - `/admin/partners/:id/branding-locations` — Venue branding map manager (add/edit/approve locations)
 - `/admin/products` — Product catalog CRUD (search, categorized view)
-- `/admin/requests` — Requests list with filters
-- `/admin/requests/:id` — Request detail with AI summary, notes, PDF
+- `/admin/requests` — Unified requests list with tabs (All/Intake/Portal/Product/Branding), search, partner/status filters
+- `/admin/requests/:id` — Request detail with AI summary, notes, PDF (intake requests)
+- `/admin/portal-requests/:type/:id` — Portal/product/branding request detail with status management, admin notes
+- `/admin/partners/:id/deck-extractions/:extractionId` — Deck extraction review (edit/approve/reject/hide items, bulk approve → creates branding locations)
 - `/admin/assets` — Assets library
 - `/admin/pricing` — Pricing rules CRUD
 - `/partner/:slug` — Public portal (auto-routes by partner portalMode):

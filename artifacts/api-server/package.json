@@ -21,6 +21,7 @@
     "google-auth-library": "^10.6.2",
     "http-proxy-middleware": "^3.0.5",
     "openai": "4.103.0",
+    "pdf-parse": "^2.4.5",
     "pino": "^9",
     "pino-http": "^10",
     "resend": "4.0.0",

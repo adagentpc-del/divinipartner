@@ -1,4 +1,4 @@
-import { useParams, useLocation } from "wouter";
+import { useParams } from "wouter";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,8 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, Plus, Pencil, Trash2, MapPin, Eye, EyeOff, Check, AlertTriangle } from "lucide-react";
-import { Link } from "wouter";
+import { ArrowLeft, Loader2, Plus, Pencil, Trash2, MapPin, Eye, EyeOff, Check, AlertTriangle, Upload, FileText } from "lucide-react";
+import { Link, useLocation } from "wouter";
 
 interface BrandingLocation {
   id: number;
@@ -51,13 +51,15 @@ const emptyLocation: Partial<BrandingLocation> = {
 export default function BrandingLocations() {
   const params = useParams();
   const id = parseInt(params.id || "0");
-  const [, setLocation] = useLocation();
+  const [, navigate] = useLocation();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [locations, setLocations] = useState<BrandingLocation[]>([]);
   const [editingLocation, setEditingLocation] = useState<Partial<BrandingLocation> | null>(null);
   const [isNew, setIsNew] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [extractions, setExtractions] = useState<any[]>([]);
 
   const loadLocations = () => {
     fetch(`/api/partners/${id}/branding-locations`)
@@ -66,7 +68,52 @@ export default function BrandingLocations() {
       .catch(() => setLoading(false));
   };
 
-  useEffect(() => { loadLocations(); }, [id]);
+  const loadExtractions = () => {
+    fetch(`/api/partners/${id}/deck-extractions`)
+      .then(r => r.json())
+      .then(data => setExtractions(data || []))
+      .catch(() => {});
+  };
+
+  useEffect(() => { loadLocations(); loadExtractions(); }, [id]);
+
+  const handleDeckUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+
+    try {
+      const uploadRes = await fetch("/api/storage/uploads/request-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+      });
+      if (!uploadRes.ok) throw new Error("Failed to get upload URL");
+      const { uploadURL, objectPath } = await uploadRes.json();
+      if (!uploadURL || !objectPath) throw new Error("Invalid upload response");
+
+      const putRes = await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+      if (!putRes.ok) throw new Error("File upload failed");
+
+      const extractRes = await fetch(`/api/partners/${id}/deck-extractions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sourceFileUrl: objectPath, sourceFileName: file.name }),
+      });
+
+      if (extractRes.ok) {
+        const extraction = await extractRes.json();
+        toast({ title: "Deck uploaded — extraction started" });
+        navigate(`/admin/partners/${id}/deck-extractions/${extraction.id}`);
+      } else {
+        const err = await extractRes.json().catch(() => ({}));
+        toast({ title: err.error || "Extraction failed", variant: "destructive" });
+      }
+    } catch (err: any) {
+      toast({ title: err.message || "Upload failed", variant: "destructive" });
+    }
+    setUploading(false);
+  };
 
   const openNew = () => {
     setEditingLocation({ ...emptyLocation, sortOrder: locations.length });
@@ -155,6 +202,15 @@ export default function BrandingLocations() {
           <p className="text-sm text-muted-foreground mt-1">{locations.length} locations configured</p>
         </div>
         <div className="flex gap-2">
+          <label>
+            <input type="file" accept=".pdf" className="hidden" onChange={handleDeckUpload} disabled={uploading} />
+            <Button variant="outline" size="sm" className="gap-1.5 cursor-pointer" asChild disabled={uploading}>
+              <span>
+                {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                Upload Deck
+              </span>
+            </Button>
+          </label>
           {reviewCount > 0 && (
             <Button variant="outline" size="sm" onClick={handleBulkApprove} className="gap-1.5">
               <Check className="h-3.5 w-3.5" /> Approve All ({reviewCount})
@@ -165,6 +221,36 @@ export default function BrandingLocations() {
           </Button>
         </div>
       </div>
+
+      {extractions.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2"><FileText className="h-4 w-4" /> Deck Extractions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {extractions.map(ext => (
+                <Link key={ext.id} href={`/admin/partners/${id}/deck-extractions/${ext.id}`}>
+                  <div className="flex items-center justify-between p-2 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors">
+                    <div className="flex items-center gap-3">
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm font-medium">{ext.sourceFileName}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {ext.totalPages ? `${ext.totalPages} pages` : "Processing..."} · {new Date(ext.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant={ext.status === "completed" ? "default" : ext.status === "failed" ? "destructive" : "secondary"} className="text-[10px]">
+                      {ext.status}
+                    </Badge>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {locations.length === 0 ? (
         <Card>

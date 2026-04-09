@@ -1,0 +1,142 @@
+Good. The public portal foundation is now in place.
+
+Next phase: complete the venue branding system, request management workflow, and admin usability so this becomes operational, not just visually functional.
+
+Priority order
+
+1. Brand This Venue must become real and data driven
+Finish the venue branding map flow end to end using approved partner_branding_locations.
+
+Requirements
+- In the public portal, render a dedicated Brand This Venue section for partners in full portal mode
+- Pull only approved and active branding locations for that partner
+- Group locations cleanly by category or area where practical
+- Each card should show:
+  - location name
+  - preview image if present
+  - short description
+  - approximate dimensions if available
+  - artwork template download if present
+  - note that A3 handles technical production/install planning
+- Clicking a location must open the request flow prebound to that branding location
+- Do not expose internal production/install notes publicly
+
+If any of this is already partially done, finish and harden it now.
+
+2. Admin request dashboard refinement
+Make the incoming requests usable operationally.
+
+Build or refine admin views for:
+- all requests list
+- filter by partner
+- filter by request type
+- filter by status
+- filter by event date / needed by date
+- search by contact, company, event name
+
+Request detail pages should clearly show:
+- source partner
+- request type
+- selected product or selected branding location
+- all contact fields
+- event details
+- design help fields
+- uploaded files
+- notes
+- timestamps
+- current status
+- admin notes
+
+Add editable statuses:
+- new
+- reviewing
+- quoted
+- awaiting artwork
+- in production
+- completed
+- archived
+
+3. Deck ingestion and extraction architecture
+Now implement the actual venue branding deck upload processing flow in admin.
+
+Phase goal
+When I upload a venue branding deck PDF to a partner, the system should process it and produce a reviewable extraction result.
+
+Use the best practical first pass available in the current stack.
+Even if advanced AI vision is not fully implemented yet, the architecture and workflow must be real and usable.
+
+Build:
+- upload trigger for site survey / venue deck
+- extraction pipeline service layer
+- extraction result storage
+- admin review screen
+- approve/edit/delete flow
+- bulk approve flow
+- source page traceability
+
+Minimum extraction output per detected item
+- location name
+- dimensions if detected
+- category guess
+- source page number
+- extracted text snippet
+- preview reference or page thumbnail
+- confidence or review status
+
+If parsing is limited, still generate page-level entries or low-confidence candidates for manual review instead of doing nothing.
+
+4. Extraction review UX
+Create an admin review table or screen after deck processing.
+
+Per extracted candidate allow:
+- approve
+- edit
+- duplicate
+- delete
+- hide
+- rename
+- change category
+- edit dimensions
+- set active/inactive
+- attach or replace preview image
+- save public description
+- save internal notes
+
+This should write into the actual partner_branding_locations records once approved.
+
+5. Notification completion
+Finish notification flow for all request types.
+
+Requirements
+- every successful request submission attempts notification
+- if email sending fails, request should still save successfully
+- log notification outcome
+- show fallback admin visibility regardless of email success
+
+6. Partner specific product visibility and overrides
+Finish the partner specific override logic on the public portal.
+
+Requirements
+- respect partner_product_overrides for visibility, title, description, image, and sort order
+- use partner overrides instead of global defaults when available
+- keep global product catalog as fallback
+
+7. Acceptance criteria for this phase
+This phase is complete only when:
+- Brand This Venue renders real approved location cards from partner data
+- I can upload a venue branding deck and get extraction candidates to review
+- I can approve/edit candidates into live branding locations
+- Admin request dashboard is operationally usable with filters and statuses
+- Product and branding requests are easy to inspect and manage
+- Notifications attempt to send for every request type without blocking saves
+- Partner product overrides visibly affect the public portal
+
+Important
+Do not spend time on extra visual polish until the above is complete.
+Do not revert into planning mode.
+Do not stop at scaffolding. Finish the operational workflow.
+After completion report:
+- what parts are fully working
+- what extraction method is currently used
+- where future AI/vision upgrades can plug in
+- any placeholder limitations that still remain

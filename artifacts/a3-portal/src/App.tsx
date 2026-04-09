@@ -12,6 +12,8 @@ import PartnersList from "@/pages/admin/PartnersList";
 import PartnerForm from "@/pages/admin/PartnerForm";
 import RequestsList from "@/pages/admin/RequestsList";
 import RequestDetail from "@/pages/admin/RequestDetail";
+import PortalRequestDetail from "@/pages/admin/PortalRequestDetail";
+import DeckExtractionReview from "@/pages/admin/DeckExtractionReview";
 import AssetsLibrary from "@/pages/admin/AssetsLibrary";
 import PricingRules from "@/pages/admin/PricingRules";
 import PartnerThemeEditor from "@/pages/admin/PartnerThemeEditor";
@@ -132,6 +134,12 @@ function ClerkProviderWithRoutes() {
             </Route>
             <Route path="/admin/requests/:id">
               {() => <AdminRoute component={RequestDetail} />}
+            </Route>
+            <Route path="/admin/portal-requests/:type/:id">
+              {() => <AdminRoute component={PortalRequestDetail} />}
+            </Route>
+            <Route path="/admin/partners/:id/deck-extractions/:extractionId">
+              {() => <AdminRoute component={DeckExtractionReview} />}
             </Route>
             <Route path="/admin/assets">
               {() => <AdminRoute component={AssetsLibrary} />}

@@ -11,6 +11,7 @@ import partnerSectionsRouter from "./partnerSections";
 import productCatalogRouter from "./productCatalog";
 import brandingLocationsRouter from "./brandingLocations";
 import portalRequestsRouter from "./portalRequests";
+import deckExtractionRouter from "./deckExtraction";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(partnerSectionsRouter);
 router.use(productCatalogRouter);
 router.use(brandingLocationsRouter);
 router.use(portalRequestsRouter);
+router.use(deckExtractionRouter);
 
 export default router;

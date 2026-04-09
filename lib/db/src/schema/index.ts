@@ -14,3 +14,4 @@ export * from "./brandingLocationRequests";
 export * from "./requestFiles";
 export * from "./pricingRules";
 export * from "./adminNotes";
+export * from "./deckExtractions";
