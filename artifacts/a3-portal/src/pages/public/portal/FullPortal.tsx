@@ -84,13 +84,26 @@ const SECTION_ICONS: Record<string, any> = {
   capabilities: Layers,
 };
 
-const QUICK_ACTIONS = [
-  { section: "standard_products", label: "Order Standard Products", icon: ShoppingBag },
-  { section: "venue_branding", label: "Brand This Venue", icon: MapPin },
-  { section: "event_materials", label: "Request Event Materials", icon: Palette },
-  { section: "immersive", label: "Explore Immersive Upgrades", icon: Sparkles },
-  { section: "fabrication", label: "Request Custom Fabrication", icon: Hammer },
-];
+const SECTION_LABELS: Record<string, string> = {
+  standard_products: "Event Products",
+  venue_branding: "Brand This Venue",
+  event_materials: "Event Materials",
+  immersive: "Immersive Experiences",
+  fabrication: "Custom Fabrication",
+  open_request: "Open Request",
+  partner_deck: "Partner Deck",
+  capabilities: "Capabilities",
+};
+
+const QUICK_ACTION_LABELS: Record<string, string> = {
+  standard_products: "Order Standard Products",
+  venue_branding: "Brand This Venue",
+  event_materials: "Request Event Materials",
+  immersive: "Explore Immersive Upgrades",
+  fabrication: "Request Custom Fabrication",
+};
+
+const QUICK_ACTION_TYPES = ["standard_products", "venue_branding", "event_materials", "immersive", "fabrication"];
 
 export default function FullPortal({ slug }: { slug: string }) {
   const [data, setData] = useState<PortalData | null>(null);
@@ -120,14 +133,14 @@ export default function FullPortal({ slug }: { slug: string }) {
   const borderRadius = theme?.borderRadius || "0.75rem";
   const headingFont = theme?.headingFont || "inherit";
   const bodyFont = theme?.bodyFont || "inherit";
-  const buttonStyle = theme?.buttonStyle || "rounded";
 
-  const enabledSections = useMemo(() => {
-    if (!data?.sections) return [];
-    return data.sections;
-  }, [data?.sections]);
-
+  const enabledSections = useMemo(() => data?.sections || [], [data?.sections]);
   const sectionTypes = useMemo(() => new Set(enabledSections.map(s => s.sectionType)), [enabledSections]);
+  const sectionMap = useMemo(() => {
+    const m = new Map<string, typeof enabledSections[0]>();
+    for (const s of enabledSections) m.set(s.sectionType, s);
+    return m;
+  }, [enabledSections]);
 
   const productsByCategory = useMemo(() => {
     if (!data?.products) return {};
@@ -167,6 +180,8 @@ export default function FullPortal({ slug }: { slug: string }) {
       </div>
     );
   }
+
+  const sectionTitle = (type: string) => sectionMap.get(type)?.title || SECTION_LABELS[type] || type;
 
   const openProductDialog = (product: PortalData["products"][0]) => {
     setSelectedProduct(product);
@@ -221,11 +236,7 @@ export default function FullPortal({ slug }: { slug: string }) {
     const config = configMap[sectionType];
     if (!config) return;
 
-    setActiveDialog({
-      type: sectionType,
-      title,
-      ...config,
-    });
+    setActiveDialog({ type: sectionType, title, ...config });
   };
 
   const scrollToSection = (sectionType: string) => {
@@ -233,7 +244,42 @@ export default function FullPortal({ slug }: { slug: string }) {
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const availableQuickActions = QUICK_ACTIONS.filter(qa => sectionTypes.has(qa.section));
+  const availableQuickActions = QUICK_ACTION_TYPES
+    .filter(type => sectionTypes.has(type))
+    .filter(type => {
+      if (type === "venue_branding" && !data.brandingLocations.length) return false;
+      return true;
+    });
+
+  const renderCTASection = (section: typeof enabledSections[0], sectionType: string, ctaLabel: string) => {
+    const Icon = SECTION_ICONS[sectionType] || Package;
+    return (
+      <section key={section.id} id={`section-${sectionType}`} className="scroll-mt-20">
+        <Card className="overflow-hidden" style={{ borderRadius }}>
+          <div className="p-6 sm:p-8" style={{ background: `linear-gradient(135deg, ${primaryColor}08, ${accentColor}08)` }}>
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${accentColor}20` }}>
+                <Icon className="h-6 w-6" style={{ color: accentColor }} />
+              </div>
+              <div className="flex-1 space-y-2">
+                <h3 className="text-xl sm:text-2xl font-bold">{section.title || SECTION_LABELS[sectionType]}</h3>
+                {section.subtitle && <p className="text-muted-foreground">{section.subtitle}</p>}
+                {section.description && (
+                  <p className="text-sm text-muted-foreground max-w-xl">{section.description}</p>
+                )}
+                <Button className="mt-4 gap-1.5" style={{ backgroundColor: primaryColor }} onClick={() => openSectionDialog(sectionType, section.title || SECTION_LABELS[sectionType])}>
+                  <Icon className="h-4 w-4" /> {ctaLabel}
+                </Button>
+              </div>
+              {section.featuredImageUrl && (
+                <img src={section.featuredImageUrl} alt="" className="hidden lg:block w-40 h-28 object-cover rounded-lg" />
+              )}
+            </div>
+          </div>
+        </Card>
+      </section>
+    );
+  };
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: bgColor, fontFamily: bodyFont }}>
@@ -269,32 +315,36 @@ export default function FullPortal({ slug }: { slug: string }) {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16 sm:py-24 relative">
           <div className="text-center text-white space-y-4">
             <h2 className="text-3xl sm:text-5xl font-bold tracking-tight leading-tight" style={{ fontFamily: headingFont }}>
-              {partner.introHeadline || `Welcome to ${partner.companyName}`}
+              {partner.introHeadline || `Welcome to the ${partner.companyName} Partner Portal`}
             </h2>
-            <p className="text-base sm:text-lg text-white/80 max-w-2xl mx-auto leading-relaxed">
-              {partner.introText || "Explore our production capabilities, browse products, and submit requests — all in one place."}
-            </p>
+            {partner.introText && (
+              <p className="text-base sm:text-lg text-white/80 max-w-2xl mx-auto leading-relaxed">
+                {partner.introText}
+              </p>
+            )}
             {partner.thankYouText && (
               <p className="text-sm text-white/60 max-w-xl mx-auto italic">
                 {partner.thankYouText}
               </p>
             )}
-            <div className="flex flex-wrap justify-center gap-3 pt-4">
-              {partner.capabilitiesLink && (
-                <a href={partner.capabilitiesLink} target="_blank" rel="noopener noreferrer">
-                  <Button variant="outline" className="border-white/30 text-white hover:bg-white/10 gap-1.5">
-                    A3 Capabilities <ExternalLink className="h-3.5 w-3.5" />
-                  </Button>
-                </a>
-              )}
-              {partner.partnerDeckFileUrl && (
-                <a href={partner.partnerDeckFileUrl} target="_blank" rel="noopener noreferrer">
-                  <Button variant="outline" className="border-white/30 text-white hover:bg-white/10 gap-1.5">
-                    Partner Deck <Download className="h-3.5 w-3.5" />
-                  </Button>
-                </a>
-              )}
-            </div>
+            {(partner.capabilitiesLink || partner.partnerDeckFileUrl) && (
+              <div className="flex flex-wrap justify-center gap-3 pt-4">
+                {partner.capabilitiesLink && (
+                  <a href={partner.capabilitiesLink} target="_blank" rel="noopener noreferrer">
+                    <Button variant="outline" className="border-white/30 text-white hover:bg-white/10 gap-1.5">
+                      A3 Capabilities <ExternalLink className="h-3.5 w-3.5" />
+                    </Button>
+                  </a>
+                )}
+                {partner.partnerDeckFileUrl && (
+                  <a href={partner.partnerDeckFileUrl} target="_blank" rel="noopener noreferrer">
+                    <Button variant="outline" className="border-white/30 text-white hover:bg-white/10 gap-1.5">
+                      Partner Deck <Download className="h-3.5 w-3.5" />
+                    </Button>
+                  </a>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -315,21 +365,26 @@ export default function FullPortal({ slug }: { slug: string }) {
 
       {availableQuickActions.length > 0 && (
         <section className="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            {availableQuickActions.map(qa => (
-              <button
-                key={qa.section}
-                onClick={() => scrollToSection(qa.section)}
-                className="group p-4 rounded-xl border bg-white hover:shadow-lg transition-all text-left space-y-2"
-                style={{ borderRadius }}
-              >
-                <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${accentColor}20` }}>
-                  <qa.icon className="h-5 w-5" style={{ color: accentColor }} />
-                </div>
-                <p className="text-sm font-semibold leading-tight">{qa.label}</p>
-                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
-              </button>
-            ))}
+          <div className={`grid grid-cols-2 sm:grid-cols-3 ${availableQuickActions.length >= 5 ? "lg:grid-cols-5" : `lg:grid-cols-${Math.min(availableQuickActions.length, 4)}`} gap-3`}>
+            {availableQuickActions.map(type => {
+              const Icon = SECTION_ICONS[type] || Package;
+              const sectionData = sectionMap.get(type);
+              const label = sectionData?.title || QUICK_ACTION_LABELS[type] || SECTION_LABELS[type];
+              return (
+                <button
+                  key={type}
+                  onClick={() => scrollToSection(type)}
+                  className="group p-4 rounded-xl border bg-white hover:shadow-lg transition-all text-left space-y-2"
+                  style={{ borderRadius }}
+                >
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${accentColor}20` }}>
+                    <Icon className="h-5 w-5" style={{ color: accentColor }} />
+                  </div>
+                  <p className="text-sm font-semibold leading-tight">{label}</p>
+                  <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+                </button>
+              );
+            })}
           </div>
         </section>
       )}
@@ -339,12 +394,13 @@ export default function FullPortal({ slug }: { slug: string }) {
           const Icon = SECTION_ICONS[section.sectionType] || Package;
 
           if (section.sectionType === "standard_products") {
+            if (!Object.keys(productsByCategory).length) return null;
             return (
               <section key={section.id} id={`section-${section.sectionType}`} className="scroll-mt-20">
                 <div className="mb-8">
                   <div className="flex items-center gap-3 mb-2">
                     <Icon className="h-6 w-6" style={{ color: primaryColor }} />
-                    <h3 className="text-2xl sm:text-3xl font-bold">{section.title || "Standard Products"}</h3>
+                    <h3 className="text-2xl sm:text-3xl font-bold">{section.title || SECTION_LABELS.standard_products}</h3>
                   </div>
                   {section.subtitle && <p className="text-muted-foreground ml-9">{section.subtitle}</p>}
                   {section.description && <p className="text-sm text-muted-foreground ml-9 mt-1 max-w-2xl">{section.description}</p>}
@@ -390,11 +446,10 @@ export default function FullPortal({ slug }: { slug: string }) {
                 <div className="mb-8">
                   <div className="flex items-center gap-3 mb-2">
                     <Icon className="h-6 w-6" style={{ color: primaryColor }} />
-                    <h3 className="text-2xl sm:text-3xl font-bold">{section.title || "Brand This Venue"}</h3>
+                    <h3 className="text-2xl sm:text-3xl font-bold">{section.title || SECTION_LABELS.venue_branding}</h3>
                   </div>
                   {section.subtitle && <p className="text-muted-foreground ml-9">{section.subtitle}</p>}
                   {section.description && <p className="text-sm text-muted-foreground ml-9 mt-1 max-w-2xl">{section.description}</p>}
-                  <p className="text-xs text-muted-foreground ml-9 mt-2 italic">A3 Visual handles all technical production and installation planning.</p>
                 </div>
                 {Object.entries(locationsByCategory).map(([category, locations]) => (
                   <div key={category} className="mb-8">
@@ -418,7 +473,7 @@ export default function FullPortal({ slug }: { slug: string }) {
                             )}
                             {loc.sizeWidth && loc.sizeHeight && (
                               <p className="text-xs text-muted-foreground">
-                                Approx. {loc.sizeWidth} x {loc.sizeHeight} {loc.sizeUnit || "inches"}
+                                {loc.sizeWidth} x {loc.sizeHeight} {loc.sizeUnit || "inches"}
                               </p>
                             )}
                             <div className="flex gap-2 mt-2">
@@ -444,116 +499,19 @@ export default function FullPortal({ slug }: { slug: string }) {
           }
 
           if (section.sectionType === "event_materials") {
-            return (
-              <section key={section.id} id={`section-${section.sectionType}`} className="scroll-mt-20">
-                <Card className="overflow-hidden" style={{ borderRadius }}>
-                  <div className="p-6 sm:p-8" style={{ background: `linear-gradient(135deg, ${primaryColor}08, ${accentColor}08)` }}>
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${accentColor}20` }}>
-                        <Icon className="h-6 w-6" style={{ color: accentColor }} />
-                      </div>
-                      <div className="flex-1 space-y-2">
-                        <h3 className="text-xl sm:text-2xl font-bold">{section.title || "Branded Event Materials"}</h3>
-                        {section.subtitle && <p className="text-muted-foreground">{section.subtitle}</p>}
-                        <p className="text-sm text-muted-foreground max-w-xl">
-                          {section.description || "Awards, name badges, programs, menus, auction paddles, sponsor boards, table cards, flyers, and more — all custom branded for your event."}
-                        </p>
-                        <Button className="mt-4 gap-1.5" style={{ backgroundColor: primaryColor }} onClick={() => openSectionDialog("event_materials", section.title || "Branded Event Materials")}>
-                          <Palette className="h-4 w-4" /> Request Event Materials
-                        </Button>
-                      </div>
-                      {section.featuredImageUrl && (
-                        <img src={section.featuredImageUrl} alt="" className="hidden lg:block w-40 h-28 object-cover rounded-lg" />
-                      )}
-                    </div>
-                  </div>
-                </Card>
-              </section>
-            );
+            return renderCTASection(section, "event_materials", "Request Event Materials");
           }
 
           if (section.sectionType === "immersive") {
-            return (
-              <section key={section.id} id={`section-${section.sectionType}`} className="scroll-mt-20">
-                <Card className="overflow-hidden" style={{ borderRadius }}>
-                  <div className="p-6 sm:p-8" style={{ background: `linear-gradient(135deg, ${primaryColor}08, ${accentColor}08)` }}>
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${accentColor}20` }}>
-                        <Sparkles className="h-6 w-6" style={{ color: accentColor }} />
-                      </div>
-                      <div className="flex-1 space-y-2">
-                        <h3 className="text-xl sm:text-2xl font-bold">{section.title || "Immersive Experiences"}</h3>
-                        {section.subtitle && <p className="text-muted-foreground">{section.subtitle}</p>}
-                        <p className="text-sm text-muted-foreground max-w-xl">
-                          {section.description || "Interactive technology, projection mapping, LED installations, experiential activations — create unforgettable moments for your guests."}
-                        </p>
-                        <Button className="mt-4 gap-1.5" style={{ backgroundColor: primaryColor }} onClick={() => openSectionDialog("immersive", section.title || "Immersive Experience Request")}>
-                          <Sparkles className="h-4 w-4" /> Explore Immersive
-                        </Button>
-                      </div>
-                      {section.featuredImageUrl && (
-                        <img src={section.featuredImageUrl} alt="" className="hidden lg:block w-40 h-28 object-cover rounded-lg" />
-                      )}
-                    </div>
-                  </div>
-                </Card>
-              </section>
-            );
+            return renderCTASection(section, "immersive", "Explore Immersive");
           }
 
           if (section.sectionType === "fabrication") {
-            return (
-              <section key={section.id} id={`section-${section.sectionType}`} className="scroll-mt-20">
-                <Card className="overflow-hidden" style={{ borderRadius }}>
-                  <div className="p-6 sm:p-8" style={{ background: `linear-gradient(135deg, ${primaryColor}08, ${accentColor}08)` }}>
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${accentColor}20` }}>
-                        <Hammer className="h-6 w-6" style={{ color: accentColor }} />
-                      </div>
-                      <div className="flex-1 space-y-2">
-                        <h3 className="text-xl sm:text-2xl font-bold">{section.title || "Custom Fabrication"}</h3>
-                        {section.subtitle && <p className="text-muted-foreground">{section.subtitle}</p>}
-                        <p className="text-sm text-muted-foreground max-w-xl">
-                          {section.description || "Bespoke structures, scenic builds, dimensional signage, custom furniture, and one-of-a-kind installations built to your exact specifications."}
-                        </p>
-                        <Button className="mt-4 gap-1.5" style={{ backgroundColor: primaryColor }} onClick={() => openSectionDialog("fabrication", section.title || "Custom Fabrication Request")}>
-                          <Hammer className="h-4 w-4" /> Request Fabrication
-                        </Button>
-                      </div>
-                      {section.featuredImageUrl && (
-                        <img src={section.featuredImageUrl} alt="" className="hidden lg:block w-40 h-28 object-cover rounded-lg" />
-                      )}
-                    </div>
-                  </div>
-                </Card>
-              </section>
-            );
+            return renderCTASection(section, "fabrication", "Request Fabrication");
           }
 
           if (section.sectionType === "open_request") {
-            return (
-              <section key={section.id} id={`section-${section.sectionType}`} className="scroll-mt-20">
-                <Card className="overflow-hidden" style={{ borderRadius }}>
-                  <div className="p-6 sm:p-8" style={{ background: `linear-gradient(135deg, ${primaryColor}08, ${accentColor}08)` }}>
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${accentColor}20` }}>
-                        <MessageSquare className="h-6 w-6" style={{ color: accentColor }} />
-                      </div>
-                      <div className="flex-1 space-y-2">
-                        <h3 className="text-xl sm:text-2xl font-bold">{section.title || "Something Else?"}</h3>
-                        {section.subtitle && <p className="text-muted-foreground">{section.subtitle}</p>}
-                        <p className="text-sm text-muted-foreground max-w-xl">
-                          {section.description || "Don't see what you need? Tell us about your vision and we'll make it happen."}
-                        </p>
-                        <Button className="mt-4 gap-1.5" style={{ backgroundColor: primaryColor }} onClick={() => openSectionDialog("open_request", section.title || "Open Creative Request")}>
-                          <MessageSquare className="h-4 w-4" /> Submit Request
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              </section>
-            );
+            return renderCTASection(section, "open_request", "Submit Request");
           }
 
           if (section.sectionType === "partner_deck" && partner.partnerDeckFileUrl) {
@@ -565,8 +523,8 @@ export default function FullPortal({ slug }: { slug: string }) {
                       <FileText className="h-6 w-6" style={{ color: primaryColor }} />
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-semibold">{section.title || "Partner Deck"}</h3>
-                      <p className="text-sm text-muted-foreground">{section.description || "Download our partnership overview deck."}</p>
+                      <h3 className="font-semibold">{section.title || SECTION_LABELS.partner_deck}</h3>
+                      {section.description && <p className="text-sm text-muted-foreground">{section.description}</p>}
                     </div>
                     <a href={partner.partnerDeckFileUrl} target="_blank" rel="noopener noreferrer">
                       <Button variant="outline" className="gap-1.5">
@@ -588,8 +546,8 @@ export default function FullPortal({ slug }: { slug: string }) {
                       <Layers className="h-6 w-6" style={{ color: primaryColor }} />
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-semibold">{section.title || "A3 Capabilities"}</h3>
-                      <p className="text-sm text-muted-foreground">{section.description || "Learn about our full production capabilities."}</p>
+                      <h3 className="font-semibold">{section.title || SECTION_LABELS.capabilities}</h3>
+                      {section.description && <p className="text-sm text-muted-foreground">{section.description}</p>}
                     </div>
                     <a href={partner.capabilitiesLink} target="_blank" rel="noopener noreferrer">
                       <Button variant="outline" className="gap-1.5">

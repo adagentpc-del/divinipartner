@@ -87,6 +87,8 @@ export default function PortalRequestDetail() {
       const updated = await res.json();
       setRequest((prev: any) => ({ ...prev, ...updated }));
       toast({ title: "Status updated" });
+    } else {
+      toast({ title: "Failed to update status", variant: "destructive" });
     }
   };
 
@@ -103,6 +105,8 @@ export default function PortalRequestDetail() {
       setRequest((prev: any) => ({ ...prev, ...updated }));
       setEditingNotes(false);
       toast({ title: "Notes saved" });
+    } else {
+      toast({ title: "Failed to save notes", variant: "destructive" });
     }
     setSaving(false);
   };
@@ -138,13 +142,37 @@ export default function PortalRequestDetail() {
             <TypeIcon className="h-5 w-5 text-primary" />
             <h1 className="text-2xl font-bold tracking-tight capitalize">{typeLabel}</h1>
             <Badge variant="secondary" className="text-xs capitalize">{requestType}</Badge>
+            {request.product && (
+              <Badge variant="outline" className="text-xs gap-1">
+                <ShoppingBag className="h-3 w-3" /> {request.product.name}
+              </Badge>
+            )}
+            {request.location && (
+              <Badge variant="outline" className="text-xs gap-1">
+                <MapPin className="h-3 w-3" /> {request.location.name}
+              </Badge>
+            )}
           </div>
           <p className="text-sm text-muted-foreground mt-1">
-            From {request.mainContactName || request.contactName}
-            {partner && ` (${partner.companyName})`}
+            From <span className="font-medium text-foreground">{request.mainContactName || request.contactName}</span>
+            {partner && <span> · <span className="font-medium text-foreground">{partner.companyName}</span></span>}
             {" · "}
             {format(new Date(request.createdAt), "MMMM d, yyyy 'at' h:mm a")}
           </p>
+          {(request.eventDate || request.neededByDate) && (
+            <div className="flex gap-4 mt-1.5 text-xs">
+              {request.eventDate && (
+                <span className="flex items-center gap-1 text-muted-foreground">
+                  <Calendar className="h-3 w-3" /> Event: <span className="font-medium text-foreground">{request.eventDate}</span>
+                </span>
+              )}
+              {request.neededByDate && (
+                <span className="flex items-center gap-1 text-amber-600">
+                  <Clock className="h-3 w-3" /> Due: <span className="font-medium">{request.neededByDate}</span>
+                </span>
+              )}
+            </div>
+          )}
         </div>
         <Select value={request.status} onValueChange={handleStatusChange}>
           <SelectTrigger className="w-[180px]">
@@ -270,8 +298,19 @@ export default function PortalRequestDetail() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
+                {request.product && (
+                  <div className="flex items-start gap-4 mb-4 pb-4 border-b">
+                    {request.product.imageUrl && (
+                      <img src={request.product.imageUrl} alt={request.product.name} className="w-20 h-14 object-cover rounded border" />
+                    )}
+                    <div>
+                      <p className="font-semibold">{request.product.name}</p>
+                      <p className="text-xs text-muted-foreground">{request.product.category}</p>
+                    </div>
+                  </div>
+                )}
                 <div className="grid sm:grid-cols-2 gap-4 text-sm">
-                  {request.productId && (
+                  {request.productId && !request.product && (
                     <div>
                       <p className="text-xs text-muted-foreground">Product ID</p>
                       <p className="font-medium">#{request.productId}</p>

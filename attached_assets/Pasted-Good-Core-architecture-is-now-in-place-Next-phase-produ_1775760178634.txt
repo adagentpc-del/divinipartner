@@ -1,0 +1,105 @@
+Good. Core architecture is now in place.
+
+Next phase: production hardening, real data verification, partner portal completion gaps, and admin quality of life. The goal is to make this reliable enough to actually use with a live partner.
+
+Priority order
+
+1. End to end QA pass across one real partner
+Use one real partner record, ideally Move Miami, and test the full flow from admin setup through public portal submission through admin review.
+
+Verify all of the following in code and UI, not just by inspection:
+- partner theme renders correctly
+- enabled sections render in the correct order
+- product overrides show correctly
+- approved branding locations render correctly
+- standard product request submits successfully
+- branding location request submits successfully
+- event materials request submits successfully
+- immersive request submits successfully
+- fabrication request submits successfully
+- open request submits successfully
+- uploaded files persist and can be opened
+- requests appear correctly in admin dashboard
+- request detail pages load without missing data
+- status changes persist correctly
+- admin notes persist correctly
+
+Fix any bugs found during this pass.
+
+2. Complete missing public portal gaps
+Review the current FullPortal implementation and make sure every configured section is actually data driven from admin, not hardcoded.
+
+Requirements
+- hero content comes from partner settings
+- quick actions scroll only to sections that are enabled
+- all section headings, descriptions, and media come from partner_sections / partner_assets where appropriate
+- public portal respects enabled/disabled section toggles
+- product list respects partner overrides and sort order
+- venue branding section respects approved active locations only
+- partner deck and capabilities links only show when present
+- no placeholder copy remains in production UI
+
+3. File handling hardening
+Audit all uploads and attachments.
+
+Requirements
+- validate file types and size limits consistently
+- prevent broken upload state if one file fails
+- keep request save behavior reliable
+- display uploaded files clearly in admin detail pages
+- ensure object storage paths and URLs are stored consistently
+- confirm deck extraction only accepts allowed storage objects and not arbitrary external URLs
+
+4. Deck extraction quality improvements
+Keep the current architecture, but improve the output usability.
+
+Requirements
+- surface extraction confidence more clearly
+- deduplicate obvious repeated candidates
+- improve category guessing
+- preserve source page references cleanly
+- show page thumbnail or stable preview wherever possible
+- make the review table easier to bulk process
+- allow quick inline editing of name, category, and dimensions before approval
+
+If full AI extraction quality is still mixed, that is acceptable, but the admin review flow must make cleanup fast.
+
+5. Admin request workflow improvements
+Refine the requests dashboard and detail pages for real usage.
+
+Requirements
+- next/previous request navigation from detail view if practical
+- stronger badges for request type and status
+- show selected product name or branding location name prominently
+- show partner name prominently
+- show event date and needed by date prominently
+- add quick status update actions
+- make attachments easier to scan and open
+- ensure no request type has a broken or incomplete detail view
+
+6. Portal mode and fallback testing
+Verify both modes still work correctly:
+- intake mode partners still show the intake portal
+- full mode partners show the full portal
+- switching mode in admin updates the public route correctly
+- no broken route or empty portal state when a partner has incomplete setup
+
+7. Acceptance criteria for this phase
+This phase is complete only when:
+- one real partner can be configured and used end to end without blockers
+- all request types submit successfully
+- all request types display correctly in admin
+- partner portal sections are fully data driven
+- uploads are stable
+- deck extraction review is efficient enough for real onboarding
+- no obvious placeholder or scaffold behavior remains in the main user flow
+
+Important
+Do not start new feature branches yet.
+Do not overbuild new modules.
+Focus on hardening, fixing, and proving the current system against real usage.
+After completion report:
+- bugs found and fixed during QA
+- any remaining weak spots
+- anything still placeholder based
+- the shortest path to live use for Move Miami

@@ -103,6 +103,7 @@ export default function RequestsList() {
           partnerName: partnerMap.get(r.partnerId) || "Unknown",
           contactName: r.mainContactName, companyName: r.companyName, email: r.email,
           eventName: r.eventName, status: r.status,
+          productName: r.productName || undefined,
           createdAt: r.createdAt, neededByDate: r.neededByDate, eventDate: r.eventDate,
         });
       }
@@ -113,6 +114,7 @@ export default function RequestsList() {
           partnerName: partnerMap.get(r.partnerId) || "Unknown",
           contactName: r.mainContactName, companyName: r.companyName, email: r.email,
           eventName: r.eventName, status: r.status,
+          locationName: r.locationName || undefined,
           createdAt: r.createdAt, neededByDate: r.neededByDate, eventDate: r.eventDate,
         });
       }
@@ -253,14 +255,19 @@ export default function RequestsList() {
                     <TableCell className="text-sm text-muted-foreground">{r.partnerName}</TableCell>
                     <TableCell>
                       <span className="text-sm">{r.eventName || r.requestType || "—"}</span>
+                      {r.productName && <p className="text-[11px] text-muted-foreground">{r.productName}</p>}
+                      {r.locationName && <p className="text-[11px] text-muted-foreground">{r.locationName}</p>}
                     </TableCell>
                     <TableCell>
                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium border ${STATUS_STYLES[r.status] || "bg-muted text-muted-foreground border-border"}`}>
                         {r.status}
                       </span>
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground tabular-nums">
-                      {format(new Date(r.createdAt), "MMM d, yyyy")}
+                    <TableCell className="text-xs tabular-nums">
+                      <span className="text-muted-foreground">{format(new Date(r.createdAt), "MMM d, yyyy")}</span>
+                      {r.neededByDate && (
+                        <p className="text-amber-600 font-medium mt-0.5">Due: {r.neededByDate}</p>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       <Link href={getDetailPath(r)}>

@@ -92,8 +92,17 @@ const BrandingLocationRequestBody = z.object({
   })).optional(),
 });
 
+function isValidStoragePath(url: string): boolean {
+  if (url.startsWith("http://") || url.startsWith("https://")) return false;
+  if (url.includes("..") || url.startsWith("/")) return false;
+  return true;
+}
+
 async function saveFiles(requestType: string, requestId: number, files: { fileUrl: string; fileName: string; fileType?: string; label?: string }[]) {
   for (const file of files) {
+    if (!isValidStoragePath(file.fileUrl)) {
+      throw new Error(`Invalid file URL: only object storage paths are accepted`);
+    }
     await db.insert(requestFilesTable).values({
       requestType,
       requestId,
@@ -152,7 +161,11 @@ router.post("/public/partners/:slug/portal-requests", async (req, res): Promise<
   const { files, ...data } = parsed.data;
   const [request] = await db.insert(portalRequestsTable).values({ ...data, partnerId: partner.id }).returning();
 
-  if (files?.length) await saveFiles("portal", request.id, files);
+  try {
+    if (files?.length) await saveFiles("portal", request.id, files);
+  } catch (e: any) {
+    res.status(400).json({ error: e.message || "Invalid file data" }); return;
+  }
 
   sendRequestNotificationEmail(partner.id, parsed.data.requestType, parsed.data.mainContactName, parsed.data.email, parsed.data.eventName).catch(() => {});
 
@@ -176,7 +189,11 @@ router.post("/public/partners/:slug/product-requests", async (req, res): Promise
   const { files, ...data } = parsed.data;
   const [request] = await db.insert(productRequestsTable).values({ ...data, partnerId: partner.id }).returning();
 
-  if (files?.length) await saveFiles("product", request.id, files);
+  try {
+    if (files?.length) await saveFiles("product", request.id, files);
+  } catch (e: any) {
+    res.status(400).json({ error: e.message || "Invalid file data" }); return;
+  }
 
   sendRequestNotificationEmail(partner.id, "Product Order", parsed.data.mainContactName, parsed.data.email, parsed.data.eventName).catch(() => {});
 
@@ -204,7 +221,11 @@ router.post("/public/partners/:slug/branding-requests", async (req, res): Promis
   const { files, ...data } = parsed.data;
   const [request] = await db.insert(brandingLocationRequestsTable).values({ ...data, partnerId: partner.id }).returning();
 
-  if (files?.length) await saveFiles("branding", request.id, files);
+  try {
+    if (files?.length) await saveFiles("branding", request.id, files);
+  } catch (e: any) {
+    res.status(400).json({ error: e.message || "Invalid file data" }); return;
+  }
 
   sendRequestNotificationEmail(partner.id, "Venue Branding", parsed.data.mainContactName, parsed.data.email, parsed.data.eventName).catch(() => {});
 
@@ -258,7 +279,24 @@ router.patch("/portal-requests/:id", async (req, res): Promise<void> => {
 
 router.get("/product-requests", async (req, res): Promise<void> => {
   const { partnerId, status } = req.query;
-  let query = db.select().from(productRequestsTable).orderBy(desc(productRequestsTable.createdAt)).$dynamic();
+  let query = db.select({
+    id: productRequestsTable.id,
+    partnerId: productRequestsTable.partnerId,
+    productId: productRequestsTable.productId,
+    mainContactName: productRequestsTable.mainContactName,
+    companyName: productRequestsTable.companyName,
+    email: productRequestsTable.email,
+    eventName: productRequestsTable.eventName,
+    eventDate: productRequestsTable.eventDate,
+    neededByDate: productRequestsTable.neededByDate,
+    quantity: productRequestsTable.quantity,
+    selectedSize: productRequestsTable.selectedSize,
+    status: productRequestsTable.status,
+    createdAt: productRequestsTable.createdAt,
+    productName: productCatalogTable.name,
+  }).from(productRequestsTable)
+    .leftJoin(productCatalogTable, eq(productRequestsTable.productId, productCatalogTable.id))
+    .orderBy(desc(productRequestsTable.createdAt)).$dynamic();
 
   const conditions: any[] = [];
   if (partnerId) conditions.push(eq(productRequestsTable.partnerId, parseInt(partnerId as string)));
@@ -279,7 +317,18 @@ router.get("/product-requests/:id", async (req, res): Promise<void> => {
   const files = await db.select().from(requestFilesTable)
     .where(and(eq(requestFilesTable.requestType, "product"), eq(requestFilesTable.requestId, id)));
 
-  res.json({ ...request, files });
+  let product = null;
+  if (request.productId) {
+    const [p] = await db.select({
+      id: productCatalogTable.id,
+      name: productCatalogTable.name,
+      category: productCatalogTable.category,
+      imageUrl: productCatalogTable.imageUrl,
+    }).from(productCatalogTable).where(eq(productCatalogTable.id, request.productId));
+    product = p || null;
+  }
+
+  res.json({ ...request, files, product });
 });
 
 router.patch("/product-requests/:id", async (req, res): Promise<void> => {
@@ -298,7 +347,22 @@ router.patch("/product-requests/:id", async (req, res): Promise<void> => {
 
 router.get("/branding-requests", async (req, res): Promise<void> => {
   const { partnerId, status } = req.query;
-  let query = db.select().from(brandingLocationRequestsTable).orderBy(desc(brandingLocationRequestsTable.createdAt)).$dynamic();
+  let query = db.select({
+    id: brandingLocationRequestsTable.id,
+    partnerId: brandingLocationRequestsTable.partnerId,
+    brandingLocationId: brandingLocationRequestsTable.brandingLocationId,
+    mainContactName: brandingLocationRequestsTable.mainContactName,
+    companyName: brandingLocationRequestsTable.companyName,
+    email: brandingLocationRequestsTable.email,
+    eventName: brandingLocationRequestsTable.eventName,
+    eventDate: brandingLocationRequestsTable.eventDate,
+    neededByDate: brandingLocationRequestsTable.neededByDate,
+    status: brandingLocationRequestsTable.status,
+    createdAt: brandingLocationRequestsTable.createdAt,
+    locationName: partnerBrandingLocationsTable.name,
+  }).from(brandingLocationRequestsTable)
+    .leftJoin(partnerBrandingLocationsTable, eq(brandingLocationRequestsTable.brandingLocationId, partnerBrandingLocationsTable.id))
+    .orderBy(desc(brandingLocationRequestsTable.createdAt)).$dynamic();
 
   const conditions: any[] = [];
   if (partnerId) conditions.push(eq(brandingLocationRequestsTable.partnerId, parseInt(partnerId as string)));

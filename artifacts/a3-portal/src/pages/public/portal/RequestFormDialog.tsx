@@ -30,14 +30,35 @@ interface RequestFormDialogProps {
   themeColor?: string;
 }
 
+const MAX_FILE_SIZE = 50 * 1024 * 1024;
+const ALLOWED_EXTENSIONS = new Set([
+  "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx",
+  "png", "jpg", "jpeg", "gif", "svg", "webp", "bmp", "tiff", "tif",
+  "ai", "eps", "psd", "indd",
+  "zip", "rar", "7z",
+  "mp4", "mov", "avi", "wmv",
+  "dwg", "dxf", "step", "stl",
+  "csv", "txt",
+]);
+
+function validateFile(file: File): string | null {
+  if (file.size > MAX_FILE_SIZE) return `${file.name} exceeds 50MB limit`;
+  const ext = file.name.split(".").pop()?.toLowerCase() || "";
+  if (!ALLOWED_EXTENSIONS.has(ext)) return `${file.name}: file type .${ext} not allowed`;
+  return null;
+}
+
 async function uploadFile(file: File): Promise<{ fileUrl: string; fileName: string; fileType: string }> {
   const res = await fetch("/api/storage/uploads/request-url", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
   });
+  if (!res.ok) throw new Error(`Failed to prepare upload for ${file.name}`);
   const { uploadURL, objectPath } = await res.json();
-  await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+  if (!uploadURL || !objectPath) throw new Error(`Invalid upload response for ${file.name}`);
+  const putRes = await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+  if (!putRes.ok) throw new Error(`Upload failed for ${file.name}`);
   return { fileUrl: objectPath, fileName: file.name, fileType: file.type };
 }
 
@@ -49,7 +70,9 @@ export default function RequestFormDialog({
 }: RequestFormDialogProps) {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const [designHelp, setDesignHelp] = useState(false);
+  const [fileErrors, setFileErrors] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   const designFileRef = useRef<HTMLInputElement>(null);
 
@@ -69,9 +92,17 @@ export default function RequestFormDialog({
 
   const addFiles = (fileList: FileList | null, target: "main" | "design") => {
     if (!fileList) return;
-    const entries = Array.from(fileList).map(f => ({ file: f, label: f.name }));
-    if (target === "main") setFiles(prev => [...prev, ...entries]);
-    else setDesignFiles(prev => [...prev, ...entries]);
+    const errors: string[] = [];
+    const valid: FileEntry[] = [];
+    for (const f of Array.from(fileList)) {
+      const err = validateFile(f);
+      if (err) errors.push(err);
+      else valid.push({ file: f, label: f.name });
+    }
+    if (errors.length) setFileErrors(errors);
+    else setFileErrors([]);
+    if (target === "main") setFiles(prev => [...prev, ...valid]);
+    else setDesignFiles(prev => [...prev, ...valid]);
   };
 
   const removeFile = (index: number, target: "main" | "design") => {
@@ -82,14 +113,21 @@ export default function RequestFormDialog({
   const handleSubmit = async () => {
     if (!form.mainContactName || !form.email) return;
     setSubmitting(true);
+    setSubmitError("");
 
     try {
       const allFiles = [...files, ...designFiles];
       const uploadedFiles = [];
 
       for (const entry of allFiles) {
-        const uploaded = await uploadFile(entry.file);
-        uploadedFiles.push({ ...uploaded, label: entry.label });
+        try {
+          const uploaded = await uploadFile(entry.file);
+          uploadedFiles.push({ ...uploaded, label: entry.label });
+        } catch (uploadErr: any) {
+          setSubmitError(uploadErr.message || `Failed to upload ${entry.file.name}`);
+          setSubmitting(false);
+          return;
+        }
       }
 
       const body: any = {
@@ -132,9 +170,12 @@ export default function RequestFormDialog({
 
       if (res.ok) {
         setSubmitted(true);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setSubmitError(err.error || "Submission failed. Please try again.");
       }
-    } catch (e) {
-      console.error("Submit failed", e);
+    } catch (e: any) {
+      setSubmitError(e.message || "An error occurred. Please try again.");
     }
     setSubmitting(false);
   };
@@ -152,6 +193,8 @@ export default function RequestFormDialog({
     setFiles([]);
     setDesignFiles([]);
     setDesignHelp(false);
+    setSubmitError("");
+    setFileErrors([]);
     onClose();
   };
 
@@ -373,6 +416,18 @@ export default function RequestFormDialog({
             )}
           </div>
         </div>
+
+        {fileErrors.length > 0 && (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 space-y-1">
+            {fileErrors.map((e, i) => <p key={i}>{e}</p>)}
+          </div>
+        )}
+
+        {submitError && (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            {submitError}
+          </div>
+        )}
 
         <DialogFooter className="mt-4">
           <Button variant="outline" onClick={handleClose}>Cancel</Button>

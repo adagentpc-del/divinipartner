@@ -78,13 +78,19 @@ export default function DeckExtractionReview() {
     if (res.ok) {
       loadExtraction();
       toast({ title: "Item updated" });
+    } else {
+      toast({ title: "Failed to update item", variant: "destructive" });
     }
   };
 
   const handleDeleteItem = async (itemId: number) => {
-    await fetch(`/api/deck-extraction-items/${itemId}`, { method: "DELETE" });
-    loadExtraction();
-    toast({ title: "Item removed" });
+    const res = await fetch(`/api/deck-extraction-items/${itemId}`, { method: "DELETE" });
+    if (res.ok) {
+      loadExtraction();
+      toast({ title: "Item removed" });
+    } else {
+      toast({ title: "Failed to remove item", variant: "destructive" });
+    }
   };
 
   const handleDuplicate = async (itemId: number) => {
@@ -92,6 +98,8 @@ export default function DeckExtractionReview() {
     if (res.ok) {
       loadExtraction();
       toast({ title: "Item duplicated" });
+    } else {
+      toast({ title: "Failed to duplicate item", variant: "destructive" });
     }
   };
 
@@ -111,6 +119,8 @@ export default function DeckExtractionReview() {
       toast({ title: `${data.approved} locations approved and created` });
       setSelectedIds(new Set());
       loadExtraction();
+    } else {
+      toast({ title: "Bulk approve failed", variant: "destructive" });
     }
     setApproving(false);
   };
@@ -150,6 +160,8 @@ export default function DeckExtractionReview() {
       const data = await res.json();
       toast({ title: `${data.approved} locations approved and created` });
       loadExtraction();
+    } else {
+      toast({ title: "Approve all failed", variant: "destructive" });
     }
     setApproving(false);
   };
@@ -188,12 +200,26 @@ export default function DeckExtractionReview() {
   const pendingCount = extraction.items.filter(i => i.reviewStatus === "pending" && !i.isHidden).length;
   const approvedCount = extraction.items.filter(i => i.reviewStatus === "approved").length;
 
+  const rejectedCount = extraction.items.filter(i => i.isHidden).length;
+
   const confidenceColor = (score: number | null) => {
-    if (!score) return "text-gray-400";
+    if (score == null) return "text-gray-400";
     if (score >= 0.7) return "text-green-600";
     if (score >= 0.4) return "text-amber-600";
     return "text-red-500";
   };
+
+  const confidenceBg = (score: number | null) => {
+    if (score == null) return "bg-gray-200";
+    if (score >= 0.7) return "bg-green-500";
+    if (score >= 0.4) return "bg-amber-500";
+    return "bg-red-500";
+  };
+
+  const categoryGroups = extraction.items.reduce((acc, item) => {
+    acc[item.category] = (acc[item.category] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -243,10 +269,46 @@ export default function DeckExtractionReview() {
       )}
 
       {extraction.items.length > 0 && (
+        <>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Card className="border-blue-100">
+            <CardContent className="py-3 px-4 text-center">
+              <p className="text-2xl font-bold">{extraction.items.length}</p>
+              <p className="text-[11px] text-muted-foreground">Total Found</p>
+            </CardContent>
+          </Card>
+          <Card className="border-amber-100">
+            <CardContent className="py-3 px-4 text-center">
+              <p className="text-2xl font-bold text-amber-600">{pendingCount}</p>
+              <p className="text-[11px] text-muted-foreground">Pending Review</p>
+            </CardContent>
+          </Card>
+          <Card className="border-emerald-100">
+            <CardContent className="py-3 px-4 text-center">
+              <p className="text-2xl font-bold text-emerald-600">{approvedCount}</p>
+              <p className="text-[11px] text-muted-foreground">Approved</p>
+            </CardContent>
+          </Card>
+          <Card className="border-gray-100">
+            <CardContent className="py-3 px-4 text-center">
+              <p className="text-2xl font-bold text-gray-400">{rejectedCount}</p>
+              <p className="text-[11px] text-muted-foreground">Hidden</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {Object.keys(categoryGroups).length > 1 && (
+          <div className="flex flex-wrap gap-1.5">
+            {Object.entries(categoryGroups).sort((a, b) => b[1] - a[1]).map(([cat, count]) => (
+              <Badge key={cat} variant="outline" className="text-[10px] gap-1 font-normal">
+                {cat} <span className="font-semibold">{count}</span>
+              </Badge>
+            ))}
+          </div>
+        )}
+
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4 text-sm">
-            <span className="text-muted-foreground">{pendingCount} pending</span>
-            <span className="text-emerald-600">{approvedCount} approved</span>
             {selectedIds.size > 0 && (
               <span className="text-primary font-medium">{selectedIds.size} selected</span>
             )}
@@ -265,11 +327,10 @@ export default function DeckExtractionReview() {
             )}
           </div>
         </div>
-      )}
 
       <div className="space-y-3">
         {extraction.items.map(item => (
-          <Card key={item.id} className={`${item.isHidden ? "opacity-40" : ""} ${item.reviewStatus === "approved" ? "border-emerald-200" : ""}`}>
+          <Card key={item.id} className={`${item.isHidden ? "opacity-40" : ""} ${item.reviewStatus === "approved" ? "border-emerald-200 bg-emerald-50/20" : ""}`}>
             <CardContent className="py-4">
               <div className="flex items-start gap-3">
                 {item.reviewStatus === "pending" && !item.isHidden && (
@@ -281,14 +342,20 @@ export default function DeckExtractionReview() {
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
+                    <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
                     <h3 className="font-semibold text-sm">{item.locationName}</h3>
                     <Badge variant="outline" className="text-[10px]">{item.category}</Badge>
                     {item.sourcePageNumber && (
-                      <span className="text-[10px] text-muted-foreground">p.{item.sourcePageNumber}</span>
+                      <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">p.{item.sourcePageNumber}</span>
                     )}
                     {item.confidenceScore != null && (
-                      <span className={`text-[10px] font-mono ${confidenceColor(item.confidenceScore)}`}>
-                        {Math.round(item.confidenceScore * 100)}%
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="w-12 h-1.5 bg-muted rounded-full overflow-hidden">
+                          <span className={`block h-full rounded-full ${confidenceBg(item.confidenceScore)}`} style={{ width: `${item.confidenceScore * 100}%` }} />
+                        </span>
+                        <span className={`text-[10px] font-mono ${confidenceColor(item.confidenceScore)}`}>
+                          {Math.round(item.confidenceScore * 100)}%
+                        </span>
                       </span>
                     )}
                     {item.reviewStatus === "approved" && (
@@ -302,11 +369,17 @@ export default function DeckExtractionReview() {
                       </Badge>
                     )}
                   </div>
-                  {item.dimensionsText && (
-                    <p className="text-xs text-muted-foreground mt-1">Dimensions: {item.dimensionsText}
-                      {item.sizeWidth && item.sizeHeight ? ` (${item.sizeWidth} × ${item.sizeHeight} ${item.sizeUnit})` : ""}
-                    </p>
-                  )}
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1.5">
+                    {item.dimensionsText && (
+                      <p className="text-xs text-muted-foreground">
+                        Dimensions: {item.dimensionsText}
+                        {item.sizeWidth && item.sizeHeight ? ` (${item.sizeWidth} × ${item.sizeHeight} ${item.sizeUnit})` : ""}
+                      </p>
+                    )}
+                    {item.description && (
+                      <p className="text-xs text-muted-foreground">{item.description}</p>
+                    )}
+                  </div>
                   {item.extractedTextSnippet && (
                     <p className="text-xs text-muted-foreground mt-1 line-clamp-2 bg-muted/40 p-2 rounded">{item.extractedTextSnippet}</p>
                   )}
@@ -335,6 +408,8 @@ export default function DeckExtractionReview() {
           </Card>
         ))}
       </div>
+      </>
+      )}
 
       <Dialog open={!!editingItem} onOpenChange={() => setEditingItem(null)}>
         <DialogContent className="max-w-lg">

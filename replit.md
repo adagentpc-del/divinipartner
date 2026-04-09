@@ -140,6 +140,19 @@ new, reviewing, quoted, awaiting artwork, in production, completed, archived
 - **Partner portal**: Partner branding primary, "Powered by A3" subtle badge; trust signals on step 1; animated step transitions
 - **Admin**: Compact horizontal nav with backdrop blur header; rounded card-based layouts; icon + text for section headers
 
+## Security & Hardening
+- **File upload validation**: Client-side (50MB limit, extension whitelist) + server-side (`isValidStoragePath` rejects external URLs, path traversal)
+- **SSRF mitigation**: Deck extraction rejects external http URLs; only object storage paths accepted
+- **Error handling**: All admin mutations (status, notes, extraction items) show destructive toasts on failure
+- **Submit errors**: RequestFormDialog surfaces upload failures and API errors inline
+- **Server-side file URL validation**: `saveFiles()` in portalRequests.ts validates all file URLs before DB insert
+
+## API Enrichment
+- `GET /product-requests` — LEFT JOIN with product_catalog for `productName`
+- `GET /branding-requests` — LEFT JOIN with partner_branding_locations for `locationName`
+- `GET /product-requests/:id` — Includes full `product` object (name, category, imageUrl)
+- `GET /branding-requests/:id` — Includes full `location` object (name, category, dimensions, preview image)
+
 ## Seed Data
 2 sample partners (Move Miami, Hilton), 34 pricing rules across 6 categories, 22 products, 6 portal sections for Move Miami, 1 partner theme.
 
