@@ -12,7 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Loader2, Pencil, Trash2, Calendar, Copy, ChevronLeft, MapPin } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2, Calendar, Copy, ChevronLeft, MapPin, Boxes } from "lucide-react";
+import { EventInventoryDialog } from "@/components/admin/EventInventoryDialog";
 
 type EventRow = { id: number; partnerId: number; cityId: number | null; cityName?: string | null; venueId: number | null; venueName?: string | null; name: string; eventStartDate: string | null; eventEndDate: string | null; installDate: string | null; teardownDate: string | null; shippingDeadline: string | null; status: string; notes: string | null; isActive: boolean; availablePackageIdsJson: number[] | null };
 type City = { id: number; name: string };
@@ -156,6 +157,7 @@ export default function EventsList() {
                 {ev.shippingDeadline && <div className="text-xs mt-1"><span className="text-muted-foreground">Ship by:</span> {ev.shippingDeadline}</div>}
               </div>
               <div className="flex gap-1 shrink-0">
+                <EventInventoryDialog eventId={ev.id} eventName={ev.name} eventCityId={ev.cityId} trigger={<Button variant="ghost" size="icon" className="h-7 w-7" title="Inventory & reservations"><Boxes className="h-3.5 w-3.5" /></Button>} />
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => dup.mutate(ev.id)} title="Duplicate"><Copy className="h-3.5 w-3.5" /></Button>
                 <EventDialog partnerId={partnerId} cities={cities} venues={venues} packages={packages} ev={ev} trigger={<Button variant="ghost" size="icon" className="h-7 w-7"><Pencil className="h-3.5 w-3.5" /></Button>} onSaved={refetch} />
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { if (confirm(`Delete ${ev.name}?`)) del.mutate(ev.id); }}><Trash2 className="h-3.5 w-3.5" /></Button>

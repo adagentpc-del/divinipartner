@@ -207,4 +207,27 @@ Public, shareable onboarding form for prospective clients to submit their info; 
 - **API** (`/api/onboarding/*`): public `POST /submit` (strict Zod), admin `GET /submissions`, `GET /submissions/:id`, `PATCH /submissions/:id` (status + notes), `POST /submissions/:id/convert` (creates a partner with `isActive=false`, auto-deduplicated slug, billing info populated, and links the submission via `convertedPartnerId`).
 - **Admin UI**: `/admin/onboarding` shows the shareable link with a "Copy" button, status counters, and a list of submissions. Clicking opens a polished review dialog with sectioned details (Company / Brand / Contact / Billing / Goals), logo previews, internal notes, and "Convert to Partner" action that opens the new partner editor.
 
+## Reusable Hardware & Asset Inventory (April 2026)
+Lightweight but real reusable-event inventory system for partner-owned hardware (tables, easy-up frames, banner bases, step-and-repeat hardware, display hardware, etc.).
+
+- **Schema** (`lib/db/src/schema/inventory.ts`):
+  - `inventory` table now carries asset metadata: `name`, `category`, `assetType` (`hardware` | `reusable_asset`), `storageLocation`, optional `partnerId` (owner) and optional `productId` (catalog link).
+  - Quantity columns: `totalQuantity`, `reserved`, `inUse`, `damaged`, `retired`, `onOrder`, plus `reorderThreshold`. Legacy `hardwareOnHand` / `lowInventoryThreshold` are kept for back-compat and auto-mirrored on writes.
+  - Computed (server-side): `available = max(0, total − reserved − inUse − damaged − retired)`, plus `isLow` and `overcommitted` flags.
+  - New `inventory_reservations` table links `inventoryId` ↔ `eventId` with `quantity`, `status` (`active` | `released` | `fulfilled`), and notes.
+- **API** (`/api/inventory/*`):
+  - CRUD on assets with the extended fields.
+  - `GET /inventory/shortages` returns rows that are low or overcommitted (powers replenishment views).
+  - `GET /inventory/reservations?eventId=…&inventoryId=…` lists reservations with joined event/inventory/city/product names.
+  - `POST /inventory/reservations` creates a reservation **transactionally** and increments `inventoryTable.reserved`.
+  - `PATCH /inventory/reservations/:id` adjusts status/quantity and re-balances `reserved` vs `inUse` deltas atomically (releasing or fulfilling moves the right counters).
+  - `DELETE /inventory/reservations/:id` reverses the live count it was holding.
+- **Admin UI** (`/admin/inventory`):
+  - Six summary stat cards (Total Assets, Reserved, In Use, On Order, Low Stock, Overcommitted) with tone-coded warnings.
+  - Tabs: **Overview** (asset cards), **By City** (grouped with per-city totals), **Shortages** (recommended replenishment), **Reservations** (active + in-use lists with one-click release / mark-in-use / return).
+  - Search + city + partner filters.
+  - Asset cards show colored Available block, breakdown chips for damaged/retired/on-order, and inline alerts when low or overcommitted.
+  - Add/edit dialog includes live "available" preview and an immediate over-commit warning before saving.
+- **Event reservation flow**: each event card on `/admin/partners/:id/events` exposes a Boxes icon that opens `EventInventoryDialog` (`src/components/admin/EventInventoryDialog.tsx`) — pick city → pick asset (shows available/total) → set qty → see "✓ Enough available" or "⚠ Shortfall: order N more" before confirming. Lists all reservations for the event with status badges and quick actions.
+
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
