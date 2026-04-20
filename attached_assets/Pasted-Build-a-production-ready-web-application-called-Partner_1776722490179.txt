@@ -1,0 +1,347 @@
+Build a production ready web application called Partner Commerce Portal.
+
+This system is a multi partner ordering, package selection, venue branding, inventory, and fulfillment portal. It must be designed for speed, simplicity, and scale. The interface should feel premium, modern, clean, and highly intuitive. The user experience must minimize typing and maximize clickable selections, dropdowns, toggles, cards, steppers, saved presets, autofill behavior, and reusable templates.
+
+The system is not an A3 only portal. It must support multiple suppliers and vendors, with A3 as one supplier option. The platform owner controls intake, approvals, pricing visibility, supplier assignment, and financial workflow.
+
+Primary users:
+1. Super Admin
+2. Internal Admin / Project Manager
+3. Partner Manager
+4. Client Ordering User
+5. Vendor / Supplier Fulfillment User
+
+There are two distinct portal types that must both be supported:
+
+Portal Type 1: Client Controlled Ordering Portal
+Use case example: Social Commerce Festival
+This portal supports:
+- multiple cities
+- multiple events
+- city specific venue setup
+- package tiers
+- add on items
+- hardware inventory by city
+- print only vs full hardware logic
+- shipping details
+- venue contact details
+- event based ordering
+- partner manager login to create and manage events, cities, and venue logistics
+
+Portal Type 2: Branding Partner Portal
+Use case examples: Move Miami and Wynwood Marketplace
+This portal supports:
+- preloaded venue branding zones
+- preloaded products and install areas
+- client selects branding areas visually or from cards
+- uploads artwork
+- enters event and billing details
+- submits and pays
+- simplified ordering flow with minimal setup by the client
+
+Core product goal:
+Build the app skeleton, UI, data structure, workflows, and admin system now, with quote attachments and backend catalog support built in from the beginning.
+
+Important UX requirements:
+- extremely simple and streamlined
+- minimal typing required
+- use cards, buttons, toggles, dropdowns, chips, steppers, accordions, and modal selectors
+- preserve entered info where possible
+- support duplicate event from existing template
+- support duplicate package from existing template
+- support duplicate venue from existing template
+- support saved shipping addresses and saved venue contacts
+- mobile responsive but optimized primarily for desktop admin usage and polished client portal access
+- premium polished interface
+- no clutter
+- clear hierarchy and visual grouping
+- all major actions should be obvious and clickable
+- reduce cognitive overload
+- use progress steps for ordering
+- use summary sidebars before final submit
+- use confirmation screens and downloadable internal summaries
+
+Tech stack:
+- Replit
+- React frontend
+- TypeScript
+- Node backend
+- PostgreSQL or equivalent relational database
+- clean component architecture
+- modular code
+- scalable schema
+- robust file upload support
+- role based access control
+- form validation
+- reusable admin tables and detail views
+- modern UI library if appropriate, but keep the design premium and custom feeling
+- create seed data and demo records
+
+Build the following system modules:
+
+1. Authentication and Roles
+- login screen
+- role based access
+- separate dashboards based on role
+- support Super Admin, Internal Admin, Partner Manager, Client User, Vendor User
+
+2. Partner Management
+- create and edit partners
+- partner type selector: client controlled ordering portal or branding partner portal
+- partner branding settings
+- partner logo upload
+- partner contacts
+- partner billing info
+- partner default supplier
+- partner pricing mode
+- partner active status
+
+3. User Management
+- create users
+- assign partner access
+- assign roles
+- set permissions
+- invite user flow
+
+4. Supplier / Vendor Management
+- create suppliers
+- supplier categories and capabilities
+- territory coverage
+- fulfillment notes
+- internal contacts
+- active status
+
+5. Product Catalog Framework
+This is the backend catalog layer, even if the true product data is still being collected.
+Create a flexible catalog system with:
+- product name
+- display name
+- SKU
+- category
+- description
+- thumbnail image
+- gallery images
+- visible dimensions
+- backend production notes
+- hardware included yes/no
+- print only available yes/no
+- rental eligible yes/no
+- attachment method field
+- material field
+- finishing field
+- quote attachment support
+- linked supplier
+- lead time
+- active status
+
+6. Package Builder
+- create package tiers
+- add products into package
+- set quantities
+- set package display name
+- set package description
+- set price
+- set partner specific availability
+- support tier 1, tier 2, tier 3 style package setups
+- support duplicate package button
+- support drag and drop item ordering if feasible
+
+7. Cities and Venue Management
+For client controlled ordering portals:
+- create cities
+- create venues under cities
+- venue name
+- shipping address
+- venue address
+- onsite contact
+- phone
+- email
+- install notes
+- saved shipping instructions
+- deadline notes
+- support duplicate venue button
+
+8. Inventory Tracking
+For client controlled ordering portals:
+- inventory by city
+- inventory by product
+- hardware quantity on hand
+- quantity reserved
+- quantity damaged
+- quantity available
+- graphic only option
+- flag low inventory
+- event level reservation logic placeholder
+
+9. Event Management
+For partner manager users:
+- create event
+- select city
+- select venue
+- event name
+- event dates
+- install date
+- teardown date
+- shipping deadline
+- venue contacts
+- notes
+- package availability by event
+- item availability by event
+- quantity limits by event
+- duplicate past event option
+- event status
+
+10. Branding Zone Management
+For branding partner portals:
+- create venue zones
+- zone name
+- zone image
+- dimensions
+- recommended product
+- attachment notes
+- pricing
+- quote attachment
+- active status
+- display zones as selectable cards
+- prepare code structure so clickable map overlays can be added in a future phase
+
+11. Quote and Asset Management
+Build support for attaching backend quote files and reference materials to:
+- products
+- packages
+- branding zones
+- suppliers
+Support:
+- PDF upload
+- image upload
+- notes
+- quote version
+- effective date
+- expiration date
+- approved standard flag
+- internal only visibility
+- downloadable file access in admin and fulfillment views
+
+12. Ordering Flow
+Create the client ordering experience.
+
+For client controlled ordering portal:
+- step 1 choose event
+- step 2 choose package or individual items
+- step 3 choose quantity
+- step 4 add on items
+- step 5 choose fulfillment mode when applicable
+- options include full unit, graphic only, rental hardware plus new print, client owned hardware plus new print
+- step 6 upload artwork
+- step 7 contact and billing details
+- step 8 review summary
+- step 9 submit order
+
+For branding partner portal:
+- step 1 choose event details
+- step 2 select branding zones or products
+- step 3 upload artwork
+- step 4 contact and billing details
+- step 5 review summary
+- step 6 submit order
+
+UX requirements for ordering:
+- use stepper progress
+- sticky order summary sidebar on desktop
+- inline validation
+- save draft support if feasible
+- default selections where appropriate
+- minimize repeated form entry
+- use saved addresses and saved contacts where available
+- large clickable option cards instead of dense forms where possible
+
+13. Orders Dashboard
+For internal admin:
+- filter by partner
+- filter by city
+- filter by venue
+- filter by event
+- filter by supplier
+- filter by status
+- view uploaded assets
+- view linked quote references
+- generate clean internal order summary
+- downloadable job packet layout
+- approve order
+- assign supplier
+- track fulfillment status
+
+14. Vendor Fulfillment View
+For vendor users:
+- view assigned orders
+- see item details
+- see uploaded files
+- see internal quote references allowed for vendor visibility
+- update fulfillment status
+- leave notes
+
+15. Internal Order Packet
+Generate a polished internal order detail page that combines:
+- partner
+- event
+- city
+- venue
+- shipping info
+- billing info
+- ordered items
+- package tier
+- add ons
+- fulfillment mode
+- artwork files
+- linked quote references
+- supplier assignment
+- internal notes
+This page should feel like an ops ready production packet.
+
+16. Seed Data
+Create realistic demo data for:
+- Social Commerce Festival as a client controlled ordering portal
+- Move Miami as a branding partner portal
+- Wynwood Marketplace as a branding partner portal
+- A3 as supplier
+- B2 and WS as additional suppliers
+- sample cities
+- sample venues
+- sample packages
+- sample products
+- sample branding zones
+- sample orders
+
+17. Design Direction
+Design should feel:
+- premium
+- modern
+- clean
+- efficient
+- intuitive
+- minimal but not sterile
+Use generous spacing, sharp hierarchy, strong cards, modern tables, beautiful empty states, polished file upload areas, and strong CTA placement.
+Avoid cluttered enterprise ERP styling.
+This should feel like a luxury operations platform.
+
+18. Deliverables for this first build
+I want:
+- complete app skeleton
+- working navigation
+- working role based dashboards
+- working CRUD for core modules
+- database schema
+- seeded demo data
+- polished UI
+- placeholder payment architecture ready for later integration
+- placeholder commission and vendor payout structure ready for later integration
+- code comments where needed
+- clear modular organization
+
+Also do the following:
+- create a replit.md file summarizing the architecture, routes, components, schema, and next recommended phases
+- create a session plan and implement as much as possible in one pass
+- do not stop at wireframes
+- build the actual screens and data models
+- prioritize function and usability over perfection
+- if any complex feature needs to be staged, still build the underlying data model and UI placeholder now
