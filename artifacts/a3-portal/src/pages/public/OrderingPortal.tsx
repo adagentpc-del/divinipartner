@@ -113,14 +113,19 @@ export default function OrderingPortal({ slug }: { slug: string }) {
     });
   };
 
+  const summaryItemCount = (selectedPkg ? 1 : 0) + cart.length;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
-      <div className="max-w-5xl mx-auto px-4 py-8 md:py-12">
+      <div className="max-w-7xl mx-auto px-4 py-8 md:py-12">
         <div className="text-center mb-8">
           <Badge className="mb-3" variant="secondary"><Sparkles className="h-3 w-3 mr-1" />Order Portal</Badge>
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight">{data.partner.introHeadline || `Order with ${data.partner.companyName}`}</h1>
           {data.partner.introText && <p className="text-muted-foreground mt-2 max-w-2xl mx-auto">{data.partner.introText}</p>}
         </div>
+
+        <div className="grid lg:grid-cols-[1fr_320px] gap-6">
+          <div>
 
         {/* Stepper */}
         <div className="flex items-center justify-center gap-1 mb-8 flex-wrap">
@@ -309,6 +314,68 @@ export default function OrderingPortal({ slug }: { slug: string }) {
             )}
           </div>
         </Card>
+          </div>
+
+          {/* Sticky Summary Sidebar (desktop) */}
+          <aside className="hidden lg:block">
+            <div className="sticky top-6 space-y-3">
+              <Card className="p-5 shadow-md">
+                <div className="flex items-center gap-2 mb-3">
+                  <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="font-semibold text-sm">Your Order</h3>
+                  {summaryItemCount > 0 && <Badge variant="secondary" className="ml-auto text-[10px]">{summaryItemCount} item{summaryItemCount !== 1 ? "s" : ""}</Badge>}
+                </div>
+
+                {selectedEvent ? (
+                  <div className="text-xs space-y-0.5 pb-3 border-b">
+                    <div className="text-muted-foreground uppercase tracking-wide text-[10px] font-semibold">Event</div>
+                    <div className="font-medium">{selectedEvent.name}</div>
+                    <div className="text-muted-foreground">{data.cities.find(c => c.id === cityId)?.name} · {selectedVenue?.name}</div>
+                    {selectedEvent.shippingDeadline && <div className="text-amber-600">Ship by {selectedEvent.shippingDeadline}</div>}
+                  </div>
+                ) : (
+                  <div className="text-xs text-muted-foreground italic pb-3 border-b">Select an event to begin</div>
+                )}
+
+                {selectedPkg && (
+                  <div className="text-xs space-y-1 py-3 border-b">
+                    <div className="text-muted-foreground uppercase tracking-wide text-[10px] font-semibold">Package</div>
+                    <div className="flex justify-between"><span className="font-medium">{selectedPkg.displayName || selectedPkg.name}</span>{selectedPkg.price && data.partner.pricingDisplayEnabled && <span className="font-semibold">${selectedPkg.price}</span>}</div>
+                    <div className="text-muted-foreground">{selectedPkg.items.length} included item{selectedPkg.items.length !== 1 ? "s" : ""}</div>
+                  </div>
+                )}
+
+                {cart.length > 0 && (
+                  <div className="text-xs space-y-1 py-3 border-b">
+                    <div className="text-muted-foreground uppercase tracking-wide text-[10px] font-semibold">Add-ons</div>
+                    {cart.map(c => (
+                      <div key={c.key} className="flex justify-between gap-2"><span className="truncate">{c.name}</span><span className="font-semibold shrink-0">{c.quantity}x</span></div>
+                    ))}
+                  </div>
+                )}
+
+                {artworkFiles.length > 0 && (
+                  <div className="text-xs py-3 border-b">
+                    <div className="text-muted-foreground uppercase tracking-wide text-[10px] font-semibold mb-1">Artwork</div>
+                    <div>{artworkFiles.length} file{artworkFiles.length !== 1 ? "s" : ""} attached</div>
+                  </div>
+                )}
+
+                {totalEstimate > 0 && data.partner.pricingDisplayEnabled && (
+                  <div className="pt-3 flex items-center justify-between">
+                    <span className="text-sm font-semibold">Estimated</span>
+                    <span className="text-xl font-bold">${totalEstimate.toFixed(2)}</span>
+                  </div>
+                )}
+              </Card>
+
+              <Card className="p-4 bg-muted/30 border-dashed">
+                <p className="text-xs text-muted-foreground"><span className="font-semibold text-foreground">Step {step + 1} of {STEPS.length}:</span> {STEPS[step]}</p>
+                <p className="text-[11px] text-muted-foreground mt-1">Your selections are kept as you navigate.</p>
+              </Card>
+            </div>
+          </aside>
+        </div>
       </div>
     </div>
   );

@@ -58,8 +58,9 @@ export default function OrderDetail() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 print:space-y-3">
+      <style>{`@media print { @page { margin: 1.5cm; } body { background: white !important; } header, .no-print, button { display: none !important; } main { padding: 0 !important; max-width: 100% !important; } .print\\:break-inside-avoid { break-inside: avoid; } .lg\\:col-span-2 { grid-column: span 3 / span 3 !important; } aside, .lg\\:grid-cols-3 > div:last-child { display: none !important; } }`}</style>
+      <div className="flex items-center justify-between no-print">
         <div>
           <Link href="/admin/orders"><Button variant="ghost" size="sm" className="gap-1 -ml-3 mb-2"><ChevronLeft className="h-4 w-4" />Back to orders</Button></Link>
           <div className="flex items-center gap-3 flex-wrap">
@@ -69,7 +70,14 @@ export default function OrderDetail() {
           </div>
           <p className="text-muted-foreground mt-1">{order.partnerName} · {new Date(order.createdAt).toLocaleString()}</p>
         </div>
-        <Button variant="outline" className="gap-2" onClick={() => window.print()}><Printer className="h-4 w-4" />Print Packet</Button>
+        <Button variant="outline" className="gap-2 no-print" onClick={() => window.print()}><Printer className="h-4 w-4" />Print Packet</Button>
+      </div>
+      <div className="hidden print:block border-b pb-3 mb-3">
+        <div className="flex items-baseline justify-between">
+          <h1 className="text-3xl font-bold font-mono">{order.orderNumber}</h1>
+          <div className="text-sm text-muted-foreground">{new Date(order.createdAt).toLocaleString()}</div>
+        </div>
+        <div className="text-sm mt-1">{order.partnerName} · Status: <span className="font-semibold">{order.status}</span> · Payment: {order.paymentStatus}</div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

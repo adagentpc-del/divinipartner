@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, desc, sql, count, gte } from "drizzle-orm";
-import { db, requestsTable, partnersTable, requestUploadsTable, partnerAssetsTable } from "@workspace/db";
+import { eq, desc, sql, count, gte, and, lte, isNull } from "drizzle-orm";
+import { db, requestsTable, partnersTable, requestUploadsTable, partnerAssetsTable, ordersTable, inventoryTable, eventsTable, citiesTable, productCatalogTable } from "@workspace/db";
 import { GetRecentRequestsQueryParams } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -8,36 +8,76 @@ const router: IRouter = Router();
 router.get("/dashboard/summary", async (_req, res): Promise<void> => {
   const [totalPartners] = await db.select({ count: count() }).from(partnersTable);
   const [activePartners] = await db.select({ count: count() }).from(partnersTable).where(eq(partnersTable.isActive, true));
+  const [orderingPartners] = await db.select({ count: count() }).from(partnersTable).where(eq(partnersTable.partnerType, "ordering"));
+  const [brandingPartners] = await db.select({ count: count() }).from(partnersTable).where(eq(partnersTable.partnerType, "branding"));
   const [totalRequests] = await db.select({ count: count() }).from(requestsTable);
+  const [totalOrders] = await db.select({ count: count() }).from(ordersTable);
+  const [pendingOrders] = await db.select({ count: count() }).from(ordersTable).where(eq(ordersTable.status, "new"));
+  const [unassignedOrders] = await db.select({ count: count() }).from(ordersTable).where(isNull(ordersTable.assignedSupplierId));
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const [newToday] = await db
-    .select({ count: count() })
-    .from(requestsTable)
-    .where(gte(requestsTable.createdAt, today));
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const [newToday] = await db.select({ count: count() }).from(requestsTable).where(gte(requestsTable.createdAt, today));
+  const [ordersToday] = await db.select({ count: count() }).from(ordersTable).where(gte(ordersTable.createdAt, today));
 
-  const statusCounts = await db
-    .select({
-      status: requestsTable.status,
-      count: count(),
-    })
-    .from(requestsTable)
-    .groupBy(requestsTable.status);
+  const statusCounts = await db.select({ status: requestsTable.status, count: count() }).from(requestsTable).groupBy(requestsTable.status);
 
-  const recentPartners = await db
-    .select()
-    .from(partnersTable)
-    .orderBy(desc(partnersTable.createdAt))
-    .limit(5);
+  const recentPartners = await db.select().from(partnersTable).orderBy(desc(partnersTable.createdAt)).limit(5);
+
+  const recentOrders = await db.select({
+    id: ordersTable.id,
+    orderNumber: ordersTable.orderNumber,
+    partnerName: partnersTable.companyName,
+    status: ordersTable.status,
+    createdAt: ordersTable.createdAt,
+    contactName: ordersTable.contactName,
+    totalEstimate: ordersTable.totalEstimate,
+  }).from(ordersTable).leftJoin(partnersTable, eq(ordersTable.partnerId, partnersTable.id)).orderBy(desc(ordersTable.createdAt)).limit(6);
+
+  const lowInventory = await db.select({
+    id: inventoryTable.id,
+    cityId: inventoryTable.cityId,
+    cityName: citiesTable.name,
+    productId: inventoryTable.productId,
+    productName: productCatalogTable.name,
+    onHand: inventoryTable.hardwareOnHand,
+    reserved: inventoryTable.reserved,
+    threshold: inventoryTable.lowInventoryThreshold,
+  }).from(inventoryTable)
+    .leftJoin(citiesTable, eq(inventoryTable.cityId, citiesTable.id))
+    .leftJoin(productCatalogTable, eq(inventoryTable.productId, productCatalogTable.id))
+    .where(sql`${inventoryTable.hardwareOnHand} - ${inventoryTable.reserved} <= ${inventoryTable.lowInventoryThreshold}`)
+    .limit(8);
+
+  const upcomingEvents = await db.select({
+    id: eventsTable.id,
+    name: eventsTable.name,
+    eventStartDate: eventsTable.eventStartDate,
+    shippingDeadline: eventsTable.shippingDeadline,
+    partnerName: partnersTable.companyName,
+    cityName: citiesTable.name,
+  }).from(eventsTable)
+    .leftJoin(partnersTable, eq(eventsTable.partnerId, partnersTable.id))
+    .leftJoin(citiesTable, eq(eventsTable.cityId, citiesTable.id))
+    .where(eq(eventsTable.status, "upcoming"))
+    .orderBy(eventsTable.eventStartDate)
+    .limit(6);
 
   res.json({
     totalPartners: totalPartners?.count || 0,
     activePartners: activePartners?.count || 0,
+    orderingPartners: orderingPartners?.count || 0,
+    brandingPartners: brandingPartners?.count || 0,
     totalRequests: totalRequests?.count || 0,
     newRequestsToday: newToday?.count || 0,
+    totalOrders: totalOrders?.count || 0,
+    pendingOrders: pendingOrders?.count || 0,
+    unassignedOrders: unassignedOrders?.count || 0,
+    ordersToday: ordersToday?.count || 0,
     requestsByStatus: statusCounts,
     recentPartners,
+    recentOrders,
+    lowInventory,
+    upcomingEvents,
   });
 });
 

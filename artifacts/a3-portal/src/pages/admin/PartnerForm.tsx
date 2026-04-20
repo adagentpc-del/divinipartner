@@ -36,7 +36,8 @@ const formSchema = z.object({
   partnerVideoUrl: z.string().optional(),
   partnerDeckFileUrl: z.string().optional(),
   siteSurveyDeckFileUrl: z.string().optional(),
-  portalMode: z.string().default("intake"),
+  portalMode: z.enum(["intake", "full", "ordering"]).default("intake"),
+  partnerType: z.enum(["branding", "ordering"]).nullable().optional(),
   isActive: z.boolean().default(true),
   smallA3BadgeEnabled: z.boolean().default(true),
   pricingDisplayEnabled: z.boolean().default(false),
@@ -68,6 +69,7 @@ export default function PartnerForm() {
       venueAddress: "", industryFocus: "", globalSizzleReelUrl: "", partnerVideoUrl: "",
       partnerDeckFileUrl: "", siteSurveyDeckFileUrl: "",
       portalMode: "intake",
+      partnerType: "branding",
       isActive: true, smallA3BadgeEnabled: true, pricingDisplayEnabled: false,
     }
   });
@@ -90,6 +92,7 @@ export default function PartnerForm() {
         partnerDeckFileUrl: (partner as any).partnerDeckFileUrl || "",
         siteSurveyDeckFileUrl: (partner as any).siteSurveyDeckFileUrl || "",
         portalMode: (partner as any).portalMode || "intake",
+        partnerType: (partner as any).partnerType || "branding",
         isActive: partner.isActive, smallA3BadgeEnabled: partner.smallA3BadgeEnabled || false,
         pricingDisplayEnabled: partner.pricingDisplayEnabled || false,
       });
@@ -141,26 +144,32 @@ export default function PartnerForm() {
                 <Settings className="h-3.5 w-3.5" /> Sections
               </Button>
             </Link>
-            <Link href={`/admin/partners/${id}/branding-locations`}>
-              <Button variant="outline" size="sm" className="gap-1.5">
-                <Building2 className="h-3.5 w-3.5" /> Venue Map
-              </Button>
-            </Link>
-            <Link href={`/admin/partners/${id}/cities-venues`}>
-              <Button variant="outline" size="sm" className="gap-1.5">
-                <Building2 className="h-3.5 w-3.5" /> Cities & Venues
-              </Button>
-            </Link>
-            <Link href={`/admin/partners/${id}/events`}>
-              <Button variant="outline" size="sm" className="gap-1.5">
-                <Settings className="h-3.5 w-3.5" /> Events
-              </Button>
-            </Link>
-            <Link href={`/admin/partners/${id}/packages`}>
-              <Button variant="outline" size="sm" className="gap-1.5">
-                <Settings className="h-3.5 w-3.5" /> Packages
-              </Button>
-            </Link>
+            {form.watch("partnerType") !== "ordering" && (
+              <Link href={`/admin/partners/${id}/branding-locations`}>
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <Building2 className="h-3.5 w-3.5" /> Branding Zones
+                </Button>
+              </Link>
+            )}
+            {form.watch("partnerType") === "ordering" && (
+              <>
+                <Link href={`/admin/partners/${id}/cities-venues`}>
+                  <Button variant="outline" size="sm" className="gap-1.5">
+                    <Building2 className="h-3.5 w-3.5" /> Cities & Venues
+                  </Button>
+                </Link>
+                <Link href={`/admin/partners/${id}/events`}>
+                  <Button variant="outline" size="sm" className="gap-1.5">
+                    <Settings className="h-3.5 w-3.5" /> Events
+                  </Button>
+                </Link>
+                <Link href={`/admin/partners/${id}/packages`}>
+                  <Button variant="outline" size="sm" className="gap-1.5">
+                    <Settings className="h-3.5 w-3.5" /> Packages
+                  </Button>
+                </Link>
+              </>
+            )}
             <a href={`/partner/${form.getValues("slug")}`} target="_blank" rel="noopener noreferrer">
               <Button variant="outline" size="sm" className="gap-1.5">
                 <ExternalLink className="h-3.5 w-3.5" /> Preview
@@ -170,11 +179,27 @@ export default function PartnerForm() {
         )}
       </div>
 
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b -mx-2 px-2 py-2">
+        <nav className="flex items-center gap-1 overflow-x-auto text-xs">
+          {[
+            { id: "company", label: "1. Basics", icon: Building2 },
+            { id: "portal", label: "2. Portal", icon: Globe },
+            { id: "decks", label: "3. Documents", icon: FileText },
+            { id: "contact", label: "4. Contact", icon: Settings },
+            { id: "settings", label: "5. Settings", icon: Settings },
+          ].map(s => (
+            <a key={s.id} href={`#sec-${s.id}`} className="px-3 py-1.5 rounded-full bg-muted hover:bg-primary hover:text-primary-foreground transition-colors whitespace-nowrap font-medium">
+              {s.label}
+            </a>
+          ))}
+        </nav>
+      </div>
+
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <Card>
+          <Card id="sec-company" className="scroll-mt-20">
             <CardHeader className="pb-4">
-              <CardTitle className="text-base flex items-center gap-2"><Building2 className="h-4 w-4" /> Company Details</CardTitle>
+              <CardTitle className="text-base flex items-center gap-2"><Building2 className="h-4 w-4" /> Company Details <span className="text-xs font-normal text-muted-foreground ml-auto">Step 1 of 5</span></CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid sm:grid-cols-2 gap-4">
@@ -217,9 +242,9 @@ export default function PartnerForm() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card id="sec-portal" className="scroll-mt-20">
             <CardHeader className="pb-4">
-              <CardTitle className="text-base flex items-center gap-2"><Globe className="h-4 w-4" /> Portal Customization</CardTitle>
+              <CardTitle className="text-base flex items-center gap-2"><Globe className="h-4 w-4" /> Portal Customization <span className="text-xs font-normal text-muted-foreground ml-auto">Step 2 of 5</span></CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <FormField control={form.control} name="introHeadline" render={({ field }) => (
@@ -260,25 +285,41 @@ export default function PartnerForm() {
                   </FormItem>
                 )} />
               </div>
-              <FormField control={form.control} name="portalMode" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Portal Mode</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                    <SelectContent>
-                      <SelectItem value="intake">Intake Form (Original 5-step form)</SelectItem>
-                      <SelectItem value="full">Full Portal (Multi-section with products & venue)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormDescription className="text-xs">Choose between the simple intake form or the full branded portal experience</FormDescription>
-                </FormItem>
-              )} />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField control={form.control} name="partnerType" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Partner Type</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || "branding"}>
+                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                      <SelectContent>
+                        <SelectItem value="branding">Branding Partner (venues, zones — Move Miami / Hilton)</SelectItem>
+                        <SelectItem value="ordering">Ordering Partner (cities, events, packages — SCF)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormDescription className="text-xs">Determines which workspace modules are available</FormDescription>
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="portalMode" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Client-Facing Portal</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                      <SelectContent>
+                        <SelectItem value="intake">Intake Form (5-step request form)</SelectItem>
+                        <SelectItem value="full">Full Portal (multi-section catalog + venue)</SelectItem>
+                        <SelectItem value="ordering">Ordering Portal (event/package/cart flow)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormDescription className="text-xs">What clients see at /partner/{`{slug}`}</FormDescription>
+                  </FormItem>
+                )} />
+              </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card id="sec-decks" className="scroll-mt-20">
             <CardHeader className="pb-4">
-              <CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4" /> Decks & Documents</CardTitle>
+              <CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4" /> Decks & Documents <span className="text-xs font-normal text-muted-foreground ml-auto">Step 3 of 5</span></CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <FormField control={form.control} name="partnerDeckFileUrl" render={({ field }) => (
@@ -298,9 +339,9 @@ export default function PartnerForm() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card id="sec-contact" className="scroll-mt-20">
             <CardHeader className="pb-4">
-              <CardTitle className="text-base">Contact & Routing</CardTitle>
+              <CardTitle className="text-base flex items-center gap-2">Contact & Routing <span className="text-xs font-normal text-muted-foreground ml-auto">Step 4 of 5</span></CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid sm:grid-cols-2 gap-4">
@@ -347,9 +388,9 @@ export default function PartnerForm() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card id="sec-settings" className="scroll-mt-20">
             <CardHeader className="pb-4">
-              <CardTitle className="text-base">Settings</CardTitle>
+              <CardTitle className="text-base flex items-center gap-2">Settings <span className="text-xs font-normal text-muted-foreground ml-auto">Step 5 of 5</span></CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <FormField control={form.control} name="isActive" render={({ field }) => (

@@ -185,4 +185,17 @@ normal, high, urgent
 ## Seed Data
 2 sample partners (Move Miami, Hilton), 34 pricing rules across 6 categories, 22 products, 6 portal sections for Move Miami, 1 partner theme.
 
+## Partner Commerce Portal (April 2026)
+Expanded into a multi-supplier ordering & branding platform.
+
+- **Partner types** (`partners.partnerType`): `branding` (zones/venues — Move Miami, Hilton) vs `ordering` (cities/events/packages — Social Commerce Festival).
+- **Portal modes** (`partners.portalMode`): `intake`, `full`, `ordering` — each renders a different public `/partner/:slug` experience.
+- **Admin nav is portal-type aware**: PartnerForm shows Branding Zones for branding partners; Cities & Venues / Events / Packages for ordering partners.
+- **Dashboard** (`/api/dashboard/summary`): partner counts + type mix, total/pending/unassigned/today orders, partner-type breakdown, low-inventory alerts, upcoming events, recent orders & partners. Frontend uses direct `apiFetch` + react-query.
+- **Ordering portal** (`/pages/public/OrderingPortal.tsx`): 6-step stepper (Event → Package → Add-ons → Artwork → Contact → Review) with sticky right-side summary sidebar (event/package/cart/total) on desktop. Public POST `/orders` uses strict Zod validation + transactional insert.
+- **OrderDetail**: structured panels (Partner / Event / Shipping / Items / Artwork / Internal) with print-friendly stylesheet (`window.print()` hides nav/sidebars and renders an order packet header).
+- **PartnerForm wizard**: sticky stepper bar (Basics → Portal → Documents → Contact → Settings) with anchor links and section step labels.
+- **Duplicate actions**: Events, Packages, Partners all have `POST /api/{resource}/:id/duplicate` and "Duplicate" buttons in admin lists.
+- **New schema columns**: `partners.partnerType`, `partners.defaultSupplierId` (both validated in partners route).
+
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
