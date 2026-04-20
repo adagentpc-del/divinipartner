@@ -12,7 +12,8 @@ import {
   Truck,
   ShoppingCart,
   Boxes,
-  UserCog
+  UserCog,
+  Inbox
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -20,6 +21,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 const navigation = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { name: "Partners", href: "/admin/partners", icon: Users },
+  { name: "Onboarding", href: "/admin/onboarding", icon: Inbox },
   { name: "Orders", href: "/admin/orders", icon: ShoppingCart },
   { name: "Suppliers", href: "/admin/suppliers", icon: Truck },
   { name: "Inventory", href: "/admin/inventory", icon: Boxes },

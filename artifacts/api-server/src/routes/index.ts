@@ -22,6 +22,7 @@ import quoteAssetsRouter from "./quoteAssets";
 import ordersRouter from "./orders";
 import userRolesRouter from "./userRoles";
 import savedAddressesRouter from "./savedAddresses";
+import partnerOnboardingRouter from "./partnerOnboarding";
 
 const router: IRouter = Router();
 
@@ -48,5 +49,6 @@ router.use(quoteAssetsRouter);
 router.use(ordersRouter);
 router.use(userRolesRouter);
 router.use(savedAddressesRouter);
+router.use(partnerOnboardingRouter);
 
 export default router;

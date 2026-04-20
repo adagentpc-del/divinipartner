@@ -32,6 +32,8 @@ import VendorPortal from "@/pages/admin/VendorPortal";
 
 import PublicLayout from "@/components/layout/PublicLayout";
 import PartnerPortal from "@/pages/public/PartnerPortal";
+import PartnerOnboarding from "@/pages/public/PartnerOnboarding";
+import OnboardingSubmissions from "@/pages/admin/OnboardingSubmissions";
 import NotFound from "@/pages/not-found";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -183,6 +185,17 @@ function ClerkProviderWithRoutes() {
             </Route>
             <Route path="/admin/vendor">
               {() => <AdminRoute component={VendorPortal} />}
+            </Route>
+            <Route path="/admin/onboarding">
+              {() => <AdminRoute component={OnboardingSubmissions} />}
+            </Route>
+
+            <Route path="/onboard">
+              {() => (
+                <PublicLayout>
+                  <PartnerOnboarding />
+                </PublicLayout>
+              )}
             </Route>
 
             <Route path="/partner/:slug">

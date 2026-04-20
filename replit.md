@@ -198,4 +198,13 @@ Expanded into a multi-supplier ordering & branding platform.
 - **Duplicate actions**: Events, Packages, Partners all have `POST /api/{resource}/:id/duplicate` and "Duplicate" buttons in admin lists.
 - **New schema columns**: `partners.partnerType`, `partners.defaultSupplierId` (both validated in partners route).
 
+## Self-Service Onboarding (April 2026)
+Public, shareable onboarding form for prospective clients to submit their info; admin reviews and one-click converts into a partner.
+
+- **Public URL**: `/onboard` (no auth) — 6-step wizard: Company → Portal Type → Brand & Visuals → Contact → Billing → Review.
+- **Logo & brand asset uploads** go through the existing presigned-URL storage flow (`/api/storage/uploads/request-url`).
+- **Schema**: `partner_onboarding_submissions` (in `lib/db/src/schema/partnerOnboardingSubmissions.ts`) captures company, partner type, portal mode, tours flag, branding assets/copy, primary + billing contacts, payment terms, goals, and review lifecycle (`status`: new/reviewing/approved/rejected/converted, `internalNotes`, `convertedPartnerId`).
+- **API** (`/api/onboarding/*`): public `POST /submit` (strict Zod), admin `GET /submissions`, `GET /submissions/:id`, `PATCH /submissions/:id` (status + notes), `POST /submissions/:id/convert` (creates a partner with `isActive=false`, auto-deduplicated slug, billing info populated, and links the submission via `convertedPartnerId`).
+- **Admin UI**: `/admin/onboarding` shows the shareable link with a "Copy" button, status counters, and a list of submissions. Clicking opens a polished review dialog with sectioned details (Company / Brand / Contact / Billing / Goals), logo previews, internal notes, and "Convert to Partner" action that opens the new partner editor.
+
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
