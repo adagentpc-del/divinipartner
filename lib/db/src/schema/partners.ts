@@ -1,4 +1,4 @@
-import { pgTable, serial, text, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, boolean, timestamp, jsonb, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -27,6 +27,10 @@ export const partnersTable = pgTable("partners", {
   siteSurveyDeckFileUrl: text("site_survey_deck_file_url"),
   pricingDisplayEnabled: boolean("pricing_display_enabled").notNull().default(false),
   portalMode: text("portal_mode").notNull().default("intake"),
+  partnerType: text("partner_type"),
+  defaultSupplierId: integer("default_supplier_id"),
+  pricingMode: text("pricing_mode").notNull().default("hidden"),
+  billingInfoJson: jsonb("billing_info_json").$type<{ contactName?: string; email?: string; phone?: string; address?: string; taxId?: string; paymentTerms?: string }>(),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),

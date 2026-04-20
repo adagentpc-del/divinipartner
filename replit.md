@@ -1,8 +1,12 @@
-# A3 Partner Portal
+# A3 Partner Commerce Portal
 
 ## Overview
 
-Full-stack web app for A3 Visual (premium event production company). Features a public partner-branded multi-step intake form for clients, a multi-section product catalog portal, venue branding map system, and an admin dashboard for managing partners, themes, sections, products, branding locations, reviewing requests, preparing quotes with AI summaries and PDF export.
+Full-stack web app for A3 Visual (premium event production company), expanded into a multi-supplier commerce portal. Supports two partner types:
+- **Branding partners** (e.g. Move Miami, Hilton): venue branding map portals + multi-step intake forms.
+- **Ordering partners** (e.g. Social Commerce Festival): full ordering flow with cities/venues/events, tiered packages, add-ons, artwork upload, and order tracking.
+
+Includes admin dashboards for partners, suppliers, cities/venues, events, packages (with items), inventory, orders (with internal packets), users & roles, and a vendor fulfillment view. Suppliers are auto-assigned to orders via the partner's `defaultSupplierId`.
 
 pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
 
@@ -36,8 +40,18 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `lib/api-client-react` — Generated React Query hooks + custom-fetch
 
 ### Database Tables
-- `partners` — Partner companies with branding config, slugs, pricing toggles, portalMode, deck URLs, routing email, thank you text, capabilities link
+- `partners` — Partner companies; now includes `partnerType` ("ordering" | "branding"), `defaultSupplierId`, `pricingMode`, `billingInfoJson`
 - `partner_assets` — Uploaded assets tied to a partner
+- `suppliers` — Production/fulfillment vendors (A3 Visual, B2 Print Co, WS Fulfillment) with categories, capabilities, territory, contact
+- `cities` — Cities scoped per partner (used by ordering partners)
+- `venues` — Venues with shipping/install/contact details, scoped per partner+city
+- `events` — Time-bound events at a venue, with install/teardown/shipping deadlines and available packages
+- `packages` + `package_items` — Tiered service packages with included products
+- `inventory` — Per-city/product hardware on-hand, reserved, damaged, low-threshold
+- `orders` + `order_items` — Submitted orders with internal status, payment status, fulfillment mode, assigned supplier, vendor notes
+- `quote_assets` — Polymorphic image/spec attachments for products/packages/zones/suppliers
+- `user_roles` — Role assignments (super_admin, internal_admin, partner_manager, client_user, vendor_user) scoped to partner or supplier
+- `saved_addresses`, `saved_contacts` — Reusable shipping/contact entries per partner
 - `partner_themes` — Theme customization per partner (colors, fonts, tone preset, button style, approval status)
 - `partner_sections` — Portal section config per partner (type, title, sort order, enabled/disabled)
 - `product_catalog` — Global product catalog (22 products across categories like Displays & Backdrops, Signage, etc.)

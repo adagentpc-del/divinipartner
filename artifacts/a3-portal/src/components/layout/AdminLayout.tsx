@@ -8,7 +8,11 @@ import {
   Tags,
   Package,
   Menu,
-  ChevronRight
+  ChevronRight,
+  Truck,
+  ShoppingCart,
+  Boxes,
+  UserCog
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -16,10 +20,15 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 const navigation = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { name: "Partners", href: "/admin/partners", icon: Users },
+  { name: "Orders", href: "/admin/orders", icon: ShoppingCart },
+  { name: "Suppliers", href: "/admin/suppliers", icon: Truck },
+  { name: "Inventory", href: "/admin/inventory", icon: Boxes },
   { name: "Products", href: "/admin/products", icon: Package },
   { name: "Requests", href: "/admin/requests", icon: FileText },
   { name: "Assets", href: "/admin/assets", icon: FolderOpen },
   { name: "Pricing", href: "/admin/pricing", icon: Tags },
+  { name: "Users", href: "/admin/users", icon: UserCog },
+  { name: "Vendor View", href: "/admin/vendor", icon: Truck },
 ];
 
 function NavItem({ item, isActive }: { item: typeof navigation[0]; isActive: boolean }) {

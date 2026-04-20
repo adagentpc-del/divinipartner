@@ -20,6 +20,15 @@ import PartnerThemeEditor from "@/pages/admin/PartnerThemeEditor";
 import PartnerSections from "@/pages/admin/PartnerSections";
 import BrandingLocations from "@/pages/admin/BrandingLocations";
 import ProductCatalog from "@/pages/admin/ProductCatalog";
+import SuppliersList from "@/pages/admin/SuppliersList";
+import CitiesAndVenues from "@/pages/admin/CitiesAndVenues";
+import EventsList from "@/pages/admin/EventsList";
+import PackagesList from "@/pages/admin/PackagesList";
+import InventoryDashboard from "@/pages/admin/InventoryDashboard";
+import OrdersDashboard from "@/pages/admin/OrdersDashboard";
+import OrderDetail from "@/pages/admin/OrderDetail";
+import UserRoles from "@/pages/admin/UserRoles";
+import VendorPortal from "@/pages/admin/VendorPortal";
 
 import PublicLayout from "@/components/layout/PublicLayout";
 import PartnerPortal from "@/pages/public/PartnerPortal";
@@ -146,6 +155,34 @@ function ClerkProviderWithRoutes() {
             </Route>
             <Route path="/admin/pricing">
               {() => <AdminRoute component={PricingRules} />}
+            </Route>
+
+            <Route path="/admin/suppliers">
+              {() => <AdminRoute component={SuppliersList} />}
+            </Route>
+            <Route path="/admin/partners/:id/cities-venues">
+              {() => <AdminRoute component={CitiesAndVenues} />}
+            </Route>
+            <Route path="/admin/partners/:id/events">
+              {() => <AdminRoute component={EventsList} />}
+            </Route>
+            <Route path="/admin/partners/:id/packages">
+              {() => <AdminRoute component={PackagesList} />}
+            </Route>
+            <Route path="/admin/inventory">
+              {() => <AdminRoute component={InventoryDashboard} />}
+            </Route>
+            <Route path="/admin/orders">
+              {() => <AdminRoute component={OrdersDashboard} />}
+            </Route>
+            <Route path="/admin/orders/:id">
+              {() => <AdminRoute component={OrderDetail} />}
+            </Route>
+            <Route path="/admin/users">
+              {() => <AdminRoute component={UserRoles} />}
+            </Route>
+            <Route path="/admin/vendor">
+              {() => <AdminRoute component={VendorPortal} />}
             </Route>
 
             <Route path="/partner/:slug">

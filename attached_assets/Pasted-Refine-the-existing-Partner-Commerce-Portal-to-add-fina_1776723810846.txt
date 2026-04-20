@@ -1,0 +1,270 @@
+Refine the existing Partner Commerce Portal to add financial scaffolding, revenue attribution, commission tracking, and flexible billing model support without fully implementing live payment processing yet.
+
+Important:
+Do not build full payment gateway logic in this pass.
+Do not hardwire one permanent money flow model.
+Do not rebuild from scratch.
+Work from the existing codebase and extend the current schema, admin tools, and dashboards.
+
+Primary objective:
+Make the platform financially trackable and strategically flexible from day one.
+Support multiple billing models per partner and per order, while allowing the initial live rollout to stay mostly A3 collected.
+
+Core financial strategy:
+Implement Model D architecture.
+The system must support multiple collection models, selectable at the partner level and overridable at the order level.
+
+Supported billing / collection models:
+1. A3 collected
+2. Alyssa entity collected
+3. Manual invoice
+4. Split payout placeholder
+5. External payment pending
+
+Even if only A3 collected is used initially, the schema and admin UX must support all models.
+
+Build the following in this pass:
+
+1. Financial settings at the partner level
+Extend partner management to include a dedicated Financial Settings section with:
+- billing model selector
+- default payment collection method
+- default billing entity
+- default commission type
+- commission type options:
+  - percentage of retail
+  - flat fee
+  - percentage of gross margin
+  - custom/manual
+- default commission rate or amount
+- default supplier payout method placeholder
+- default revenue owner / relationship owner
+- financial notes
+- active / inactive financial config
+
+Create a clean UI for this.
+Do not bury it in a generic form.
+Use cards, grouped settings, toggles, and clear labels.
+
+2. Order level financial data model
+Extend the order schema and UI to support:
+- retail amount
+- supplier estimated cost
+- supplier final cost
+- gross margin
+- commission basis
+- commission amount expected
+- commission amount paid
+- commission paid status
+- payment collection method
+- payment status
+- invoice status
+- supplier payable status
+- payout status
+- billing entity
+- originating rep
+- relationship owner
+- order owner
+- approver
+- discrepancy flag
+- discrepancy notes
+- reconciliation notes
+
+Include sensible defaults pulled from partner financial settings, but allow order level override where needed.
+
+3. Revenue attribution and ownership tracking
+Add clear attribution fields and UI to track:
+- portal source
+- partner source
+- originating rep
+- relationship owner
+- internal account owner
+- supplier assigned
+- order created by
+- order approved by
+
+This must be visible in the order detail page and filterable in the admin dashboard.
+
+4. Financial summary section on order detail page
+Add a dedicated Financial Summary panel to each internal order detail page.
+It should clearly show:
+- retail amount
+- supplier cost estimate
+- supplier final cost
+- expected gross margin
+- commission structure
+- expected commission payout
+- commission paid amount
+- discrepancy indicator
+- payment collection model
+- payment status
+- invoice status
+- supplier payout status
+
+This should feel very polished and highly readable.
+
+5. Partner level billing model control
+On each partner record, allow the admin to set the default billing model:
+- A3 collected
+- Alyssa entity collected
+- manual invoice
+- split payout placeholder
+- external payment pending
+
+Also allow this to be overridden at the event level if needed, and at the order level by internal admin only.
+
+Make the UI clear and safe so accidental changes are less likely.
+
+6. Event and order inheritance logic
+Implement logic so:
+- partner default financial settings cascade into new events and orders
+- event level overrides can exist
+- order level override is possible for internal admin
+- all overrides are visibly labeled
+
+Show where the value came from:
+- partner default
+- event override
+- order override
+
+This will help avoid confusion later.
+
+7. Commission tracking workflow
+Create a lightweight commission verification workflow.
+
+At minimum include:
+- expected commission
+- commission paid
+- paid date
+- paid status
+- verification status
+- discrepancy flag
+- reconciliation notes
+
+Statuses can include:
+- not due
+- pending
+- submitted
+- paid
+- disputed
+- reconciled
+
+Do not overcomplicate it, but make it operationally useful.
+
+8. Admin reporting and dashboard widgets
+Enhance dashboards with financial visibility.
+
+Super Admin / Internal Admin dashboard widgets:
+- total retail booked
+- estimated supplier cost
+- estimated gross margin
+- commission expected
+- commission paid
+- outstanding discrepancy count
+- orders by billing model
+- orders by originating rep
+- orders by partner
+- orders by supplier
+- upcoming orders needing reconciliation
+
+Partner dashboards should not expose internal margin or commission unless later allowed by role.
+Vendor dashboards should not expose internal margin or commission.
+
+9. Reconciliation and discrepancy management
+Create a discrepancy management layer in admin.
+
+Add:
+- discrepancy flag on order
+- discrepancy reason options
+- manual notes
+- filter by discrepancy status
+- simple discrepancy list view for internal admin
+
+Reasons can include:
+- commission mismatch
+- supplier cost variance
+- payment missing
+- billing entity mismatch
+- manual review required
+
+10. Financial filters and list views
+Enhance order tables and admin views with filters for:
+- billing model
+- payment status
+- commission status
+- discrepancy flag
+- relationship owner
+- originating rep
+- supplier
+- partner
+- portal type
+
+Add compact but readable financial columns in internal admin tables.
+
+11. Financial placeholder actions
+Add non live placeholder actions in the UI such as:
+- mark payment received
+- mark invoice sent
+- mark supplier paid
+- mark commission paid
+- mark reconciled
+
+These should update status fields and notes, but should not trigger external payments yet.
+
+12. Better internal documentation per order
+Each order should now have clearer internal notes sections for:
+- finance notes
+- supplier notes
+- ops notes
+- reconciliation notes
+
+Keep them visually separated and structured.
+
+13. Protect visibility by role
+Implement role based visibility so:
+- only Super Admin and Internal Admin can view full financial details
+- Partner Manager sees only limited commercial details appropriate to their role
+- Vendor users do not see internal margin, expected commission, or billing ownership details
+- Client users do not see internal financial scaffolding
+
+14. Seed realistic financial data
+Update seed data to include:
+- Social Commerce Festival as A3 collected
+- sample partner with Alyssa entity collected
+- sample partner with manual invoice
+- example orders across multiple billing models
+- expected commission values
+- discrepancy examples
+- supplier cost estimates and finals
+- payment statuses
+- commission statuses
+
+15. Design and UX refinement for financial sections
+Financial views should feel:
+- clean
+- premium
+- operationally clear
+- easy to scan
+- not accounting software ugly
+
+Use:
+- summary cards
+- grouped sections
+- status badges
+- clear labels
+- compact but readable tables
+- strong spacing and hierarchy
+
+16. Documentation
+Update replit.md with:
+- financial architecture
+- billing models
+- inheritance logic
+- visibility by role
+- schema changes
+- reporting changes
+- recommended next steps
+
+Also update or create a session plan and implement as much of the above as possible in this pass.
+Do not stop after describing the work.
+Actually build it.

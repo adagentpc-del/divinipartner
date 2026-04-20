@@ -12,6 +12,16 @@ import productCatalogRouter from "./productCatalog";
 import brandingLocationsRouter from "./brandingLocations";
 import portalRequestsRouter from "./portalRequests";
 import deckExtractionRouter from "./deckExtraction";
+import suppliersRouter from "./suppliers";
+import citiesRouter from "./cities";
+import venuesRouter from "./venues";
+import eventsRouter from "./events";
+import packagesRouter from "./packages";
+import inventoryRouter from "./inventory";
+import quoteAssetsRouter from "./quoteAssets";
+import ordersRouter from "./orders";
+import userRolesRouter from "./userRoles";
+import savedAddressesRouter from "./savedAddresses";
 
 const router: IRouter = Router();
 
@@ -28,5 +38,15 @@ router.use(productCatalogRouter);
 router.use(brandingLocationsRouter);
 router.use(portalRequestsRouter);
 router.use(deckExtractionRouter);
+router.use(suppliersRouter);
+router.use(citiesRouter);
+router.use(venuesRouter);
+router.use(eventsRouter);
+router.use(packagesRouter);
+router.use(inventoryRouter);
+router.use(quoteAssetsRouter);
+router.use(ordersRouter);
+router.use(userRolesRouter);
+router.use(savedAddressesRouter);
 
 export default router;

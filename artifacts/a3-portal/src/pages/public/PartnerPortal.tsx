@@ -16,6 +16,7 @@ import {
   Map, Ruler, Presentation, Image, Lightbulb, Info, DollarSign
 } from "lucide-react";
 import FullPortal from "./portal/FullPortal";
+import OrderingPortal from "./OrderingPortal";
 
 const step1Schema = z.object({
   contactName: z.string().min(1, "Name is required"),
@@ -83,6 +84,10 @@ export default function PartnerPortal({ slug }: { slug: string }) {
   const { data: partner, isLoading } = useGetPublicPartner(slug);
 
   const portalMode = (partner as any)?.portalMode;
+  const partnerType = (partner as any)?.partnerType;
+  if (!isLoading && (portalMode === "ordering" || partnerType === "ordering")) {
+    return <OrderingPortal slug={slug} />;
+  }
   if (!isLoading && portalMode === "full") {
     return <FullPortal slug={slug} />;
   }

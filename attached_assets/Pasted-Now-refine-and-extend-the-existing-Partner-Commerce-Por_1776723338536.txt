@@ -1,0 +1,344 @@
+Now refine and extend the existing Partner Commerce Portal build. Keep the current architecture, but improve usability, simplify workflows, and make the product feel much more polished, visual, and operationally ready.
+
+Important:
+Do not rebuild from scratch.
+Work from the existing codebase.
+Preserve existing schema and routes where sensible, but improve structure if needed.
+Implement real improvements, not just mockups.
+
+Primary objective for this pass:
+Reduce mental load and typing for all users.
+Make the system highly clickable, intuitive, and operationally streamlined.
+Differentiate the two portal types much more clearly in both admin setup and front end user flow.
+
+Focus this pass on these priorities:
+
+1. UX simplification across the entire app
+- reduce unnecessary text inputs
+- replace manual inputs with dropdowns, chips, toggles, selectors, card choices, steppers, and reusable templates wherever possible
+- add sticky summary panels on key setup and ordering pages
+- create clearer empty states and onboarding hints
+- improve visual hierarchy, spacing, grouping, and readability
+- make the experience feel premium and fast, not like ERP software
+- preserve entered information when navigating between steps
+- add cancel, save draft, duplicate, and back actions in obvious locations
+- add confirmation modals where appropriate for destructive actions
+
+2. Distinguish portal types much more clearly
+Create two separate setup experiences and dashboard behaviors:
+
+A. Client Controlled Ordering Portal
+Use case: Social Commerce Festival
+This type needs:
+- cities
+- venues
+- events
+- package availability by event
+- inventory by city
+- hardware vs print only logic
+- partner manager event creation tools
+
+B. Branding Partner Portal
+Use case: Move Miami and Wynwood Marketplace
+This type needs:
+- branding zones
+- preconfigured products by zone
+- simplified event submission
+- visual area selection
+- no city inventory workflow
+
+Update the admin UI so each portal type only shows the modules that are relevant to it.
+Hide irrelevant setup sections based on portal type.
+Make the partner dashboard experience feel custom to the selected portal type.
+
+3. Improve partner setup wizard
+Create a guided multi step setup wizard for creating a partner.
+Do not rely on one long form.
+
+Suggested steps:
+- step 1 partner basics
+- step 2 choose portal type
+- step 3 branding and contacts
+- step 4 pricing and supplier defaults
+- step 5 either cities and venues or branding zones depending on portal type
+- step 6 review and create
+
+Requirements:
+- use progress stepper
+- autosave between steps if feasible
+- use templates where possible
+- allow partner duplication from existing partner
+- allow creating from starter templates such as Social Commerce style or Branding Partner style
+
+4. Improve product catalog admin experience
+The backend catalog should now feel much easier to manage.
+
+Add:
+- product cards with thumbnails
+- category filters
+- supplier filters
+- active/inactive toggle
+- quick edit drawer or modal for core product info
+- quote attachment section that is much more obvious
+- support marking a product as:
+  - standard item
+  - package component
+  - branding zone item
+  - rental hardware
+  - graphic only option
+
+For each product, add a structured area for:
+- visible customer facing summary
+- backend ops summary
+- fulfillment logic summary
+- linked quote and asset files
+
+Make the interface highly visual and easy to scan.
+
+5. Improve package builder
+The package builder should feel much more like a guided merchandiser tool and much less like a raw admin form.
+
+Add:
+- package cards
+- component item picker with searchable modal
+- quantity steppers
+- drag to reorder package items if feasible
+- duplicate package action
+- partner specific package availability
+- package preview card that shows what the client will see
+- clear distinction between included items and optional add ons
+
+Support partner specific pricing overrides in the UI, even if the logic is placeholder for later refinement.
+
+6. Build out Social Commerce workflow more deeply
+This is the highest priority workflow in this pass.
+
+For the partner manager experience, create a dedicated Social Commerce style dashboard with fast access to:
+- cities
+- venues
+- upcoming events
+- inventory by city
+- event creation
+- package availability
+- saved shipping contacts
+- saved venue contacts
+
+Improve event creation flow:
+- make it a step by step wizard
+- choose city first
+- then choose or create venue
+- autofill saved shipping and contact info if venue already exists
+- event name
+- event dates
+- install and teardown
+- shipping deadline
+- package availability and quantity caps
+- item availability overrides if needed
+- notes
+- review and create
+
+Add duplicate past event feature.
+Add event status badges.
+Add clear quick links from an event to its orders and assets.
+
+7. Build inventory UI for Social Commerce
+The inventory section should not feel technical or confusing.
+
+Create a city based inventory view with:
+- tabs or segmented control by city
+- inventory cards or clean table rows
+- product thumbnail
+- hardware vs graphic only indicators
+- on hand quantity
+- reserved quantity
+- available quantity
+- damaged quantity
+- low stock alerts
+- quick update action
+
+Add a simple reservation placeholder mechanism tied to events:
+- allow an event to reserve inventory quantities
+- visually show reserved items in the event detail page
+- this can be a lightweight first version, but build the UI and data relationship now
+
+8. Build branding partner zone experience more deeply
+For Move Miami and Wynwood style portals, improve the branding zone setup and ordering flow.
+
+Admin side:
+- zone cards with image thumbnail
+- dimensions
+- zone description
+- recommended product
+- quote attachment
+- pricing
+- install notes
+- active toggle
+
+Client side:
+- selectable visual zone cards
+- cleaner gallery feel
+- add to order action
+- quantity selector if relevant
+- artwork upload per zone or grouped upload support
+- simpler event detail collection
+- better review screen
+
+Prepare code structure for future clickable image map overlays, but for now make the card based zone selection polished and clean.
+
+9. Improve ordering flow substantially
+This is a major focus for this pass.
+
+For both portal types:
+- make stepper cleaner and more elegant
+- add a persistent order summary sidebar on desktop
+- preserve inputs between steps
+- reduce repetitive entry
+- use saved contacts and addresses when possible
+- improve upload experience with drag and drop zones and file previews
+- add clearer success state after order submission
+
+For client controlled ordering portal:
+- event selection should be card based if possible
+- package selection should be card based
+- fulfillment mode selection should be button cards, not dropdown only
+- add on selection should be visually cleaner
+
+For branding partner portal:
+- zone selection should feel premium and visual
+- event info form should be concise
+- review page should clearly summarize selected zones, pricing, uploaded assets, and notes
+
+10. Improve internal order packet and admin order detail pages
+These screens must become much more polished and useful operationally.
+
+For each order detail page, clearly organize:
+- partner
+- portal type
+- event
+- city
+- venue
+- shipping and onsite contacts
+- ordered items
+- package or zones selected
+- fulfillment mode
+- uploaded artwork
+- quote references
+- supplier assignment
+- internal status
+- notes and timeline
+
+Add:
+- printable view styling
+- download packet button placeholder if needed
+- better status progression UI
+- ability to add internal notes in a structured way
+- clearer display of attached files and quote documents
+
+11. Improve role based dashboards
+Each role should see a useful dashboard, not generic placeholders.
+
+Super Admin dashboard:
+- total partners
+- portal type mix
+- total orders
+- pending approvals
+- supplier workload
+- recent uploads
+
+Internal Admin dashboard:
+- pending orders
+- unassigned supplier orders
+- upcoming event deadlines
+- low inventory alerts
+- recent partner activity
+
+Partner Manager dashboard for Social Commerce:
+- upcoming events
+- inventory by city summary
+- draft events
+- active events
+- recent orders
+
+Partner Manager dashboard for Branding Partners:
+- recent submissions
+- active venue zones
+- most selected branding zones
+- upcoming event dates
+
+Vendor dashboard:
+- assigned orders
+- due soon
+- assets ready
+- pending clarification
+
+12. Add reusable templates and duplication flows
+This is important for speed.
+
+Implement:
+- duplicate partner
+- duplicate city
+- duplicate venue
+- duplicate event
+- duplicate product
+- duplicate package
+- duplicate branding zone
+
+Also add starter templates for:
+- Social Commerce event setup
+- Branding partner venue setup
+- standard vendor package tiers
+
+13. Improve file and asset experience
+Make quote and artwork management easier.
+
+Add:
+- clearer upload UI
+- file preview list
+- file tags or labels
+- internal only vs client visible file flag
+- attach files to products, packages, zones, orders, events
+- better admin filtering for files if feasible
+
+14. Polish the design system
+Continue with a premium modern operations platform feel.
+
+Improve:
+- spacing
+- typography hierarchy
+- card styling
+- tabs
+- tables
+- modals
+- upload areas
+- badges
+- empty states
+- stepper styling
+- summary panels
+- action button consistency
+
+Avoid:
+- clutter
+- dense ERP style tables everywhere
+- long ugly forms
+- generic placeholder styling
+
+15. Seed data refinement
+Update seed data to better demonstrate the actual workflows:
+- Social Commerce Festival should have multiple cities, venues, inventory samples, events, and package tiers
+- Move Miami should have branding zones with images and pricing
+- Wynwood Marketplace should have branding zones with selectable areas
+- A3, B2, and WS should each have products and quote references
+- include example orders for both portal types
+
+16. Documentation
+Update replit.md with:
+- current architecture
+- refined workflows
+- portal type differences
+- schema updates
+- new routes and components
+- remaining recommended next phases
+
+Also create or update a session plan and implement as much of the above as possible in this pass.
+Do not stop after describing the work.
+Actually build the improvements.

@@ -1,5 +1,5 @@
-import { eq } from "drizzle-orm";
-import { db, partnersTable, pricingRulesTable, productCatalogTable, partnerSectionsTable, partnerThemesTable } from "@workspace/db";
+import { eq, and } from "drizzle-orm";
+import { db, partnersTable, pricingRulesTable, productCatalogTable, partnerSectionsTable, partnerThemesTable, suppliersTable, citiesTable, venuesTable, eventsTable, packagesTable, packageItemsTable, inventoryTable, userRolesTable } from "@workspace/db";
 
 async function seed() {
   console.log("Seeding pricing rules...");
@@ -172,6 +172,179 @@ async function seed() {
       });
       console.log("Seeded theme for Move Miami");
     }
+  }
+
+  console.log("Seeding suppliers...");
+  const suppliers = [
+    { name: "A3 Visual", slug: "a3-visual", description: "Premium event production, signage, fabrication, immersive experiences", categoriesJson: ["Print", "Fabrication", "Immersive"], capabilitiesJson: ["Large format print", "Custom fabrication", "Install/teardown", "Projection mapping", "LED walls"], territoryJson: ["USA", "Canada"], contactName: "A3 Production", contactEmail: "production@a3visual.com", isActive: true },
+    { name: "B2 Print Co", slug: "b2-print-co", description: "High-volume printing, vinyl graphics, banners, retractables", categoriesJson: ["Print"], capabilitiesJson: ["Vinyl banners", "Retractable banners", "Foam board", "Window graphics"], territoryJson: ["USA Southeast"], contactName: "B2 Sales", contactEmail: "sales@b2print.example", isActive: true },
+    { name: "WS Fulfillment", slug: "ws-fulfillment", description: "Warehouse, shipping, hardware rentals, installation", categoriesJson: ["Logistics", "Rental"], capabilitiesJson: ["Hardware rental", "Warehousing", "Shipping", "Install"], territoryJson: ["USA"], contactName: "WS Ops", contactEmail: "ops@wsfulfillment.example", isActive: true },
+  ];
+  for (const s of suppliers) {
+    const existing = await db.select().from(suppliersTable).where(eq(suppliersTable.slug, s.slug));
+    if (existing.length === 0) await db.insert(suppliersTable).values(s);
+  }
+  console.log(`Seeded ${suppliers.length} suppliers`);
+
+  const [a3Supplier] = await db.select().from(suppliersTable).where(eq(suppliersTable.slug, "a3-visual"));
+  const [b2Supplier] = await db.select().from(suppliersTable).where(eq(suppliersTable.slug, "b2-print-co"));
+  const [wsSupplier] = await db.select().from(suppliersTable).where(eq(suppliersTable.slug, "ws-fulfillment"));
+
+  console.log("Seeding Social Commerce Festival partner...");
+  const scfData = {
+    companyName: "Social Commerce Festival",
+    slug: "social-commerce-festival",
+    introHeadline: "Order your Festival materials",
+    introText: "Select your city, choose a package, configure add-ons, upload artwork, and submit. Our partner network handles production and on-site setup.",
+    contactName: "SCF Operations",
+    contactEmail: "ops@socialcommercefest.example",
+    routingEmail: "ops@socialcommercefest.example",
+    industryFocus: "Festivals & Conferences",
+    portalMode: "ordering",
+    partnerType: "ordering",
+    pricingMode: "wholesale",
+    defaultSupplierId: a3Supplier?.id,
+    pricingDisplayEnabled: true,
+    isActive: true,
+    smallA3BadgeEnabled: true,
+  };
+  const existingScf = await db.select().from(partnersTable).where(eq(partnersTable.slug, scfData.slug));
+  if (existingScf.length === 0) await db.insert(partnersTable).values(scfData);
+  else await db.update(partnersTable).set(scfData).where(eq(partnersTable.slug, scfData.slug));
+  const [scf] = await db.select().from(partnersTable).where(eq(partnersTable.slug, "social-commerce-festival"));
+
+  // Mark Move Miami / Hilton as branding type
+  await db.update(partnersTable).set({ partnerType: "branding" }).where(eq(partnersTable.slug, "move-miami"));
+  await db.update(partnersTable).set({ partnerType: "branding" }).where(eq(partnersTable.slug, "hilton"));
+
+  console.log("Seeding cities + venues for Social Commerce Festival...");
+  const cityNames = [
+    { name: "Miami", state: "FL", venues: [
+      { name: "Wynwood Walls Pavilion", venueAddress: "2520 NW 2nd Ave, Miami FL 33127", shippingAddress: "2520 NW 2nd Ave, Miami FL 33127", onsiteContactName: "Maria Reyes", onsiteContactPhone: "305-555-0101", onsiteContactEmail: "maria@wynwood.example", installNotes: "Loading dock at rear, freight elevator available 8am-6pm" },
+      { name: "Brickell Convention Center", venueAddress: "1100 Brickell Ave, Miami FL 33131", shippingAddress: "1100 Brickell Ave, Miami FL 33131 (Receiving)", onsiteContactName: "Carlos Diaz", onsiteContactPhone: "305-555-0102", onsiteContactEmail: "carlos@brickell.example", installNotes: "Union venue. All install by venue staff." },
+    ]},
+    { name: "Austin", state: "TX", venues: [
+      { name: "East Side Warehouse", venueAddress: "2500 E 6th St, Austin TX 78702", shippingAddress: "2500 E 6th St, Austin TX 78702", onsiteContactName: "Jamie Lin", onsiteContactPhone: "512-555-0201", onsiteContactEmail: "jamie@eastside.example", installNotes: "24-hour load-in window" },
+      { name: "South Congress Atrium", venueAddress: "1801 S Congress Ave, Austin TX 78704", shippingAddress: "1801 S Congress Ave, Austin TX 78704", onsiteContactName: "Tyler Brooks", onsiteContactPhone: "512-555-0202", onsiteContactEmail: "tyler@southcongress.example" },
+    ]},
+    { name: "New York", state: "NY", venues: [
+      { name: "Brooklyn Navy Yard Pavilion", venueAddress: "63 Flushing Ave, Brooklyn NY 11205", shippingAddress: "63 Flushing Ave, Brooklyn NY 11205", onsiteContactName: "Priya Shah", onsiteContactPhone: "718-555-0301", onsiteContactEmail: "priya@navyyard.example", installNotes: "Secure entry. Photo ID required." },
+      { name: "SoHo Pop-Up Space", venueAddress: "115 Mercer St, New York NY 10012", shippingAddress: "115 Mercer St, New York NY 10012", onsiteContactName: "Alex Chen", onsiteContactPhone: "212-555-0302", onsiteContactEmail: "alex@soho.example" },
+    ]},
+  ];
+
+  if (scf) {
+    for (const c of cityNames) {
+      const existing = await db.select().from(citiesTable).where(and(eq(citiesTable.partnerId, scf.id), eq(citiesTable.name, c.name)));
+      let city;
+      if (existing.length === 0) {
+        [city] = await db.insert(citiesTable).values({ partnerId: scf.id, name: c.name, state: c.state, isActive: true }).returning();
+      } else { city = existing[0]; }
+      for (const v of c.venues) {
+        const existingV = await db.select().from(venuesTable).where(and(eq(venuesTable.partnerId, scf.id), eq(venuesTable.name, v.name)));
+        if (existingV.length === 0) await db.insert(venuesTable).values({ ...v, partnerId: scf.id, cityId: city.id, isActive: true });
+      }
+    }
+  }
+  console.log("Seeded cities and venues");
+
+  console.log("Seeding packages for Social Commerce Festival...");
+  const allProducts = await db.select().from(productCatalogTable);
+  const findP = (slug: string) => allProducts.find(p => p.slug === slug);
+
+  if (scf) {
+    const packageDefs = [
+      { name: "Essentials Package", displayName: "Tier 1 - Essentials", description: "Core branding presence: step and repeat, retractable banners, table signage, and badges.", tier: 1, price: "1850.00", supplierId: a3Supplier?.id, items: [
+        { slug: "step-and-repeat", quantity: 1 }, { slug: "retractable-banner", quantity: 2 }, { slug: "table-signage", quantity: 4 }, { slug: "badges-lanyards", quantity: 50 },
+      ]},
+      { name: "Premium Package", displayName: "Tier 2 - Premium", description: "Full event presence: backdrops, sponsor boards, custom signage, foam boards, and complete collateral.", tier: 2, price: "4200.00", supplierId: a3Supplier?.id, items: [
+        { slug: "backdrop", quantity: 2 }, { slug: "sponsor-boards", quantity: 1 }, { slug: "retractable-banner", quantity: 4 }, { slug: "foam-board", quantity: 6 }, { slug: "table-signage", quantity: 8 }, { slug: "badges-lanyards", quantity: 100 }, { slug: "programs", quantity: 100 },
+      ]},
+      { name: "Flagship Package", displayName: "Tier 3 - Flagship", description: "Maximum brand impact: large-format backdrops, light boxes, wall vinyls, awards, and full event collateral suite.", tier: 3, price: "9500.00", supplierId: a3Supplier?.id, items: [
+        { slug: "backdrop", quantity: 3 }, { slug: "light-box", quantity: 4 }, { slug: "wall-vinyl", quantity: 2 }, { slug: "sponsor-boards", quantity: 2 }, { slug: "retractable-banner", quantity: 6 }, { slug: "awards", quantity: 10 }, { slug: "programs", quantity: 250 }, { slug: "badges-lanyards", quantity: 250 }, { slug: "table-signage", quantity: 12 },
+      ]},
+    ];
+    for (const pdef of packageDefs) {
+      const { items, ...pkg } = pdef;
+      const existing = await db.select().from(packagesTable).where(and(eq(packagesTable.partnerId, scf.id), eq(packagesTable.name, pkg.name)));
+      let pkgRow;
+      if (existing.length === 0) {
+        [pkgRow] = await db.insert(packagesTable).values({ ...pkg, partnerId: scf.id, isActive: true }).returning();
+        const itemValues = items.map((it, idx) => {
+          const product = findP(it.slug);
+          return product ? { packageId: pkgRow.id, productId: product.id, quantity: it.quantity, sortOrder: idx } : null;
+        }).filter(Boolean) as any[];
+        if (itemValues.length) await db.insert(packageItemsTable).values(itemValues);
+      }
+    }
+  }
+  console.log("Seeded packages");
+
+  console.log("Seeding events for Social Commerce Festival...");
+  if (scf) {
+    const cities = await db.select().from(citiesTable).where(eq(citiesTable.partnerId, scf.id));
+    const venues = await db.select().from(venuesTable).where(eq(venuesTable.partnerId, scf.id));
+    const findCity = (n: string) => cities.find(c => c.name === n);
+    const findVenue = (n: string) => venues.find(v => v.name === n);
+
+    const eventDefs = [
+      { name: "SCF Miami 2026 Spring", cityName: "Miami", venueName: "Wynwood Walls Pavilion", eventStartDate: "2026-05-15", eventEndDate: "2026-05-17", installDate: "2026-05-14", teardownDate: "2026-05-18", shippingDeadline: "2026-05-08", status: "upcoming" },
+      { name: "SCF Austin 2026 Summer", cityName: "Austin", venueName: "East Side Warehouse", eventStartDate: "2026-07-10", eventEndDate: "2026-07-12", installDate: "2026-07-09", teardownDate: "2026-07-13", shippingDeadline: "2026-07-03", status: "upcoming" },
+      { name: "SCF Brooklyn 2026 Fall", cityName: "New York", venueName: "Brooklyn Navy Yard Pavilion", eventStartDate: "2026-09-22", eventEndDate: "2026-09-24", installDate: "2026-09-21", teardownDate: "2026-09-25", shippingDeadline: "2026-09-15", status: "upcoming" },
+      { name: "SCF Miami 2025 Recap", cityName: "Miami", venueName: "Brickell Convention Center", eventStartDate: "2025-10-12", eventEndDate: "2025-10-14", status: "completed" },
+    ];
+    for (const e of eventDefs) {
+      const existing = await db.select().from(eventsTable).where(and(eq(eventsTable.partnerId, scf.id), eq(eventsTable.name, e.name)));
+      if (existing.length === 0) {
+        const city = findCity(e.cityName);
+        const venue = findVenue(e.venueName);
+        await db.insert(eventsTable).values({
+          partnerId: scf.id,
+          cityId: city?.id,
+          venueId: venue?.id,
+          name: e.name,
+          eventStartDate: e.eventStartDate,
+          eventEndDate: e.eventEndDate,
+          installDate: e.installDate,
+          teardownDate: e.teardownDate,
+          shippingDeadline: e.shippingDeadline,
+          status: e.status,
+          isActive: true,
+        });
+      }
+    }
+  }
+  console.log("Seeded events");
+
+  console.log("Seeding inventory...");
+  if (scf) {
+    const cities = await db.select().from(citiesTable).where(eq(citiesTable.partnerId, scf.id));
+    const inventoryProducts = ["step-and-repeat", "retractable-banner", "backdrop", "sponsor-boards", "light-box", "foam-board", "a-frame"];
+    for (const c of cities) {
+      for (const slug of inventoryProducts) {
+        const product = findP(slug);
+        if (!product) continue;
+        const existing = await db.select().from(inventoryTable).where(and(eq(inventoryTable.cityId, c.id), eq(inventoryTable.productId, product.id)));
+        if (existing.length === 0) {
+          await db.insert(inventoryTable).values({
+            cityId: c.id, productId: product.id,
+            hardwareOnHand: Math.floor(Math.random() * 8) + 2,
+            reserved: Math.floor(Math.random() * 3),
+            damaged: 0,
+            graphicOnlyAvailable: true,
+            lowInventoryThreshold: 2,
+          });
+        }
+      }
+    }
+  }
+  console.log("Seeded inventory");
+
+  console.log("Seeding default super admin role...");
+  const adminEmail = process.env.ADMIN_EMAIL ?? "admin@a3visual.com";
+  const existingAdmin = await db.select().from(userRolesTable).where(eq(userRolesTable.email, adminEmail));
+  if (existingAdmin.length === 0) {
+    await db.insert(userRolesTable).values({ email: adminEmail, role: "super_admin", fullName: "Default Super Admin", isActive: true, acceptedAt: new Date() });
   }
 
   console.log("Seed complete!");
