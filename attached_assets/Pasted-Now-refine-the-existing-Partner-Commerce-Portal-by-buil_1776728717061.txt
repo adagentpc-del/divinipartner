@@ -1,0 +1,372 @@
+Now refine the existing Partner Commerce Portal by building a robust supplier routing and fulfillment workflow. The platform already has partners, portal types, products, packages, zones, quotes/spec references, financial scaffolding, inventory, reservations, and ordering flows. This pass should make supplier assignment, fulfillment tracking, and ops handoff materially stronger.
+
+Important:
+Do not rebuild from scratch.
+Work from the existing codebase.
+Preserve the current schema and workflows where sensible.
+Implement real workflow improvements, not placeholders only.
+
+Primary objective for this pass:
+Make the system capable of routing orders and line items to the correct supplier, tracking supplier execution, and giving internal admins a clear fulfillment command center.
+
+This pass has 7 major priorities:
+
+1. Supplier routing model
+2. Supplier assignment by order and by line item
+3. Supplier fulfillment views and status tracking
+4. Internal fulfillment command center
+5. Supplier packet quality
+6. Routing intelligence and defaults
+7. Better ops notes, exceptions, and handoff clarity
+
+-----------------------------------
+1. SUPPLIER ROUTING MODEL
+-----------------------------------
+
+Extend the data model to support supplier assignment at multiple levels.
+
+Requirements:
+- suppliers already exist as entities; deepen their operational use
+- allow supplier assignment at:
+  - product level default supplier
+  - package component level
+  - branding zone level default supplier
+  - order level default supplier
+  - order line item level override supplier
+
+This matters because a single order may involve:
+- one supplier for printing
+- another for hardware
+- another for fabrication
+- another for installation
+
+At minimum, build clear support for:
+- order level supplier
+- line item level supplier
+- inherited defaults from product/package/zone where available
+
+For each line item, store:
+- assigned supplier
+- supplier assignment source
+  - inherited from product
+  - inherited from package
+  - inherited from zone
+  - inherited from order
+  - manually overridden
+- supplier status
+- supplier due date
+- supplier notes
+- supplier reference number placeholder
+- fulfillment exception flag
+
+Show the assignment source clearly in internal admin views.
+
+-----------------------------------
+2. SUPPLIER ASSIGNMENT UX
+-----------------------------------
+
+Build a clean supplier assignment experience for internal admins.
+
+Requirements:
+- on order detail page, allow assigning supplier at the order level
+- also allow assigning supplier per line item
+- allow bulk assign supplier for multiple selected line items
+- show current supplier on each item
+- show inherited default supplier when not yet manually assigned
+- allow internal admin to override supplier with confirmation modal
+- show clear badges for:
+  - unassigned
+  - inherited
+  - manually assigned
+  - exception
+
+Use a polished drawer, modal, or inline editor.
+Do not make this a clunky raw form.
+
+For line items, also show useful supplier context if available:
+- supplier capabilities
+- territory coverage
+- linked quote/spec references
+- lead time
+- default notes
+
+-----------------------------------
+3. SUPPLIER FULFILLMENT STATUS WORKFLOW
+-----------------------------------
+
+Create a practical supplier fulfillment status model.
+
+Each assigned order or line item should support statuses such as:
+- unassigned
+- assigned
+- acknowledged
+- in production
+- awaiting assets
+- awaiting approval
+- shipped
+- delivered
+- installed
+- completed
+- issue flagged
+- cancelled
+
+Requirements:
+- statuses should be editable in the internal admin view
+- vendor users should be able to update only the statuses allowed for their role
+- add status history tracking if feasible
+- add timestamp fields for key milestones if feasible
+- show status progression visually using badges, timeline, or step indicators
+
+For each line item and/or supplier assignment record, allow:
+- due date
+- expected ship date
+- expected delivery date
+- install date if relevant
+- notes
+- issue flag
+- issue reason
+
+-----------------------------------
+4. SUPPLIER FULFILLMENT VIEW
+-----------------------------------
+
+Deepen the vendor-facing experience.
+
+Each vendor user should be able to:
+- view assigned orders
+- view assigned line items
+- see only the information relevant to their fulfillment scope
+- view files/assets that are visible to them
+- view quote/spec references that are visible to them
+- update allowed statuses
+- leave fulfillment notes
+- flag issues
+- confirm assets received
+- confirm in production
+- confirm shipped/delivered/completed as appropriate
+
+Vendor users must not see:
+- internal margins
+- expected commission
+- internal billing ownership
+- unrelated partner data
+- other suppliers’ line items unless intentionally grouped
+
+Create a clean vendor dashboard with:
+- due soon
+- awaiting assets
+- active production
+- recent updates
+- issues flagged
+
+-----------------------------------
+5. INTERNAL FULFILLMENT COMMAND CENTER
+-----------------------------------
+
+Create a stronger internal fulfillment dashboard for internal admin and super admin.
+
+This should be the main operational command center for routing and tracking work.
+
+Include:
+- unassigned items
+- assigned but not acknowledged
+- due soon
+- awaiting assets
+- issues flagged
+- shipped not delivered
+- install upcoming
+- completed today / this week
+- items missing quote/spec references
+- items with shortages
+- items with supplier exceptions
+
+Add filters for:
+- supplier
+- status
+- due date
+- partner
+- portal type
+- event
+- city
+- fulfillment mode
+- shortage flag
+- issue flag
+- quote/spec attached yes/no
+
+Use a premium but operationally clear layout:
+- summary cards
+- tabs or segmented views
+- polished tables
+- quick actions
+- clickable status chips
+- strong visual prioritization
+
+-----------------------------------
+6. SUPPLIER PACKET AND HANDOFF QUALITY
+-----------------------------------
+
+Enhance the line item and order handoff quality so suppliers receive usable work packets.
+
+For supplier packet views, show:
+- partner
+- event
+- city
+- venue
+- shipping info relevant to that supplier
+- onsite contact if relevant
+- line items assigned to that supplier
+- product details
+- dimensions
+- fulfillment mode
+- print demand quantity
+- hardware demand quantity
+- inventory source if relevant
+- attached files/assets visible to supplier
+- linked quote/spec references visible to supplier
+- due dates
+- notes
+- issue flags
+
+Important:
+If a supplier is only assigned one part of a larger order, show them only their relevant subset, not the entire internal order unless necessary.
+
+Add:
+- clean printable view
+- download packet placeholder
+- supplier summary header
+- grouped assets section
+- grouped quote/spec section
+- grouped notes section
+
+-----------------------------------
+7. ROUTING INTELLIGENCE AND DEFAULTS
+-----------------------------------
+
+Make the system smarter about default routing.
+
+Use available existing data such as:
+- product default supplier
+- branding zone default supplier
+- supplier capabilities
+- supplier territory coverage
+- lead time
+- quote/spec references
+
+Build a first-pass recommendation system:
+- when assigning supplier, suggest likely suppliers based on defaults and context
+- show “recommended supplier” badges where applicable
+- for line items with a product default supplier, prefill that supplier unless overridden
+- for zones, inherit zone supplier if configured
+- for packages, inherit component suppliers or fall back to order supplier
+
+Do not over-engineer this.
+A simple, understandable recommendation layer is enough.
+
+-----------------------------------
+8. EXCEPTIONS, CLARIFICATIONS, AND NOTES
+-----------------------------------
+
+Build cleaner exception management for fulfillment.
+
+Allow internal admin and vendor users to flag:
+- missing assets
+- missing quote/spec
+- unclear installation requirement
+- inventory shortfall
+- supplier timing risk
+- material clarification needed
+- attachment method clarification needed
+- client approval required
+
+Requirements:
+- exception badge
+- exception reason
+- notes thread or structured notes if feasible
+- filterable in fulfillment command center
+- visible on line item and supplier views
+
+Keep it operationally simple, not bloated.
+
+-----------------------------------
+9. ORDER AND LINE ITEM DETAIL IMPROVEMENTS
+-----------------------------------
+
+Improve internal order detail pages to better support multi-supplier execution.
+
+Show for each line item:
+- product name
+- assigned supplier
+- supplier assignment source
+- fulfillment status
+- fulfillment mode
+- print demand
+- hardware demand
+- shortage if any
+- assets attached
+- quote/spec references attached
+- due dates
+- issue flag
+- notes
+
+Make line item sections much easier to scan and act on.
+
+Add bulk actions where useful:
+- bulk assign supplier
+- bulk update status
+- bulk set due date
+- bulk add note if feasible
+
+-----------------------------------
+10. SEED DATA
+-----------------------------------
+
+Refine seed data to demonstrate realistic supplier routing scenarios.
+
+Include:
+- A3 as primary print/production supplier
+- B2 as alternate supplier
+- WS as alternate supplier
+- orders split across multiple suppliers
+- line items with inherited supplier defaults
+- line items with manual overrides
+- statuses across multiple fulfillment stages
+- issue flagged examples
+- quote/spec references tied to suppliers
+
+-----------------------------------
+11. DESIGN AND UX
+-----------------------------------
+
+Keep the interface premium, clean, and highly operational.
+
+Improve:
+- supplier badges
+- fulfillment status chips
+- due date visibility
+- exception styling
+- notes presentation
+- packet layout
+- line item hierarchy
+- quick action affordances
+
+Avoid:
+- dense enterprise clutter
+- giant raw forms
+- confusing routing views
+- exposing too much irrelevant data to vendors
+
+-----------------------------------
+12. DOCUMENTATION
+-----------------------------------
+
+Update replit.md with:
+- supplier routing architecture
+- assignment inheritance logic
+- fulfillment status model
+- vendor visibility rules
+- fulfillment command center routes/components
+- next recommended phase
+
+Also create or update a session plan and implement as much of the above as possible in this pass.
+Do not stop after describing the work.
+Actually build it.

@@ -1,0 +1,402 @@
+Now refine the existing Partner Commerce Portal by building a practical ERP/export/reconciliation layer. The platform already has partners, portal types, products, packages, zones, quotes/spec references, financial scaffolding, inventory, reservations, fulfillment modes, supplier routing, and quote ingestion/catalog enrichment. This pass should make the platform operationally exportable, finance-friendly, and easier to reconcile against outside systems such as NetSuite and manual supplier workflows.
+
+Important:
+Do not rebuild from scratch.
+Work from the existing codebase.
+Preserve current architecture and workflows where sensible.
+Implement real export and reconciliation workflows, not placeholders only.
+
+Primary objective for this pass:
+Make the system capable of producing clean operational outputs for internal teams and suppliers, while giving internal admin a strong reconciliation layer for orders, commissions, supplier costs, and payment verification.
+
+This pass has 8 major priorities:
+
+1. ERP/export architecture
+2. Operational packet exports
+3. NetSuite-friendly and spreadsheet-friendly exports
+4. Reconciliation workspace
+5. Commission verification and payout tracking
+6. Cost variance and discrepancy handling
+7. Better reporting views
+8. Clean admin UX and documentation
+
+-----------------------------------
+1. ERP / EXPORT ARCHITECTURE
+-----------------------------------
+
+Build a structured export architecture that supports:
+- downloadable CSV exports
+- downloadable Excel-friendly exports
+- printable ops packets
+- supplier packet exports
+- finance/reconciliation exports
+
+Exports should be available at:
+- order level
+- event level
+- partner level
+- supplier level
+- filtered list view level
+
+Export formats should be designed so they are useful for:
+- manual NetSuite entry
+- ops teams
+- project managers
+- finance tracking
+- supplier handoff
+- commission verification
+
+Do not attempt live NetSuite integration in this pass.
+Focus on clean structured exports and reconciliation readiness.
+
+-----------------------------------
+2. OPERATIONAL PACKET EXPORTS
+-----------------------------------
+
+Enhance order and supplier packets so they can be exported or printed cleanly.
+
+Support exportable internal packet views containing:
+- order number / internal reference
+- partner
+- portal type
+- event
+- city
+- venue
+- shipping address
+- onsite contact
+- billing contact
+- ordered items
+- package tier or zones selected
+- fulfillment mode
+- print demand
+- hardware demand
+- reserved inventory details
+- shortage flags
+- supplier assignments
+- quote/spec references
+- attached assets list
+- internal notes
+- timeline / due dates
+- status summary
+
+Support supplier-specific packet export containing only:
+- relevant assigned line items
+- relevant assets
+- relevant quote/spec references
+- relevant shipping/install info
+- relevant due dates
+- supplier notes
+
+Add:
+- print-friendly layout
+- download packet button
+- clean headers
+- grouped sections
+- readable line-item structure
+
+-----------------------------------
+3. NETSUITE-FRIENDLY AND SPREADSHEET-FRIENDLY EXPORTS
+-----------------------------------
+
+Build export presets that are easy to use for external systems and manual entry.
+
+Create at least these export types:
+
+A. Order export
+Fields should include:
+- order id
+- created date
+- partner
+- event
+- city
+- venue
+- client contact
+- billing contact
+- payment model
+- payment status
+- total retail amount
+- supplier estimated cost
+- supplier final cost
+- commission expected
+- commission paid
+- discrepancy flag
+- status
+
+B. Order line item export
+Fields should include:
+- order id
+- line item id
+- product
+- package/zone source if applicable
+- quantity
+- fulfillment mode
+- print demand quantity
+- hardware demand quantity
+- assigned supplier
+- supplier status
+- due date
+- shortage quantity
+- inventory source city
+- quote/spec reference title
+- ops notes
+
+C. Supplier export
+Fields should include:
+- supplier
+- assigned orders count
+- assigned line items count
+- due soon count
+- issue flagged count
+- estimated supplier total
+- final supplier total if available
+
+D. Event export
+Fields should include:
+- partner
+- event
+- city
+- venue
+- event dates
+- package availability
+- inventory reserved
+- shortage summary
+- associated orders count
+- total retail booked
+
+E. Finance/reconciliation export
+Fields should include:
+- order id
+- partner
+- payment model
+- billing entity
+- retail amount
+- estimated supplier cost
+- final supplier cost
+- expected commission
+- paid commission
+- payment status
+- supplier payable status
+- payout status
+- discrepancy reason
+- reconciliation notes
+
+Make exports filter-aware so admins can export the current filtered view from major tables.
+
+-----------------------------------
+4. RECONCILIATION WORKSPACE
+-----------------------------------
+
+Build a dedicated internal Reconciliation workspace for Super Admin and Internal Admin.
+
+This should be a true admin work area for checking:
+- what was ordered
+- what supplier cost was expected
+- what supplier cost was final
+- what commission was expected
+- what commission was paid
+- what payment model applied
+- whether anything is missing or mismatched
+
+Core views should include:
+- all orders needing reconciliation
+- orders with discrepancy flags
+- orders with missing commission verification
+- orders with missing supplier final cost
+- orders missing payment confirmation
+- orders by billing model
+- orders by partner
+- orders by supplier
+
+For each order in reconciliation view, show:
+- retail amount
+- supplier estimated cost
+- supplier final cost
+- gross margin
+- expected commission
+- commission paid
+- payment status
+- supplier payable status
+- discrepancy status
+- reconciliation status
+- notes
+
+Statuses can include:
+- not started
+- in review
+- waiting on payment
+- waiting on supplier final
+- waiting on commission verification
+- discrepancy found
+- reconciled
+
+Use polished tables, status badges, filters, and detail drawers.
+
+-----------------------------------
+5. COMMISSION VERIFICATION AND PAYOUT TRACKING
+-----------------------------------
+
+Deepen the commission tracking workflow.
+
+For each order, support:
+- expected commission
+- commission paid
+- paid date
+- paid through
+- verification status
+- discrepancy amount
+- discrepancy notes
+- internal follow-up status
+
+Add a commission verification panel with easy actions such as:
+- mark commission received
+- mark partially paid
+- mark disputed
+- mark verified
+- add discrepancy note
+- add reconciliation note
+
+If commission paid does not match expected commission:
+- auto-flag discrepancy
+- calculate difference
+- show it clearly in admin views
+
+This should help verify what you should be seeing on your commission check.
+
+-----------------------------------
+6. COST VARIANCE AND DISCREPANCY HANDLING
+-----------------------------------
+
+Build stronger discrepancy and variance handling.
+
+Allow internal admins to track:
+- supplier cost variance
+- commission variance
+- billing mismatch
+- missing payment
+- missing supplier final cost
+- wrong billing model applied
+- missing quote/spec reference
+- shortage not resolved
+- manual review required
+
+For each discrepancy:
+- reason
+- severity
+- notes
+- assigned internal owner if feasible
+- status
+- resolution notes
+
+Add:
+- discrepancy summary cards
+- discrepancy list view
+- discrepancy filters
+- quick links from discrepancy to order
+
+-----------------------------------
+7. REPORTING VIEWS AND SUMMARY DASHBOARDS
+-----------------------------------
+
+Enhance internal reporting with export and reconciliation visibility.
+
+Add dashboard widgets or reporting cards for:
+- total retail booked
+- total estimated supplier cost
+- total final supplier cost
+- expected commission
+- commission received
+- outstanding commission variance
+- discrepancy count
+- orders awaiting reconciliation
+- supplier cost variance total
+- orders by billing model
+- orders by partner
+- orders by supplier
+
+Add date range filters if feasible.
+Keep this practical and operational, not bloated BI software.
+
+-----------------------------------
+8. BULK ACTIONS, QUICK ACTIONS, AND NOTES
+-----------------------------------
+
+Add bulk admin actions where sensible:
+- export selected orders
+- export selected line items
+- mark payment received
+- mark supplier final received
+- mark commission verified
+- mark reconciled
+- add reconciliation note
+- flag discrepancy
+
+Improve note separation on order detail pages:
+- ops notes
+- finance notes
+- supplier notes
+- reconciliation notes
+
+Keep them visually distinct and easy to review.
+
+-----------------------------------
+9. ROLE VISIBILITY
+-----------------------------------
+
+Ensure visibility rules remain clean:
+- Super Admin and Internal Admin can access full export and reconciliation views
+- Partner Managers do not see internal margin, expected commission, or sensitive reconciliation data
+- Vendor users do not see internal financial details or unrelated records
+- Client users do not see internal export/reconciliation tooling
+
+-----------------------------------
+10. SEED DATA
+-----------------------------------
+
+Refine seed data to demonstrate:
+- orders in different reconciliation states
+- commission mismatches
+- supplier cost variance examples
+- multiple billing models
+- exportable orders and line items
+- discrepancy examples with notes
+- reconciled and unreconciled orders
+
+-----------------------------------
+11. DESIGN AND UX
+-----------------------------------
+
+Keep the interface premium, clean, and highly operational.
+
+Improve:
+- export menus
+- table actions
+- reconciliation status badges
+- variance displays
+- detail drawers
+- printable layouts
+- finance summary cards
+- discrepancy callouts
+
+Avoid:
+- raw accountant software styling
+- cluttered export dialogs
+- hard to scan tables
+- exposing sensitive data to wrong roles
+
+-----------------------------------
+12. DOCUMENTATION
+-----------------------------------
+
+Update replit.md with:
+- export architecture
+- reconciliation workspace
+- commission verification workflow
+- discrepancy model
+- export presets
+- visibility rules
+- new routes/components
+- recommended next phase
+
+Also create or update a session plan and implement as much of the above as possible in this pass.
+Do not stop after describing the work.
+Actually build it.

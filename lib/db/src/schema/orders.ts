@@ -58,9 +58,44 @@ export const orderItemsTable = pgTable("order_items", {
   inventorySourceInventoryId: integer("inventory_source_inventory_id"),
   inventoryReservationId: integer("inventory_reservation_id"),
   internalFulfillmentNotes: text("internal_fulfillment_notes"),
+  assignedSupplierId: integer("assigned_supplier_id").references(() => suppliersTable.id, { onDelete: "set null" }),
+  supplierAssignmentSource: text("supplier_assignment_source"),
+  supplierStatus: text("supplier_status").notNull().default("unassigned"),
+  supplierDueDate: timestamp("supplier_due_date", { withTimezone: true }),
+  supplierShipDate: timestamp("supplier_ship_date", { withTimezone: true }),
+  supplierDeliveryDate: timestamp("supplier_delivery_date", { withTimezone: true }),
+  supplierInstallDate: timestamp("supplier_install_date", { withTimezone: true }),
+  supplierAcknowledgedAt: timestamp("supplier_acknowledged_at", { withTimezone: true }),
+  supplierReference: text("supplier_reference"),
+  supplierNotes: text("supplier_notes"),
+  exceptionFlag: boolean("exception_flag").notNull().default(false),
+  exceptionReason: text("exception_reason"),
+  exceptionNotes: text("exception_notes"),
   artworkFileUrl: text("artwork_file_url"),
   notes: text("notes"),
   sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const supplierAssignmentHistoryTable = pgTable("supplier_assignment_history", {
+  id: serial("id").primaryKey(),
+  orderItemId: integer("order_item_id").notNull().references(() => orderItemsTable.id, { onDelete: "cascade" }),
+  fromSupplierId: integer("from_supplier_id").references(() => suppliersTable.id, { onDelete: "set null" }),
+  toSupplierId: integer("to_supplier_id").references(() => suppliersTable.id, { onDelete: "set null" }),
+  source: text("source").notNull(),
+  changedByUserId: text("changed_by_user_id"),
+  note: text("note"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const supplierStatusEventsTable = pgTable("supplier_status_events", {
+  id: serial("id").primaryKey(),
+  orderItemId: integer("order_item_id").notNull().references(() => orderItemsTable.id, { onDelete: "cascade" }),
+  fromStatus: text("from_status"),
+  toStatus: text("to_status").notNull(),
+  changedByUserId: text("changed_by_user_id"),
+  changedByRole: text("changed_by_role"),
+  note: text("note"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

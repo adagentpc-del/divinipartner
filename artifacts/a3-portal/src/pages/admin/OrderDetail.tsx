@@ -20,7 +20,39 @@ type OrderItem = {
   reservedQuantity: number | null; shortageQuantity: number | null;
   inventorySourceCityId: number | null; inventorySourceInventoryId: number | null; inventoryReservationId: number | null;
   internalFulfillmentNotes: string | null;
+  assignedSupplierId: number | null; assignedSupplierName: string | null;
+  supplierAssignmentSource: string | null; supplierStatus: string;
+  supplierDueDate: string | null; supplierShipDate: string | null;
+  supplierDeliveryDate: string | null; supplierInstallDate: string | null;
+  supplierAcknowledgedAt: string | null; supplierReference: string | null; supplierNotes: string | null;
+  exceptionFlag: boolean; exceptionReason: string | null; exceptionNotes: string | null;
   artworkFileUrl: string | null; notes: string | null;
+};
+
+const SUPPLIER_STATUSES = [
+  "unassigned", "assigned", "acknowledged", "in_production", "awaiting_assets",
+  "awaiting_approval", "shipped", "delivered", "installed", "completed",
+  "issue_flagged", "cancelled",
+] as const;
+const STATUS_LABEL: Record<string, string> = {
+  unassigned: "Unassigned", assigned: "Assigned", acknowledged: "Acknowledged",
+  in_production: "In Production", awaiting_assets: "Awaiting Assets",
+  awaiting_approval: "Awaiting Approval", shipped: "Shipped",
+  delivered: "Delivered", installed: "Installed", completed: "Completed",
+  issue_flagged: "Issue", cancelled: "Cancelled",
+};
+const STATUS_TONE: Record<string, string> = {
+  unassigned: "bg-zinc-100 text-zinc-700", assigned: "bg-blue-100 text-blue-800",
+  acknowledged: "bg-indigo-100 text-indigo-800", in_production: "bg-amber-100 text-amber-800",
+  awaiting_assets: "bg-orange-100 text-orange-800", awaiting_approval: "bg-purple-100 text-purple-800",
+  shipped: "bg-cyan-100 text-cyan-800", delivered: "bg-emerald-100 text-emerald-800",
+  installed: "bg-emerald-200 text-emerald-900", completed: "bg-emerald-600 text-white",
+  issue_flagged: "bg-red-100 text-red-800", cancelled: "bg-zinc-200 text-zinc-600 line-through",
+};
+const SOURCE_LABEL: Record<string, string> = {
+  product: "Inherited from product", package: "Inherited from package",
+  zone: "Inherited from zone", order: "Inherited from order",
+  manual: "Manually assigned", none: "Unassigned",
 };
 type OrderFull = { id: number; orderNumber: string; partnerId: number; partnerName?: string; eventId: number | null; eventName?: string; status: string; paymentStatus: string; fulfillmentMode: string | null; assignedSupplierId: number | null; supplierName?: string; contactName: string; contactEmail: string; contactPhone: string | null; companyName: string | null; shippingAddressJson: any; billingAddressJson: any; artworkFilesJson: any[] | null; totalEstimate: string | null; notes: string | null; internalNotes: string | null; vendorNotes: string | null; fulfillmentStatus: string | null; createdAt: string; items: OrderItem[]; partner?: any; event?: any; venue?: any; supplier?: any };
 type Supplier = { id: number; name: string };
@@ -78,6 +110,14 @@ export default function OrderDetail() {
   };
 
   const cityName = (cid: number | null) => cities.find(c => c.id === cid)?.name || `City #${cid}`;
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+
+  const bulkAssign = useMutation({
+    mutationFn: ({ supplierId }: { supplierId: number | null }) =>
+      apiFetch(`/api/orders/${id}/bulk-assign-supplier`, { method: "POST", body: JSON.stringify({ itemIds: Array.from(selected), supplierId, source: "manual" }) }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: [`/api/orders/${id}`] }); setSelected(new Set()); toast({ title: "Bulk assignment applied" }); },
+    onError: (e: any) => toast({ title: "Bulk assignment failed", description: e.message, variant: "destructive" }),
+  });
 
   const totalShortage = order.items.reduce((s, it) => s + (it.shortageQuantity || 0), 0);
   const totalReserved = order.items.reduce((s, it) => s + (it.reservedQuantity || 0), 0);
@@ -120,11 +160,24 @@ export default function OrderDetail() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-4">
           <Card className="p-5">
-            <h2 className="font-semibold text-lg mb-4 flex items-center gap-2"><ShoppingCart className="h-5 w-5 text-muted-foreground" />Items ({order.items.length})</h2>
+            <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+              <h2 className="font-semibold text-lg flex items-center gap-2"><ShoppingCart className="h-5 w-5 text-muted-foreground" />Items ({order.items.length})</h2>
+              {selected.size > 0 && (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-muted-foreground">{selected.size} selected</span>
+                  <Select onValueChange={(v) => bulkAssign.mutate({ supplierId: v === "0" ? null : parseInt(v) })}>
+                    <SelectTrigger className="h-8 w-56"><SelectValue placeholder="Bulk assign supplier…" /></SelectTrigger>
+                    <SelectContent><SelectItem value="0">Unassign</SelectItem>{suppliers.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}</SelectContent>
+                  </Select>
+                  <Button variant="ghost" size="sm" onClick={() => setSelected(new Set())}>Clear</Button>
+                </div>
+              )}
+            </div>
             <div className="space-y-3">
               {order.items.map(it => (
-                <div key={it.id} className="border rounded-lg p-3 print:break-inside-avoid">
+                <div key={it.id} className={`border rounded-lg p-3 print:break-inside-avoid ${it.exceptionFlag ? "border-red-300 bg-red-50/30" : ""}`}>
                   <div className="flex items-start gap-3">
+                    <input type="checkbox" className="mt-1 no-print" checked={selected.has(it.id)} onChange={() => { const n = new Set(selected); n.has(it.id) ? n.delete(it.id) : n.add(it.id); setSelected(n); }} />
                     {it.productImageUrl ? <img src={it.productImageUrl} className="h-14 w-14 rounded object-cover bg-muted shrink-0" alt="" /> : <div className="h-14 w-14 rounded bg-muted flex items-center justify-center shrink-0"><ImageIcon className="h-5 w-5 text-muted-foreground" /></div>}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
@@ -149,6 +202,8 @@ export default function OrderDetail() {
                       </div>
 
                       {it.productId && <ProductSpecRefs productId={it.productId} />}
+
+                      <ItemSupplierControls item={it} orderId={id} suppliers={suppliers} />
 
                       {it.notes && <div className="text-xs text-muted-foreground mt-2 italic">Client note: {it.notes}</div>}
                       {it.internalFulfillmentNotes && <div className="text-xs text-muted-foreground mt-1">Internal: {it.internalFulfillmentNotes}</div>}
@@ -224,6 +279,84 @@ export default function OrderDetail() {
           </Card>
         </div>
       </div>
+    </div>
+  );
+}
+
+function ItemSupplierControls({ item, orderId, suppliers }: { item: OrderItem; orderId: number; suppliers: Supplier[] }) {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const [editingDate, setEditingDate] = useState(false);
+  const [editingRef, setEditingRef] = useState(false);
+  const [refValue, setRefValue] = useState(item.supplierReference || "");
+
+  const inv = () => qc.invalidateQueries({ queryKey: [`/api/orders/${orderId}`] });
+  const assign = useMutation({
+    mutationFn: (supplierId: number | null) => apiFetch(`/api/orders/${orderId}/items/${item.id}/assign-supplier`, { method: "POST", body: JSON.stringify({ supplierId, source: "manual" }) }),
+    onSuccess: () => { inv(); toast({ title: "Supplier assigned" }); },
+  });
+  const status = useMutation({
+    mutationFn: (s: string) => apiFetch(`/api/orders/${orderId}/items/${item.id}/status`, { method: "POST", body: JSON.stringify({ status: s, role: "admin" }) }),
+    onSuccess: () => { inv(); toast({ title: "Status updated" }); },
+  });
+  const exception = useMutation({
+    mutationFn: (vars: { flag: boolean; reason?: string | null }) => apiFetch(`/api/orders/${orderId}/items/${item.id}/exception`, { method: "POST", body: JSON.stringify({ flag: vars.flag, reason: vars.reason ?? null, role: "admin" }) }),
+    onSuccess: () => { inv(); toast({ title: "Exception updated" }); },
+  });
+  const dates = useMutation({
+    mutationFn: (body: any) => apiFetch(`/api/orders/${orderId}/items/${item.id}/dates`, { method: "POST", body: JSON.stringify(body) }),
+    onSuccess: () => { inv(); toast({ title: "Saved" }); setEditingDate(false); setEditingRef(false); },
+  });
+
+  const handleAssign = (val: string) => {
+    const newId = val === "0" ? null : parseInt(val);
+    if (item.supplierAssignmentSource && item.supplierAssignmentSource !== "manual" && item.supplierAssignmentSource !== "none" && item.assignedSupplierId !== newId) {
+      if (!confirm(`This supplier was ${SOURCE_LABEL[item.supplierAssignmentSource].toLowerCase()}. Override with a manual assignment?`)) return;
+    }
+    assign.mutate(newId);
+  };
+
+  return (
+    <div className="mt-3 pt-3 border-t border-dashed space-y-2 no-print">
+      <div className="flex flex-wrap items-center gap-2">
+        <Truck className="h-3.5 w-3.5 text-muted-foreground" />
+        <Select value={item.assignedSupplierId?.toString() || "0"} onValueChange={handleAssign}>
+          <SelectTrigger className="h-7 text-xs w-48"><SelectValue placeholder="Assign supplier" /></SelectTrigger>
+          <SelectContent><SelectItem value="0">Unassigned</SelectItem>{suppliers.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}</SelectContent>
+        </Select>
+        <Badge variant="outline" className="text-[10px]">{SOURCE_LABEL[item.supplierAssignmentSource || "none"]}</Badge>
+        <Select value={item.supplierStatus} onValueChange={(v) => status.mutate(v)}>
+          <SelectTrigger className={`h-7 text-xs w-36 ${STATUS_TONE[item.supplierStatus] || ""}`}><SelectValue /></SelectTrigger>
+          <SelectContent>{SUPPLIER_STATUSES.map(s => <SelectItem key={s} value={s} className="text-xs">{STATUS_LABEL[s]}</SelectItem>)}</SelectContent>
+        </Select>
+        {editingDate ? (
+          <Input type="date" autoFocus className="h-7 text-xs w-36"
+            defaultValue={item.supplierDueDate ? new Date(item.supplierDueDate).toISOString().slice(0, 10) : ""}
+            onBlur={(e) => dates.mutate({ supplierDueDate: e.target.value || null })} />
+        ) : (
+          <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setEditingDate(true)}>
+            <Calendar className="h-3 w-3" />{item.supplierDueDate ? `Due ${new Date(item.supplierDueDate).toLocaleDateString()}` : "Set due date"}
+          </Button>
+        )}
+        {editingRef ? (
+          <Input autoFocus className="h-7 text-xs w-44" placeholder="PO / vendor ref"
+            value={refValue} onChange={(e) => setRefValue(e.target.value)}
+            onBlur={() => dates.mutate({ supplierReference: refValue || null })}
+            onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} />
+        ) : (
+          <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setEditingRef(true)}>
+            <FileText className="h-3 w-3" />{item.supplierReference || "Add ref"}
+          </Button>
+        )}
+        <Button size="sm" variant={item.exceptionFlag ? "destructive" : "ghost"} className="h-7 text-xs gap-1"
+          onClick={() => {
+            if (item.exceptionFlag) { exception.mutate({ flag: false }); return; }
+            const reason = prompt("Issue reason?"); if (reason !== null) exception.mutate({ flag: true, reason });
+          }}>
+          <AlertTriangle className="h-3 w-3" />{item.exceptionFlag ? "Clear issue" : "Flag issue"}
+        </Button>
+      </div>
+      {item.exceptionFlag && item.exceptionReason && <div className="text-xs text-red-700">⚠ {item.exceptionReason}</div>}
     </div>
   );
 }

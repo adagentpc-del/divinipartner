@@ -269,3 +269,38 @@ Connects fulfillment modes to inventory reservations, surfaces partner committed
 Order `qty=7` of an asset with 5 available → `reservedQuantity=5`, `shortageQuantity=2`, inventory `reserved` 0→5; order delete releases the reservation back to 0.
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
+
+## Multi-Supplier Routing & Fulfillment Workflow (April 2026)
+
+The portal supports per-line-item supplier routing on top of the order-level supplier. Every order item carries its own supplier, status, dates, and exception state, with a full audit trail.
+
+### Schema additions
+- `partnerBrandingLocations.defaultSupplierId` — preferred supplier for items pulled from a branding zone.
+- `orderItems` (new columns): `assignedSupplierId`, `supplierAssignmentSource` (`product|package|zone|order|manual|none`), `supplierStatus` (12-value enum), `supplierDueDate`, `supplierShipDate`, `supplierDeliveryDate`, `supplierInstallDate`, `supplierAcknowledgedAt`, `supplierReference`, `supplierNotes`, `exceptionFlag`, `exceptionReason`, `exceptionNotes`.
+- `supplier_assignment_history` — every supplier change (from→to, source, note, user, timestamp).
+- `supplier_status_events` — every status change (from→to, role, note, user, timestamp).
+
+### Inheritance order (resolved server-side on item create/update)
+`product.supplierId` → `partnerBrandingLocations.defaultSupplierId` (zone) → `orders.assignedSupplierId` (order-level) → `none`. Manual overrides set `supplierAssignmentSource = 'manual'` and are preserved on later edits.
+
+### Status model
+`unassigned → assigned → acknowledged → in_production → (awaiting_assets | awaiting_approval) → shipped → delivered → installed → completed`. `issue_flagged` is an orthogonal exception state. Vendors are restricted to a forward-only transition table; admins can set any status.
+
+### API routes (under `/api`)
+- `POST /orders/:orderId/items/:itemId/assign-supplier` `{ supplierId, source?, note? }`
+- `POST /orders/:orderId/bulk-assign-supplier` `{ itemIds[], supplierId, source? }`
+- `POST /orders/:orderId/items/:itemId/status` `{ status, role, note? }` — vendor transitions enforced; auto-fills date columns and sets `exceptionFlag` on `issue_flagged`.
+- `POST /orders/:orderId/items/:itemId/exception` `{ flag, reason?, notes? }`
+- `POST /orders/:orderId/items/:itemId/dates` `{ supplierDueDate?, supplierShipDate?, supplierDeliveryDate?, supplierInstallDate?, supplierReference?, supplierNotes? }`
+- `GET /orders/:orderId/items/:itemId/history` — `{ assignments[], statuses[] }` with supplier names.
+- `GET /orders/:orderId/items/:itemId/supplier-recommendations` — ranked by inheritance source then active suppliers.
+- `GET /fulfillment/command-center` — line-item-grain results joined with order/partner/event/supplier; filters: `supplierId, status, partnerId, portalType, eventId, cityId, fulfillmentMode, shortageOnly, issueOnly, unassignedOnly, dueWithinDays, hasQuoteSpec`; stats: `unassigned, awaitingAcknowledge, dueSoon (≤7d), awaitingAssets, issues, shippedNotDelivered, installUpcoming, completedToday, missingQuoteSpec, withShortage`.
+- `GET /vendor/orders?supplierId` — orders containing items for that supplier; each order is filtered to only the supplier's items (no margins, no internal notes; vendor notes only).
+- `GET /vendor/items?supplierId&bucket=all|due_soon|awaiting_assets|in_production|issues|recent` — vendor dashboard with bucket counts.
+- `GET /vendor/orders/:orderId/packet?supplierId` — clean printable packet (order header, ship-to, items, products, vendor-visible quote assets only).
+
+### UI surfaces
+- `/admin/fulfillment` — Fulfillment Command Center: clickable stat cards (toggle filters), filter rail, line-item table with inline status pill, due-date editor, exception toggle, bulk supplier assignment.
+- `/admin/orders/:id` — OrderDetail items now have `ItemSupplierControls` per row: supplier picker (override-confirm prompt when overriding inherited), source badge, status pill, due-date popover, supplier reference inline editor, exception flag/clear; checkboxes enable bulk supplier assignment toolbar.
+- `/admin/vendor` — Vendor Workspace: supplier perspective switcher + bucket tabs (All / Due in 7d / Awaiting Assets / In Production / Issues), vendor-only status transitions, click any item to open Packet View (printable, includes vendor-visible quote assets and ship-to).
+- Sidebar nav adds "Fulfillment" link next to Orders.

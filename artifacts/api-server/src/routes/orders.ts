@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, sql, desc, inArray } from "drizzle-orm";
-import { db, ordersTable, orderItemsTable, partnersTable, eventsTable, packagesTable, suppliersTable, venuesTable, productCatalogTable, partnerBrandingLocationsTable, citiesTable, inventoryTable, inventoryReservationsTable } from "@workspace/db";
+import { db, ordersTable, orderItemsTable, partnersTable, eventsTable, packagesTable, suppliersTable, venuesTable, productCatalogTable, partnerBrandingLocationsTable, citiesTable, inventoryTable, inventoryReservationsTable, supplierAssignmentHistoryTable, supplierStatusEventsTable, quoteAssetsTable } from "@workspace/db";
 import { z } from "zod";
 
 const FULFILLMENT_MODES = [
@@ -22,6 +22,29 @@ const AddressSchema = z.object({
   country: z.string().optional(),
 });
 
+const SUPPLIER_STATUSES = [
+  "unassigned", "assigned", "acknowledged", "in_production", "awaiting_assets",
+  "awaiting_approval", "shipped", "delivered", "installed", "completed",
+  "issue_flagged", "cancelled",
+] as const;
+
+const ASSIGNMENT_SOURCES = ["product", "package", "zone", "order", "manual", "none"] as const;
+
+const VENDOR_ALLOWED_TRANSITIONS: Record<string, readonly string[]> = {
+  unassigned: [],
+  assigned: ["acknowledged", "issue_flagged"],
+  acknowledged: ["in_production", "awaiting_assets", "awaiting_approval", "issue_flagged"],
+  in_production: ["awaiting_assets", "awaiting_approval", "shipped", "issue_flagged"],
+  awaiting_assets: ["in_production", "issue_flagged"],
+  awaiting_approval: ["in_production", "shipped", "issue_flagged"],
+  shipped: ["delivered", "issue_flagged"],
+  delivered: ["installed", "completed", "issue_flagged"],
+  installed: ["completed", "issue_flagged"],
+  issue_flagged: ["acknowledged", "in_production", "shipped"],
+  completed: [],
+  cancelled: [],
+};
+
 const OrderItemBody = z.object({
   itemType: z.enum(["product", "package", "package_addon", "branding_zone"]),
   productId: z.number().int().nullable().optional(),
@@ -34,10 +57,59 @@ const OrderItemBody = z.object({
   inventorySourceCityId: z.number().int().nullable().optional(),
   inventorySourceInventoryId: z.number().int().nullable().optional(),
   internalFulfillmentNotes: z.string().nullable().optional(),
+  assignedSupplierId: z.number().int().nullable().optional(),
+  supplierAssignmentSource: z.enum(ASSIGNMENT_SOURCES).nullable().optional(),
+  supplierStatus: z.enum(SUPPLIER_STATUSES).optional(),
+  supplierDueDate: z.string().nullable().optional(),
+  supplierShipDate: z.string().nullable().optional(),
+  supplierDeliveryDate: z.string().nullable().optional(),
+  supplierInstallDate: z.string().nullable().optional(),
+  supplierReference: z.string().nullable().optional(),
+  supplierNotes: z.string().nullable().optional(),
+  exceptionFlag: z.boolean().optional(),
+  exceptionReason: z.string().nullable().optional(),
+  exceptionNotes: z.string().nullable().optional(),
   artworkFileUrl: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
   sortOrder: z.number().int().optional(),
 });
+
+type ResolveCtx = {
+  productSuppliers: Map<number, number | null>;
+  zoneSuppliers: Map<number, number | null>;
+  orderSupplierId: number | null;
+};
+
+async function loadResolveContext(tx: any, items: Array<{ productId?: number | null; brandingZoneId?: number | null }>, orderSupplierId: number | null): Promise<ResolveCtx> {
+  const productIds = Array.from(new Set(items.map(i => i.productId).filter((x): x is number => !!x)));
+  const zoneIds = Array.from(new Set(items.map(i => i.brandingZoneId).filter((x): x is number => !!x)));
+  const productSuppliers = new Map<number, number | null>();
+  const zoneSuppliers = new Map<number, number | null>();
+  if (productIds.length) {
+    const rows = await tx.select({ id: productCatalogTable.id, supplierId: productCatalogTable.supplierId }).from(productCatalogTable).where(inArray(productCatalogTable.id, productIds));
+    for (const r of rows) productSuppliers.set(r.id, r.supplierId ?? null);
+  }
+  if (zoneIds.length) {
+    const rows = await tx.select({ id: partnerBrandingLocationsTable.id, supplierId: partnerBrandingLocationsTable.defaultSupplierId }).from(partnerBrandingLocationsTable).where(inArray(partnerBrandingLocationsTable.id, zoneIds));
+    for (const r of rows) zoneSuppliers.set(r.id, r.supplierId ?? null);
+  }
+  return { productSuppliers, zoneSuppliers, orderSupplierId };
+}
+
+function resolveDefaultSupplier(item: { productId?: number | null; brandingZoneId?: number | null }, ctx: ResolveCtx): { supplierId: number | null; source: typeof ASSIGNMENT_SOURCES[number] } {
+  if (item.productId) {
+    const s = ctx.productSuppliers.get(item.productId);
+    if (s) return { supplierId: s, source: "product" };
+  }
+  if (item.brandingZoneId) {
+    const s = ctx.zoneSuppliers.get(item.brandingZoneId);
+    if (s) return { supplierId: s, source: "zone" };
+  }
+  if (ctx.orderSupplierId) return { supplierId: ctx.orderSupplierId, source: "order" };
+  return { supplierId: null, source: "none" };
+}
+
+const toDateOrNull = (v: any) => v ? new Date(v) : null;
 
 const OrderBody = z.object({
   partnerId: z.number().int(),
@@ -243,6 +315,20 @@ router.get("/orders/:id", async (req, res): Promise<void> => {
     inventorySourceInventoryId: orderItemsTable.inventorySourceInventoryId,
     inventoryReservationId: orderItemsTable.inventoryReservationId,
     internalFulfillmentNotes: orderItemsTable.internalFulfillmentNotes,
+    assignedSupplierId: orderItemsTable.assignedSupplierId,
+    assignedSupplierName: suppliersTable.name,
+    supplierAssignmentSource: orderItemsTable.supplierAssignmentSource,
+    supplierStatus: orderItemsTable.supplierStatus,
+    supplierDueDate: orderItemsTable.supplierDueDate,
+    supplierShipDate: orderItemsTable.supplierShipDate,
+    supplierDeliveryDate: orderItemsTable.supplierDeliveryDate,
+    supplierInstallDate: orderItemsTable.supplierInstallDate,
+    supplierAcknowledgedAt: orderItemsTable.supplierAcknowledgedAt,
+    supplierReference: orderItemsTable.supplierReference,
+    supplierNotes: orderItemsTable.supplierNotes,
+    exceptionFlag: orderItemsTable.exceptionFlag,
+    exceptionReason: orderItemsTable.exceptionReason,
+    exceptionNotes: orderItemsTable.exceptionNotes,
     artworkFileUrl: orderItemsTable.artworkFileUrl,
     notes: orderItemsTable.notes,
     sortOrder: orderItemsTable.sortOrder,
@@ -251,6 +337,7 @@ router.get("/orders/:id", async (req, res): Promise<void> => {
     .leftJoin(packagesTable, eq(orderItemsTable.packageId, packagesTable.id))
     .leftJoin(partnerBrandingLocationsTable, eq(orderItemsTable.brandingZoneId, partnerBrandingLocationsTable.id))
     .leftJoin(citiesTable, eq(orderItemsTable.inventorySourceCityId, citiesTable.id))
+    .leftJoin(suppliersTable, eq(orderItemsTable.assignedSupplierId, suppliersTable.id))
     .where(eq(orderItemsTable.orderId, id))
     .orderBy(orderItemsTable.sortOrder);
 
@@ -274,6 +361,7 @@ router.post("/orders", async (req, res): Promise<void> => {
       if (items && items.length) {
         const productIds = items.map(i => i.productId).filter((x): x is number => !!x);
         const caps = await loadProductCaps(tx as any, productIds);
+        const ctx = await loadResolveContext(tx, items, createdOrder.assignedSupplierId ?? null);
         for (let idx = 0; idx < items.length; idx++) {
           const it = items[idx];
           const qty = it.quantity ?? 1;
@@ -286,7 +374,16 @@ router.post("/orders", async (req, res): Promise<void> => {
           } else if (it.fulfillmentMode === "use_existing_partner_inventory") {
             shortageQty = qty;
           }
-          await tx.insert(orderItemsTable).values({
+          let supplierId: number | null = it.assignedSupplierId ?? null;
+          let source: string = it.supplierAssignmentSource ?? "none";
+          if (it.assignedSupplierId !== undefined && it.assignedSupplierId !== null) {
+            source = it.supplierAssignmentSource ?? "manual";
+          } else {
+            const r = resolveDefaultSupplier(it, ctx);
+            supplierId = r.supplierId; source = r.source;
+          }
+          const supplierStatus = it.supplierStatus ?? (supplierId ? "assigned" : "unassigned");
+          const [created] = await tx.insert(orderItemsTable).values({
             orderId: createdOrder.id,
             itemType: it.itemType,
             productId: it.productId ?? null,
@@ -305,10 +402,26 @@ router.post("/orders", async (req, res): Promise<void> => {
             inventorySourceInventoryId: it.inventorySourceInventoryId ?? null,
             inventoryReservationId: reservationId,
             internalFulfillmentNotes: it.internalFulfillmentNotes ?? null,
+            assignedSupplierId: supplierId,
+            supplierAssignmentSource: source,
+            supplierStatus,
+            supplierDueDate: toDateOrNull(it.supplierDueDate),
+            supplierShipDate: toDateOrNull(it.supplierShipDate),
+            supplierDeliveryDate: toDateOrNull(it.supplierDeliveryDate),
+            supplierInstallDate: toDateOrNull(it.supplierInstallDate),
+            supplierReference: it.supplierReference ?? null,
+            supplierNotes: it.supplierNotes ?? null,
+            exceptionFlag: it.exceptionFlag ?? false,
+            exceptionReason: it.exceptionReason ?? null,
+            exceptionNotes: it.exceptionNotes ?? null,
             artworkFileUrl: it.artworkFileUrl ?? null,
             notes: it.notes ?? null,
             sortOrder: it.sortOrder ?? idx,
-          });
+          }).returning();
+          if (supplierId) {
+            await tx.insert(supplierAssignmentHistoryTable).values({ orderItemId: created.id, fromSupplierId: null, toSupplierId: supplierId, source });
+          }
+          await tx.insert(supplierStatusEventsTable).values({ orderItemId: created.id, fromStatus: null, toStatus: supplierStatus, changedByRole: "system" });
         }
       }
       return createdOrder;
@@ -338,6 +451,7 @@ router.patch("/orders/:id", async (req, res): Promise<void> => {
         await tx.delete(orderItemsTable).where(eq(orderItemsTable.orderId, id));
         const productIds = items.map(i => i.productId).filter((x): x is number => !!x);
         const caps = await loadProductCaps(tx as any, productIds);
+        const ctx = await loadResolveContext(tx, items, row.assignedSupplierId ?? null);
         for (let idx = 0; idx < items.length; idx++) {
           const it = items[idx];
           const qty = it.quantity ?? 1;
@@ -350,15 +464,31 @@ router.patch("/orders/:id", async (req, res): Promise<void> => {
           } else if (it.fulfillmentMode === "use_existing_partner_inventory") {
             shortageQty = qty;
           }
-          await tx.insert(orderItemsTable).values({
+          let supplierId: number | null = it.assignedSupplierId ?? null;
+          let source: string = it.supplierAssignmentSource ?? "none";
+          if (it.assignedSupplierId !== undefined && it.assignedSupplierId !== null) {
+            source = it.supplierAssignmentSource ?? "manual";
+          } else {
+            const r = resolveDefaultSupplier(it, ctx);
+            supplierId = r.supplierId; source = r.source;
+          }
+          const supplierStatus = it.supplierStatus ?? (supplierId ? "assigned" : "unassigned");
+          const [created] = await tx.insert(orderItemsTable).values({
             orderId: id, itemType: it.itemType, productId: it.productId ?? null, packageId: it.packageId ?? null, brandingZoneId: it.brandingZoneId ?? null,
             name: it.name, quantity: qty, unitPrice: it.unitPrice ?? null, fulfillmentMode: it.fulfillmentMode ?? null,
             hardwareRequired: math.hardwareRequired, printDemandQuantity: math.printDemand, hardwareDemandQuantity: math.hardwareDemand,
             reservedQuantity: reservedQty, shortageQuantity: shortageQty,
             inventorySourceCityId: it.inventorySourceCityId ?? null, inventorySourceInventoryId: it.inventorySourceInventoryId ?? null,
             inventoryReservationId: reservationId, internalFulfillmentNotes: it.internalFulfillmentNotes ?? null,
+            assignedSupplierId: supplierId, supplierAssignmentSource: source, supplierStatus,
+            supplierDueDate: toDateOrNull(it.supplierDueDate), supplierShipDate: toDateOrNull(it.supplierShipDate),
+            supplierDeliveryDate: toDateOrNull(it.supplierDeliveryDate), supplierInstallDate: toDateOrNull(it.supplierInstallDate),
+            supplierReference: it.supplierReference ?? null, supplierNotes: it.supplierNotes ?? null,
+            exceptionFlag: it.exceptionFlag ?? false, exceptionReason: it.exceptionReason ?? null, exceptionNotes: it.exceptionNotes ?? null,
             artworkFileUrl: it.artworkFileUrl ?? null, notes: it.notes ?? null, sortOrder: it.sortOrder ?? idx,
-          });
+          }).returning();
+          if (supplierId) await tx.insert(supplierAssignmentHistoryTable).values({ orderItemId: created.id, fromSupplierId: null, toSupplierId: supplierId, source });
+          await tx.insert(supplierStatusEventsTable).values({ orderItemId: created.id, fromStatus: null, toStatus: supplierStatus, changedByRole: "system" });
         }
       }
       return row;
@@ -381,29 +511,373 @@ router.delete("/orders/:id", async (req, res): Promise<void> => {
   res.json({ success: true });
 });
 
-router.get("/vendor/orders", async (req, res): Promise<void> => {
-  const supplierId = req.query.supplierId ? parseInt(String(req.query.supplierId)) : null;
-  if (!supplierId) { res.status(400).json({ error: "supplierId required" }); return; }
-  const rows = await db.select({
-    id: ordersTable.id,
+// ----- Per-item assignment / status / exception endpoints -----
+
+const AssignSupplierBody = z.object({
+  supplierId: z.number().int().nullable(),
+  source: z.enum(ASSIGNMENT_SOURCES).optional(),
+  note: z.string().nullable().optional(),
+  changedByUserId: z.string().nullable().optional(),
+});
+
+router.post("/orders/:orderId/items/:itemId/assign-supplier", async (req, res): Promise<void> => {
+  const itemId = parseInt(req.params.itemId);
+  const parsed = AssignSupplierBody.safeParse(req.body);
+  if (isNaN(itemId) || !parsed.success) { res.status(400).json({ error: parsed.success ? "bad id" : parsed.error.message }); return; }
+  const { supplierId, source = "manual", note, changedByUserId } = parsed.data;
+  const updated = await db.transaction(async (tx) => {
+    const [item] = await tx.select().from(orderItemsTable).where(eq(orderItemsTable.id, itemId));
+    if (!item) return null;
+    const newStatus = supplierId ? (item.supplierStatus === "unassigned" ? "assigned" : item.supplierStatus) : "unassigned";
+    const [row] = await tx.update(orderItemsTable).set({
+      assignedSupplierId: supplierId,
+      supplierAssignmentSource: source,
+      supplierStatus: newStatus,
+    }).where(eq(orderItemsTable.id, itemId)).returning();
+    await tx.insert(supplierAssignmentHistoryTable).values({ orderItemId: itemId, fromSupplierId: item.assignedSupplierId ?? null, toSupplierId: supplierId, source, note: note ?? null, changedByUserId: changedByUserId ?? null });
+    if (item.supplierStatus !== newStatus) {
+      await tx.insert(supplierStatusEventsTable).values({ orderItemId: itemId, fromStatus: item.supplierStatus, toStatus: newStatus, changedByUserId: changedByUserId ?? null, changedByRole: "admin" });
+    }
+    return row;
+  });
+  if (!updated) { res.status(404).json({ error: "Item not found" }); return; }
+  res.json(updated);
+});
+
+router.post("/orders/:orderId/bulk-assign-supplier", async (req, res): Promise<void> => {
+  const orderId = parseInt(req.params.orderId);
+  const Body = z.object({ itemIds: z.array(z.number().int()).min(1), supplierId: z.number().int().nullable(), source: z.enum(ASSIGNMENT_SOURCES).optional(), note: z.string().optional(), changedByUserId: z.string().optional() });
+  const parsed = Body.safeParse(req.body);
+  if (isNaN(orderId) || !parsed.success) { res.status(400).json({ error: parsed.success ? "bad id" : parsed.error.message }); return; }
+  const { itemIds, supplierId, source = "manual", note, changedByUserId } = parsed.data;
+  const updatedCount = await db.transaction(async (tx) => {
+    const items = await tx.select().from(orderItemsTable).where(and(eq(orderItemsTable.orderId, orderId), inArray(orderItemsTable.id, itemIds)));
+    for (const item of items) {
+      const newStatus = supplierId ? (item.supplierStatus === "unassigned" ? "assigned" : item.supplierStatus) : "unassigned";
+      await tx.update(orderItemsTable).set({ assignedSupplierId: supplierId, supplierAssignmentSource: source, supplierStatus: newStatus }).where(eq(orderItemsTable.id, item.id));
+      await tx.insert(supplierAssignmentHistoryTable).values({ orderItemId: item.id, fromSupplierId: item.assignedSupplierId ?? null, toSupplierId: supplierId, source, note: note ?? null, changedByUserId: changedByUserId ?? null });
+      if (item.supplierStatus !== newStatus) {
+        await tx.insert(supplierStatusEventsTable).values({ orderItemId: item.id, fromStatus: item.supplierStatus, toStatus: newStatus, changedByUserId: changedByUserId ?? null, changedByRole: "admin" });
+      }
+    }
+    return items.length;
+  });
+  res.json({ updated: updatedCount });
+});
+
+const StatusBody = z.object({
+  status: z.enum(SUPPLIER_STATUSES),
+  note: z.string().nullable().optional(),
+  changedByUserId: z.string().nullable().optional(),
+  role: z.enum(["admin", "vendor", "system"]).optional(),
+});
+
+router.post("/orders/:orderId/items/:itemId/status", async (req, res): Promise<void> => {
+  const itemId = parseInt(req.params.itemId);
+  const parsed = StatusBody.safeParse(req.body);
+  if (isNaN(itemId) || !parsed.success) { res.status(400).json({ error: parsed.success ? "bad id" : parsed.error.message }); return; }
+  const { status, note, changedByUserId, role = "admin" } = parsed.data;
+  const updated = await db.transaction(async (tx) => {
+    const [item] = await tx.select().from(orderItemsTable).where(eq(orderItemsTable.id, itemId));
+    if (!item) return null;
+    if (role === "vendor") {
+      const allowed = VENDOR_ALLOWED_TRANSITIONS[item.supplierStatus] ?? [];
+      if (!allowed.includes(status)) {
+        const err: any = new Error(`Vendor cannot transition from ${item.supplierStatus} to ${status}`);
+        err.code = 403; throw err;
+      }
+    }
+    const patch: any = { supplierStatus: status };
+    const now = new Date();
+    if (status === "acknowledged" && !item.supplierAcknowledgedAt) patch.supplierAcknowledgedAt = now;
+    if (status === "shipped" && !item.supplierShipDate) patch.supplierShipDate = now;
+    if (status === "delivered" && !item.supplierDeliveryDate) patch.supplierDeliveryDate = now;
+    if (status === "installed" && !item.supplierInstallDate) patch.supplierInstallDate = now;
+    if (status === "issue_flagged") patch.exceptionFlag = true;
+    const [row] = await tx.update(orderItemsTable).set(patch).where(eq(orderItemsTable.id, itemId)).returning();
+    await tx.insert(supplierStatusEventsTable).values({ orderItemId: itemId, fromStatus: item.supplierStatus, toStatus: status, changedByUserId: changedByUserId ?? null, changedByRole: role, note: note ?? null });
+    return row;
+  }).catch(e => { if (e.code === 403) { res.status(403).json({ error: e.message }); return null; } throw e; });
+  if (res.headersSent) return;
+  if (!updated) { res.status(404).json({ error: "Item not found" }); return; }
+  res.json(updated);
+});
+
+const ExceptionBody = z.object({ flag: z.boolean(), reason: z.string().nullable().optional(), notes: z.string().nullable().optional(), changedByUserId: z.string().nullable().optional(), role: z.enum(["admin", "vendor", "system"]).optional() });
+
+router.post("/orders/:orderId/items/:itemId/exception", async (req, res): Promise<void> => {
+  const itemId = parseInt(req.params.itemId);
+  const parsed = ExceptionBody.safeParse(req.body);
+  if (isNaN(itemId) || !parsed.success) { res.status(400).json({ error: parsed.success ? "bad id" : parsed.error.message }); return; }
+  const { flag, reason, notes, changedByUserId, role = "admin" } = parsed.data;
+  const [item] = await db.select().from(orderItemsTable).where(eq(orderItemsTable.id, itemId));
+  if (!item) { res.status(404).json({ error: "Item not found" }); return; }
+  const patch: any = { exceptionFlag: flag, exceptionReason: reason ?? null, exceptionNotes: notes ?? null };
+  if (flag && item.supplierStatus !== "issue_flagged") patch.supplierStatus = "issue_flagged";
+  await db.transaction(async (tx) => {
+    await tx.update(orderItemsTable).set(patch).where(eq(orderItemsTable.id, itemId));
+    if (patch.supplierStatus) await tx.insert(supplierStatusEventsTable).values({ orderItemId: itemId, fromStatus: item.supplierStatus, toStatus: "issue_flagged", changedByUserId: changedByUserId ?? null, changedByRole: role, note: reason ?? null });
+  });
+  const [row] = await db.select().from(orderItemsTable).where(eq(orderItemsTable.id, itemId));
+  res.json(row);
+});
+
+const DatesBody = z.object({ supplierDueDate: z.string().nullable().optional(), supplierShipDate: z.string().nullable().optional(), supplierDeliveryDate: z.string().nullable().optional(), supplierInstallDate: z.string().nullable().optional(), supplierReference: z.string().nullable().optional(), supplierNotes: z.string().nullable().optional() });
+
+router.post("/orders/:orderId/items/:itemId/dates", async (req, res): Promise<void> => {
+  const itemId = parseInt(req.params.itemId);
+  const parsed = DatesBody.safeParse(req.body);
+  if (isNaN(itemId) || !parsed.success) { res.status(400).json({ error: parsed.success ? "bad id" : parsed.error.message }); return; }
+  const d = parsed.data;
+  const patch: any = {};
+  if ("supplierDueDate" in d) patch.supplierDueDate = toDateOrNull(d.supplierDueDate);
+  if ("supplierShipDate" in d) patch.supplierShipDate = toDateOrNull(d.supplierShipDate);
+  if ("supplierDeliveryDate" in d) patch.supplierDeliveryDate = toDateOrNull(d.supplierDeliveryDate);
+  if ("supplierInstallDate" in d) patch.supplierInstallDate = toDateOrNull(d.supplierInstallDate);
+  if ("supplierReference" in d) patch.supplierReference = d.supplierReference ?? null;
+  if ("supplierNotes" in d) patch.supplierNotes = d.supplierNotes ?? null;
+  const [row] = await db.update(orderItemsTable).set(patch).where(eq(orderItemsTable.id, itemId)).returning();
+  if (!row) { res.status(404).json({ error: "Item not found" }); return; }
+  res.json(row);
+});
+
+router.get("/orders/:orderId/items/:itemId/history", async (req, res) => {
+  const itemId = parseInt(req.params.itemId);
+  const [assignments, statuses] = await Promise.all([
+    db.select({
+      id: supplierAssignmentHistoryTable.id, fromSupplierId: supplierAssignmentHistoryTable.fromSupplierId,
+      toSupplierId: supplierAssignmentHistoryTable.toSupplierId, source: supplierAssignmentHistoryTable.source,
+      note: supplierAssignmentHistoryTable.note, changedByUserId: supplierAssignmentHistoryTable.changedByUserId,
+      createdAt: supplierAssignmentHistoryTable.createdAt,
+      fromSupplierName: sql<string | null>`(SELECT name FROM suppliers WHERE id = ${supplierAssignmentHistoryTable.fromSupplierId})`,
+      toSupplierName: sql<string | null>`(SELECT name FROM suppliers WHERE id = ${supplierAssignmentHistoryTable.toSupplierId})`,
+    }).from(supplierAssignmentHistoryTable).where(eq(supplierAssignmentHistoryTable.orderItemId, itemId)).orderBy(desc(supplierAssignmentHistoryTable.createdAt)),
+    db.select().from(supplierStatusEventsTable).where(eq(supplierStatusEventsTable.orderItemId, itemId)).orderBy(desc(supplierStatusEventsTable.createdAt)),
+  ]);
+  res.json({ assignments, statuses });
+});
+
+// ----- Recommended suppliers for an item -----
+router.get("/orders/:orderId/items/:itemId/supplier-recommendations", async (req, res): Promise<void> => {
+  const itemId = parseInt(req.params.itemId);
+  const [item] = await db.select().from(orderItemsTable).where(eq(orderItemsTable.id, itemId));
+  if (!item) { res.status(404).json({ error: "Item not found" }); return; }
+  const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, item.orderId));
+  const recs: Array<{ supplierId: number; name: string; reason: string }> = [];
+  const seen = new Set<number>();
+  if (item.productId) {
+    const [p] = await db.select({ id: productCatalogTable.id, supplierId: productCatalogTable.supplierId, name: suppliersTable.name }).from(productCatalogTable).leftJoin(suppliersTable, eq(productCatalogTable.supplierId, suppliersTable.id)).where(eq(productCatalogTable.id, item.productId));
+    if (p?.supplierId && p.name) { recs.push({ supplierId: p.supplierId, name: p.name, reason: "Default supplier on product" }); seen.add(p.supplierId); }
+  }
+  if (item.brandingZoneId) {
+    const [z] = await db.select({ supplierId: partnerBrandingLocationsTable.defaultSupplierId, name: suppliersTable.name }).from(partnerBrandingLocationsTable).leftJoin(suppliersTable, eq(partnerBrandingLocationsTable.defaultSupplierId, suppliersTable.id)).where(eq(partnerBrandingLocationsTable.id, item.brandingZoneId));
+    if (z?.supplierId && z.name && !seen.has(z.supplierId)) { recs.push({ supplierId: z.supplierId, name: z.name, reason: "Default supplier on branding zone" }); seen.add(z.supplierId); }
+  }
+  if (order?.assignedSupplierId && !seen.has(order.assignedSupplierId)) {
+    const [s] = await db.select().from(suppliersTable).where(eq(suppliersTable.id, order.assignedSupplierId));
+    if (s) { recs.push({ supplierId: s.id, name: s.name, reason: "Assigned at order level" }); seen.add(s.id); }
+  }
+  // Active suppliers as fallback options
+  const others = await db.select().from(suppliersTable).where(eq(suppliersTable.isActive, true));
+  for (const s of others) if (!seen.has(s.id)) recs.push({ supplierId: s.id, name: s.name, reason: "Active supplier" });
+  res.json(recs);
+});
+
+// ----- Internal Fulfillment Command Center -----
+
+router.get("/fulfillment/command-center", async (req, res) => {
+  const conditions: any[] = [];
+  const q = req.query;
+  if (q.supplierId) conditions.push(eq(orderItemsTable.assignedSupplierId, parseInt(String(q.supplierId))));
+  if (q.status) conditions.push(eq(orderItemsTable.supplierStatus, String(q.status)));
+  if (q.partnerId) conditions.push(eq(ordersTable.partnerId, parseInt(String(q.partnerId))));
+  if (q.portalType) conditions.push(eq(ordersTable.portalType, String(q.portalType)));
+  if (q.eventId) conditions.push(eq(ordersTable.eventId, parseInt(String(q.eventId))));
+  if (q.fulfillmentMode) conditions.push(eq(orderItemsTable.fulfillmentMode, String(q.fulfillmentMode)));
+  const truthy = (v: any) => v === "1" || v === "true" || v === true;
+  if (truthy(q.shortageOnly)) conditions.push(sql`${orderItemsTable.shortageQuantity} > 0`);
+  if (truthy(q.issueOnly)) conditions.push(eq(orderItemsTable.exceptionFlag, true));
+  if (truthy(q.unassignedOnly)) conditions.push(sql`${orderItemsTable.assignedSupplierId} IS NULL`);
+  if (q.dueWithinDays) {
+    const days = parseInt(String(q.dueWithinDays));
+    conditions.push(sql`${orderItemsTable.supplierDueDate} IS NOT NULL AND ${orderItemsTable.supplierDueDate} <= NOW() + (${days} || ' days')::interval`);
+  }
+
+  const items = await db.select({
+    id: orderItemsTable.id,
+    orderId: orderItemsTable.orderId,
     orderNumber: ordersTable.orderNumber,
     partnerId: ordersTable.partnerId,
     partnerName: partnersTable.companyName,
     eventId: ordersTable.eventId,
     eventName: eventsTable.name,
+    eventStartDate: eventsTable.eventStartDate,
+    portalType: ordersTable.portalType,
+    name: orderItemsTable.name,
+    quantity: orderItemsTable.quantity,
+    productId: orderItemsTable.productId,
+    fulfillmentMode: orderItemsTable.fulfillmentMode,
+    printDemandQuantity: orderItemsTable.printDemandQuantity,
+    hardwareDemandQuantity: orderItemsTable.hardwareDemandQuantity,
+    shortageQuantity: orderItemsTable.shortageQuantity,
+    assignedSupplierId: orderItemsTable.assignedSupplierId,
+    supplierName: suppliersTable.name,
+    supplierAssignmentSource: orderItemsTable.supplierAssignmentSource,
+    supplierStatus: orderItemsTable.supplierStatus,
+    supplierDueDate: orderItemsTable.supplierDueDate,
+    supplierShipDate: orderItemsTable.supplierShipDate,
+    supplierAcknowledgedAt: orderItemsTable.supplierAcknowledgedAt,
+    supplierReference: orderItemsTable.supplierReference,
+    exceptionFlag: orderItemsTable.exceptionFlag,
+    exceptionReason: orderItemsTable.exceptionReason,
+    hasQuoteSpec: sql<boolean>`EXISTS (SELECT 1 FROM quote_assets qa WHERE qa.attachable_type='product' AND qa.attachable_id = ${orderItemsTable.productId})`,
+    cityId: sql<number | null>`(SELECT city_id FROM events WHERE id = ${ordersTable.eventId})`,
+    createdAt: orderItemsTable.createdAt,
+  }).from(orderItemsTable)
+    .innerJoin(ordersTable, eq(orderItemsTable.orderId, ordersTable.id))
+    .leftJoin(partnersTable, eq(ordersTable.partnerId, partnersTable.id))
+    .leftJoin(eventsTable, eq(ordersTable.eventId, eventsTable.id))
+    .leftJoin(suppliersTable, eq(orderItemsTable.assignedSupplierId, suppliersTable.id))
+    .where(conditions.length ? and(...conditions) : sql`true`)
+    .orderBy(desc(ordersTable.createdAt));
+
+  let filtered = items;
+  if (q.cityId) filtered = filtered.filter(i => Number(i.cityId) === parseInt(String(q.cityId)));
+  if (q.hasQuoteSpec === "true" || q.hasQuoteSpec === "1") filtered = filtered.filter(i => i.hasQuoteSpec);
+  if (q.hasQuoteSpec === "false" || q.hasQuoteSpec === "0") filtered = filtered.filter(i => !i.hasQuoteSpec);
+
+  // Stats are computed over the DB-filter result (pre in-memory cityId/hasQuoteSpec narrow-down)
+  // so toggling the "missing spec" / "city" chips doesn't make the rest of the cards lie.
+  const now = new Date();
+  const in7 = new Date(now.getTime() + 7 * 86400000);
+  const today = new Date(now); today.setHours(0, 0, 0, 0);
+  const stats = {
+    total: items.length,
+    unassigned: items.filter(i => !i.assignedSupplierId).length,
+    awaitingAcknowledge: items.filter(i => i.supplierStatus === "assigned").length,
+    dueSoon: items.filter(i => i.supplierDueDate && new Date(i.supplierDueDate) <= in7 && !["completed", "cancelled", "delivered", "installed"].includes(i.supplierStatus)).length,
+    awaitingAssets: items.filter(i => i.supplierStatus === "awaiting_assets").length,
+    issues: items.filter(i => i.exceptionFlag).length,
+    shippedNotDelivered: items.filter(i => i.supplierStatus === "shipped").length,
+    installUpcoming: items.filter(i => i.supplierStatus === "delivered" || i.supplierStatus === "installed").length,
+    completedToday: items.filter(i => i.supplierStatus === "completed" && i.createdAt && new Date(i.createdAt) >= today).length,
+    missingQuoteSpec: items.filter(i => !i.hasQuoteSpec).length,
+    withShortage: items.filter(i => (i.shortageQuantity || 0) > 0).length,
+  };
+  res.json({ items: filtered, stats });
+});
+
+// ----- Vendor (supplier-scoped) endpoints -----
+
+function vendorOrderJoin(supplierId: number) {
+  return db.select({
+    id: orderItemsTable.id,
+    orderId: orderItemsTable.orderId,
+    orderNumber: ordersTable.orderNumber,
+    partnerName: partnersTable.companyName,
+    eventName: eventsTable.name,
+    eventStartDate: eventsTable.eventStartDate,
     venueName: venuesTable.name,
-    fulfillmentMode: ordersTable.fulfillmentMode,
-    status: ordersTable.status,
-    fulfillmentStatus: ordersTable.fulfillmentStatus,
+    name: orderItemsTable.name,
+    quantity: orderItemsTable.quantity,
+    fulfillmentMode: orderItemsTable.fulfillmentMode,
+    printDemandQuantity: orderItemsTable.printDemandQuantity,
+    hardwareDemandQuantity: orderItemsTable.hardwareDemandQuantity,
+    supplierStatus: orderItemsTable.supplierStatus,
+    supplierDueDate: orderItemsTable.supplierDueDate,
+    supplierShipDate: orderItemsTable.supplierShipDate,
+    supplierReference: orderItemsTable.supplierReference,
+    supplierNotes: orderItemsTable.supplierNotes,
+    exceptionFlag: orderItemsTable.exceptionFlag,
+    exceptionReason: orderItemsTable.exceptionReason,
+    artworkFileUrl: orderItemsTable.artworkFileUrl,
+    notes: orderItemsTable.notes,
+    productId: orderItemsTable.productId,
+  }).from(orderItemsTable)
+    .innerJoin(ordersTable, eq(orderItemsTable.orderId, ordersTable.id))
+    .leftJoin(partnersTable, eq(ordersTable.partnerId, partnersTable.id))
+    .leftJoin(eventsTable, eq(ordersTable.eventId, eventsTable.id))
+    .leftJoin(venuesTable, eq(ordersTable.shippingVenueId, venuesTable.id))
+    .where(eq(orderItemsTable.assignedSupplierId, supplierId));
+}
+
+router.get("/vendor/orders", async (req, res): Promise<void> => {
+  const supplierId = req.query.supplierId ? parseInt(String(req.query.supplierId)) : null;
+  if (!supplierId) { res.status(400).json({ error: "supplierId required" }); return; }
+  const items = await vendorOrderJoin(supplierId).orderBy(desc(ordersTable.createdAt));
+  // Group by order so vendor sees only their items inside each order
+  const orderMap = new Map<number, any>();
+  for (const it of items) {
+    if (!orderMap.has(it.orderId)) orderMap.set(it.orderId, { id: it.orderId, orderNumber: it.orderNumber, partnerName: it.partnerName, eventName: it.eventName, eventStartDate: it.eventStartDate, venueName: it.venueName, items: [], itemCount: 0, dueSoon: 0, issues: 0 });
+    const o = orderMap.get(it.orderId)!;
+    o.items.push(it);
+    o.itemCount++;
+    if (it.exceptionFlag) o.issues++;
+    if (it.supplierDueDate && new Date(it.supplierDueDate).getTime() - Date.now() < 7 * 86400000) o.dueSoon++;
+  }
+  res.json(Array.from(orderMap.values()));
+});
+
+router.get("/vendor/items", async (req, res): Promise<void> => {
+  const supplierId = req.query.supplierId ? parseInt(String(req.query.supplierId)) : null;
+  if (!supplierId) { res.status(400).json({ error: "supplierId required" }); return; }
+  const bucket = String(req.query.bucket || "all");
+  const items = await vendorOrderJoin(supplierId).orderBy(desc(ordersTable.createdAt));
+  const now = Date.now();
+  const filtered = items.filter(i => {
+    switch (bucket) {
+      case "due_soon": return i.supplierDueDate && new Date(i.supplierDueDate).getTime() - now < 7 * 86400000 && !["completed", "cancelled", "delivered", "installed"].includes(i.supplierStatus);
+      case "awaiting_assets": return i.supplierStatus === "awaiting_assets";
+      case "in_production": return i.supplierStatus === "in_production";
+      case "issues": return i.exceptionFlag;
+      case "recent": return true;
+      default: return true;
+    }
+  });
+  // Compute counts for all buckets in one pass
+  const buckets = { all: items.length, due_soon: 0, awaiting_assets: 0, in_production: 0, issues: 0, recent: items.length };
+  for (const i of items) {
+    if (i.supplierDueDate && new Date(i.supplierDueDate).getTime() - now < 7 * 86400000 && !["completed", "cancelled", "delivered", "installed"].includes(i.supplierStatus)) buckets.due_soon++;
+    if (i.supplierStatus === "awaiting_assets") buckets.awaiting_assets++;
+    if (i.supplierStatus === "in_production") buckets.in_production++;
+    if (i.exceptionFlag) buckets.issues++;
+  }
+  res.json({ items: filtered, buckets });
+});
+
+router.get("/vendor/orders/:orderId/packet", async (req, res): Promise<void> => {
+  const supplierId = req.query.supplierId ? parseInt(String(req.query.supplierId)) : null;
+  const orderId = parseInt(req.params.orderId);
+  if (!supplierId || isNaN(orderId)) { res.status(400).json({ error: "supplierId & orderId required" }); return; }
+  const [order] = await db.select({
+    id: ordersTable.id,
+    orderNumber: ordersTable.orderNumber,
+    partnerName: partnersTable.companyName,
+    eventName: eventsTable.name,
+    eventStartDate: eventsTable.eventStartDate,
+    venueName: venuesTable.name,
+    cityName: citiesTable.name,
     contactName: ordersTable.contactName,
+    contactEmail: ordersTable.contactEmail,
+    contactPhone: ordersTable.contactPhone,
+    shippingAddressJson: ordersTable.shippingAddressJson,
+    notes: ordersTable.notes,
+    vendorNotes: ordersTable.vendorNotes,
     createdAt: ordersTable.createdAt,
   }).from(ordersTable)
     .leftJoin(partnersTable, eq(ordersTable.partnerId, partnersTable.id))
     .leftJoin(eventsTable, eq(ordersTable.eventId, eventsTable.id))
     .leftJoin(venuesTable, eq(ordersTable.shippingVenueId, venuesTable.id))
-    .where(eq(ordersTable.assignedSupplierId, supplierId))
-    .orderBy(desc(ordersTable.createdAt));
-  res.json(rows);
+    .leftJoin(citiesTable, eq(eventsTable.cityId, citiesTable.id))
+    .where(eq(ordersTable.id, orderId));
+  if (!order) { res.status(404).json({ error: "Order not found" }); return; }
+  const items = await vendorOrderJoin(supplierId).where(and(eq(orderItemsTable.assignedSupplierId, supplierId), eq(orderItemsTable.orderId, orderId)));
+  if (!items.length) { res.status(404).json({ error: "No items assigned to this supplier" }); return; }
+  const productIds = Array.from(new Set(items.map(i => i.productId).filter((x): x is number => !!x)));
+  const products = productIds.length ? await db.select().from(productCatalogTable).where(inArray(productCatalogTable.id, productIds)) : [];
+  const quoteAssets = productIds.length ? await db.select().from(quoteAssetsTable).where(and(eq(quoteAssetsTable.attachableType, "product"), inArray(quoteAssetsTable.attachableId, productIds), eq(quoteAssetsTable.vendorVisible, true))) : [];
+  const supplier = (await db.select().from(suppliersTable).where(eq(suppliersTable.id, supplierId)))[0];
+  res.json({ order, supplier, items, products, quoteAssets });
 });
 
 export default router;

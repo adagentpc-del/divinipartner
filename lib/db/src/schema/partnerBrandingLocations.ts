@@ -2,6 +2,7 @@ import { pgTable, serial, text, integer, boolean, doublePrecision, timestamp } f
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { partnersTable } from "./partners";
+import { suppliersTable } from "./suppliers";
 
 export const partnerBrandingLocationsTable = pgTable("partner_branding_locations", {
   id: serial("id").primaryKey(),
@@ -17,6 +18,7 @@ export const partnerBrandingLocationsTable = pgTable("partner_branding_locations
   sourceFileUrl: text("source_file_url"),
   previewImageUrl: text("preview_image_url"),
   confidenceScore: doublePrecision("confidence_score"),
+  defaultSupplierId: integer("default_supplier_id").references(() => suppliersTable.id, { onDelete: "set null" }),
   productionNotesInternal: text("production_notes_internal"),
   installNotesInternal: text("install_notes_internal"),
   templateFileUrl: text("template_file_url"),

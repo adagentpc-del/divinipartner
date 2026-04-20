@@ -1,0 +1,381 @@
+Now refine the existing Partner Commerce Portal by building a practical quote ingestion, catalog enrichment, and spec standardization workflow. The platform already has partners, portal types, products, packages, branding zones, quotes/spec references, financial scaffolding, inventory, reservations, fulfillment modes, and supplier routing. This pass should make it much easier to turn messy real world supplier information into structured internal catalog intelligence.
+
+Important:
+Do not rebuild from scratch.
+Work from the existing codebase.
+Preserve the current architecture, inventory logic, fulfillment modes, financial scaffolding, quote/spec references, and supplier routing.
+Implement real workflow improvements, not placeholders only.
+
+Primary objective for this pass:
+Make the platform capable of ingesting quote files, screenshots, and manual supplier references, then converting them into cleaner structured backend product intelligence over time.
+This should support a messy operational reality where the “catalog” may come from:
+- supplier quotes
+- ERP exports
+- screenshots
+- PDFs
+- item photos
+- vendor websites
+- manual notes
+- prior job references
+
+This pass has 8 major priorities:
+
+1. Quote ingestion workspace
+2. Catalog enrichment workflow
+3. Spec standardization model
+4. Product creation from quote/source material
+5. Internal review and approval workflow
+6. Better mapping to suppliers, products, packages, and zones
+7. Missing data and exception management
+8. Cleaner internal intelligence views
+
+-----------------------------------
+1. QUOTE INGESTION WORKSPACE
+-----------------------------------
+
+Build a dedicated internal Quote Ingestion workspace for Super Admin and Internal Admin users.
+
+This workspace should support ingesting and organizing source materials such as:
+- PDF quotes
+- PDF spec sheets
+- images
+- screenshots
+- product photos
+- supporting reference docs
+
+For each uploaded source record, store:
+- title
+- supplier
+- file type
+- source type
+  - quote
+  - spec sheet
+  - screenshot
+  - website reference
+  - ERP export
+  - manual note
+  - prior job reference
+- upload file
+- version
+- effective date
+- expiration date
+- internal only flag
+- source confidence / quality flag
+- processing status
+  - new
+  - needs review
+  - mapped
+  - approved
+  - archived
+- notes
+
+UI requirements:
+- clean ingestion dashboard
+- file cards or rows with thumbnails where applicable
+- filters by supplier, source type, processing status, product mapping status
+- quick preview drawer or modal
+- bulk status updates if feasible
+- easy “map to product” and “create product” actions
+
+Do not make this feel like a raw document dump.
+It should feel like an internal catalog intelligence workspace.
+
+-----------------------------------
+2. CATALOG ENRICHMENT WORKFLOW
+-----------------------------------
+
+Build a step by step enrichment workflow for turning source materials into structured product intelligence.
+
+For each source record, allow internal admins to extract or fill in:
+- display name
+- internal name
+- supplier name
+- size / dimensions
+- material
+- finishing
+- attachment method
+- hardware included yes/no
+- graphic only yes/no
+- rental eligible yes/no
+- reusable inventory compatible yes/no
+- category
+- lead time
+- ops notes
+- install notes
+- customer facing summary
+- backend ops summary
+
+The workflow should support:
+- creating a new product from a source
+- linking the source to an existing product
+- creating a new quote/spec reference attached to an existing product
+- attaching the source to a package
+- attaching the source to a branding zone
+
+Build a guided enrichment panel, drawer, or wizard.
+Do not rely on one giant ugly form.
+
+-----------------------------------
+3. SPEC STANDARDIZATION MODEL
+-----------------------------------
+
+Create a structured internal spec standardization layer.
+
+Products should support one or more standardized spec records that store:
+- supplier
+- record title
+- standard type
+  - preferred standard
+  - alternate standard
+  - legacy reference
+  - zone specific standard
+  - package specific standard
+- dimensions summary
+- material summary
+- finishing summary
+- attachment summary
+- hardware summary
+- lead time
+- print file requirements summary
+- install notes
+- internal ops notes
+- approved status
+- active status
+- effective date
+- expiration date
+- linked source files
+
+Important:
+A product may have multiple spec standards from different suppliers.
+The system should allow one record to be marked as:
+- current preferred standard
+- alternate
+- expired
+- archived
+
+Create a clean UI for viewing these standard records on the product detail page.
+
+-----------------------------------
+4. PRODUCT CREATION AND MAPPING FROM SOURCE MATERIAL
+-----------------------------------
+
+Build easy workflows to create or enrich products from quote/source material.
+
+Support:
+- create new product from source
+- link source to existing product
+- duplicate existing product as template before editing
+- create supplier specific variant of a product
+- create zone specific variant
+- create package component from source
+
+For new products, support initial fields such as:
+- display name
+- category
+- thumbnail
+- visible dimensions
+- customer facing summary
+- backend ops summary
+- fulfillment capability flags
+- supplier defaults
+- inventory tracked yes/no
+
+Make it easy to create products from imperfect inputs without forcing every field up front.
+
+-----------------------------------
+5. INTERNAL REVIEW AND APPROVAL WORKFLOW
+-----------------------------------
+
+Build a lightweight review and approval flow so the internal catalog becomes more reliable over time.
+
+For source records and spec standards, support statuses such as:
+- new
+- in review
+- needs clarification
+- approved
+- superseded
+- archived
+
+Allow internal admins to:
+- mark approved standard
+- mark alternate standard
+- mark superseded
+- add review notes
+- add clarification needed note
+- flag missing data
+- flag supplier ambiguity
+
+Show approval state clearly on:
+- source record
+- product detail
+- quote/spec reference card
+- order packet if relevant
+
+-----------------------------------
+6. MAPPING TO PRODUCTS, PACKAGES, ZONES, AND SUPPLIERS
+-----------------------------------
+
+Deepen the mapping system.
+
+Each source/spec/quote record should be able to link to:
+- one or more products
+- one or more packages
+- one or more branding zones
+- a supplier
+- optional event/order references where useful
+
+Examples:
+- one A3 quote maps to a standard retractable banner product
+- one B2 quote maps to an alternate banner supplier option
+- one zone specific spec maps to a Move Miami entry wall branding zone
+- one package quote maps to Social Commerce Tier 2 package
+
+UI requirements:
+- mapping chips or cards
+- quick add mapping
+- easy unlink action
+- show where each source is currently used
+
+-----------------------------------
+7. MISSING DATA, EXCEPTIONS, AND CLARIFICATION FLAGS
+-----------------------------------
+
+Build exception handling for incomplete catalog intelligence.
+
+Allow flagging:
+- missing dimensions
+- missing material
+- missing attachment method
+- missing lead time
+- unclear hardware inclusion
+- duplicate possible
+- conflicting supplier info
+- expired quote/spec
+- missing customer facing summary
+- missing backend ops summary
+
+Create filters and badges for these missing data conditions.
+Show them in the Quote Ingestion workspace and product detail pages.
+
+This is important because the system will often be built from imperfect data.
+The app should support incomplete but usable records while clearly showing what still needs cleanup.
+
+-----------------------------------
+8. INTERNAL PRODUCT INTELLIGENCE VIEW
+-----------------------------------
+
+Upgrade the product detail experience so it becomes a true intelligence record, not just a simple catalog card.
+
+For each product, clearly organize:
+- customer facing summary
+- backend ops summary
+- fulfillment capabilities
+- supplier defaults
+- quote/spec references
+- standardized spec records
+- linked source files
+- linked packages
+- linked zones
+- linked suppliers
+- review status
+- missing data flags
+
+Make this page highly readable and operationally useful.
+
+-----------------------------------
+9. OPTIONAL LIGHTWEIGHT EXTRACTION ASSIST TOOLS
+-----------------------------------
+
+If feasible within the existing stack, add lightweight helper tools for manual enrichment, such as:
+- suggested field extraction placeholders from filenames or notes
+- duplicate detection suggestions
+- compare two spec records side by side
+- quick “copy into new product” actions
+- quick “set as preferred standard” actions
+
+Do not over-engineer OCR or AI parsing if it complicates the build.
+Focus on practical manual-assisted workflows.
+
+-----------------------------------
+10. INTERNAL LIST VIEWS, FILTERS, AND BULK ACTIONS
+-----------------------------------
+
+Add or improve list views for:
+- source records
+- spec standards
+- products with missing data
+- products without approved standard
+- expired quote/spec records
+- products with multiple supplier variants
+
+Add filters for:
+- supplier
+- source type
+- approval status
+- mapping status
+- missing data flags
+- product category
+- active/inactive
+- preferred vs alternate standard
+
+Add bulk actions where sensible:
+- mark reviewed
+- mark approved
+- archive
+- map to supplier
+- map to product
+- add missing data flag
+
+-----------------------------------
+11. SEED DATA
+-----------------------------------
+
+Refine seed data to demonstrate realistic messy-catalog conditions:
+- A3 product references
+- B2 references
+- WS references
+- multiple quotes/specs for one product
+- preferred vs alternate standards
+- incomplete source records
+- expired and superseded records
+- products with missing attachment method or material
+- mapped package and zone references
+
+-----------------------------------
+12. DESIGN AND UX
+-----------------------------------
+
+Keep the interface premium, clear, and operationally strong.
+
+This should feel like:
+- a luxury back office intelligence tool
+- not a document graveyard
+- not raw enterprise ERP clutter
+
+Improve:
+- source cards
+- preview modals
+- status badges
+- missing data badges
+- approval states
+- mapping UI
+- product intelligence panels
+- side by side comparison views if feasible
+
+-----------------------------------
+13. DOCUMENTATION
+-----------------------------------
+
+Update replit.md with:
+- quote ingestion architecture
+- source record model
+- spec standardization model
+- mapping relationships
+- approval/review workflow
+- missing data handling
+- new routes/components
+- recommended next phase
+
+Also create or update a session plan and implement as much of the above as possible in this pass.
+Do not stop after describing the work.
+Actually build it.
