@@ -230,4 +230,42 @@ Lightweight but real reusable-event inventory system for partner-owned hardware 
   - Add/edit dialog includes live "available" preview and an immediate over-commit warning before saving.
 - **Event reservation flow**: each event card on `/admin/partners/:id/events` exposes a Boxes icon that opens `EventInventoryDialog` (`src/components/admin/EventInventoryDialog.tsx`) — pick city → pick asset (shows available/total) → set qty → see "✓ Enough available" or "⚠ Shortfall: order N more" before confirming. Lists all reservations for the event with status badges and quick actions.
 
+## Order Fulfillment Engine, Catalog Intelligence & Quote Mapping (April 2026)
+Connects fulfillment modes to inventory reservations, surfaces partner committed inventory, and adds catalog/quote intelligence.
+
+### Schema additions
+- `productCatalog`: capability flags `usePartnerInventoryEligible`, `reusableHardwareCompatible`, `inventoryTracked`, `requiresAttachmentSelection`, `requiresMaterialSelection`; ops fields `installNotes`, `internalOpsSummary`, `featureBadgesJson` (string[]).
+- `orderItems`: fulfillment math columns `hardwareRequired`, `printDemandQuantity`, `hardwareDemandQuantity`, `reservedQuantity`, `shortageQuantity`, `inventorySourceCityId`, `inventorySourceInventoryId`, `inventoryReservationId`, `internalFulfillmentNotes`.
+- `quoteAssets`: `dimensionsSummary`, `materialSummary`, `attachmentSummary`, `hardwareSummary`, `supplierName` (in addition to existing version/effective/expiration/approved-standard fields).
+- `inventory` unique index relaxed to `(cityId, partnerId, productId, name)` to support per-partner ownership.
+
+### Fulfillment engine (`/api/orders`)
+- `computeFulfillmentMath(item, productCaps)` derives `printDemand` / `hardwareDemand` / `hardwareRequired` from `fulfillmentMode` × product capabilities. Modes: `full` (print + hardware), `graphic_only` (print only), `use_existing_partner_inventory` (print + reserve from owned hardware), `rental_plus_print`, `new_hardware_required`, legacy `client_owned_plus_print`.
+- POST/PATCH `/orders` automatically: when an item has `fulfillmentMode = use_existing_partner_inventory`, an `eventId`, and `inventorySourceInventoryId`, it transactionally `SELECT … FOR UPDATE`s the inventory row, creates a reservation for `min(qty, available)`, persists `inventoryReservationId`, `reservedQuantity`, and any `shortageQuantity` on the item.
+- PATCH rebalances reservations when mode/qty/source changes (releases the prior reservation before creating a new one).
+- DELETE `/orders/:id` releases all reservations atomically before removing the order.
+- New list filters on `GET /orders`: `fulfillmentMode`, `shortageOnly` (accepts `1` / `true`), `reservedOnly`, `sourceCityId`. List rows include `totalShortage`, `totalReserved`, `itemFulfillmentModes` aggregate.
+
+### Catalog intelligence (admin Dashboard)
+`/api/dashboard/summary` adds: `partnerInventoryOrders`, `printOnlyOrders`, `ordersWithShortages`, `totalShortageUnits`, `productsMissingQuote`. Admin Dashboard renders a "Catalog Intelligence" row of stat cards that deep-link into pre-filtered Orders list.
+
+### Partner committed-inventory view
+- API: `GET /partners/:id/inventory-summary` returns enriched assets (with derived `available`, `isLow`, `overcommitted`, `displayName`), per-city aggregates, all reservations, and an `upcomingByEvent` rollup with status counts and total committed units.
+- UI: `/admin/partners/:id/committed-inventory` (linked from the PartnersList Boxes icon). Tabs: **By city** (per-city cards with available/reserved/in-use/low breakdown), **Upcoming commitments** (event timeline with status chips), **Shortages** (over-committed and low items), **All assets** (flat list).
+
+### Product Catalog UI
+- `/admin/products` rewritten with grouped-by-category cards showing capability badges (Hardware / Graphic only / Rental / Partner-owned / Reusable HW / Tracked / lead-time).
+- Edit dialog has 4 tabs: **Customer-facing** (display name, dimensions, description, badges, gallery), **Capabilities** (all eight capability flags + active/orderable toggles), **Backend Ops** (attachment method, material, finishing, lead time, production/install/internal notes), **Quote / Spec** (inline `QuoteAssetsPanel` for uploading and managing supplier quotes/spec sheets — version, effective/expiration dates, approved-standard star, vendor visibility, dimensions/material/attachment/hardware summaries, file upload via presigned URL).
+
+### Order Detail (per-item fulfillment view)
+- Top-of-page shortage banner appears when any item has `shortageQuantity > 0`.
+- Order-level totals row: Print demand, Hardware demand, Reserved-from-inventory, Shortage.
+- Each item card shows: fulfillment-mode badge, print/hardware demand chips, reservation badge with reservation id, source-city badge, and inline approved quote/spec links pulled from the product (`ProductSpecRefs`).
+
+### Filters & widgets
+- `/admin/orders` has new filter row: fulfillment-mode select, source-city select, "Shortages only" toggle. Mode column now shows per-item modes plus reserved/shortage counters.
+
+### Verified end-to-end
+Order `qty=7` of an asset with 5 available → `reservedQuantity=5`, `shortageQuantity=2`, inventory `reserved` 0→5; order delete releases the reservation back to 0.
+
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.

@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, FileText, ShoppingCart, AlertTriangle, ArrowUpRight, Loader2, Clock, Truck, Calendar, TrendingUp, Boxes } from "lucide-react";
+import { Users, FileText, ShoppingCart, AlertTriangle, ArrowUpRight, Loader2, Clock, Truck, Calendar, TrendingUp, Boxes, Package, Printer, FileWarning } from "lucide-react";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
 
@@ -14,6 +14,11 @@ type Summary = {
   recentOrders: { id: number; orderNumber: string; partnerName: string | null; status: string; createdAt: string; contactName: string; totalEstimate: string | null }[];
   lowInventory: { id: number; cityName: string | null; productName: string | null; onHand: number; reserved: number; threshold: number }[];
   upcomingEvents: { id: number; name: string; eventStartDate: string | null; shippingDeadline: string | null; partnerName: string | null; cityName: string | null }[];
+  partnerInventoryOrders: number;
+  printOnlyOrders: number;
+  ordersWithShortages: number;
+  totalShortageUnits: number;
+  productsMissingQuote: number;
 };
 
 const ORDER_BADGE: Record<string, string> = {
@@ -77,6 +82,16 @@ export default function Dashboard() {
         <StatCard icon={ShoppingCart} label="Total Orders" value={s.totalOrders} sub={`${s.ordersToday} today`} color="emerald" href="/admin/orders" />
         <StatCard icon={Clock} label="Pending Orders" value={s.pendingOrders} sub={`${s.unassignedOrders} unassigned`} color="amber" href="/admin/orders" />
         <StatCard icon={FileText} label="Intake Requests" value={s.totalRequests} sub={`${s.newRequestsToday} new today`} color="violet" href="/admin/requests" />
+      </div>
+
+      <div>
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Catalog Intelligence</h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard icon={Boxes} label="Using partner inventory" value={s.partnerInventoryOrders} sub="Open orders drawing from owned hardware" color="emerald" href="/admin/orders?fulfillmentMode=use_existing_partner_inventory" />
+          <StatCard icon={Printer} label="Print-only orders" value={s.printOnlyOrders} sub="Graphic-only fulfillment mode" color="blue" href="/admin/orders?fulfillmentMode=graphic_only" />
+          <StatCard icon={AlertTriangle} label="Orders with shortages" value={s.ordersWithShortages} sub={`${s.totalShortageUnits} unit${s.totalShortageUnits !== 1 ? "s" : ""} short`} color={s.ordersWithShortages > 0 ? "rose" : "emerald"} href="/admin/orders?shortageOnly=1" />
+          <StatCard icon={FileWarning} label="Products missing quote/spec" value={s.productsMissingQuote} sub="Active products with no reference doc" color={s.productsMissingQuote > 0 ? "amber" : "emerald"} href="/admin/products" />
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">

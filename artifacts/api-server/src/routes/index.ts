@@ -23,6 +23,7 @@ import ordersRouter from "./orders";
 import userRolesRouter from "./userRoles";
 import savedAddressesRouter from "./savedAddresses";
 import partnerOnboardingRouter from "./partnerOnboarding";
+import partnerInventoryRouter from "./partnerInventory";
 
 const router: IRouter = Router();
 
@@ -50,5 +51,6 @@ router.use(ordersRouter);
 router.use(userRolesRouter);
 router.use(savedAddressesRouter);
 router.use(partnerOnboardingRouter);
+router.use(partnerInventoryRouter);
 
 export default router;

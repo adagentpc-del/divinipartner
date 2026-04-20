@@ -10,11 +10,30 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ChevronLeft, Save, Printer, ShoppingCart, MapPin, Calendar, Truck, User, Building2, FileText, Image as ImageIcon } from "lucide-react";
+import { Loader2, ChevronLeft, Save, Printer, ShoppingCart, MapPin, Calendar, Truck, User, Building2, FileText, Image as ImageIcon, AlertTriangle, Package, Boxes, Printer as PrintIcon } from "lucide-react";
 
-type OrderItem = { id: number; itemType: string; productId: number | null; productName?: string | null; productImageUrl?: string | null; packageId: number | null; packageName?: string | null; brandingZoneId: number | null; brandingZoneName?: string | null; name: string; quantity: number; unitPrice: string | null; fulfillmentMode: string | null; artworkFileUrl: string | null; notes: string | null };
+type OrderItem = {
+  id: number; itemType: string; productId: number | null; productName?: string | null; productImageUrl?: string | null;
+  packageId: number | null; packageName?: string | null; brandingZoneId: number | null; brandingZoneName?: string | null;
+  name: string; quantity: number; unitPrice: string | null; fulfillmentMode: string | null;
+  hardwareRequired: boolean | null; printDemandQuantity: number | null; hardwareDemandQuantity: number | null;
+  reservedQuantity: number | null; shortageQuantity: number | null;
+  inventorySourceCityId: number | null; inventorySourceInventoryId: number | null; inventoryReservationId: number | null;
+  internalFulfillmentNotes: string | null;
+  artworkFileUrl: string | null; notes: string | null;
+};
 type OrderFull = { id: number; orderNumber: string; partnerId: number; partnerName?: string; eventId: number | null; eventName?: string; status: string; paymentStatus: string; fulfillmentMode: string | null; assignedSupplierId: number | null; supplierName?: string; contactName: string; contactEmail: string; contactPhone: string | null; companyName: string | null; shippingAddressJson: any; billingAddressJson: any; artworkFilesJson: any[] | null; totalEstimate: string | null; notes: string | null; internalNotes: string | null; vendorNotes: string | null; fulfillmentStatus: string | null; createdAt: string; items: OrderItem[]; partner?: any; event?: any; venue?: any; supplier?: any };
 type Supplier = { id: number; name: string };
+type City = { id: number; name: string };
+
+const MODE_LABELS: Record<string, string> = {
+  full: "Full (hardware + print)",
+  graphic_only: "Graphic only (print)",
+  use_existing_partner_inventory: "Use partner inventory",
+  rental_plus_print: "Rental + print",
+  new_hardware_required: "New hardware",
+  client_owned_plus_print: "Client-owned + print",
+};
 
 export default function OrderDetail() {
   const params = useParams<{ id: string }>();
@@ -23,6 +42,7 @@ export default function OrderDetail() {
   const { toast } = useToast();
   const { data: order, isLoading, isError } = useQuery<OrderFull>({ queryKey: [`/api/orders/${id}`], queryFn: () => apiFetch(`/api/orders/${id}`) });
   const { data: suppliers = [] } = useQuery<Supplier[]>({ queryKey: ["/api/suppliers"], queryFn: () => apiFetch("/api/suppliers") });
+  const { data: cities = [] } = useQuery<City[]>({ queryKey: ["/api/cities"], queryFn: () => apiFetch("/api/cities") });
   const [internal, setInternal] = useState({ status: "", paymentStatus: "", assignedSupplierId: "", internalNotes: "", vendorNotes: "", fulfillmentStatus: "", totalEstimate: "" });
 
   useEffect(() => {
@@ -57,6 +77,13 @@ export default function OrderDetail() {
     });
   };
 
+  const cityName = (cid: number | null) => cities.find(c => c.id === cid)?.name || `City #${cid}`;
+
+  const totalShortage = order.items.reduce((s, it) => s + (it.shortageQuantity || 0), 0);
+  const totalReserved = order.items.reduce((s, it) => s + (it.reservedQuantity || 0), 0);
+  const totalPrint = order.items.reduce((s, it) => s + (it.printDemandQuantity || 0), 0);
+  const totalHardware = order.items.reduce((s, it) => s + (it.hardwareDemandQuantity || 0), 0);
+
   return (
     <div className="space-y-6 print:space-y-3">
       <style>{`@media print { @page { margin: 1.5cm; } body { background: white !important; } header, .no-print, button { display: none !important; } main { padding: 0 !important; max-width: 100% !important; } .print\\:break-inside-avoid { break-inside: avoid; } .lg\\:col-span-2 { grid-column: span 3 / span 3 !important; } aside, .lg\\:grid-cols-3 > div:last-child { display: none !important; } }`}</style>
@@ -72,31 +99,60 @@ export default function OrderDetail() {
         </div>
         <Button variant="outline" className="gap-2 no-print" onClick={() => window.print()}><Printer className="h-4 w-4" />Print Packet</Button>
       </div>
-      <div className="hidden print:block border-b pb-3 mb-3">
-        <div className="flex items-baseline justify-between">
-          <h1 className="text-3xl font-bold font-mono">{order.orderNumber}</h1>
-          <div className="text-sm text-muted-foreground">{new Date(order.createdAt).toLocaleString()}</div>
+
+      {totalShortage > 0 && (
+        <div className="rounded-lg border-2 border-amber-300 bg-amber-50 p-4 flex items-start gap-3">
+          <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <h3 className="font-semibold text-amber-900">Inventory shortage on this order</h3>
+            <p className="text-sm text-amber-800 mt-0.5">{totalShortage} unit{totalShortage > 1 ? "s" : ""} could not be reserved from existing partner inventory. Either source new hardware, swap to a different fulfillment mode, or restock the source city.</p>
+          </div>
         </div>
-        <div className="text-sm mt-1">{order.partnerName} · Status: <span className="font-semibold">{order.status}</span> · Payment: {order.paymentStatus}</div>
+      )}
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 no-print">
+        <Card className="p-3"><div className="flex items-center gap-2 text-xs text-muted-foreground"><PrintIcon className="h-3.5 w-3.5" /> Print demand</div><div className="text-2xl font-bold tabular-nums mt-1">{totalPrint}</div></Card>
+        <Card className="p-3"><div className="flex items-center gap-2 text-xs text-muted-foreground"><Package className="h-3.5 w-3.5" /> Hardware demand</div><div className="text-2xl font-bold tabular-nums mt-1">{totalHardware}</div></Card>
+        <Card className="p-3"><div className="flex items-center gap-2 text-xs text-muted-foreground"><Boxes className="h-3.5 w-3.5" /> Reserved from inventory</div><div className="text-2xl font-bold tabular-nums mt-1 text-emerald-600">{totalReserved}</div></Card>
+        <Card className="p-3"><div className="flex items-center gap-2 text-xs text-muted-foreground"><AlertTriangle className="h-3.5 w-3.5" /> Shortage</div><div className={`text-2xl font-bold tabular-nums mt-1 ${totalShortage > 0 ? "text-amber-600" : ""}`}>{totalShortage}</div></Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-4">
           <Card className="p-5">
             <h2 className="font-semibold text-lg mb-4 flex items-center gap-2"><ShoppingCart className="h-5 w-5 text-muted-foreground" />Items ({order.items.length})</h2>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {order.items.map(it => (
-                <div key={it.id} className="flex items-center gap-3 p-3 border rounded-lg">
-                  {it.productImageUrl ? <img src={it.productImageUrl} className="h-12 w-12 rounded object-cover bg-muted" alt="" /> : <div className="h-12 w-12 rounded bg-muted flex items-center justify-center"><ImageIcon className="h-5 w-5 text-muted-foreground" /></div>}
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium">{it.name}</div>
-                    <div className="text-xs text-muted-foreground capitalize">{it.itemType.replace("_", " ")}{it.fulfillmentMode && ` · ${it.fulfillmentMode}`}</div>
-                    {it.notes && <div className="text-xs text-muted-foreground mt-1">{it.notes}</div>}
-                  </div>
-                  <div className="text-right">
-                    <div className="font-semibold">{it.quantity}x</div>
-                    {it.unitPrice && <div className="text-xs text-muted-foreground">${it.unitPrice}</div>}
-                    {it.artworkFileUrl && <Badge variant="secondary" className="text-xs mt-1">artwork</Badge>}
+                <div key={it.id} className="border rounded-lg p-3 print:break-inside-avoid">
+                  <div className="flex items-start gap-3">
+                    {it.productImageUrl ? <img src={it.productImageUrl} className="h-14 w-14 rounded object-cover bg-muted shrink-0" alt="" /> : <div className="h-14 w-14 rounded bg-muted flex items-center justify-center shrink-0"><ImageIcon className="h-5 w-5 text-muted-foreground" /></div>}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="font-medium">{it.name}</div>
+                          <div className="text-xs text-muted-foreground capitalize">{it.itemType.replace("_", " ")}</div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className="font-semibold">{it.quantity}x</div>
+                          {it.unitPrice && <div className="text-xs text-muted-foreground">${it.unitPrice}</div>}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {it.fulfillmentMode && <Badge variant="outline" className="text-[10px]">{MODE_LABELS[it.fulfillmentMode] || it.fulfillmentMode}</Badge>}
+                        {(it.printDemandQuantity ?? 0) > 0 && <Badge variant="outline" className="text-[10px] border-blue-200 text-blue-700">Print: {it.printDemandQuantity}</Badge>}
+                        {(it.hardwareDemandQuantity ?? 0) > 0 && <Badge variant="outline" className="text-[10px] border-violet-200 text-violet-700">Hardware: {it.hardwareDemandQuantity}</Badge>}
+                        {(it.reservedQuantity ?? 0) > 0 && <Badge variant="outline" className="text-[10px] border-emerald-300 text-emerald-700">Reserved: {it.reservedQuantity}{it.inventoryReservationId && ` (#${it.inventoryReservationId})`}</Badge>}
+                        {(it.shortageQuantity ?? 0) > 0 && <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-800 bg-amber-50">Shortage: {it.shortageQuantity}</Badge>}
+                        {it.inventorySourceCityId && <Badge variant="outline" className="text-[10px]"><MapPin className="h-2.5 w-2.5 mr-0.5" />Source: {cityName(it.inventorySourceCityId)}</Badge>}
+                        {it.artworkFileUrl && <Badge variant="secondary" className="text-[10px]">artwork</Badge>}
+                      </div>
+
+                      {it.productId && <ProductSpecRefs productId={it.productId} />}
+
+                      {it.notes && <div className="text-xs text-muted-foreground mt-2 italic">Client note: {it.notes}</div>}
+                      {it.internalFulfillmentNotes && <div className="text-xs text-muted-foreground mt-1">Internal: {it.internalFulfillmentNotes}</div>}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -106,7 +162,7 @@ export default function OrderDetail() {
           <Card className="p-5">
             <h2 className="font-semibold text-lg mb-3 flex items-center gap-2"><FileText className="h-5 w-5 text-muted-foreground" />Artwork & Files</h2>
             <div className="space-y-2">
-              {(order.artworkFilesJson || []).map((f, i) => (
+              {(order.artworkFilesJson || []).map((f: any, i: number) => (
                 <a key={i} href={f.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline"><FileText className="h-4 w-4" />{f.name || f.url}</a>
               ))}
               {(!order.artworkFilesJson || order.artworkFilesJson.length === 0) && <p className="text-sm text-muted-foreground">No artwork uploaded.</p>}
@@ -168,6 +224,22 @@ export default function OrderDetail() {
           </Card>
         </div>
       </div>
+    </div>
+  );
+}
+
+function ProductSpecRefs({ productId }: { productId: number }) {
+  const { data: refs = [] } = useQuery<any[]>({ queryKey: [`/api/quote-assets`, "product", productId], queryFn: () => apiFetch(`/api/quote-assets?attachableType=product&attachableId=${productId}`) });
+  const approved = refs.filter(r => r.isApprovedStandard);
+  const visible = approved.length ? approved : refs.slice(0, 2);
+  if (!visible.length) return null;
+  return (
+    <div className="mt-2 flex flex-wrap gap-1.5">
+      {visible.map(r => (
+        <a key={r.id} href={r.fileUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border border-emerald-200 bg-emerald-50 text-emerald-700 hover:underline">
+          <FileText className="h-2.5 w-2.5" />{r.name}{r.version && ` v${r.version}`}
+        </a>
+      ))}
     </div>
   );
 }

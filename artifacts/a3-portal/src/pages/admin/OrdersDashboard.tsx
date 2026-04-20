@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link, useSearch } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -9,9 +9,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Loader2, ShoppingCart, Search } from "lucide-react";
 
-type Order = { id: number; orderNumber: string; partnerId: number; partnerName?: string; eventId: number | null; eventName?: string | null; portalType: string; status: string; paymentStatus: string; fulfillmentMode: string | null; assignedSupplierId: number | null; supplierName?: string | null; venueName?: string | null; contactName: string; companyName: string | null; totalEstimate: string | null; createdAt: string };
+type Order = { id: number; orderNumber: string; partnerId: number; partnerName?: string; eventId: number | null; eventName?: string | null; portalType: string; status: string; paymentStatus: string; fulfillmentMode: string | null; assignedSupplierId: number | null; supplierName?: string | null; venueName?: string | null; contactName: string; companyName: string | null; totalEstimate: string | null; createdAt: string; totalShortage?: number; totalReserved?: number; itemFulfillmentModes?: string[] };
 type Partner = { id: number; companyName: string };
 type Supplier = { id: number; name: string };
+type City = { id: number; name: string };
+
+const FULFILLMENT_MODES = ["full", "graphic_only", "use_existing_partner_inventory", "rental_plus_print", "new_hardware_required", "client_owned_plus_print"];
 
 const STATUS_COLORS: Record<string, string> = {
   new: "bg-blue-100 text-blue-700",
@@ -24,18 +27,28 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function OrdersDashboard() {
-  const [partnerId, setPartnerId] = useState("");
-  const [supplierId, setSupplierId] = useState("");
-  const [status, setStatus] = useState("");
+  const searchString = useSearch();
+  const initial = new URLSearchParams(searchString);
+  const truthyParam = (v: string | null) => v === "1" || v === "true";
+  const [partnerId, setPartnerId] = useState(initial.get("partnerId") || "");
+  const [supplierId, setSupplierId] = useState(initial.get("supplierId") || "");
+  const [status, setStatus] = useState(initial.get("status") || "");
+  const [fulfillmentMode, setFulfillmentMode] = useState(initial.get("fulfillmentMode") || "");
+  const [shortageOnly, setShortageOnly] = useState(truthyParam(initial.get("shortageOnly")));
+  const [sourceCityId, setSourceCityId] = useState(initial.get("sourceCityId") || "");
   const [search, setSearch] = useState("");
   const params = new URLSearchParams();
   if (partnerId) params.set("partnerId", partnerId);
   if (supplierId) params.set("supplierId", supplierId);
   if (status) params.set("status", status);
+  if (fulfillmentMode) params.set("fulfillmentMode", fulfillmentMode);
+  if (shortageOnly) params.set("shortageOnly", "1");
+  if (sourceCityId) params.set("sourceCityId", sourceCityId);
   const qs = params.toString();
   const { data: orders = [], isLoading } = useQuery<Order[]>({ queryKey: ["/api/orders", qs], queryFn: () => apiFetch(`/api/orders${qs ? `?${qs}` : ""}`) });
   const { data: partners = [] } = useQuery<Partner[]>({ queryKey: ["/api/partners"], queryFn: () => apiFetch("/api/partners") });
   const { data: suppliers = [] } = useQuery<Supplier[]>({ queryKey: ["/api/suppliers"], queryFn: () => apiFetch("/api/suppliers") });
+  const { data: cities = [] } = useQuery<City[]>({ queryKey: ["/api/cities"], queryFn: () => apiFetch("/api/cities") });
 
   const filtered = orders.filter(o => !search || o.orderNumber.toLowerCase().includes(search.toLowerCase()) || o.contactName?.toLowerCase().includes(search.toLowerCase()) || o.companyName?.toLowerCase().includes(search.toLowerCase()) || o.eventName?.toLowerCase().includes(search.toLowerCase()));
 
@@ -53,6 +66,9 @@ export default function OrdersDashboard() {
         <Select value={partnerId} onValueChange={v => setPartnerId(v === "all" ? "" : v)}><SelectTrigger className="w-44"><SelectValue placeholder="All partners" /></SelectTrigger><SelectContent><SelectItem value="all">All partners</SelectItem>{partners.map(p => <SelectItem key={p.id} value={p.id.toString()}>{p.companyName}</SelectItem>)}</SelectContent></Select>
         <Select value={supplierId} onValueChange={v => setSupplierId(v === "all" ? "" : v)}><SelectTrigger className="w-44"><SelectValue placeholder="All suppliers" /></SelectTrigger><SelectContent><SelectItem value="all">All suppliers</SelectItem>{suppliers.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}</SelectContent></Select>
         <Select value={status} onValueChange={v => setStatus(v === "all" ? "" : v)}><SelectTrigger className="w-44"><SelectValue placeholder="All statuses" /></SelectTrigger><SelectContent><SelectItem value="all">All statuses</SelectItem>{Object.keys(STATUS_COLORS).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>
+        <Select value={fulfillmentMode} onValueChange={v => setFulfillmentMode(v === "all" ? "" : v)}><SelectTrigger className="w-52"><SelectValue placeholder="Any fulfillment mode" /></SelectTrigger><SelectContent><SelectItem value="all">Any fulfillment mode</SelectItem>{FULFILLMENT_MODES.map(m => <SelectItem key={m} value={m}>{m.replace(/_/g, " ")}</SelectItem>)}</SelectContent></Select>
+        <Select value={sourceCityId} onValueChange={v => setSourceCityId(v === "all" ? "" : v)}><SelectTrigger className="w-44"><SelectValue placeholder="Any source city" /></SelectTrigger><SelectContent><SelectItem value="all">Any source city</SelectItem>{cities.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}</SelectContent></Select>
+        <Button variant={shortageOnly ? "default" : "outline"} size="sm" onClick={() => setShortageOnly(!shortageOnly)}>Shortages only</Button>
       </div>
 
       <div className="border rounded-xl bg-card shadow-sm overflow-hidden">
@@ -65,7 +81,14 @@ export default function OrdersDashboard() {
                 <TableCell className="text-sm">{o.partnerName}</TableCell>
                 <TableCell className="text-sm"><div>{o.eventName || "—"}</div><div className="text-xs text-muted-foreground">{o.venueName}</div></TableCell>
                 <TableCell className="text-sm">{o.contactName}<div className="text-xs text-muted-foreground">{o.companyName}</div></TableCell>
-                <TableCell className="text-xs"><Badge variant="outline">{o.fulfillmentMode || o.portalType}</Badge></TableCell>
+                <TableCell className="text-xs">
+                  <div className="flex flex-wrap gap-1">
+                    {(o.itemFulfillmentModes || []).slice(0, 2).map(m => <Badge key={m} variant="outline" className="text-[10px]">{m.replace(/_/g, " ")}</Badge>)}
+                    {(o.itemFulfillmentModes || []).length === 0 && <Badge variant="outline" className="text-[10px]">{o.fulfillmentMode || o.portalType}</Badge>}
+                    {(o.totalShortage || 0) > 0 && <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-700 bg-amber-50">⚠ {o.totalShortage} short</Badge>}
+                    {(o.totalReserved || 0) > 0 && <Badge variant="outline" className="text-[10px] border-emerald-300 text-emerald-700">✓ {o.totalReserved} reserved</Badge>}
+                  </div>
+                </TableCell>
                 <TableCell><span className={`text-xs px-2 py-0.5 rounded ${STATUS_COLORS[o.status] || "bg-gray-100"}`}>{o.status}</span></TableCell>
                 <TableCell className="text-xs text-muted-foreground">{o.supplierName || "—"}</TableCell>
                 <TableCell className="text-right font-medium">{o.totalEstimate ? `$${o.totalEstimate}` : "—"}</TableCell>

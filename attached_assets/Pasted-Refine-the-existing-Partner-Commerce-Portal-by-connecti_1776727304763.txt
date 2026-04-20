@@ -1,0 +1,276 @@
+Refine the existing Partner Commerce Portal by connecting order fulfillment modes to the inventory reservation system, adding partner facing committed inventory visibility, and building the first true catalog intelligence and quote mapping layer.
+
+Important:
+Do not rebuild from scratch.
+Work from the existing codebase.
+Preserve the current inventory and reservation engine.
+Use what is already live and extend it.
+Implement real workflow connections, not placeholders only.
+
+Primary objective for this pass:
+Make the ordering system operationally intelligent.
+When a client or partner chooses a fulfillment mode, the system should understand whether to reserve existing partner inventory, create print demand only, or flag new hardware requirements.
+Also give partner managers a clear view into what inventory is already committed so they can plan confidently.
+
+This pass has 3 major priorities:
+
+1. Wire order fulfillment mode to inventory and reservation behavior
+2. Add partner facing committed inventory visibility
+3. Build the first catalog intelligence and quote mapping layer
+
+-----------------------------------
+1. ORDER FULFILLMENT MODE LOGIC
+-----------------------------------
+
+Extend the ordering flow and order data model so each ordered item can have a fulfillment mode that drives operational logic.
+
+Supported fulfillment modes:
+- full unit
+- graphic only
+- use existing partner inventory
+- rental hardware plus new print
+- new hardware required
+
+Requirements:
+- these modes should be selectable in the ordering flow using clickable cards or segmented controls, not clunky dropdowns
+- only show applicable fulfillment modes for a product based on product capabilities
+- example: if a product is not compatible with graphic only, do not show that option
+- example: if a product is not rental eligible, do not show rental hardware plus new print
+
+For each ordered line item, store:
+- fulfillment mode
+- quantity
+- linked product
+- hardware required yes/no
+- print demand quantity
+- hardware demand quantity
+- reserved inventory quantity if applicable
+- inventory source city/location if applicable
+- shortage quantity if applicable
+- inventory reservation status
+- internal fulfillment notes
+
+Operational behavior:
+- graphic only should create print demand only and should not reserve hardware
+- use existing partner inventory should check inventory in the chosen city/location and create a reservation if available
+- rental hardware plus new print should create hardware demand and print demand, and optionally tie to rental inventory if later supported
+- new hardware required should create hardware demand and no reservation from partner inventory
+- full unit should behave according to product rules and whether inventory exists or must be newly sourced
+
+If available inventory is insufficient:
+- show shortage clearly before final order submission
+- allow internal admin or partner manager to proceed with a shortage flag if needed
+- store the shortage on the order detail page
+- surface shortage in internal ops views
+
+Add inheritance and defaults:
+- default inventory source city from event city
+- allow override if needed
+- preserve user choices when navigating between ordering steps
+
+-----------------------------------
+2. PARTNER FACING INVENTORY VISIBILITY
+-----------------------------------
+
+Build a partner facing inventory visibility layer for client controlled ordering portals such as Social Commerce Festival.
+
+Partner managers should be able to see:
+- total owned inventory by city
+- available quantity
+- reserved quantity
+- in use quantity
+- on order quantity
+- low stock items
+- overcommitted items
+- upcoming event commitments
+
+Create a dedicated partner manager inventory experience that feels clear and non technical.
+
+Requirements:
+- clean dashboard cards and tables
+- tabs or segmented controls by city
+- upcoming reservations grouped by event
+- clear distinction between:
+  - available now
+  - committed to future events
+  - currently in use
+  - short / needs reorder
+
+Add an event commitments view:
+- for each event, show reserved inventory by product
+- show status of each reservation
+- show shortage if event demand exceeds available inventory
+- allow quick jump from event to inventory and inventory to event
+
+Add a committed inventory timeline or upcoming commitments list if feasible:
+- event name
+- city
+- date
+- reserved items
+- shortage flags
+
+Do not expose internal margin or internal financial information in this partner view.
+
+-----------------------------------
+3. CATALOG INTELLIGENCE + QUOTE MAPPING
+-----------------------------------
+
+Build the first practical catalog intelligence layer so the system can operate with imperfect supplier data.
+
+Important context:
+The real supplier catalog is messy and may come from quotes, ERP records, screenshots, supplier websites, and internal operational knowledge.
+So the system must support a clean client facing item with richer backend operational fields.
+
+Extend products with these structured fields:
+
+Customer facing summary:
+- display name
+- short description
+- visible dimensions
+- thumbnail image
+- gallery images
+- category
+- simple feature badges
+
+Backend ops summary:
+- hardware included yes/no
+- graphic only available yes/no
+- rental eligible yes/no
+- reusable hardware compatible yes/no
+- attachment method
+- material
+- finishing
+- production notes
+- install notes
+- lead time
+- linked supplier
+- internal ops summary text
+
+Quote mapping:
+Allow quote/spec references to be attached to:
+- products
+- packages
+- branding zones
+
+For each quote/spec reference store:
+- title
+- supplier
+- quote version
+- file upload
+- effective date
+- expiration date
+- approved standard flag
+- internal only flag
+- summary notes
+- dimensions summary
+- material summary
+- attachment summary
+- hardware summary
+
+Add a much cleaner quote mapping UI:
+- quote card list on product detail
+- mark one as current approved standard
+- show if expired
+- show supplier name
+- download/view file
+- add/edit notes
+
+Add backend reference logic:
+- products can have one or more quote/spec references
+- packages can inherit or display quote references from included products
+- branding zones can have zone specific quote/spec references
+- internal order packet should display linked quote/spec references clearly
+
+-----------------------------------
+4. PRODUCT CAPABILITIES RULES
+-----------------------------------
+
+Add structured capability flags to products so the ordering flow can behave intelligently.
+
+Capabilities should include:
+- allows graphic only
+- allows full unit
+- allows use existing partner inventory
+- allows rental hardware plus new print
+- requires attachment method selection
+- requires material selection
+- reusable hardware compatible
+- inventory tracked yes/no
+
+Use these flags to drive:
+- which fulfillment modes appear
+- whether reservation logic is triggered
+- whether additional backend fields are shown
+- whether print only vs hardware demand is calculated
+
+-----------------------------------
+5. INTERNAL ORDER PACKET IMPROVEMENTS
+-----------------------------------
+
+Enhance the order detail and internal ops packet to reflect the new logic.
+
+For each order or line item, show:
+- selected fulfillment mode
+- print demand quantity
+- hardware demand quantity
+- reserved inventory quantity
+- source city/location
+- shortage quantity
+- linked product capabilities
+- linked quote/spec references
+- operational notes
+
+Make shortage and reservation status visually obvious.
+Keep it polished, easy to scan, and operationally useful.
+
+-----------------------------------
+6. DASHBOARDS AND FILTERS
+-----------------------------------
+
+Enhance internal admin dashboards and order tables with filters for:
+- fulfillment mode
+- shortage flag
+- reserved inventory yes/no
+- inventory source city
+- quote reference attached yes/no
+- product capability type
+- partner
+- event
+- supplier
+
+Add summary widgets for:
+- orders using existing partner inventory
+- print only orders
+- orders with shortages
+- items without quote/spec references
+- upcoming committed inventory
+
+-----------------------------------
+7. SEED DATA
+-----------------------------------
+
+Update seed data to demonstrate the new logic:
+- products with different capability combinations
+- products that allow graphic only
+- products that require full unit
+- products that support reusable partner inventory
+- quote/spec references for A3, B2, and WS
+- events with reservations and shortages
+- orders using different fulfillment modes
+
+-----------------------------------
+8. DOCUMENTATION
+-----------------------------------
+
+Update replit.md with:
+- fulfillment mode logic
+- inventory reservation integration
+- partner facing inventory views
+- catalog intelligence model
+- quote mapping architecture
+- new schema changes
+- recommended next steps
+
+Also create or update a session plan and implement as much of the above as possible in this pass.
+Do not stop after describing the work.
+Actually build it.

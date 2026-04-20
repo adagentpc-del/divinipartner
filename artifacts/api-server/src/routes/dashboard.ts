@@ -62,6 +62,25 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
     .orderBy(eventsTable.eventStartDate)
     .limit(6);
 
+  // Catalog intelligence widgets
+  const fulfillmentBreakdown: any = await db.execute(sql`
+    SELECT
+      COUNT(DISTINCT CASE WHEN oi.fulfillment_mode = 'use_existing_partner_inventory' THEN o.id END)::int AS partner_inventory_orders,
+      COUNT(DISTINCT CASE WHEN oi.fulfillment_mode = 'graphic_only' THEN o.id END)::int AS print_only_orders,
+      COUNT(DISTINCT CASE WHEN oi.shortage_quantity > 0 THEN o.id END)::int AS orders_with_shortages,
+      COALESCE(SUM(oi.shortage_quantity), 0)::int AS total_shortage_units
+    FROM orders o LEFT JOIN order_items oi ON oi.order_id = o.id
+    WHERE o.status NOT IN ('cancelled','completed')
+  `);
+  const fb = fulfillmentBreakdown.rows?.[0] || {};
+
+  const productsWithoutQuote: any = await db.execute(sql`
+    SELECT COUNT(*)::int AS missing FROM product_catalog p
+    WHERE p.is_active = true AND NOT EXISTS (
+      SELECT 1 FROM quote_assets q WHERE q.attachable_type = 'product' AND q.attachable_id = p.id
+    )
+  `);
+
   res.json({
     totalPartners: totalPartners?.count || 0,
     activePartners: activePartners?.count || 0,
@@ -78,6 +97,11 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
     recentOrders,
     lowInventory,
     upcomingEvents,
+    partnerInventoryOrders: Number(fb.partner_inventory_orders) || 0,
+    printOnlyOrders: Number(fb.print_only_orders) || 0,
+    ordersWithShortages: Number(fb.orders_with_shortages) || 0,
+    totalShortageUnits: Number(fb.total_shortage_units) || 0,
+    productsMissingQuote: Number(productsWithoutQuote.rows?.[0]?.missing) || 0,
   });
 });
 

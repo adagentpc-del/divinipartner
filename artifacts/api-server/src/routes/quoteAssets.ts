@@ -17,12 +17,19 @@ const QuoteAssetBody = z.object({
   vendorVisible: z.boolean().optional(),
   notes: z.string().nullable().optional(),
   uploadedBy: z.string().nullable().optional(),
+  supplierName: z.string().nullable().optional(),
+  dimensionsSummary: z.string().nullable().optional(),
+  materialSummary: z.string().nullable().optional(),
+  attachmentSummary: z.string().nullable().optional(),
+  hardwareSummary: z.string().nullable().optional(),
 });
 
 function isValidStoragePath(url: string): boolean {
   if (!url) return false;
   if (url.startsWith("http://") || url.startsWith("https://")) return false;
-  if (url.includes("..") || url.startsWith("/")) return false;
+  if (url.includes("..")) return false;
+  // Allow internal object paths like "/objects/..." (returned by storage normalize)
+  if (url.startsWith("/") && !url.startsWith("/objects/")) return false;
   return true;
 }
 

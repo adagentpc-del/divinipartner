@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Loader2, Users, ExternalLink, Copy, Eye } from "lucide-react";
+import { Plus, Loader2, Users, ExternalLink, Copy, Eye, Boxes } from "lucide-react";
 
 export default function PartnersList() {
   const { data: partners, isLoading, refetch } = useListPartners();
@@ -113,6 +113,11 @@ export default function PartnersList() {
                       >
                         {duplicating === partner.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Copy className="h-3.5 w-3.5" />}
                       </Button>
+                      <Link href={`/admin/partners/${partner.id}/committed-inventory`}>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-primary" title="Committed inventory">
+                          <Boxes className="h-3.5 w-3.5" />
+                        </Button>
+                      </Link>
                       <Link href={`/admin/partners/${partner.id}/edit`}>
                         <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">Edit</Button>
                       </Link>
