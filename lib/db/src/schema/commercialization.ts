@@ -4,13 +4,17 @@ export const commercialPlansTable = pgTable("commercial_plans", {
   id: serial("id").primaryKey(),
   code: text("code").notNull().unique(),
   name: text("name").notNull(),
-  tier: text("tier").notNull().default("starter"), // internal | starter | pro | enterprise | white_label_premium
-  pricingModel: text("pricing_model").notNull().default("flat_monthly"), // flat_monthly | flat_annual | per_portal | per_seat | per_event | custom
+  tier: text("tier").notNull().default("starter"),
+  pricingModel: text("pricing_model").notNull().default("flat_monthly"),
   priceAmount: numeric("price_amount", { precision: 12, scale: 2 }),
+  setupFee: numeric("setup_fee", { precision: 12, scale: 2 }),
   currency: text("currency").notNull().default("USD"),
   includedLimitsJson: jsonb("included_limits_json").$type<Record<string, number>>().default({}),
   featureFlagsJson: jsonb("feature_flags_json").$type<Record<string, boolean>>().default({}),
+  addonPricingJson: jsonb("addon_pricing_json").$type<Array<{ key: string; label: string; price?: string; note?: string }>>().default([]),
   description: text("description"),
+  prospectFacingDescription: text("prospect_facing_description"),
+  internalMarginNotes: text("internal_margin_notes"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
@@ -56,6 +60,10 @@ export const commercialAccountsTable = pgTable("commercial_accounts", {
   accountManager: text("account_manager"),
   internalRevenueOwner: text("internal_revenue_owner"),
   monetizationNotes: text("monetization_notes"),
+  activationStatus: text("activation_status").notNull().default("lead"), // lead | proposal_prepared | in_review | approved | activating | active | paused | suspended
+  demoReady: boolean("demo_ready").notNull().default(false),
+  salesNotes: text("sales_notes"),
+  lastDemoAt: timestamp("last_demo_at", { withTimezone: true }),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
@@ -87,6 +95,40 @@ export const accountUsageLimitsTable = pgTable("account_usage_limits", {
   lastComputedAt: timestamp("last_computed_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const proposalsTable = pgTable("proposals", {
+  id: serial("id").primaryKey(),
+  accountId: integer("account_id"),
+  prospectName: text("prospect_name"),
+  title: text("title").notNull(),
+  status: text("status").notNull().default("draft"), // draft | in_review | sent | accepted | declined
+  recommendedPlanId: integer("recommended_plan_id"),
+  comparedPlanIds: jsonb("compared_plan_ids").$type<number[]>().default([]),
+  packagingNotes: text("packaging_notes"),
+  internalNotes: text("internal_notes"),
+  prospectFacingNotes: text("prospect_facing_notes"),
+  createdBy: text("created_by"),
+  sentAt: timestamp("sent_at", { withTimezone: true }),
+  decidedAt: timestamp("decided_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});
+
+export const activationChecklistItemsTable = pgTable("activation_checklist_items", {
+  id: serial("id").primaryKey(),
+  accountId: integer("account_id").notNull(),
+  itemKey: text("item_key").notNull(),
+  label: text("label").notNull(),
+  status: text("status").notNull().default("pending"), // pending | in_progress | done | skipped
+  assignedTo: text("assigned_to"),
+  notes: text("notes"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});
+
+export type Proposal = typeof proposalsTable.$inferSelect;
+export type ActivationChecklistItem = typeof activationChecklistItemsTable.$inferSelect;
 export type CommercialPlan = typeof commercialPlansTable.$inferSelect;
 export type CommercialAccount = typeof commercialAccountsTable.$inferSelect;
 export type BrandingPackage = typeof brandingPackagesTable.$inferSelect;

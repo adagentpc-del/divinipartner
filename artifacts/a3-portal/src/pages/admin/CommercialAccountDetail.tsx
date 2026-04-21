@@ -139,6 +139,19 @@ export default function CommercialAccountDetail() {
               </Select>
             </Field>
             <Field label="Renewal date"><Input type="date" value={account.renewalDate ? String(account.renewalDate).slice(0, 10) : ""} onChange={e => set("renewalDate", e.target.value || null)} /></Field>
+            <Field label="Activation status">
+              <Select value={account.activationStatus || "lead"} onValueChange={v => set("activationStatus", v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{["lead", "proposal_prepared", "in_review", "approved", "activating", "active", "paused", "suspended"].map(s => <SelectItem key={s} value={s} className="capitalize">{s.replace(/_/g, " ")}</SelectItem>)}</SelectContent>
+              </Select>
+            </Field>
+            <Field label="Demo-ready">
+              <div className="flex items-center gap-2 h-10">
+                <input type="checkbox" checked={!!account.demoReady} onChange={e => set("demoReady", e.target.checked)} className="h-4 w-4" />
+                <span className="text-sm text-muted-foreground">Surface this account in the showcase tab</span>
+              </div>
+            </Field>
+            <div className="sm:col-span-2"><Field label="Sales notes"><Textarea rows={2} value={account.salesNotes || ""} onChange={e => set("salesNotes", e.target.value)} placeholder="Deal context, key contacts, follow-ups." /></Field></div>
             <div className="sm:col-span-2"><Field label="Monetization notes (internal only)"><Textarea rows={3} value={account.monetizationNotes || ""} onChange={e => set("monetizationNotes", e.target.value)} /></Field></div>
           </CardContent>
         </Card>

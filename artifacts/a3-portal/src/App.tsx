@@ -46,6 +46,11 @@ import FeedbackInbox from "@/pages/admin/FeedbackInbox";
 import CommercialDashboard from "@/pages/admin/CommercialDashboard";
 import CommercialAccountDetail from "@/pages/admin/CommercialAccountDetail";
 import CommercialPlans from "@/pages/admin/CommercialPlans";
+import SalesCommandCenter from "@/pages/admin/SalesCommandCenter";
+import ProposalDetail from "@/pages/admin/ProposalDetail";
+import AccountActivation from "@/pages/admin/AccountActivation";
+import SalesShowcase from "@/pages/admin/SalesShowcase";
+import { DemoModeProvider } from "@/contexts/DemoModeContext";
 import WorkflowRules from "@/pages/admin/WorkflowRules";
 
 import PublicLayout from "@/components/layout/PublicLayout";
@@ -130,6 +135,7 @@ function ClerkProviderWithRoutes() {
     >
       <QueryClientProvider client={queryClient}>
         <ClerkQueryClientCacheInvalidator />
+        <DemoModeProvider>
         <TooltipProvider>
           <Switch>
             <Route path="/" component={HomeRedirect} />
@@ -248,6 +254,18 @@ function ClerkProviderWithRoutes() {
             <Route path="/admin/commercial/accounts/:id">
               {() => <AdminRoute component={CommercialAccountDetail} />}
             </Route>
+            <Route path="/admin/sales">
+              {() => <AdminRoute component={SalesCommandCenter} />}
+            </Route>
+            <Route path="/admin/sales/showcase">
+              {() => <AdminRoute component={SalesShowcase} />}
+            </Route>
+            <Route path="/admin/sales/proposals/:id">
+              {() => <AdminRoute component={ProposalDetail} />}
+            </Route>
+            <Route path="/admin/sales/activation/:accountId">
+              {() => <AdminRoute component={AccountActivation} />}
+            </Route>
             <Route path="/admin/workflow">
               {() => <AdminRoute component={WorkflowDashboard} />}
             </Route>
@@ -283,6 +301,7 @@ function ClerkProviderWithRoutes() {
             <Route component={NotFound} />
           </Switch>
         </TooltipProvider>
+        </DemoModeProvider>
       </QueryClientProvider>
     </ClerkProvider>
   );

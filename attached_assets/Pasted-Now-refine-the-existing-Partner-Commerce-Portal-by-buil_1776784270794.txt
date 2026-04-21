@@ -1,0 +1,367 @@
+Now refine the existing Partner Commerce Portal by building a rollout stabilization, commercial objection-handling, and final buyer-facing polish layer. The platform already has partners, portal types, products, packages, branding zones, inventory, reservations, fulfillment modes, supplier routing, quote/spec references, quote ingestion/catalog enrichment, exports, reconciliation, communications, selective billing execution, document/asset intelligence, workflow orchestration, executive analytics/profitability intelligence, production hardening, launch/onboarding flows, post-launch optimization/adoption intelligence, commercialization/white-label/plan-gating architecture, and sales/demo enablement. This pass should make the product more resilient in real commercial conversations and early live rollout by closing gaps that surface during demos, objections, onboarding friction, and first partner use.
+
+Important:
+Do not rebuild from scratch.
+Work from the existing codebase.
+Preserve the current architecture, permissions, hardening work, commercialization logic, and demo/sales tooling.
+This pass is about stabilization, clarity, trust, and close-readiness.
+Implement real improvements, not placeholders only.
+
+Primary objective for this pass:
+Make the platform better at surviving real-world selling and rollout by:
+- reducing prospect objections
+- tightening buyer-facing clarity
+- improving activation confidence
+- fixing friction surfaced during demos
+- improving partner trust in the system
+- making first live rollout feel stable and intentional
+
+This pass has 12 major priorities:
+
+1. Commercial objection handling architecture
+2. Buyer-facing clarity and trust layer
+3. Demo-to-decision follow-up support
+4. Rollout stabilization dashboard
+5. Activation friction fixes
+6. Admin “what is blocking go-live” intelligence
+7. Prospect and partner FAQ / explanation layer
+8. Safer first-live workflow defaults
+9. Confidence-building proof points and readiness signals
+10. White-label buyer polish
+11. Seed/demo objection scenarios
+12. Documentation and final stabilization notes
+
+-----------------------------------
+1. COMMERCIAL OBJECTION HANDLING ARCHITECTURE
+-----------------------------------
+
+Build a structured internal objection-handling layer for commercial use.
+
+This should help internal admins or sales users track and respond to common objections such as:
+- implementation complexity
+- setup time concerns
+- billing/control concerns
+- supplier workflow concerns
+- white-label questions
+- permissions/security concerns
+- multi-location complexity
+- onboarding burden
+- “we already use another system”
+- “our ops team will not adopt this”
+- “we do not want to enter too much data”
+- “how fast can this go live”
+
+Requirements:
+- create internal objection categories
+- allow objections to be linked to a commercial account, proposal, or demo scenario
+- allow internal notes and recommended responses
+- allow objection status such as:
+  - raised
+  - answered
+  - follow-up needed
+  - resolved
+- allow internal tagging like:
+  - pricing
+  - implementation
+  - security
+  - onboarding
+  - white-label
+  - operational workflow
+- create a clean internal objection review UI
+
+Do not build a CRM.
+Keep this product and rollout focused.
+
+-----------------------------------
+2. BUYER-FACING CLARITY AND TRUST LAYER
+-----------------------------------
+
+Improve the clarity of the product during demos and buyer review.
+
+Add or improve concise explanatory panels, FAQ-style help, or contextual trust elements for topics such as:
+- how fast setup can happen
+- how partner onboarding works
+- how permissions are controlled
+- how white-label works
+- how inventory and supplier routing work
+- how billing models can be handled flexibly
+- how the portal reduces manual coordination
+- how recurring events become easier over time
+
+Requirements:
+- keep language commercially polished and confidence-inducing
+- avoid overly technical explanations
+- do not clutter the product
+- use expandable help drawers/cards or controlled info panels where useful
+- support internal “buyer-safe” explanations separate from deep operational notes
+
+-----------------------------------
+3. DEMO TO DECISION FOLLOW-UP SUPPORT
+-----------------------------------
+
+Build support for internal follow-up after a demo or commercial conversation.
+
+Support actions such as:
+- log demo outcome
+- record key interest areas
+- record objections raised
+- record recommended plan/package
+- record white-label interest level
+- record activation readiness
+- record next step
+- record priority features requested
+
+Requirements:
+- tie this to commercial accounts or demo scenarios
+- allow internal follow-up status such as:
+  - demo completed
+  - proposal requested
+  - technical review needed
+  - activation pending
+  - stalled
+  - closed won placeholder
+  - closed lost placeholder
+- create a clean follow-up summary area
+- allow quick internal note capture from demo mode if feasible
+
+Keep this commercially useful without turning it into a full sales CRM.
+
+-----------------------------------
+4. ROLLOUT STABILIZATION DASHBOARD
+-----------------------------------
+
+Build a dedicated rollout stabilization dashboard for internal admin.
+
+This should show:
+- accounts activated recently
+- accounts in activation
+- accounts stalled before launch
+- partners with incomplete setup
+- partners with first-order friction
+- partners with unresolved blockers
+- demo-to-live accounts needing follow-up
+- first-live workflow issues
+- accounts with repeated missing assets or approval bottlenecks
+- accounts with unresolved billing or supplier setup concerns
+
+Requirements:
+- summary cards
+- stabilization queue or list
+- filters by commercial status, partner status, portal type, account owner, go-live readiness
+- clear drilldowns into what is actually wrong
+- make this practical for early rollout support
+
+-----------------------------------
+5. ACTIVATION FRICTION FIXES
+-----------------------------------
+
+Tighten the activation flow based on likely real-world friction.
+
+Improve:
+- commercial-to-operational conversion flow
+- launch gating clarity
+- first-user invite experience
+- first-event setup flow
+- first-order success path
+- first supplier assignment path
+- first invoice/billing path
+- first asset upload/approval path
+
+Requirements:
+- reduce avoidable steps
+- add clearer defaults
+- add stronger in-flow explanations where confusion is likely
+- improve warnings for incomplete but non-critical setup
+- improve “what happens next” messaging after activation
+
+-----------------------------------
+6. ADMIN “WHAT IS BLOCKING GO-LIVE” INTELLIGENCE
+-----------------------------------
+
+Build a clear blocker intelligence view.
+
+For each account/partner, identify blockers such as:
+- no billing configuration
+- no supplier defaults
+- no products/packages/zones configured
+- no venues/cities where required
+- no live event path configured
+- missing user assignment
+- missing communication templates
+- unresolved asset/spec gaps
+- partner setup incomplete
+- white-label branding incomplete
+- permissions incomplete
+
+Requirements:
+- show blockers vs warnings separately
+- show why each blocker matters
+- link directly to the fix
+- allow internal override with note where appropriate
+- show readiness score or completion percent if useful
+
+This should help internal admin know exactly why an account is not truly ready.
+
+-----------------------------------
+7. PROSPECT AND PARTNER FAQ / EXPLANATION LAYER
+-----------------------------------
+
+Build a polished internal and optionally external FAQ/explanation layer.
+
+Support content areas such as:
+- how setup works
+- how long activation takes
+- what information is needed
+- how recurring events get easier
+- how vendors interact with the system
+- how billing options can be structured
+- how permissions and visibility work
+- how branded/white-label portals work
+- what happens after an order is placed
+- how artwork and production readiness are handled
+
+Requirements:
+- allow internal editing/management if feasible
+- support sections for:
+  - internal sales use
+  - partner-facing explanation
+  - client-facing explanation
+- keep language clean, premium, and confidence-building
+- do not create a bloated knowledge base
+- focus on high-leverage FAQ content only
+
+-----------------------------------
+8. SAFER FIRST-LIVE WORKFLOW DEFAULTS
+-----------------------------------
+
+Improve defaults for early live rollout.
+
+Examples:
+- default safer communication templates
+- default activation checklist selections
+- default billing model selection guidance
+- default supplier routing suggestions
+- default first-event setup template
+- default package starter templates
+- default vendor packet visibility settings
+- default asset approval flow
+- default alerts/reminders tuned for first rollout
+
+Requirements:
+- favor stability and clarity over advanced complexity
+- make defaults easy to override later
+- clearly label recommended defaults
+- reduce the chance that a first live partner has a messy experience
+
+-----------------------------------
+9. CONFIDENCE-BUILDING PROOF POINTS AND READINESS SIGNALS
+-----------------------------------
+
+Add internal and buyer-safe proof signals where appropriate.
+
+Examples:
+- readiness badges
+- launch status indicators
+- activation completion progress
+- partner setup completion
+- first order completed
+- first vendor assignment completed
+- first invoice completed
+- first asset approved
+- workflow health indicators
+- reduced-manual-work messaging if appropriate
+
+Requirements:
+- keep these tasteful and useful
+- avoid fake vanity stats
+- only use real system signals
+- make the platform feel trustworthy and mature
+
+-----------------------------------
+10. WHITE-LABEL BUYER POLISH
+-----------------------------------
+
+Continue refining white-label and enterprise buyer-facing polish.
+
+Improve:
+- branded preview quality
+- “powered by” handling clarity
+- proposal view polish for white-label packages
+- enterprise hierarchy preview clarity
+- brand control previews
+- commercial differentiation between internal managed, partial white-label, and full white-label
+
+Requirements:
+- make differences tangible
+- reduce confusion in commercial conversations
+- keep presentation strategic and premium
+
+-----------------------------------
+11. SEED / DEMO OBJECTION SCENARIOS
+-----------------------------------
+
+Refine demo data and scenarios to support real selling and rollout conversations.
+
+Include:
+- one account worried about setup complexity
+- one account needing white-label reassurance
+- one enterprise account with multi-location concerns
+- one account stalled in activation due to missing setup
+- one account successfully converted from demo to active
+- example objections and internal recommended response records
+- example rollout blocker records
+- example stabilization dashboard data
+
+This should help the platform feel sales-ready and rollout-aware.
+
+-----------------------------------
+12. DESIGN AND UX
+-----------------------------------
+
+Keep the interface premium, calm, and confidence-building.
+
+Improve:
+- rollout/stabilization cards
+- blocker badges
+- objection review screens
+- FAQ/help cards
+- follow-up note areas
+- readiness/proof indicators
+- buyer-safe explanation drawers
+- activation follow-up summaries
+
+Avoid:
+- clutter
+- sounding defensive
+- over-explaining technical complexity
+- turning the app into a bulky sales CRM
+- mixing too many operational and commercial concerns on one screen
+
+-----------------------------------
+13. ROLE VISIBILITY AND SAFETY
+-----------------------------------
+
+Keep all new stabilization and objection features tightly controlled.
+
+Rules:
+- Super Admin and Internal Admin can access full stabilization, objection, and follow-up tooling
+- Partner Managers can only see partner-relevant onboarding/readiness/help content intentionally exposed to them
+- Vendor and Client users should not see internal objections, commercial notes, or buyer strategy content
+- buyer-safe FAQ/help content should be separated from internal response guidance
+
+-----------------------------------
+14. DOCUMENTATION
+-----------------------------------
+
+Update replit.md with:
+- objection-handling model
+- rollout stabilization dashboard structure
+- blocker/readiness logic
+- demo-to-decision follow-up flow
+- FAQ/help architecture
+- safer first-live defaults
+- final recommended post-build cleanup or rollout steps
+
+Also create or update a session plan and implement as much of the above as possible in this pass.
+Do not stop after describing the work.
+Actually build it.

@@ -703,3 +703,69 @@ A clean monetization architecture sitting on top of operational partner data. Le
 
 ### Recommended next phase
 **Plan-aware enforcement & soft-limit UX.** The architecture is in place but feature gating is currently informational only. Next pass should: (a) wire `checkFeature()` into a small set of high-value gates (analytics, automation, white-label settings page) so locked features render `FeatureGate` empty states instead of fully-rendered modules, (b) add soft-limit warnings on creation flows (events/partners/users) that read against `account_usage_limits`, (c) introduce a lightweight Stripe-ready billing connector for the subscription table so trial→active conversion and renewal reminders can fire automatically.
+
+## Sales Enablement & Demo Layer
+
+A presentation/activation layer on top of the commercialization architecture. Designed for closing deals, walking prospects through polished demos, and converting sold accounts into live ones.
+
+**Schema additions (`lib/db/src/schema/commercialization.ts`)**
+- `commercial_plans` extended: `setupFee`, `addonPricingJson`, `prospectFacingDescription`, `internalMarginNotes` (internal-only).
+- `commercial_accounts` extended: `activationStatus` (lead → proposal_prepared → in_review → approved → activating → active, plus paused/suspended), `demoReady` boolean, `salesNotes`, `lastDemoAt`.
+- New `proposals` table: title, prospect name, linked accountId, status (draft/in_review/sent/accepted/declined), recommendedPlanId, comparedPlanIds[], packagingNotes, internalNotes (hidden in demo mode), prospectFacingNotes, createdBy, sentAt, decidedAt.
+- New `activation_checklist_items`: per-account ordered checklist (10-item default template), status (pending/in_progress/done/skipped), assignedTo, notes, completedAt.
+
+**Service (`services/salesEnablement.ts`)**
+- `DEFAULT_CHECKLIST_TEMPLATE` — 10-step activation checklist (contract signed, branding assets, primary domain, admin user, plan applied, supplier routing, billing setup, sample data, demo walkthrough, go-live).
+- `seedActivationChecklist(accountId)` — idempotent: only inserts missing items.
+- `getActivationProgress(accountId)` — returns items + counts + percentage.
+- `advanceActivationStatus(accountId, target)` — validated transitions (forward only, plus operational pause/resume/suspend); auto-syncs `commercialStatus` for paused/suspended/active.
+- `buildPlanComparisonMatrix(planIds)` — returns plans + features × plans grid + limits × plans grid using `FEATURE_KEYS` and `LIMIT_KEYS`.
+- `getSalesPipelineSummary` — totals (accounts, proposals, demo-ready, WL prospects, enterprise prospects, active), distribution by activation status, distribution by proposal status, ordered activation queue, recent proposals, demo-ready accounts.
+- `SHOWCASE_PRESETS` — curated preview routes with audience tags (Investor demo, White-label sales call, Enterprise buyer demo, Operational demo, Internal stakeholder).
+
+**Routes (`routes/salesEnablement.ts`)**
+- `/api/sales/dashboard` — pipeline summary
+- `/api/sales/showcase` — curated preview catalog
+- `/api/sales/proposals` GET/POST, `/:id` GET/PATCH/DELETE (GET returns proposal + comparison matrix + recommended plan + linked account)
+- `/api/sales/comparison-matrix` POST `{planIds}` — ad-hoc comparison without saving
+- `/api/sales/accounts/:id/activation` GET (account + progress + template)
+- `/api/sales/accounts/:id/activation/seed` POST — seeds default checklist
+- `/api/sales/accounts/:id/activation/advance` POST `{status}` — validated transition
+- `/api/sales/activation-items/:itemId` PATCH — update status/assignedTo/notes
+- `/api/sales/constants` — exposes activation/proposal status enums
+
+**Frontend**
+- `DemoModeContext` + `DemoModeProvider` — persisted in `localStorage:a3:demoMode`. `useDemoMode()` hook + `useDemoSafe()` helper for conditional fields.
+- `DemoModeBanner` — orange gradient banner pinned above header when active. Includes Exit button.
+- `DemoModeToggle` — small switch in admin header (always visible to internal admins).
+- `/admin/sales` — Sales Command Center with KPI cards (accounts/active/proposals/demo-ready/WL prospects/enterprise prospects) and tabs: Activation pipeline, Proposals, Demo-ready, Showcase.
+- `/admin/sales/proposals/:id` — Proposal detail (title, prospect, linked account, status, packaging notes, prospect-facing notes, internal notes hidden in demo mode), plan picker with recommended-marker, full comparison matrix, print-friendly layout.
+- `/admin/sales/proposals/new` — supports new-proposal flow; redirects to `/:id` on save.
+- `/admin/sales/activation/:accountId` — activation workflow: status display + advance picker (validated server-side), checklist UI with click-to-advance state machine (pending → in_progress → done → pending), progress bar.
+- `/admin/sales/showcase` — curated preview routes catalog with audience tags + tip about toggling demo mode before opening.
+- `PlanComparisonTable` reusable component — features × plans matrix with check/X cells, limit allowances, recommended badge highlighting, internal-margin notes hidden in demo mode.
+- `ActivationChecklist` reusable component — checklist with status icons, click-to-advance, progress bar, seed-defaults flow.
+- `CommercialAccountDetail` extended with `activationStatus` select, `demoReady` toggle, `salesNotes` textarea.
+- Nav: "Sales" entry (Briefcase icon) added to AdminLayout.
+
+**Demo mode behavior**
+- Hides internal margin notes on plans, internal notes on proposals.
+- Banner clearly indicates demo mode is active.
+- Toggle persisted across sessions (localStorage); never affects server data — purely client view.
+- Internal-only fields (monetization notes, internal revenue owner) remain in account settings since those screens are admin-only, but proposals exposed to prospects in print/preview hide internal notes when demo mode is on.
+
+**Activation transitions** are forward-only by default (lead → proposal_prepared → ... → active), with two operational exceptions:
+- Pause/resume/suspend can flow between paused, suspended, and active in any direction.
+- Resume from paused/suspended → activating or active is allowed.
+- Backward transitions (e.g., `active → lead`) return 400.
+
+**Demo data seeded**
+- Hilton White-Label and Move Miami Enterprise marked demo-ready and active.
+- BetaCo Trial advanced to in_review, then approved (demonstrating transition validation).
+- NewVenue Pilot account in `activating` state with 6/10 checklist items done (60% progress).
+- Two proposals: "Hilton Multi-Brand Expansion" (in_review, comparing Pro/Enterprise/WL Premium with WL Premium recommended) and "BetaCo Trial → Annual" (draft).
+
+### Recommended next phase
+1. Wire `useDemoMode()` into a few high-noise admin screens (workflow logs, deck extractions, analytics drill-downs) so demo mode visibly cleans them up — the architecture is in place but most operational screens haven't been gated yet.
+2. Add a print stylesheet + a "Send to prospect" action on proposals that generates a clean PDF/print view (the print button currently uses browser print; styling hides the edit panes via `print:hidden` but a dedicated print layout would polish this).
+3. Optional: a "Reset demo data" admin action to make scenario switching during back-to-back demos friction-free.

@@ -141,11 +141,15 @@ const AccountBody = z.object({
   accountManager: z.string().nullable().optional(),
   internalRevenueOwner: z.string().nullable().optional(),
   monetizationNotes: z.string().nullable().optional(),
+  activationStatus: z.string().optional(),
+  demoReady: z.boolean().optional(),
+  salesNotes: z.string().nullable().optional(),
+  lastDemoAt: z.string().nullable().optional(),
   isActive: z.boolean().optional(),
 });
 
 function coerceDates(d: any) {
-  for (const k of ["startDate", "renewalDate"] as const) {
+  for (const k of ["startDate", "renewalDate", "lastDemoAt"] as const) {
     if (d[k]) d[k] = new Date(d[k]);
   }
   return d;

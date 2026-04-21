@@ -30,6 +30,7 @@ import analyticsRouter from "./analytics";
 import onboardingRouter from "./onboarding";
 import postLaunchRouter from "./postLaunch";
 import commercializationRouter from "./commercialization";
+import salesEnablementRouter from "./salesEnablement";
 import partnerInventoryRouter from "./partnerInventory";
 import exportsRouter from "./exports";
 import reconciliationRouter from "./reconciliation";
@@ -74,5 +75,6 @@ router.use(analyticsRouter);
 router.use(onboardingRouter);
 router.use(postLaunchRouter);
 router.use(commercializationRouter);
+router.use(salesEnablementRouter);
 
 export default router;

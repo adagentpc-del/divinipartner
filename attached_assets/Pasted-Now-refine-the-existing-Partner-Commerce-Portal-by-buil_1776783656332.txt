@@ -1,0 +1,320 @@
+Now refine the existing Partner Commerce Portal by building a sales/demo enablement, packaging polish, proposal support, and account activation workflow layer. The platform already has partners, portal types, products, packages, branding zones, inventory, reservations, fulfillment modes, supplier routing, quote/spec references, quote ingestion/catalog enrichment, exports, reconciliation, communications, selective billing execution, document/asset intelligence, workflow orchestration, executive analytics/profitability intelligence, production hardening, launch/onboarding flows, post-launch optimization/adoption intelligence, and commercialization/white-label/plan-gating architecture. This pass should make the platform easier to show, sell, position, package, and activate for real commercial use.
+
+Important:
+Do not rebuild from scratch.
+Work from the existing codebase.
+Preserve the current architecture, permissions, commercialization logic, and hardening work.
+This pass is about demo readiness, proposal readiness, commercial presentation, and activation flow polish.
+Implement real product and workflow improvements, not placeholders only.
+
+Primary objective for this pass:
+Make the platform capable of supporting:
+- polished demos
+- investor or strategic partner previews
+- internal sales conversations
+- proposal/package comparison
+- white-label sales walkthroughs
+- controlled account activation after commercial agreement
+- cleaner show-and-sell workflows for closing deals
+
+This pass has 12 major priorities:
+
+1. Demo and sales enablement architecture
+2. Investor/demo mode and presentation-safe views
+3. Proposal and package comparison views
+4. Pricing presentation internals
+5. Sales-ready preview routes and portal showcases
+6. Commercial account activation workflow
+7. Demo dataset and scenario switching
+8. White-label sales presentation support
+9. Sales/admin command center for commercial readiness
+10. Role-safe demo and proposal visibility
+11. Seed/demo sales scenarios
+12. Documentation and final polish
+
+-----------------------------------
+1. DEMO AND SALES ENABLEMENT ARCHITECTURE
+-----------------------------------
+
+Build a structured layer for demo, sales, and commercial presentation support.
+
+This should support use cases such as:
+- internal sales walkthrough
+- partner pitch/demo
+- white-label demo
+- investor preview
+- strategic partner presentation
+- proposal follow-up after a sales call
+
+Requirements:
+- support controlled demo views that look polished and intentional
+- separate operational admin complexity from demo-friendly presentation
+- allow showcasing selected parts of the platform without exposing messy internal tooling
+- allow internal admins to launch demo flows quickly
+- support reusable demo scenarios and commercial narratives
+
+Do not turn the product into a slide deck.
+Keep it real and interactive.
+
+-----------------------------------
+2. INVESTOR / DEMO MODE AND PRESENTATION-SAFE VIEWS
+-----------------------------------
+
+Build a demo-safe presentation mode.
+
+Requirements:
+- support a clear “demo mode” or “presentation mode” state for internal sales/admin users
+- hide overly technical admin noise when in demo mode
+- hide irrelevant sample clutter
+- show cleaner, more curated data and pages
+- optionally suppress internal-only operational badges that are distracting during demos
+- show a visible demo banner so internal users know they are in presentation mode
+- allow switching back to full operational mode easily
+
+Support use cases such as:
+- investor walkthrough
+- enterprise buyer demo
+- white-label prospect demo
+- internal stakeholder presentation
+
+Keep permissions safe.
+This should not accidentally expose internal sensitive data.
+
+-----------------------------------
+3. PROPOSAL AND PACKAGE COMPARISON VIEWS
+-----------------------------------
+
+Build internal commercial comparison views that help present different packaging options.
+
+Support proposal-style views for comparing:
+- plan/tier options
+- white-label levels
+- feature sets
+- enterprise vs standard structures
+- managed service vs self-serve positioning
+- package configurations for portal setup
+
+Requirements:
+- create clean plan comparison cards or tables
+- show included features, limits, and branding level differences
+- support internal notes or proposal notes
+- allow internal admins to mark recommended package
+- support export/print-friendly proposal view if feasible
+- keep this separate from operational event/package ordering
+- allow proposal scenarios tied to commercial accounts if useful
+
+Do not build a full CPQ suite.
+Keep this focused and commercially useful.
+
+-----------------------------------
+4. PRICING PRESENTATION INTERNALS
+-----------------------------------
+
+Build a clean internal structure for commercial pricing presentation.
+
+Support:
+- plan name
+- list price placeholder
+- custom price placeholder
+- setup fee placeholder
+- monthly/annual pricing placeholder
+- included limits
+- add-on pricing placeholders
+- white-label premium placeholders
+- enterprise custom pricing notes
+- internal margin/notes hidden from proposal-facing views
+
+Requirements:
+- pricing presentation should be internally manageable
+- internal-only pricing notes remain hidden from prospect-facing preview
+- allow internal admins to prepare clean commercial pricing views without exposing backend monetization complexity
+- allow commercial override at account/proposal level where needed
+
+This is for presentation and packaging control, not necessarily payment execution.
+
+-----------------------------------
+5. SALES-READY PREVIEW ROUTES AND PORTAL SHOWCASES
+-----------------------------------
+
+Build polished preview routes and showcase pages.
+
+Examples:
+- preview a Social Commerce style portal
+- preview a branding partner portal
+- preview a white-label enterprise portal
+- preview a client ordering experience
+- preview a vendor-facing fulfillment workspace
+- preview branded account variations
+
+Requirements:
+- create curated demo routes or preview modes
+- use polished seeded/demo content
+- allow switching branding presets where useful
+- allow internal admins to showcase selected workflows without needing to manually configure every detail live
+- support "show only this flow" style walkthrough capability if feasible
+
+This should make demos smoother and more persuasive.
+
+-----------------------------------
+6. COMMERCIAL ACCOUNT ACTIVATION WORKFLOW
+-----------------------------------
+
+Build a clean activation flow from sold/commercial account to live operational account.
+
+Support lifecycle states such as:
+- lead / prospect placeholder
+- proposal prepared
+- commercial review
+- approved
+- activation in progress
+- active
+- paused
+- suspended
+
+Requirements:
+- create an internal activation workflow/checklist
+- support creating or converting a commercial account into a live portal/account instance
+- map commercial selections to operational setup defaults
+- apply selected plan/branding/package settings during activation
+- show activation progress clearly
+- allow partial setup before full go-live
+- keep launch gating and readiness checks connected where useful
+
+This should bridge “sold” to “launched.”
+
+-----------------------------------
+7. DEMO DATASET AND SCENARIO SWITCHING
+-----------------------------------
+
+Deepen the demo system so internal admins can present different commercial scenarios.
+
+Support scenarios such as:
+- internal managed portal
+- white-label premium portal
+- enterprise multi-location portal
+- inventory-heavy partner
+- branding-zone-heavy venue partner
+- recurring multi-city event partner
+
+Requirements:
+- allow internal admin to switch demo scenarios quickly
+- keep demo scenarios clearly marked as demo
+- isolate demo data from live production data
+- if feasible, allow quick reset of demo scenario state
+- keep scenario switching easy and polished
+
+This will help with demos, sales calls, and internal strategy conversations.
+
+-----------------------------------
+8. WHITE-LABEL SALES PRESENTATION SUPPORT
+-----------------------------------
+
+Enhance white-label presentation quality.
+
+Support:
+- preview branding package levels
+- preview different “powered by” visibility settings
+- preview email/invoice branding differences
+- preview branded portal headers and copy
+- compare internal managed vs partial white-label vs full white-label experience
+- support internal showcasing of account hierarchy and enterprise structure where relevant
+
+The goal is to make white-label value tangible during a demo.
+
+-----------------------------------
+9. SALES / COMMERCIAL ADMIN COMMAND CENTER
+-----------------------------------
+
+Build a commercial presentation/admin workspace for internal sales or leadership use.
+
+This should show:
+- demo-ready commercial accounts
+- proposal-ready accounts
+- accounts awaiting activation
+- recently activated accounts
+- white-label prospects
+- enterprise prospects/accounts
+- account/package recommendation status
+- commercial readiness notes
+- proposal comparison access
+- preview routes access
+
+Filters can include:
+- commercial status
+- plan
+- white-label level
+- account manager
+- activation status
+- enterprise vs standard
+- demo-ready yes/no
+
+Keep this strategic and polished.
+
+-----------------------------------
+10. ROLE-SAFE DEMO AND PROPOSAL VISIBILITY
+-----------------------------------
+
+Keep commercial and demo tooling tightly controlled.
+
+Rules:
+- Super Admin and Internal Admin can access full demo/proposal/commercial activation tools
+- Partner Managers should only see live account onboarding/setup views intended for them
+- Vendor and Client users should not see internal proposal comparisons, commercialization internals, pricing architecture, or sales tooling
+- investor/demo mode should never expose hidden operational or financial internals beyond what is intentionally included
+
+-----------------------------------
+11. DESIGN AND UX
+-----------------------------------
+
+Keep the experience premium, strategic, and demo-worthy.
+
+Improve:
+- demo banners
+- preview headers
+- proposal comparison cards/tables
+- pricing presentation layout
+- activation checklist UI
+- account activation progress views
+- scenario switchers
+- commercial command center cards
+- white-label preview polish
+
+Avoid:
+- cluttered sales admin screens
+- mixing operational ordering UI with commercial proposal UI
+- exposing internal complexity during demos
+- cheap looking pricing tables
+
+-----------------------------------
+12. SEED / DEMO SALES SCENARIOS
+-----------------------------------
+
+Refine seed/demo data to support selling the platform.
+
+Include:
+- one polished internal managed account
+- one white-label premium account
+- one enterprise multi-location account
+- one proposal-in-review account
+- one activation-in-progress account
+- one fully active account
+- branded demo routes with polished content
+- example proposal/package comparison data
+- example commercial status transitions
+
+-----------------------------------
+13. DOCUMENTATION
+-----------------------------------
+
+Update replit.md with:
+- demo/presentation architecture
+- proposal comparison model
+- pricing presentation structure
+- commercial activation workflow
+- scenario switching approach
+- role visibility rules
+- final recommended cleanup or rollout steps
+
+Also create or update a session plan and implement as much of the above as possible in this pass.
+Do not stop after describing the work.
+Actually build it.

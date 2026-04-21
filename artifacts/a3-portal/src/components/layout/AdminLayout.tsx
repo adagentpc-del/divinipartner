@@ -23,9 +23,11 @@ import {
   Rocket,
   Activity,
   MessageSquare,
-  Crown
+  Crown,
+  Briefcase
 } from "lucide-react";
 import { FeedbackButton } from "@/components/admin/FeedbackButton";
+import { DemoModeBanner, DemoModeToggle } from "@/components/admin/DemoModeBanner";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
@@ -42,6 +44,7 @@ const navigation = [
   { name: "Post-Launch", href: "/admin/post-launch", icon: Activity },
   { name: "Feedback", href: "/admin/feedback", icon: MessageSquare },
   { name: "Commercial", href: "/admin/commercial", icon: Crown },
+  { name: "Sales", href: "/admin/sales", icon: Briefcase },
   { name: "Billing", href: "/admin/billing", icon: Banknote },
   { name: "Reconciliation", href: "/admin/reconciliation", icon: Calculator },
   { name: "Suppliers", href: "/admin/suppliers", icon: Truck },
@@ -78,6 +81,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="min-h-screen bg-muted/40">
+      <DemoModeBanner />
       <header className="sticky top-0 z-30 bg-card/80 backdrop-blur-lg border-b">
         <div className="flex h-16 items-center gap-4 px-4 md:px-6 max-w-screen-2xl mx-auto">
           <Sheet>
@@ -130,6 +134,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </nav>
 
           <div className="ml-auto flex items-center gap-3">
+            <DemoModeToggle />
             <UserButton afterSignOutUrl="/login" />
           </div>
         </div>
