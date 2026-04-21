@@ -19,7 +19,8 @@ import {
   Banknote,
   ClipboardCheck,
   Workflow,
-  BarChart3
+  BarChart3,
+  Rocket
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -33,6 +34,7 @@ const navigation = [
   { name: "Production", href: "/admin/production", icon: ClipboardCheck },
   { name: "Workflow", href: "/admin/workflow", icon: Workflow },
   { name: "Analytics", href: "/admin/analytics", icon: BarChart3 },
+  { name: "Launch", href: "/admin/launch", icon: Rocket },
   { name: "Billing", href: "/admin/billing", icon: Banknote },
   { name: "Reconciliation", href: "/admin/reconciliation", icon: Calculator },
   { name: "Suppliers", href: "/admin/suppliers", icon: Truck },

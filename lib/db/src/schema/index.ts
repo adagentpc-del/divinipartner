@@ -30,3 +30,4 @@ export * from "./reconciliation";
 export * from "./invoices";
 export * from "./assets";
 export * from "./workflow";
+export * from "./onboarding";

@@ -1,0 +1,376 @@
+Now refine the existing Partner Commerce Portal by building launch polish, first-use onboarding, partner self-serve setup, and live rollout readiness. The platform already has partners, portal types, products, packages, branding zones, inventory, reservations, fulfillment modes, supplier routing, quote/spec references, quote ingestion/catalog enrichment, exports, reconciliation, communications, selective billing execution, document/asset intelligence, workflow orchestration, executive analytics/profitability intelligence, and production hardening. This pass should make the system easier to launch, easier to onboard new partners into, and more polished for real-world adoption.
+
+Important:
+Do not rebuild from scratch.
+Work from the existing codebase.
+Preserve current architecture and hardening work.
+This pass is about making the system feel launch ready, self-explanatory, and easy to roll out with less handholding.
+Implement real onboarding and rollout improvements, not placeholders only.
+
+Primary objective for this pass:
+Make the platform easier for:
+- internal admins launching the system
+- partner managers onboarding their account
+- clients placing their first orders
+- vendors understanding their first assigned fulfillment
+- admins rolling out the first live partner cleanly
+
+This pass has 11 major priorities:
+
+1. First-use onboarding architecture
+2. Internal admin launch wizard
+3. Partner self-serve onboarding wizard
+4. Guided first partner setup flows
+5. Empty states, tips, and product education
+6. Demo mode and sample walkthrough support
+7. First live partner rollout checklist
+8. Better branded portal presentation
+9. Client and vendor first-use guidance
+10. Launch-safe admin controls and readiness gates
+11. Documentation and seed/demo polish
+
+-----------------------------------
+1. FIRST-USE ONBOARDING ARCHITECTURE
+-----------------------------------
+
+Build a practical onboarding architecture for the platform.
+
+Support guided onboarding for:
+- Super Admin / Internal Admin
+- Partner Manager
+- Client User
+- Vendor User
+
+Requirements:
+- onboarding should be role aware
+- show only what is relevant to the current user
+- allow onboarding progress tracking
+- allow users to dismiss, resume, or complete onboarding
+- support checklist style guidance and step-by-step guided setup
+- support “not now” and revisit later behavior
+- avoid bloated tours that get annoying
+
+At minimum, create onboarding flows that can:
+- introduce the platform
+- guide users to complete required setup
+- explain the next best action
+- show progress toward readiness
+
+-----------------------------------
+2. INTERNAL ADMIN LAUNCH WIZARD
+-----------------------------------
+
+Build a strong internal admin launch wizard for setting up the platform for live partner use.
+
+The wizard should guide internal admin through key setup areas such as:
+- create first partner
+- choose portal type
+- configure branding
+- configure supplier defaults
+- configure billing defaults
+- configure products/packages/zones
+- configure workflows/templates
+- verify permissions
+- verify readiness
+- preview portal
+- activate partner rollout
+
+Requirements:
+- use a multi-step guided wizard
+- show progress clearly
+- allow save and resume
+- allow skipping non-critical steps with warnings
+- validate required setup before completion
+- include helpful explanations and recommended defaults
+
+This should feel polished and confidence-inducing, not technical and overwhelming.
+
+-----------------------------------
+3. PARTNER SELF-SERVE ONBOARDING WIZARD
+-----------------------------------
+
+Build a partner-facing onboarding wizard for Partner Managers.
+
+This wizard should help a new partner manager complete the minimum setup needed to start using the system.
+
+For client controlled ordering portals, guide them through:
+- confirm account basics
+- add or confirm branding/contact info
+- add cities
+- add venues
+- confirm inventory locations
+- create first event
+- review package availability
+- invite team users if supported
+- preview ordering experience
+
+For branding partner portals, guide them through:
+- confirm account basics
+- confirm venue/site information
+- review branding zones
+- review products/pricing
+- preview ordering experience
+
+Requirements:
+- role-safe
+- highly guided
+- minimal friction
+- clear progress bar
+- show what is complete vs incomplete
+- allow resuming later
+- celebrate completion cleanly
+
+-----------------------------------
+4. GUIDED FIRST PARTNER SETUP FLOWS
+-----------------------------------
+
+Improve the experience of setting up the first real partner.
+
+Build reusable guided setup flows/templates for:
+- Social Commerce style partner
+- Branding partner style portal
+- Inventory-backed partner
+- Zone-based venue partner
+
+Requirements:
+- create from starter templates
+- duplicate from similar partner if useful
+- explain required vs optional data
+- provide best-practice defaults
+- reduce manual setup time
+- show missing critical items before launch
+
+Add quick “finish setup” actions on partner records for incomplete partners.
+
+-----------------------------------
+5. EMPTY STATES, TIPS, AND PRODUCT EDUCATION
+-----------------------------------
+
+Make the app much more self-explanatory.
+
+Add polished empty states and contextual guidance across major modules such as:
+- partners
+- events
+- venues
+- products
+- packages
+- branding zones
+- inventory
+- suppliers
+- invoices
+- assets
+- workflows
+- analytics
+
+Requirements:
+- explain what the section is for
+- explain why it matters
+- recommend next action
+- include buttons to create/import/duplicate where appropriate
+- avoid long walls of text
+- keep tone helpful, concise, and premium
+
+Add small contextual tips/help text where useful:
+- fulfillment mode explanations
+- inventory usage explanations
+- billing mode explanations
+- supplier routing explanations
+- asset approval explanations
+
+-----------------------------------
+6. DEMO MODE AND SAMPLE WALKTHROUGH SUPPORT
+-----------------------------------
+
+Build a cleaner demo/sample experience.
+
+Requirements:
+- distinguish demo/sample data clearly from live data
+- allow internal admins to preview the system in a demo-friendly way
+- add an optional “tour sample workflow” experience if feasible
+- show a simple example flow:
+  - create partner
+  - create event
+  - place order
+  - route supplier
+  - review packet
+- avoid confusing demo state with live state
+
+If feasible:
+- add a demo mode badge or environment marker
+- provide a safe way to reset demo/sample data without harming live records
+
+-----------------------------------
+7. FIRST LIVE PARTNER ROLLOUT CHECKLIST
+-----------------------------------
+
+Build a dedicated rollout checklist for each partner.
+
+This should help internal admin know whether a partner is actually ready to go live.
+
+Checklist categories can include:
+- branding configured
+- contacts configured
+- venues/cities configured if applicable
+- products/packages/zones configured
+- supplier defaults configured
+- billing settings configured
+- communication templates configured
+- file/storage ready
+- permissions/users configured
+- first event or ordering path ready
+- critical missing data resolved
+
+Requirements:
+- checklist should be partner-specific
+- show completion percentage
+- show blockers vs warnings
+- link directly to missing setup areas
+- allow internal override with note if admin wants to go live anyway
+
+This becomes the “ready to launch” gate.
+
+-----------------------------------
+8. BETTER BRANDED PORTAL PRESENTATION
+-----------------------------------
+
+Improve partner-facing presentation so portals feel more launch-ready and branded.
+
+Enhance:
+- partner portal landing page/header
+- logo usage
+- colors/branding application
+- portal intro copy
+- event selection page polish
+- package/zone merchandising polish
+- order success screen polish
+- vendor-facing header polish where relevant
+
+Requirements:
+- make the portal feel premium and client-ready
+- support stronger white-label feel
+- reduce generic system feel
+- keep design clean and consistent
+
+-----------------------------------
+9. CLIENT AND VENDOR FIRST-USE GUIDANCE
+-----------------------------------
+
+Improve the first-use experience for Clients and Vendors.
+
+For client users:
+- short onboarding hints on first order
+- clear explanation of next steps
+- upload guidance
+- order review guidance
+- confirmation after submit
+
+For vendor users:
+- explain assigned work dashboard
+- explain asset packet view
+- explain status updates
+- explain issue flagging
+- explain how to find what is due soon
+
+Do not create long tutorials.
+Keep it crisp and contextual.
+
+-----------------------------------
+10. LAUNCH-SAFE ADMIN CONTROLS AND READINESS GATES
+-----------------------------------
+
+Add safer controls around going live.
+
+Requirements:
+- partner activation status
+- draft vs live portal state
+- preview mode
+- internal only mode
+- launch confirmation modal
+- warning if critical configuration is incomplete
+- clear “not yet live” indicators where relevant
+- optional maintenance/paused state if feasible
+
+This should help prevent accidentally exposing incomplete portals.
+
+-----------------------------------
+11. SETTINGS, TEMPLATE LIBRARY, AND REUSABLE STARTERS
+-----------------------------------
+
+Build or polish reusable starter resources for fast launch.
+
+Include:
+- starter onboarding templates
+- package starter templates
+- communication starter templates
+- rollout starter checklists
+- recommended default workflow rules
+- recommended billing defaults
+- recommended partner setup patterns
+
+Make these accessible in a clean internal library or setup helper area if feasible.
+
+-----------------------------------
+12. DESIGN AND UX POLISH
+-----------------------------------
+
+Make the first-use and launch experience feel high-end and trustworthy.
+
+Improve:
+- onboarding cards
+- progress indicators
+- checklists
+- guided setup screens
+- empty states
+- launch readiness cards
+- preview banners
+- activation controls
+- branded landing screens
+
+Avoid:
+- cluttered onboarding
+- tutorial fatigue
+- generic placeholder text
+- confusing draft/live states
+
+-----------------------------------
+13. ROLE VISIBILITY AND SAFETY
+-----------------------------------
+
+Keep onboarding and rollout features role-safe.
+
+Rules:
+- Super Admin and Internal Admin can access full launch/admin tooling
+- Partner Managers can access only partner-relevant onboarding/setup tools
+- Client Users and Vendor Users see only simplified first-use guidance
+- internal launch checklists, overrides, and readiness notes remain internal unless intentionally exposed
+
+-----------------------------------
+14. SEED DATA AND DEMO POLISH
+-----------------------------------
+
+Refine seed/demo data to better support onboarding and launch demos.
+
+Include:
+- one polished Social Commerce style demo partner
+- one polished branding partner demo
+- sample rollout checklist states
+- sample onboarding completion states
+- sample draft vs live portal states
+- demo-friendly example records that help show the full flow
+
+-----------------------------------
+15. DOCUMENTATION
+-----------------------------------
+
+Update replit.md with:
+- onboarding architecture
+- internal launch wizard flow
+- partner self-serve onboarding flow
+- rollout checklist model
+- draft/live activation model
+- demo mode/sample data handling
+- recommended final post-launch next phase
+
+Also create or update a session plan and implement as much of the above as possible in this pass.
+Do not stop after describing the work.
+Actually build it.

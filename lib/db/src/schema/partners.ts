@@ -47,6 +47,12 @@ export const partnersTable = pgTable("partners", {
   internalBillingOwnerUserId: text("internal_billing_owner_user_id"),
   billingActive: boolean("billing_active").notNull().default(true),
   isActive: boolean("is_active").notNull().default(true),
+  // Launch & rollout
+  launchStatus: text("launch_status").notNull().default("draft"), // draft | preview | internal_only | live | paused
+  launchedAt: timestamp("launched_at", { withTimezone: true }),
+  launchOverrideNote: text("launch_override_note"),
+  demoFlag: boolean("demo_flag").notNull().default(false),
+  setupTemplate: text("setup_template"), // social_commerce | branding_partner | inventory_backed | zone_venue
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

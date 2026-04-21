@@ -40,6 +40,7 @@ import SupplierPacket from "@/pages/admin/SupplierPacket";
 import Assets from "@/pages/admin/Assets";
 import WorkflowDashboard from "@/pages/admin/WorkflowDashboard";
 import Analytics from "@/pages/admin/Analytics";
+import LaunchWizard from "@/pages/admin/LaunchWizard";
 import WorkflowRules from "@/pages/admin/WorkflowRules";
 
 import PublicLayout from "@/components/layout/PublicLayout";
@@ -223,6 +224,9 @@ function ClerkProviderWithRoutes() {
             </Route>
             <Route path="/admin/analytics">
               {() => <AdminRoute component={Analytics} />}
+            </Route>
+            <Route path="/admin/launch">
+              {() => <AdminRoute component={LaunchWizard} />}
             </Route>
             <Route path="/admin/workflow">
               {() => <AdminRoute component={WorkflowDashboard} />}

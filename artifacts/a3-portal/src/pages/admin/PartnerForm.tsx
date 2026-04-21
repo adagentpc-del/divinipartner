@@ -15,6 +15,7 @@ import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Loader2, ExternalLink, Palette, Settings, Building2, FileText, Globe } from "lucide-react";
 import { Link } from "wouter";
+import { RolloutChecklist } from "@/components/admin/RolloutChecklist";
 
 const formSchema = z.object({
   companyName: z.string().min(1, "Company name is required"),
@@ -223,6 +224,8 @@ export default function PartnerForm() {
           ))}
         </nav>
       </div>
+
+      {isEditing && id && <div className="mb-4"><RolloutChecklist partnerId={parseInt(id)} /></div>}
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
