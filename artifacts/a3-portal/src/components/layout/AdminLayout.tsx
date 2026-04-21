@@ -26,7 +26,9 @@ import {
   Crown,
   Briefcase,
   ShieldCheck,
-  HelpCircle
+  HelpCircle,
+  BookOpen,
+  Cloud
 } from "lucide-react";
 import { FeedbackButton } from "@/components/admin/FeedbackButton";
 import { DemoModeBanner, DemoModeToggle } from "@/components/admin/DemoModeBanner";
@@ -49,6 +51,8 @@ const navigation = [
   { name: "Sales", href: "/admin/sales", icon: Briefcase },
   { name: "Rollout", href: "/admin/rollout", icon: ShieldCheck },
   { name: "Help", href: "/admin/help", icon: HelpCircle },
+  { name: "Runbook", href: "/admin/help/runbook", icon: BookOpen },
+  { name: "Deployment", href: "/admin/deployment", icon: Cloud },
   { name: "Billing", href: "/admin/billing", icon: Banknote },
   { name: "Reconciliation", href: "/admin/reconciliation", icon: Calculator },
   { name: "Suppliers", href: "/admin/suppliers", icon: Truck },

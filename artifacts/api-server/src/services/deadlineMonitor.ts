@@ -56,7 +56,10 @@ async function sweepInvoices() {
 }
 
 async function sweepOrders() {
-  const orders = await db.select().from(ordersTable).where(isNotNull(ordersTable.supplierDueDate));
+  // NOTE: filter in JS instead of `where(isNotNull(...))` — earlier builds produced
+  // an empty WHERE clause due to a drizzle/bundle interaction with this column.
+  const allOrders = await db.select().from(ordersTable);
+  const orders = allOrders.filter(o => !!o.supplierDueDate);
   for (const o of orders) {
     if (!o.supplierDueDate) continue;
     if (["completed", "cancelled", "fulfilled"].includes(o.status)) continue;

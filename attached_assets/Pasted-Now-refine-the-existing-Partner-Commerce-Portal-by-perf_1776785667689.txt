@@ -1,0 +1,351 @@
+Now refine the existing Partner Commerce Portal by performing a true final cleanup, consolidation, QA, deployment readiness, and handoff packaging pass. The platform already has partners, portal types, products, packages, branding zones, inventory, reservations, fulfillment modes, supplier routing, quote/spec references, quote ingestion/catalog enrichment, exports, reconciliation, communications, selective billing execution, document/asset intelligence, workflow orchestration, executive analytics/profitability intelligence, production hardening, launch/onboarding flows, post-launch optimization/adoption intelligence, commercialization/white-label/plan-gating architecture, sales/demo enablement, and rollout stabilization. This pass should focus on making the codebase, workflows, admin experience, and deployment posture clean, stable, and handoff-ready.
+
+Important:
+Do not rebuild from scratch.
+Work from the existing codebase.
+Preserve the current architecture and major workflows where sensible.
+This pass is about tightening, simplifying, de-risking, and preparing for actual operation and handoff.
+Implement real cleanup, refactors, QA, and readiness improvements, not placeholders only.
+
+Primary objective for this pass:
+Make the system feel finished and trustworthy by:
+- cleaning dead or duplicate code
+- consolidating repeated UI and logic patterns
+- simplifying naming and architecture where messy
+- improving consistency
+- tightening QA-sensitive flows
+- creating a real deployment and handoff readiness package
+- leaving the codebase easier to maintain and extend
+
+This pass has 12 major priorities:
+
+1. Codebase cleanup and consolidation
+2. Component and route consistency
+3. Naming and schema cleanup
+4. Final QA and bug sweep
+5. Critical workflow regression checks
+6. Final performance and UI polish
+7. Deployment readiness and environment verification
+8. Admin handoff and operator guidance
+9. Final partner rollout package generation
+10. Security and permission sanity sweep
+11. Documentation consolidation
+12. Final seed/demo/live separation cleanup
+
+-----------------------------------
+1. CODEBASE CLEANUP AND CONSOLIDATION
+-----------------------------------
+
+Perform a real cleanup pass across the codebase.
+
+Requirements:
+- identify and remove dead code where safe
+- identify duplicate components or utility logic and consolidate them
+- reduce repeated patterns across admin tables, cards, forms, status badges, action menus, and detail panels
+- simplify helper functions where bloated
+- remove stale placeholder code left behind from earlier build phases where it is no longer needed
+- improve folder organization if current structure is messy
+- keep refactors practical and low-risk
+- do not break working workflows for the sake of aesthetics
+
+The goal is a codebase that is easier to understand and maintain.
+
+-----------------------------------
+2. COMPONENT AND ROUTE CONSISTENCY
+-----------------------------------
+
+Standardize the product experience and internal architecture.
+
+Requirements:
+- make page headers, action bars, filters, tables, drawers, modals, cards, badges, and empty states feel consistent
+- standardize route naming and navigation patterns
+- standardize major detail page layouts such as:
+  - partner detail
+  - event detail
+  - order detail
+  - supplier detail
+  - invoice detail
+  - product detail
+  - zone detail
+  - account/commercial detail
+- standardize create/edit flows where possible
+- standardize status chip patterns and color logic
+- standardize “quick actions” placement and behavior
+
+This should make the product feel deliberate, not accreted.
+
+-----------------------------------
+3. NAMING AND SCHEMA CLEANUP
+-----------------------------------
+
+Clean up naming inconsistencies and schema complexity where practical.
+
+Requirements:
+- review confusing internal naming of entities, statuses, fields, and relationships
+- align terminology across UI, routes, and code where possible
+- reduce ambiguous labels
+- ensure billing, commercialization, and operational concepts are clearly separated
+- ensure white-label/commercial account language does not conflict with operational partner language
+- simplify or clarify enums/statuses if any are redundant or overly granular
+- update affected UI labels carefully without breaking existing logic
+
+Do not do risky deep schema surgery unless clearly safe and valuable.
+Focus on cleanup that improves maintainability and clarity.
+
+-----------------------------------
+4. FINAL QA AND BUG SWEEP
+-----------------------------------
+
+Perform a practical QA pass across the highest-value workflows.
+
+At minimum, validate flows such as:
+- create partner
+- choose portal type
+- create event
+- duplicate event
+- place order
+- choose fulfillment mode
+- reserve inventory
+- upload assets
+- approve artwork
+- assign supplier
+- generate supplier packet
+- create invoice
+- update payment status
+- reconcile order
+- trigger communications
+- activate commercial account
+- preview demo routes
+- go-live / launch readiness checks
+
+Requirements:
+- identify broken or inconsistent flows
+- fix obvious UX bugs
+- fix inconsistent validations
+- fix broken links or navigation dead ends
+- fix stale state or refresh issues where feasible
+- improve edge-case handling in key flows
+
+Do not just list bugs.
+Actually fix as much as possible in this pass.
+
+-----------------------------------
+5. CRITICAL WORKFLOW REGRESSION CHECKS
+-----------------------------------
+
+Perform final regression-focused checks on the core architecture.
+
+Verify that recent additions did not break:
+- permissions
+- partner data isolation
+- supplier visibility isolation
+- financial visibility boundaries
+- asset visibility rules
+- inventory reservation math
+- billing model inheritance
+- workflow automation triggers
+- communications visibility
+- analytics visibility
+- demo mode isolation
+- commercialization plan gating
+- rollout checklist logic
+
+If needed, add lightweight internal regression helpers or test utilities where feasible.
+
+-----------------------------------
+6. FINAL PERFORMANCE AND UI POLISH
+-----------------------------------
+
+Do a final pass on responsiveness and polish for the most-used screens.
+
+Focus on:
+- dashboard load speed
+- list/table responsiveness
+- heavy detail page rendering
+- modal/drawer responsiveness
+- filter and search responsiveness
+- analytics dashboard smoothness
+- asset-heavy pages
+- supplier command center
+- billing/reconciliation pages
+- onboarding and launch flows
+
+Also improve:
+- loading skeletons
+- success states
+- empty states
+- long table readability
+- sticky summary panels
+- spacing consistency
+- button emphasis hierarchy
+- typography consistency
+
+This is the finishing quality pass.
+
+-----------------------------------
+7. DEPLOYMENT READINESS AND ENVIRONMENT VERIFICATION
+-----------------------------------
+
+Create a final deployment-readiness layer.
+
+Requirements:
+- review and tighten environment variable usage
+- verify production-safe fallbacks where appropriate
+- identify any missing required config
+- add or improve a deployment checklist page or internal summary if feasible
+- clearly separate dev/demo assumptions from production assumptions
+- ensure integrations fail gracefully if not configured
+- ensure demo/sample features do not accidentally pollute live production behavior
+- verify storage, communications, exports, and billing placeholders fail safely
+
+Make the product easier to deploy with confidence.
+
+-----------------------------------
+8. ADMIN HANDOFF AND OPERATOR GUIDANCE
+-----------------------------------
+
+Build a final internal handoff/help layer for future operators or admins.
+
+Support a concise operator guide area with:
+- what each major module is for
+- what to configure first
+- what to verify before launching a partner
+- what to check when an order is blocked
+- what to check when billing/reconciliation is off
+- what to check when suppliers are delayed
+- what to check when assets are missing
+- where to manage templates, workflows, and branding
+- where to view commercial settings vs operational settings
+
+Requirements:
+- keep it short, structured, and useful
+- make it accessible from admin/help areas
+- do not build a giant documentation site
+- focus on practical system operation
+
+-----------------------------------
+9. FINAL PARTNER ROLLOUT PACKAGE GENERATION
+-----------------------------------
+
+Build or polish a final rollout package summary for each partner/account.
+
+This should help internal admins prepare a clean rollout/handoff package.
+
+For each partner/account, summarize:
+- portal type
+- branding status
+- setup completion
+- live/draft status
+- key contacts
+- users invited
+- venues/cities configured if relevant
+- products/packages/zones configured
+- suppliers configured
+- billing model configured
+- workflow templates configured
+- communication templates configured
+- readiness blockers/warnings
+- preview route
+- go-live recommendation status
+
+Requirements:
+- make this printable or exportable if feasible
+- make it easy to scan
+- position it as a rollout summary or activation brief
+- link directly to missing items
+
+-----------------------------------
+10. SECURITY AND PERMISSION SANITY SWEEP
+-----------------------------------
+
+Do a final sanity sweep on security-sensitive areas.
+
+Requirements:
+- confirm sensitive internal financial data is hidden correctly
+- confirm vendor and client boundaries remain safe
+- confirm commercial/internal proposal data is protected
+- confirm internal-only assets and notes are protected
+- confirm bulk actions respect permissions
+- confirm exports respect permissions
+- confirm demo mode and presentation-safe views do not leak internal data
+- confirm commercialization and plan gating controls are admin-only
+- improve permission-denied states where needed
+
+Do not just document this.
+Actually audit and tighten what you can in the codebase.
+
+-----------------------------------
+11. DOCUMENTATION CONSOLIDATION
+-----------------------------------
+
+Consolidate documentation so the project is easier to understand after handoff.
+
+Update replit.md into a clean, structured final overview including:
+- system architecture
+- major modules
+- role model
+- portal types
+- billing/commercialization model
+- key workflows
+- deployment/config expectations
+- admin/operator guidance summary
+- known limitations
+- recommended next enhancements after launch
+
+Also:
+- remove or merge stale planning notes if they no longer reflect the current system
+- keep documentation crisp and practical
+
+-----------------------------------
+12. FINAL SEED / DEMO / LIVE SEPARATION CLEANUP
+-----------------------------------
+
+Do a final cleanup around sample/demo/live boundaries.
+
+Requirements:
+- clearly distinguish seed/demo data from real live data
+- reduce risk of confusion in admin views
+- make demo routes and demo banners obvious
+- ensure live operational views can stay clean
+- provide safe handling for sample records
+- keep demo scenarios helpful but contained
+
+This should make the platform feel mature and controlled.
+
+-----------------------------------
+13. DESIGN AND UX
+-----------------------------------
+
+Keep the final experience premium, polished, and operationally serious.
+
+Improve:
+- consistency
+- clarity
+- final visual quality
+- operator trust
+- admin confidence
+- handoff readiness
+
+Avoid:
+- unnecessary new features
+- deep risky rewrites
+- bloated internal tools
+- messy leftover demo/admin clutter
+
+-----------------------------------
+14. DELIVERABLES FOR THIS FINAL PASS
+-----------------------------------
+
+At the end of this pass, I want:
+- cleaned and consolidated code where safe
+- tighter and more consistent UI
+- critical bugs fixed
+- core workflows revalidated
+- final deployment-readiness improvements
+- admin/operator guidance added
+- rollout summary package improved
+- replit.md updated as a true final project overview
+
+Also create or update a session plan and implement as much of the above as possible in this pass.
+Do not stop after describing the work.
+Actually build it.

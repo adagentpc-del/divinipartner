@@ -816,3 +816,62 @@ A blocker is any condition that prevents an account from reliably operating in p
 
 ### Nav
 - Added "Rollout" (ShieldCheck) and "Help" (HelpCircle) entries to AdminLayout sidebar.
+
+---
+
+## Final Overview (Handoff)
+
+### Architecture summary
+- **Monorepo (pnpm workspaces).** Three artifacts: `api-server` (Express + drizzle, port 8080), `a3-portal` (React + Vite + wouter, served via proxy), `mockup-sandbox` (design previews). Shared packages under `lib/` (`db`, `ui`, etc.).
+- **Database.** Single Postgres (Neon). Schema in `lib/db/src/schema/*`. Use `pnpm --filter @workspace/db run push-force` to sync. Never write manual migrations.
+- **Auth.** Clerk on the frontend; the API trusts Clerk session via middleware and resolves the internal `user` record by Clerk ID. Roles: `super_admin`, `admin`, `account_manager`, `partner_admin`, `partner_user`, `supplier`, `client`.
+- **Object storage.** Replit App Storage via `DEFAULT_OBJECT_STORAGE_BUCKET_ID` / `PRIVATE_OBJECT_DIR` / `PUBLIC_OBJECT_SEARCH_PATHS`. Used for artwork uploads and asset library.
+- **Email.** Resend (integration installed). Requires `RESEND_API_KEY` in production.
+- **Background work.** `services/deadlineMonitor.ts` ticks every 60s and emits `deadline.approaching` / `deadline.overdue` events for orders and events. Filtering is done in JS to avoid a previously seen drizzle/bundle interaction with `supplierDueDate`.
+
+### Modules (admin)
+- **Accounts / Partners / Venues / Suppliers** — CRM core; partner-account-manager assignments, white-label level (`none` / `partial` / `full`), demo-vs-live flag.
+- **Catalog** — packages, categories, cities, partner overrides.
+- **Orders** — partner and client orders, fulfillment states, supplier assignment, artwork files, notes.
+- **Billing & Reconciliation** — execution model resolved per-order from partner default + override; commission tracking, payouts, reconciliation status.
+- **Assets** — quote assets and asset library; object-storage backed.
+- **Sales** — objections board, demo follow-ups.
+- **Rollout / Stabilization** — flagged / activating / stalled accounts, blocker drilldown, **printable activation brief** on `AccountBlockers`.
+- **Help / FAQ** — audience-tiered (`internal` / `partner` / `client`); `BuyerHelpDrawer` uses `client` tier in demo mode.
+- **Operator Runbook** (`/admin/help/runbook`) — module purpose, configure-first order, "what to check when X breaks" triage, configuration map.
+- **Deployment Readiness** (`/admin/deployment`) — env-var presence, integration health, data summary, pre-deploy checklist, `readyToDeploy` boolean.
+
+### Role model (summary)
+- **super_admin / admin** — full portal access.
+- **account_manager** — accounts they own, related partners/orders/billing.
+- **partner_admin / partner_user** — their partner's catalog, orders, branding; no cross-partner data.
+- **supplier** — only orders assigned to them; can update fulfillment state and supplier costs.
+- **client** — buyer flows only (event, package selection, artwork upload, order status).
+
+### Billing & commercialization
+- Each partner has a default **billing execution model** (`a3_collects` / `partner_collects` / `passthrough`).
+- Each order resolves an effective model + source (`partner_default` vs `order_override`).
+- Commission is recorded as `expectedCommission` and accrues to `paidCommission` with status (`unpaid` / `partially_paid` / `paid`).
+- Supplier payable status is tracked separately from commission/payout/reconciliation.
+- Reconciliation page surfaces mismatches and lets finance reconcile manually.
+
+### Deployment expectations
+- Use **Deployment Readiness** page or `GET /api/deployment/readiness` to confirm `readyToDeploy: true` before publishing.
+- Required for green: `DATABASE_URL`, `SESSION_SECRET`, `DEFAULT_OBJECT_STORAGE_BUCKET_ID`, `PRIVATE_OBJECT_DIR`, `PUBLIC_OBJECT_SEARCH_PATHS`, `RESEND_API_KEY`, plus Clerk publishable/secret keys configured on the frontend.
+- The readiness endpoint also reports demo-vs-live account counts and surfaces a warning when only demo data is present.
+- Deploy via the Replit deploy flow; the API server binds `PORT` and the portal is served behind the workspace proxy.
+
+### Operator quick-reference
+- New partner can't create orders → check `Rollout → Account` blockers and the **Activation Brief**; usually missing branding (white-label), packages, or a paused state.
+- Order stuck "awaiting supplier" → Orders detail → assign supplier → `supplierDueDate` will be picked up by the deadline monitor on the next tick.
+- Buyer asks a question → use the in-app help drawer (already filtered to `client` tier when in demo mode); add new entries via `/admin/help`.
+- New objection from sales → `/admin/sales/objections`; selecting a category auto-fills a recommended response.
+- Pre-launch checklist → `/admin/deployment`.
+- "How do I do X?" → `/admin/help/runbook`.
+
+### Known limitations
+- Live email delivery requires `RESEND_API_KEY`; without it, the deployment readiness page will refuse to flip to ready.
+- Deadline monitor uses a JS filter pass over `orders` (small table today); if order volume grows substantially, restore a SQL-side filter once the prior bundling issue is re-investigated.
+- Demo accounts are identified by slug heuristic (`acme` / `betaco` / `newvenue`); a dedicated `is_demo` flag would be cleaner but is not required for handoff.
+- No automated test suite is wired into CI; verification is manual + e2e via the testing skill.
+- Reconciliation is read/markup only — no double-entry ledger.

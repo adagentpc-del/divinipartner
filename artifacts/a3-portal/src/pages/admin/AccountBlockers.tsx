@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { AlertOctagon, AlertTriangle, ChevronRight, Info, ArrowLeft } from "lucide-react";
+import { AlertOctagon, AlertTriangle, ChevronRight, Info, ArrowLeft, Printer } from "lucide-react";
 import { BlockerBadge } from "@/components/admin/BlockerBadge";
 
 type BlockersResp = {
@@ -37,10 +37,13 @@ export default function AccountBlockers() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-3 print:hidden">
         <Link href="/admin/rollout">
           <Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4 mr-1" /> Stabilization</Button>
         </Link>
+        <Button variant="outline" size="sm" onClick={() => window.print()}>
+          <Printer className="h-4 w-4 mr-2" /> Print activation brief
+        </Button>
       </div>
       <div className="flex items-start justify-between">
         <div>
@@ -97,6 +100,36 @@ export default function AccountBlockers() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Activation brief</CardTitle>
+          <p className="text-xs text-muted-foreground">Printable summary for handoff or rollout review.</p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+            <BriefField label="Account type" value={data.account.accountType} />
+            <BriefField label="White-label level" value={data.account.whiteLabelLevel ?? "—"} />
+            <BriefField label="Activation status" value={data.account.activationStatus} />
+            <BriefField label="Plan" value={data.account.planId ? `Plan #${data.account.planId}` : "Not set"} />
+            <BriefField label="Account manager" value={data.account.accountManager ?? "Unassigned"} />
+            <BriefField label="Billing entity" value={data.account.billingEntityName ?? "Not set"} />
+            <BriefField label="Billing contact" value={data.account.billingContactEmail ?? "Not set"} />
+            <BriefField label="Linked partners" value={`${data.partners.length}`} />
+            <BriefField label="Readiness score" value={`${data.readinessScore}%`} />
+          </div>
+          <div className="mt-4 pt-4 border-t text-sm">
+            <strong>Go-live recommendation: </strong>
+            {data.goLiveReady ? (
+              <span className="text-emerald-600">Ready to launch — no blockers detected.</span>
+            ) : (
+              <span className="text-red-600">
+                Hold launch — resolve {data.blockers.length} blocker{data.blockers.length === 1 ? "" : "s"} first.
+              </span>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {data.partners.length > 0 && (
         <Card>
           <CardHeader><CardTitle className="text-base">Linked partners</CardTitle></CardHeader>
@@ -113,6 +146,15 @@ export default function AccountBlockers() {
           </CardContent>
         </Card>
       )}
+    </div>
+  );
+}
+
+function BriefField({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="font-medium capitalize mt-0.5 truncate">{value}</div>
     </div>
   );
 }

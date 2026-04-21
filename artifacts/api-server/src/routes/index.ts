@@ -32,6 +32,7 @@ import postLaunchRouter from "./postLaunch";
 import commercializationRouter from "./commercialization";
 import salesEnablementRouter from "./salesEnablement";
 import stabilizationRouter from "./stabilization";
+import deploymentRouter from "./deployment";
 import partnerInventoryRouter from "./partnerInventory";
 import exportsRouter from "./exports";
 import reconciliationRouter from "./reconciliation";
@@ -78,5 +79,6 @@ router.use(postLaunchRouter);
 router.use(commercializationRouter);
 router.use(salesEnablementRouter);
 router.use(stabilizationRouter);
+router.use(deploymentRouter);
 
 export default router;
