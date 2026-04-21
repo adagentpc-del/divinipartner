@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ChevronLeft, Save, Printer, ShoppingCart, MapPin, Calendar, Truck, User, Building2, FileText, Image as ImageIcon, AlertTriangle, Package, Boxes, Printer as PrintIcon } from "lucide-react";
+import { Loader2, ChevronLeft, Save, Printer, ShoppingCart, MapPin, Calendar, Truck, User, Building2, FileText, Image as ImageIcon, AlertTriangle, Package, Boxes, Printer as PrintIcon, FolderOpen } from "lucide-react";
+import OrderAssetsPanel from "@/components/admin/OrderAssetsPanel";
 
 type OrderItem = {
   id: number; itemType: string; productId: number | null; productName?: string | null; productImageUrl?: string | null;
@@ -218,13 +219,18 @@ export default function OrderDetail() {
           </Card>
 
           <Card className="p-5">
-            <h2 className="font-semibold text-lg mb-3 flex items-center gap-2"><FileText className="h-5 w-5 text-muted-foreground" />Artwork & Files</h2>
-            <div className="space-y-2">
-              {(order.artworkFilesJson || []).map((f: any, i: number) => (
-                <a key={i} href={f.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline"><FileText className="h-4 w-4" />{f.name || f.url}</a>
-              ))}
-              {(!order.artworkFilesJson || order.artworkFilesJson.length === 0) && <p className="text-sm text-muted-foreground">No artwork uploaded.</p>}
-            </div>
+            <h2 className="font-semibold text-lg mb-3 flex items-center gap-2"><FolderOpen className="h-5 w-5 text-muted-foreground" />Production Assets</h2>
+            <OrderAssetsPanel orderId={order.id} partnerId={order.partnerId} eventId={order.eventId} />
+            {order.artworkFilesJson && order.artworkFilesJson.length > 0 && (
+              <div className="mt-4 pt-4 border-t">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Legacy attachments</p>
+                <div className="space-y-1">
+                  {order.artworkFilesJson.map((f: any, i: number) => (
+                    <a key={i} href={f.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline"><FileText className="h-4 w-4" />{f.name || f.url}</a>
+                  ))}
+                </div>
+              </div>
+            )}
           </Card>
 
           {order.notes && <Card className="p-5"><h2 className="font-semibold text-lg mb-2">Client Notes</h2><p className="text-sm whitespace-pre-wrap">{order.notes}</p></Card>}

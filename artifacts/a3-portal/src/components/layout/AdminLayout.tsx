@@ -16,7 +16,8 @@ import {
   Inbox,
   Sparkles,
   Calculator,
-  Banknote
+  Banknote,
+  ClipboardCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -27,6 +28,7 @@ const navigation = [
   { name: "Onboarding", href: "/admin/onboarding", icon: Inbox },
   { name: "Orders", href: "/admin/orders", icon: ShoppingCart },
   { name: "Fulfillment", href: "/admin/fulfillment", icon: Truck },
+  { name: "Production", href: "/admin/production", icon: ClipboardCheck },
   { name: "Billing", href: "/admin/billing", icon: Banknote },
   { name: "Reconciliation", href: "/admin/reconciliation", icon: Calculator },
   { name: "Suppliers", href: "/admin/suppliers", icon: Truck },

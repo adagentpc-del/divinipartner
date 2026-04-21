@@ -1,0 +1,221 @@
+import { Router, type IRouter } from "express";
+import { eq, and, inArray, desc } from "drizzle-orm";
+import {
+  db,
+  assetsTable,
+  assetLinksTable,
+  ordersTable,
+  orderItemsTable,
+  partnersTable,
+  eventsTable,
+  productCatalogTable,
+  suppliersTable,
+} from "@workspace/db";
+
+const router: IRouter = Router();
+
+// Heuristic: when does a line item need artwork / proof?
+function expectations(item: any, product: any): { needsArtwork: boolean; needsProof: boolean } {
+  const mode = (item.fulfillmentMode || product?.defaultFulfillmentMode || "").toLowerCase();
+  const cap = (product?.capabilitiesJson || {}) as any;
+  const printable = mode === "graphic_only" || mode === "rental_plus_print" || mode === "full" || cap?.printable === true || item.brandingZoneId != null;
+  const hardwareOnly = item.itemType === "hardware" || mode === "hardware_only";
+  return {
+    needsArtwork: printable && !hardwareOnly,
+    needsProof: !!cap?.proofRequired,
+  };
+}
+
+async function readinessForOrder(orderId: number) {
+  const items = await db.select().from(orderItemsTable).where(eq(orderItemsTable.orderId, orderId));
+  if (!items.length) return { orderId, items: [], summary: { total: 0, ready: 0, blocked: 0, missingArtwork: 0, missingProof: 0, awaitingApproval: 0 } };
+  const itemIds = items.map(i => i.id);
+  const links = await db.select().from(assetLinksTable).where(inArray(assetLinksTable.orderItemId, itemIds));
+  const assetIds = [...new Set(links.map(l => l.assetId))];
+  const assets = assetIds.length ? await db.select().from(assetsTable).where(inArray(assetsTable.id, assetIds)) : [];
+  const aById = new Map(assets.map(a => [a.id, a]));
+  const productIds = [...new Set(items.map(i => i.productId).filter((x): x is number => !!x))];
+  const products = productIds.length ? await db.select().from(productCatalogTable).where(inArray(productCatalogTable.id, productIds)) : [];
+  const pById = new Map(products.map(p => [p.id, p]));
+
+  const linksByItem = new Map<number, any[]>();
+  for (const l of links) {
+    const arr = linksByItem.get(l.orderItemId) || [];
+    const a = aById.get(l.assetId);
+    if (a) arr.push({ ...l, asset: a });
+    linksByItem.set(l.orderItemId, arr);
+  }
+
+  let ready = 0, blocked = 0, missingArtwork = 0, missingProof = 0, awaitingApproval = 0;
+  const itemRows = items.map(it => {
+    const exp = expectations(it, pById.get(it.productId || -1));
+    const ils = linksByItem.get(it.id) || [];
+    const currentArtwork = ils.find(l => l.role === "primary_artwork" && l.asset.isCurrent);
+    const approvedArtwork = ils.find(l => l.role === "primary_artwork" && l.asset.isCurrent && l.asset.approvalStatus === "approved");
+    const currentProof = ils.find(l => l.role === "proof" && l.asset.isCurrent);
+    const approvedProof = ils.find(l => l.role === "proof" && l.asset.isCurrent && l.asset.approvalStatus === "approved");
+
+    const flags: string[] = [];
+    if (exp.needsArtwork && !currentArtwork) { flags.push("artwork_missing"); missingArtwork++; }
+    else if (exp.needsArtwork && !approvedArtwork) { flags.push("artwork_awaiting_approval"); awaitingApproval++; }
+    if (exp.needsProof && !currentProof) { flags.push("proof_missing"); missingProof++; }
+    else if (exp.needsProof && !approvedProof) { flags.push("proof_awaiting_approval"); awaitingApproval++; }
+    if (it.exceptionFlag) flags.push("exception");
+    if (it.productionBlockedReason) flags.push("blocked");
+
+    const itemReady = (!exp.needsArtwork || !!approvedArtwork) && (!exp.needsProof || !!approvedProof) && !it.productionBlockedReason;
+    if (itemReady) ready++;
+    if (it.productionBlockedReason || flags.includes("artwork_missing") || flags.includes("proof_missing")) blocked++;
+
+    return {
+      itemId: it.id,
+      name: it.name,
+      itemType: it.itemType,
+      quantity: it.quantity,
+      productId: it.productId,
+      brandingZoneId: it.brandingZoneId,
+      assignedSupplierId: it.assignedSupplierId,
+      supplierStatus: it.supplierStatus,
+      fulfillmentMode: it.fulfillmentMode,
+      expectations: exp,
+      assets: ils.map(l => ({ linkId: l.id, role: l.role, asset: l.asset })),
+      currentArtworkAssetId: currentArtwork?.asset?.id || null,
+      approvedArtworkAssetId: approvedArtwork?.asset?.id || null,
+      flags,
+      productionReady: itemReady,
+      productionBlockedReason: it.productionBlockedReason || null,
+    };
+  });
+
+  return {
+    orderId,
+    items: itemRows,
+    summary: { total: items.length, ready, blocked, missingArtwork, missingProof, awaitingApproval },
+  };
+}
+
+router.get("/orders/:id/readiness", async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+  res.json(await readinessForOrder(id));
+});
+
+// Mark/clear blocked reason on a line item
+router.patch("/order-items/:id/production-block", async (req, res) => {
+  const id = parseInt(req.params.id);
+  const reason: string | null = req.body?.reason ?? null;
+  const [row] = await db.update(orderItemsTable).set({ productionBlockedReason: reason } as any).where(eq(orderItemsTable.id, id)).returning();
+  if (!row) return res.status(404).json({ error: "Not found" });
+  res.json(row);
+});
+
+// ===== Production review dashboard =====
+router.get("/production/dashboard", async (_req, res) => {
+  const allAssets = await db.select().from(assetsTable);
+  const counters = {
+    awaitingReview: allAssets.filter(a => a.isCurrent && a.status === "uploaded").length,
+    awaitingApproval: allAssets.filter(a => a.isCurrent && (a.status === "under_review" || a.approvalStatus === "pending") && a.status !== "vendor_released" && a.status !== "approved").length,
+    approved: allAssets.filter(a => a.isCurrent && a.approvalStatus === "approved").length,
+    vendorReleased: allAssets.filter(a => a.isCurrent && a.status === "vendor_released").length,
+    revisionRequested: allAssets.filter(a => a.isCurrent && a.status === "revision_requested").length,
+    superseded: allAssets.filter(a => a.status === "superseded").length,
+  };
+  // Latest uploads
+  const latest = [...allAssets].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)).slice(0, 10);
+  // By event / supplier
+  const byEvent: Record<string, number> = {};
+  const bySupplier: Record<string, number> = {};
+  for (const a of allAssets) {
+    if (a.eventId) byEvent[a.eventId] = (byEvent[a.eventId] || 0) + 1;
+    if (a.supplierId) bySupplier[a.supplierId] = (bySupplier[a.supplierId] || 0) + 1;
+  }
+  // Orders with asset issues
+  const orders = await db.select().from(ordersTable).orderBy(desc(ordersTable.createdAt)).limit(200);
+  const orderIssues: any[] = [];
+  for (const o of orders.slice(0, 50)) {
+    const r = await readinessForOrder(o.id);
+    if (r.summary.blocked > 0 || r.summary.missingArtwork > 0 || r.summary.awaitingApproval > 0) {
+      orderIssues.push({ orderId: o.id, orderNumber: o.orderNumber, partnerId: o.partnerId, ...r.summary });
+    }
+  }
+  res.json({ counters, latest, byEvent, bySupplier, orderIssues });
+});
+
+// ===== Supplier packet (production handoff) =====
+router.get("/orders/:orderId/supplier-packet/:supplierId", async (req, res) => {
+  const orderId = parseInt(req.params.orderId);
+  const supplierId = parseInt(req.params.supplierId);
+  const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, orderId));
+  if (!order) return res.status(404).json({ error: "Order not found" });
+  const [partner] = await db.select().from(partnersTable).where(eq(partnersTable.id, order.partnerId));
+  const event = order.eventId ? (await db.select().from(eventsTable).where(eq(eventsTable.id, order.eventId)))[0] : null;
+  const [supplier] = await db.select().from(suppliersTable).where(eq(suppliersTable.id, supplierId));
+  if (!supplier) return res.status(404).json({ error: "Supplier not found" });
+
+  const items = await db.select().from(orderItemsTable).where(and(eq(orderItemsTable.orderId, orderId), eq(orderItemsTable.assignedSupplierId, supplierId)));
+  const itemIds = items.map(i => i.id);
+  const links = itemIds.length ? await db.select().from(assetLinksTable).where(inArray(assetLinksTable.orderItemId, itemIds)) : [];
+  const assetIds = [...new Set(links.map(l => l.assetId))];
+  const allAssets = assetIds.length ? await db.select().from(assetsTable).where(inArray(assetsTable.id, assetIds)) : [];
+  // Vendor sees only current, approved, vendor-visible assets — never status-only shortcut
+  const visibleAssets = allAssets.filter(a => a.isCurrent && a.visibility === "vendor_visible" && a.approvalStatus === "approved");
+  const aById = new Map(visibleAssets.map(a => [a.id, a]));
+
+  const productIds = [...new Set(items.map(i => i.productId).filter((x): x is number => !!x))];
+  const products = productIds.length ? await db.select().from(productCatalogTable).where(inArray(productCatalogTable.id, productIds)) : [];
+  const pById = new Map(products.map(p => [p.id, p]));
+
+  const linksByItem = new Map<number, any[]>();
+  for (const l of links) {
+    const arr = linksByItem.get(l.orderItemId) || [];
+    const a = aById.get(l.assetId);
+    arr.push({ ...l, asset: a || null, hidden: !a });
+    linksByItem.set(l.orderItemId, arr);
+  }
+
+  const packetItems = items.map(it => {
+    const exp = expectations(it, pById.get(it.productId || -1));
+    const ils = (linksByItem.get(it.id) || []).filter(l => l.asset);
+    const approvedArtwork = ils.find(l => l.role === "primary_artwork" && l.asset.approvalStatus === "approved");
+    const flags: string[] = [];
+    if (exp.needsArtwork && !approvedArtwork) flags.push("missing_approved_artwork");
+    if (it.productionBlockedReason) flags.push("blocked");
+    return {
+      itemId: it.id,
+      name: it.name,
+      productId: it.productId,
+      productName: pById.get(it.productId || -1)?.name || null,
+      quantity: it.quantity,
+      fulfillmentMode: it.fulfillmentMode,
+      supplierStatus: it.supplierStatus,
+      supplierDueDate: it.supplierDueDate,
+      supplierShipDate: it.supplierShipDate,
+      supplierInstallDate: it.supplierInstallDate,
+      internalFulfillmentNotes: it.internalFulfillmentNotes,
+      productionBlockedReason: it.productionBlockedReason,
+      assets: ils,
+      flags,
+      ready: flags.length === 0,
+    };
+  });
+
+  // Order-level: only current + approved + vendor_visible
+  const orderLevelAssets = (await db.select().from(assetsTable).where(and(eq(assetsTable.orderId, orderId), eq(assetsTable.isCurrent, true))))
+    .filter(a => a.visibility === "vendor_visible" && a.approvalStatus === "approved");
+
+  res.json({
+    order: { id: order.id, orderNumber: order.orderNumber, status: order.status, dueDate: order.dueDate, internalNotes: order.internalNotes, vendorNotes: order.vendorNotes },
+    partner: partner ? { id: partner.id, companyName: partner.companyName } : null,
+    event: event ? { id: event.id, name: event.name, startDate: event.startDate, endDate: event.endDate, venueId: event.venueId } : null,
+    supplier: { id: supplier.id, name: supplier.name },
+    items: packetItems,
+    orderLevelAssets,
+    summary: {
+      totalItems: packetItems.length,
+      ready: packetItems.filter(i => i.ready).length,
+      blocked: packetItems.filter(i => !i.ready).length,
+    },
+  });
+});
+
+export { router as productionRouter };

@@ -35,6 +35,9 @@ import Reconciliation from "@/pages/admin/Reconciliation";
 import Billing from "@/pages/admin/Billing";
 import InvoiceDetail from "@/pages/admin/InvoiceDetail";
 import PublicInvoice from "@/pages/Invoice";
+import Production from "@/pages/admin/Production";
+import SupplierPacket from "@/pages/admin/SupplierPacket";
+import Assets from "@/pages/admin/Assets";
 
 import PublicLayout from "@/components/layout/PublicLayout";
 import PartnerPortal from "@/pages/public/PartnerPortal";
@@ -169,7 +172,7 @@ function ClerkProviderWithRoutes() {
             <Route path="/admin/partners/:id/deck-extractions/:extractionId">
               {() => <AdminRoute component={DeckExtractionReview} />}
             </Route>
-            <Route path="/admin/assets">
+            <Route path="/admin/assets-legacy">
               {() => <AdminRoute component={AssetsLibrary} />}
             </Route>
             <Route path="/admin/pricing">
@@ -208,6 +211,15 @@ function ClerkProviderWithRoutes() {
             </Route>
             <Route path="/admin/reconciliation">
               {() => <AdminRoute component={Reconciliation} />}
+            </Route>
+            <Route path="/admin/production">
+              {() => <AdminRoute component={Production} />}
+            </Route>
+            <Route path="/admin/orders/:orderId/packet/:supplierId">
+              {() => <AdminRoute component={SupplierPacket} />}
+            </Route>
+            <Route path="/admin/assets">
+              {() => <AdminRoute component={Assets} />}
             </Route>
             <Route path="/admin/vendor">
               {() => <AdminRoute component={VendorPortal} />}

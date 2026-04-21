@@ -422,3 +422,81 @@ order override (orders.billingExecModel where source='order') → event override
 - `order_items` has no `lineTotal` column — invoice line item amounts are computed as `quantity * unitPrice` at create/regenerate time and stored in `invoices.lineItemsJson`.
 - Numeric fields come back from Drizzle as strings; resolver and totals coerce via `parseFloat`.
 - Authz follows the same convention as the rest of the admin API (frontend gates via Clerk `AdminRoute`; backend trusts admin-net traffic). Public invoice endpoint is intentionally unauthenticated and looks up only by random 32-hex token.
+
+## Asset & Production Workflow (April 2026)
+
+A unified asset model layered on top of the existing portal. Replaces ad-hoc `artworkFileUrl` / `artworkFilesJson` with structured, versioned, approval-gated assets.
+
+### Schema (`lib/db/src/schema/assets.ts`)
+- **`assets`** — title, fileUrl, fileName, mimeType, fileSize, category (`client_artwork`, `approved_artwork`, `proof`, `print_ready`, `reference`, `install_reference`, `shipping_document`, `photo`, `spec`, `internal_only`), visibility (`internal_only` | `partner_visible` | `client_visible` | `vendor_visible`), polymorphic `ownerType`/`ownerId` plus dedicated FKs to partner / event / order / product / package / brandingZone / supplier. Versioning: `version`, `isCurrent`, `parentAssetId`. Lifecycle: `status` (`uploaded` | `under_review` | `revision_requested` | `approved` | `superseded` | `vendor_released` | `archived`), `approvalStatus`, `approvedByUserId`, `approvedAt`, `releasedToVendorAt`, `productionReady`. Plus `uploadedByUserId`, `notes`, `tagsJson`.
+- **`asset_links`** — many-to-many between an asset and `order_items` with `role` (primary_artwork, proof, reference, install_diagram, shipping_doc) and `isRequiredFor` flag. Same asset can map to multiple line items.
+- **`asset_events`** — full audit trail. Auto-emitted on every transition (uploaded, linked, unlinked, new_version, approved, revision_requested, released_to_vendor, status_change, visibility_change, archived).
+- **`order_items`** extended with `artworkRequired`, `proofRequired`, `productionReady`, `productionBlockedReason`.
+
+### Backend
+- **`/api/assets`** (`routes/assets.ts`):
+  - `GET /assets` — list with filters: partnerId, eventId, orderId, productId, brandingZoneId, supplierId, category, status, visibility, currentOnly, approvedOnly, orderItemId.
+  - `GET /assets/:id` — includes `links`, `events`, full `versions[]` history (root + children).
+  - `POST /assets` — create after upload; optionally `linkOrderItemIds[]`.
+  - `PATCH /assets/:id` — title, category, visibility, status, approvalStatus, productionReady, notes, tags, isCurrent. Logs status & visibility changes.
+  - `POST /assets/:id/approve` — sets approved + approvedAt + (default) `vendor_released` + `vendor_visible`. Pass `releaseToVendor:false` to approve without releasing.
+  - `POST /assets/:id/request-revision` — flips to `revision_requested`, logs note.
+  - `POST /assets/:id/new-version` — supersedes the family, creates v(n+1), copies links forward.
+  - `POST /assets/:id/links` / `DELETE /assets/:id/links/:linkId` — manage line-item mapping.
+  - `DELETE /assets/:id` — archive.
+  - `GET /asset-events` — recent feed.
+- **`/api/production`** (`routes/production.ts`):
+  - `GET /orders/:id/readiness` — per-line-item readiness with `expectations` (needsArtwork/needsProof — derived from `fulfillmentMode`, product capabilities, presence of brandingZone), `assets[]`, `flags[]` (`artwork_missing`, `artwork_awaiting_approval`, `proof_missing`, `proof_awaiting_approval`, `exception`, `blocked`), `productionReady`, plus rolled-up `summary` (total/ready/blocked/missingArtwork/missingProof/awaitingApproval).
+  - `PATCH /order-items/:id/production-block` — set/clear `productionBlockedReason`.
+  - `GET /production/dashboard` — counters (awaitingReview, awaitingApproval, revisionRequested, approved, vendorReleased, superseded), latest uploads, byEvent / bySupplier counts, orderIssues list.
+  - `GET /orders/:orderId/supplier-packet/:supplierId` — vendor-safe production handoff: only items assigned to that supplier, only assets that are `isCurrent` + `vendor_visible` (or `client_visible`) + approved-or-released. Includes due/ship/install dates, internal fulfillment notes, blocked reason, per-item flags, plus order-level approved vendor-visible assets.
+
+### Frontend
+- **`/admin/production`** (`Production.tsx`) — review dashboard: 6 counter cards, "Orders with asset issues" list, "Latest uploads", assets-by-event, assets-by-supplier.
+- **`/admin/assets`** (`Assets.tsx`) — global asset library with search, status & category filters, inline uploader.
+- **`/admin/orders/:orderId/packet/:supplierId`** (`SupplierPacket.tsx`) — printable production packet (calls supplier-packet endpoint). Print stylesheet hides chrome; per-item ready/blocked badges; clearly groups vendor-released assets.
+- **`OrderDetail`** Production Assets card — embeds `OrderAssetsPanel` (readiness summary + supplier packet links + order-level assets section + per-line-item mapping). Legacy `artworkFilesJson` shown beneath as "Legacy attachments".
+- **`AssetUploader`** — drag/drop or click; calls existing `/api/storage/uploads/request-url` flow (presigned PUT to GCS, then POST `/api/assets`); category + visibility selects; `compact` mode for inline use.
+- **`AssetCard`** — image thumbnail / file icon, status + approval + visibility + category badges, action menu: View, Approve & release, Approve only, Request revision (with notes), Upload new version (in-place), Release to vendor, Archive.
+- **`OrderAssetsPanel`** — readiness card with summary badges, links to per-supplier packets, order-level assets grid, line-item cards with: needs-artwork/needs-proof expectations, current assets list with role / version / approval / vendor-released chips, link existing or upload new (auto-mapped), block/unblock controls.
+- Nav: new "Production" item in `AdminLayout` between Fulfillment and Billing.
+
+### Vendor-leak gating (defense in depth)
+- `PATCH /assets/:id` rejects `status: "vendor_released"` or `visibility: "vendor_visible"` unless the asset is (or is being set in the same call to) `approvalStatus: "approved"`.
+- Supplier packet endpoint requires `isCurrent && visibility === "vendor_visible" && approvalStatus === "approved"` — no status-only shortcut.
+- `new-version` always demotes `vendor_visible` → `internal_only` on the new draft so it must be re-approved before reaching vendors.
+
+### Versioning (transactional)
+- `POST /assets/:id/new-version` runs in a DB transaction. It computes `nextVersion = max(version)+1` across the entire family (root + children), supersedes every member, copies links from the current head (not the asset called against), and inserts the new draft as `isCurrent`. Calling from an older version still produces a correctly numbered new head.
+
+### Link integrity
+- `POST /assets/:id/links` de-dupes on `(assetId, orderItemId, role)`.
+- `DELETE /assets/:id/links/:linkId` requires the link to belong to that asset (returns 404 otherwise).
+
+### Visibility / role model
+- Internal admins see everything in the admin UI.
+- `vendor_visible` + approved-or-released + isCurrent — what vendors see in supplier packet.
+- `client_visible` — surfaced to client / partner views (existing partner portal).
+- `internal_only` — never leaves the admin UI.
+- Vendor packet endpoint hard-filters by visibility AND approval, so unapproved or internal assets never leak even if linked.
+
+### Readiness heuristics
+A line item is `productionReady` iff:
+- if expected to need artwork → an `isCurrent`+`approved` primary_artwork link exists, AND
+- if expected to need proof → an `isCurrent`+`approved` proof link exists, AND
+- no `productionBlockedReason` set.
+Expectations come from `fulfillmentMode` (`graphic_only` / `rental_plus_print` / `full` → needs artwork), product `capabilitiesJson` (`printable`, `proofRequired`), or presence of `brandingZoneId`.
+
+### Versioning
+- New version supersedes all prior in family (sets `isCurrent=false`, `status=superseded` for active prior states).
+- Links carry forward to the new version.
+- Version history surfaced via `GET /assets/:id` `versions[]`.
+
+### Activity / audit
+Every transition writes to `asset_events`. Surfaced in `GET /assets/:id.events` and `GET /asset-events`. Existing `supplier_status_events` is preserved unchanged.
+
+### What's not in this pass (next phase)
+- Outbound communications wiring (revision-requested → email, vendor-release → email). Hook points exist in `asset_events`.
+- Client-facing asset upload page and missing-file reminder flows.
+- Required-asset rules per product/zone (currently inferred from fulfillmentMode + capabilities).
+- Seed data updated to demonstrate the new asset workflow.
