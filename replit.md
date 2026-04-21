@@ -378,3 +378,47 @@ All finance fields and the Reconciliation workspace live exclusively under `/adm
 - `supplierId` and `assignedSupplierId` are both accepted by export filters so the dashboard's filter shape works end-to-end for supplier-scoped CSVs.
 - Commission payout DELETE recomputes `paidCommission` **and** `commissionStatus` (paid / partially_paid / disputed / expected / not_started), matching the POST recompute path.
 - Auto-flag emits `commission_variance` whenever `expectedCommission > 0` and paid differs from expected (including paid=0 case).
+
+## Selective Billing Execution & Invoice Workflow (April 2026)
+
+A formal billing layer that decides — per order — *who* invoices the client and how, then tracks the resulting invoice through its full lifecycle. Sits on top of (does not replace) Reconciliation, which still tracks supplier costs/commissions/payouts.
+
+### Five billing execution models
+- `a3_collected` — A3 invoices and collects from end client.
+- `alyssa_entity_collected` — A separate Alyssa entity invoices/collects.
+- `manual_invoice` — Off-system (PDF/email) invoice; mark sent/paid manually.
+- `split_payout` — Placeholder for future split payouts to multiple parties.
+- `external_payment_pending` — Client pays via external system (Stripe/QBO link); waiting on confirmation.
+
+### Inheritance precedence (resolver)
+order override (orders.billingExecModel where source='order') → event override (events.billingExecModelOverride) → partner default (partners.defaultBillingExecModel) → fallback `a3_collected`. Resolver lives in `artifacts/api-server/src/routes/billingResolver.ts` and is called by `/api/billing/orders/:id/resolve` and the auto-resolution on invoice creation.
+
+### Schema additions
+- `partners`: defaultBillingExecModel, billingEntityName, paymentTerms, depositRequired, depositPct, allowPartialPayment, allowOrderOverride, defaultBillingNotes, billingContactName/Email/Phone, internalBillingOwnerUserId, billingActive.
+- `events`: billingExecModelOverride.
+- `orders`: billingExecModel, billingExecModelSource (`partner|event|order`), invoiceRequired, internalBillingOwnerUserId, billingReferenceNumber, externalInvoiceRef, paymentLinkPlaceholder, billingNotes, billingContactJson.
+- `invoices`: invoiceNumber, publicToken (random 32-hex for `/invoice/:token`), orderId, partnerId, eventId, billingExecModel, billingEntity, status, issueDate/dueDate, subtotal/tax/totalAmount/amountPaid/balanceDue, depositAmount/depositPaid, lineItemsJson, billingContactJson, paymentInstructions, externalInvoiceRef, paymentLinkPlaceholder, internalReference, notes, createdByUserId, sentAt/paidAt/cancelledAt.
+- `invoice_payments`: invoiceId, amount, paidDate, method, reference, isDeposit, notes, recordedByUserId.
+
+### Invoice statuses
+`draft → ready → sent → partially_paid|paid|overdue|cancelled`. Recording a payment auto-recomputes amountPaid/balanceDue, transitions status, and mirrors `orders.paymentStatus`. `POST /api/invoices/scan-overdue` flips `sent` past dueDate to `overdue`.
+
+### API routes
+- `/api/billing/summary` — totals, overdue count, ordersNeedingInvoice, missingBillingContact, byStatus, byBilling.
+- `/api/billing/orders` — filterable list with resolved billing model + linked invoice meta. Filters: billingExecModel, invoiceStatus, paymentStatus, partnerId, needsInvoice, overdueOnly, missingBillingContact.
+- `/api/billing/orders/:id/resolve` — return resolved model + source.
+- `/api/billing/orders/:id/override` — set/clear order-level override.
+- `/api/billing/bulk` — bulk create_invoices / mark_ready / mark_sent / mark_overdue.
+- `/api/invoices` (GET list w/ filters, POST not exposed — use `from-order`), `/api/invoices/:id` (GET, PATCH), `/api/invoices/from-order/:orderId` (POST), `/api/invoices/:id/regenerate` (POST — pull current order line items into draft), `/api/invoices/:id/payments` (POST/DELETE), `/api/invoices/public/:token` (public client view), `/api/invoices/scan-overdue` (POST cron-like).
+
+### Frontend
+- `/admin/billing` — Billing Command Center (5 summary cards, filters, Orders/Invoices tabs, bulk actions, scan-overdue).
+- `/admin/invoices/:id` — line items + payments + status workflow + edit panel + "Open client view" link.
+- `/invoice/:token` — public, print-friendly client-facing invoice (no auth).
+- OrderDetail right column has a Billing card showing resolved model + source pill, model override dropdown, invoice link or Create-invoice button.
+- PartnerForm has a Billing Settings card (default model, terms, billing entity, deposit %, billing contact, allow-override flags).
+
+### Notes
+- `order_items` has no `lineTotal` column — invoice line item amounts are computed as `quantity * unitPrice` at create/regenerate time and stored in `invoices.lineItemsJson`.
+- Numeric fields come back from Drizzle as strings; resolver and totals coerce via `parseFloat`.
+- Authz follows the same convention as the rest of the admin API (frontend gates via Clerk `AdminRoute`; backend trusts admin-net traffic). Public invoice endpoint is intentionally unauthenticated and looks up only by random 32-hex token.

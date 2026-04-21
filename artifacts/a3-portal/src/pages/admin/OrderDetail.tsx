@@ -281,10 +281,53 @@ export default function OrderDetail() {
             </div>
           </Card>
 
+          <BillingCard orderId={id} />
           <FinancePanel orderId={id} />
         </div>
       </div>
     </div>
+  );
+}
+
+function BillingCard({ orderId }: { orderId: number }) {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const { data: resolved } = useQuery<any>({ queryKey: [`/api/billing/orders/${orderId}/resolve`], queryFn: () => apiFetch(`/api/billing/orders/${orderId}/resolve`) });
+  const { data: invs = [] } = useQuery<any[]>({ queryKey: ["/api/invoices", "for-order", orderId], queryFn: () => apiFetch(`/api/invoices?orderId=${orderId}`) });
+  const inv = invs[0];
+  const create = useMutation({
+    mutationFn: () => apiFetch(`/api/invoices/from-order/${orderId}`, { method: "POST" }),
+    onSuccess: () => { toast({ title: "Invoice created" }); qc.invalidateQueries({ queryKey: ["/api/invoices", "for-order", orderId] }); },
+  });
+  const override = useMutation({
+    mutationFn: (model: string | null) => apiFetch(`/api/billing/orders/${orderId}/override`, { method: "POST", body: JSON.stringify({ billingExecModel: model }), headers: { "Content-Type": "application/json" } }),
+    onSuccess: () => { toast({ title: "Updated" }); qc.invalidateQueries({ queryKey: [`/api/billing/orders/${orderId}/resolve`] }); },
+  });
+  const MODELS = ["a3_collected", "alyssa_entity_collected", "manual_invoice", "split_payout", "external_payment_pending"];
+  return (
+    <Card className="p-5 space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold flex items-center gap-2"><FileText className="h-4 w-4" /> Billing</h3>
+        {resolved && <Badge variant="outline" className="text-[10px]">via {resolved.resolved.source}</Badge>}
+      </div>
+      <div>
+        <Label className="text-xs">Billing model</Label>
+        <Select value={resolved?.resolved?.model || ""} onValueChange={v => override.mutate(v)}>
+          <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+          <SelectContent>{MODELS.map(m => <SelectItem key={m} value={m}>{m.replace(/_/g, " ")}</SelectItem>)}</SelectContent>
+        </Select>
+        {resolved?.resolved?.source === "order" && <Button size="sm" variant="ghost" className="mt-1 text-xs h-6" onClick={() => override.mutate(null)}>Clear order override</Button>}
+      </div>
+      {inv ? (
+        <div className="border rounded p-2 space-y-1">
+          <div className="flex items-center justify-between"><span className="text-sm font-medium">{inv.invoiceNumber}</span><Badge>{inv.status}</Badge></div>
+          <div className="text-xs text-muted-foreground">Total {inv.totalAmount} • Paid {inv.amountPaid} • Bal {inv.balanceDue}</div>
+          <Link href={`/admin/invoices/${inv.id}`}><Button size="sm" variant="outline" className="w-full mt-1">Open invoice</Button></Link>
+        </div>
+      ) : (
+        <Button size="sm" onClick={() => create.mutate()} disabled={create.isPending} className="w-full">Create invoice</Button>
+      )}
+    </Card>
   );
 }
 

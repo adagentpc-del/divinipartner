@@ -26,6 +26,8 @@ import partnerOnboardingRouter from "./partnerOnboarding";
 import partnerInventoryRouter from "./partnerInventory";
 import exportsRouter from "./exports";
 import reconciliationRouter from "./reconciliation";
+import invoicesRouter from "./invoices";
+import billingRouter from "./billing";
 
 const router: IRouter = Router();
 
@@ -56,5 +58,7 @@ router.use(partnerOnboardingRouter);
 router.use(partnerInventoryRouter);
 router.use(exportsRouter);
 router.use(reconciliationRouter);
+router.use(invoicesRouter);
+router.use(billingRouter);
 
 export default router;

@@ -27,6 +27,8 @@ export const eventsTable = pgTable("events", {
   availableProductIdsJson: jsonb("available_product_ids_json").$type<number[]>(),
   quantityLimitsJson: jsonb("quantity_limits_json").$type<Record<string, number>>(),
   imageUrl: text("image_url"),
+  // Billing override (null = inherit from partner)
+  billingExecModelOverride: text("billing_exec_model_override"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),

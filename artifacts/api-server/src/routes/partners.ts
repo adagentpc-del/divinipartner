@@ -36,6 +36,19 @@ const PartnerBody = z.object({
   isActive: z.boolean().optional(),
   smallA3BadgeEnabled: z.boolean().optional(),
   pricingDisplayEnabled: z.boolean().optional(),
+  defaultBillingExecModel: z.string().optional().nullable(),
+  billingEntityName: z.string().optional().nullable(),
+  paymentTerms: z.string().optional().nullable(),
+  depositRequired: z.boolean().optional(),
+  depositPct: z.union([z.string(), z.number()]).optional().nullable(),
+  allowPartialPayment: z.boolean().optional(),
+  allowOrderOverride: z.boolean().optional(),
+  defaultBillingNotes: z.string().optional().nullable(),
+  billingContactName: z.string().optional().nullable(),
+  billingContactEmail: z.string().optional().nullable(),
+  billingContactPhone: z.string().optional().nullable(),
+  internalBillingOwnerUserId: z.string().optional().nullable(),
+  billingActive: z.boolean().optional(),
 });
 
 const UpdatePartnerBodySchema = PartnerBody.partial();

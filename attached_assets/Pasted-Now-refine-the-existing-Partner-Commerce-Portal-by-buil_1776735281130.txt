@@ -1,0 +1,367 @@
+Now refine the existing Partner Commerce Portal by building a document and asset intelligence workflow for production handoff. The platform already has partners, portal types, products, packages, branding zones, inventory, reservations, fulfillment modes, supplier routing, quote/spec references, quote ingestion/catalog enrichment, exports, reconciliation, communications, and selective billing execution. This pass should make uploaded files, artwork approvals, and vendor handoff far more operationally reliable.
+
+Important:
+Do not rebuild from scratch.
+Work from the existing codebase.
+Preserve the current architecture, role permissions, supplier routing, communications, billing, and reconciliation.
+Implement real asset workflow improvements, not placeholders only.
+
+Primary objective for this pass:
+Make the platform capable of managing files and artwork like a real production system.
+Track what was uploaded, what is missing, what version is current, what is approved, and what each supplier actually needs to fulfill.
+
+This pass has 9 major priorities:
+
+1. Asset architecture and file intelligence
+2. Asset-to-order and asset-to-line-item mapping
+3. Artwork versioning and approval workflow
+4. File completeness and production readiness checks
+5. Vendor-facing production asset packets
+6. Internal production review views
+7. Better upload UX and file organization
+8. Communications and alerts integration
+9. Documentation and seed data
+
+-----------------------------------
+1. ASSET ARCHITECTURE AND FILE INTELLIGENCE
+-----------------------------------
+
+Extend the file/asset model so uploaded materials are structured and operationally useful.
+
+Support asset records for:
+- artwork files
+- proof files
+- spec/reference files
+- photos
+- supporting documents
+- install diagrams
+- shipping documents
+- invoices or internal-only docs if already supported
+
+For each asset record, store:
+- title
+- file
+- file type
+- mime type
+- uploaded by
+- upload date
+- linked object type
+  - partner
+  - event
+  - order
+  - order line item
+  - product
+  - package
+  - branding zone
+  - supplier packet
+- linked object id
+- asset category
+  - client artwork
+  - approved artwork
+  - proof
+  - print-ready file
+  - reference
+  - install reference
+  - shipping document
+  - internal only
+- visibility
+  - internal only
+  - partner visible
+  - client visible
+  - vendor visible
+- version number
+- current version yes/no
+- approval status
+- production readiness status
+- notes
+- tags if feasible
+
+Do not treat files as random uploads.
+They must become structured assets.
+
+-----------------------------------
+2. ASSET TO ORDER AND LINE ITEM MAPPING
+-----------------------------------
+
+Build clear mapping between assets and fulfillment targets.
+
+Requirements:
+- assets can attach at order level
+- assets can attach at line-item level
+- assets can attach to specific products, packages, and branding zones
+- line items should clearly show which assets are mapped to them
+- one asset may map to multiple line items where appropriate
+- one line item may require multiple assets
+
+Examples:
+- one event logo file used across multiple ordered products
+- one canopy artwork file mapped to one line item
+- one zone proof mapped to one branding zone
+- one installation diagram attached to a supplier-facing packet
+
+UI requirements:
+- line-item asset panel
+- drag/drop or select existing asset to map
+- clear “mapped assets” display
+- clear “missing required asset” display
+- ability to remap or replace assets
+
+-----------------------------------
+3. ARTWORK VERSIONING AND APPROVAL WORKFLOW
+-----------------------------------
+
+Build a practical artwork version and approval workflow.
+
+For artwork assets, support statuses such as:
+- uploaded
+- under review
+- revision requested
+- approved
+- superseded
+- vendor released
+- archived
+
+Requirements:
+- keep version history visible
+- mark one version as current
+- mark one version as approved for production
+- allow replacing prior files without losing history
+- show who approved and when if feasible
+- allow internal admin to request revision
+- allow internal admin to release approved asset to vendor visibility
+- show warning if a vendor is seeing a non-approved asset
+
+Important:
+A product or line item should not appear production-ready unless its required assets are approved or intentionally overridden.
+
+-----------------------------------
+4. FILE COMPLETENESS AND PRODUCTION READINESS CHECKS
+-----------------------------------
+
+Build lightweight but real readiness checks.
+
+For each line item or zone, support flags such as:
+- artwork missing
+- artwork uploaded
+- artwork mapped
+- proof required
+- proof approved
+- print-ready file present
+- dimensions confirmed
+- attachment method confirmed
+- spec reference attached
+- vendor ready
+- production blocked
+
+Use product capability rules and zone configuration where possible to determine expected asset needs.
+
+Examples:
+- graphic-only item may require artwork + dimensions confirmation
+- custom zone may require artwork + attachment confirmation + install note
+- hardware-only item may not require artwork
+
+Add a production readiness summary to:
+- line item detail
+- order detail
+- supplier packet
+- internal fulfillment command center
+
+Make blocked items visually obvious.
+
+-----------------------------------
+5. VENDOR FACING PRODUCTION ASSET PACKETS
+-----------------------------------
+
+Deepen the supplier packet so it becomes a real production handoff packet.
+
+For each supplier or assigned line item set, show:
+- only assets visible to that supplier
+- current approved artwork
+- proof files if relevant
+- linked quote/spec references
+- line item dimensions
+- fulfillment mode
+- attachment/installation notes
+- due dates
+- production readiness status
+- blocked or missing items clearly flagged
+
+Add:
+- grouped assets section
+- current approved version indicators
+- downloadable/printable supplier packet view
+- asset checklist view
+- notes section
+- issue flagging if asset is missing or unclear
+
+Vendor users should not need to guess which file is the real approved one.
+
+-----------------------------------
+6. INTERNAL PRODUCTION REVIEW VIEWS
+-----------------------------------
+
+Build a stronger internal production review experience.
+
+Create internal views for:
+- assets awaiting review
+- assets awaiting approval
+- line items missing artwork
+- line items missing proof approval
+- line items blocked for production
+- vendor released assets
+- superseded assets
+- orders with asset issues
+
+Add a production review dashboard for internal admins with:
+- awaiting review count
+- awaiting approval count
+- blocked items count
+- vendor-ready count
+- revision requested count
+- latest uploads
+- assets by event
+- assets by supplier
+
+Allow quick actions such as:
+- approve artwork
+- request revision
+- mark print-ready
+- release to vendor
+- flag blocked
+- add note
+
+-----------------------------------
+7. BETTER UPLOAD UX AND FILE ORGANIZATION
+-----------------------------------
+
+Improve the asset upload and organization experience significantly.
+
+Add:
+- drag and drop upload areas
+- file preview cards
+- clearer labels and categories
+- upload to order / line item / event directly
+- select from existing assets where useful
+- image preview where possible
+- PDF/document icon previews
+- grouped folders/sections by:
+  - event
+  - order
+  - line item
+  - supplier packet
+- better empty states
+- better duplicate file handling if feasible
+
+For client-facing uploads:
+- keep it extremely simple
+- clear file guidance
+- clear status after upload
+- show whether more files are needed
+
+-----------------------------------
+8. COMMUNICATIONS AND ALERTS INTEGRATION
+-----------------------------------
+
+Tie asset workflow into communications and alerts.
+
+Support communications or alerts for:
+- asset uploaded
+- revision requested
+- missing artwork reminder
+- proof approval request
+- artwork approved
+- vendor released asset notice
+- production blocked due to missing file
+- supplier clarification request
+
+Requirements:
+- log these in activity history
+- create internal alerts for blocked items
+- support communication draft preparation via the existing communications system
+- show asset-related alerts in internal dashboards
+
+-----------------------------------
+9. ORDER AND LINE ITEM DETAIL IMPROVEMENTS
+-----------------------------------
+
+Enhance order detail and line-item detail pages to show asset state clearly.
+
+For each line item, show:
+- required assets
+- uploaded assets
+- approved version
+- current version
+- proof status
+- production readiness
+- vendor release status
+- missing items
+- blocked reason if any
+
+Make these sections highly scannable and visually clear.
+
+-----------------------------------
+10. ROLE VISIBILITY
+-----------------------------------
+
+Keep visibility safe and clean:
+- Super Admin and Internal Admin can manage all asset workflows
+- Partner Managers can view partner-relevant assets and statuses
+- Vendor users can only view vendor-released assets for assigned work
+- Client users can only view/upload client-facing assets and statuses intended for them
+- internal-only references and notes remain hidden from client/vendor roles
+
+-----------------------------------
+11. SEED DATA
+-----------------------------------
+
+Refine seed data to demonstrate:
+- line items with mapped assets
+- multiple artwork versions
+- approved vs superseded artwork
+- blocked line item due to missing file
+- proof approval example
+- vendor-ready packet example
+- supplier-visible and internal-only asset separation
+- event-level shared assets
+
+-----------------------------------
+12. DESIGN AND UX
+-----------------------------------
+
+Keep the interface premium, clean, and highly operational.
+
+Improve:
+- asset badges
+- approval chips
+- blocked state styling
+- upload cards
+- file previews
+- version history display
+- readiness panels
+- supplier asset packet layout
+- internal review dashboard cards
+
+Avoid:
+- random unstructured file dumps
+- confusing approval state
+- unclear current file version
+- giant ugly upload forms
+- exposing the wrong files to the wrong roles
+
+-----------------------------------
+13. DOCUMENTATION
+-----------------------------------
+
+Update replit.md with:
+- asset architecture
+- versioning model
+- approval workflow
+- production readiness logic
+- supplier asset packet structure
+- role visibility rules
+- new routes/components
+- recommended next phase
+
+Also create or update a session plan and implement as much of the above as possible in this pass.
+Do not stop after describing the work.
+Actually build it.

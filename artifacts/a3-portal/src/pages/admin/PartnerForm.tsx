@@ -41,6 +41,18 @@ const formSchema = z.object({
   isActive: z.boolean().default(true),
   smallA3BadgeEnabled: z.boolean().default(true),
   pricingDisplayEnabled: z.boolean().default(false),
+  defaultBillingExecModel: z.string().optional(),
+  billingEntityName: z.string().optional(),
+  paymentTerms: z.string().optional(),
+  depositRequired: z.boolean().default(false),
+  depositPct: z.string().optional(),
+  allowPartialPayment: z.boolean().default(true),
+  allowOrderOverride: z.boolean().default(true),
+  defaultBillingNotes: z.string().optional(),
+  billingContactName: z.string().optional(),
+  billingContactEmail: z.string().optional(),
+  billingContactPhone: z.string().optional(),
+  billingActive: z.boolean().default(true),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -71,6 +83,10 @@ export default function PartnerForm() {
       portalMode: "intake",
       partnerType: "branding",
       isActive: true, smallA3BadgeEnabled: true, pricingDisplayEnabled: false,
+      defaultBillingExecModel: "a3_collected", billingEntityName: "", paymentTerms: "net_30",
+      depositRequired: false, depositPct: "", allowPartialPayment: true, allowOrderOverride: true,
+      defaultBillingNotes: "", billingContactName: "", billingContactEmail: "", billingContactPhone: "",
+      billingActive: true,
     }
   });
 
@@ -95,13 +111,26 @@ export default function PartnerForm() {
         partnerType: (partner as any).partnerType || "branding",
         isActive: partner.isActive, smallA3BadgeEnabled: partner.smallA3BadgeEnabled || false,
         pricingDisplayEnabled: partner.pricingDisplayEnabled || false,
+        defaultBillingExecModel: (partner as any).defaultBillingExecModel || "a3_collected",
+        billingEntityName: (partner as any).billingEntityName || "",
+        paymentTerms: (partner as any).paymentTerms || "net_30",
+        depositRequired: (partner as any).depositRequired ?? false,
+        depositPct: (partner as any).depositPct || "",
+        allowPartialPayment: (partner as any).allowPartialPayment ?? true,
+        allowOrderOverride: (partner as any).allowOrderOverride ?? true,
+        defaultBillingNotes: (partner as any).defaultBillingNotes || "",
+        billingContactName: (partner as any).billingContactName || "",
+        billingContactEmail: (partner as any).billingContactEmail || "",
+        billingContactPhone: (partner as any).billingContactPhone || "",
+        billingActive: (partner as any).billingActive ?? true,
       });
     }
   }, [partner, form]);
 
   const onSubmit = (values: FormValues) => {
+    const data = values as any;
     const mutation = isEditing && id
-      ? () => updateMutation.mutate({ id, data: values }, {
+      ? () => updateMutation.mutate({ id, data }, {
           onSuccess: () => { queryClient.invalidateQueries({ queryKey: getListPartnersQueryKey() }); toast({ title: "Partner updated" }); setLocation("/admin/partners"); },
           onError: () => toast({ title: "Failed to update", variant: "destructive" })
         })
@@ -383,6 +412,69 @@ export default function PartnerForm() {
                     <FormLabel>Industry Focus</FormLabel>
                     <FormControl><Input placeholder="Entertainment, Hospitality..." {...field} /></FormControl>
                   </FormItem>
+                )} />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card id="sec-billing" className="scroll-mt-20">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base flex items-center gap-2">Billing Settings</CardTitle>
+              <CardDescription className="text-xs">Default billing execution model and contact. These propagate to new orders unless overridden at event or order level.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <FormField control={form.control} name="defaultBillingExecModel" render={({ field }) => (
+                  <FormItem><FormLabel className="text-xs">Default billing model</FormLabel>
+                    <Select value={field.value || "a3_collected"} onValueChange={field.onChange}>
+                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                      <SelectContent>
+                        <SelectItem value="a3_collected">A3 collected</SelectItem>
+                        <SelectItem value="alyssa_entity_collected">Alyssa entity collected</SelectItem>
+                        <SelectItem value="manual_invoice">Manual invoice</SelectItem>
+                        <SelectItem value="split_payout">Split payout</SelectItem>
+                        <SelectItem value="external_payment_pending">External payment pending</SelectItem>
+                      </SelectContent>
+                    </Select><FormMessage /></FormItem>
+                )} />
+                <FormField control={form.control} name="paymentTerms" render={({ field }) => (
+                  <FormItem><FormLabel className="text-xs">Payment terms</FormLabel>
+                    <Select value={field.value || "net_30"} onValueChange={field.onChange}>
+                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                      <SelectContent>{["due_on_receipt","net_15","net_30","net_45","net_60"].map(t => <SelectItem key={t} value={t}>{t.replace(/_/g," ")}</SelectItem>)}</SelectContent>
+                    </Select><FormMessage /></FormItem>
+                )} />
+                <FormField control={form.control} name="billingEntityName" render={({ field }) => (
+                  <FormItem className="col-span-2"><FormLabel className="text-xs">Billing entity (legal name on invoice)</FormLabel><FormControl><Input {...field} value={field.value || ""} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={form.control} name="billingContactName" render={({ field }) => (
+                  <FormItem><FormLabel className="text-xs">Billing contact</FormLabel><FormControl><Input {...field} value={field.value || ""} /></FormControl></FormItem>
+                )} />
+                <FormField control={form.control} name="billingContactEmail" render={({ field }) => (
+                  <FormItem><FormLabel className="text-xs">Billing email</FormLabel><FormControl><Input type="email" {...field} value={field.value || ""} /></FormControl></FormItem>
+                )} />
+                <FormField control={form.control} name="billingContactPhone" render={({ field }) => (
+                  <FormItem><FormLabel className="text-xs">Billing phone</FormLabel><FormControl><Input {...field} value={field.value || ""} /></FormControl></FormItem>
+                )} />
+                <FormField control={form.control} name="depositPct" render={({ field }) => (
+                  <FormItem><FormLabel className="text-xs">Deposit % (0–100)</FormLabel><FormControl><Input {...field} value={field.value || ""} placeholder="e.g. 25" /></FormControl></FormItem>
+                )} />
+                <FormField control={form.control} name="defaultBillingNotes" render={({ field }) => (
+                  <FormItem className="col-span-2"><FormLabel className="text-xs">Default billing notes (added to invoices)</FormLabel><FormControl><Textarea {...field} value={field.value || ""} rows={2} /></FormControl></FormItem>
+                )} />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <FormField control={form.control} name="depositRequired" render={({ field }) => (
+                  <FormItem className="flex items-center gap-2 space-y-0"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel className="text-xs">Deposit required</FormLabel></FormItem>
+                )} />
+                <FormField control={form.control} name="allowPartialPayment" render={({ field }) => (
+                  <FormItem className="flex items-center gap-2 space-y-0"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel className="text-xs">Allow partial payments</FormLabel></FormItem>
+                )} />
+                <FormField control={form.control} name="allowOrderOverride" render={({ field }) => (
+                  <FormItem className="flex items-center gap-2 space-y-0"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel className="text-xs">Allow per-order override</FormLabel></FormItem>
+                )} />
+                <FormField control={form.control} name="billingActive" render={({ field }) => (
+                  <FormItem className="flex items-center gap-2 space-y-0"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel className="text-xs">Billing active</FormLabel></FormItem>
                 )} />
               </div>
             </CardContent>

@@ -1,4 +1,4 @@
-import { pgTable, serial, text, boolean, timestamp, jsonb, integer } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, boolean, timestamp, jsonb, integer, numeric } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -31,6 +31,21 @@ export const partnersTable = pgTable("partners", {
   defaultSupplierId: integer("default_supplier_id"),
   pricingMode: text("pricing_mode").notNull().default("hidden"),
   billingInfoJson: jsonb("billing_info_json").$type<{ contactName?: string; email?: string; phone?: string; address?: string; taxId?: string; paymentTerms?: string }>(),
+  // Billing execution config
+  defaultBillingExecModel: text("default_billing_exec_model").notNull().default("a3_collected"), // a3_collected | alyssa_entity_collected | manual_invoice | split_payout | external_payment_pending
+  billingEntityName: text("billing_entity_name"),
+  invoiceTemplate: text("invoice_template"),
+  paymentTerms: text("payment_terms"), // e.g. net_30
+  depositRequired: boolean("deposit_required").notNull().default(false),
+  depositPct: numeric("deposit_pct", { precision: 5, scale: 2 }),
+  allowPartialPayment: boolean("allow_partial_payment").notNull().default(true),
+  allowOrderOverride: boolean("allow_order_override").notNull().default(true),
+  defaultBillingNotes: text("default_billing_notes"),
+  billingContactName: text("billing_contact_name"),
+  billingContactEmail: text("billing_contact_email"),
+  billingContactPhone: text("billing_contact_phone"),
+  internalBillingOwnerUserId: text("internal_billing_owner_user_id"),
+  billingActive: boolean("billing_active").notNull().default(true),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),

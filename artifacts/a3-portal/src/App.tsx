@@ -32,6 +32,9 @@ import VendorPortal from "@/pages/admin/VendorPortal";
 import FulfillmentCommandCenter from "@/pages/admin/FulfillmentCommandCenter";
 import QuoteIngestion from "@/pages/admin/QuoteIngestion";
 import Reconciliation from "@/pages/admin/Reconciliation";
+import Billing from "@/pages/admin/Billing";
+import InvoiceDetail from "@/pages/admin/InvoiceDetail";
+import PublicInvoice from "@/pages/Invoice";
 
 import PublicLayout from "@/components/layout/PublicLayout";
 import PartnerPortal from "@/pages/public/PartnerPortal";
@@ -119,6 +122,13 @@ function ClerkProviderWithRoutes() {
           <Switch>
             <Route path="/" component={HomeRedirect} />
             <Route path="/login/*?" component={SignInPage} />
+            <Route path="/invoice/:token" component={PublicInvoice} />
+            <Route path="/admin/billing">
+              {() => <AdminRoute component={Billing} />}
+            </Route>
+            <Route path="/admin/invoices/:id">
+              {() => <AdminRoute component={InvoiceDetail} />}
+            </Route>
 
             <Route path="/admin">
               {() => <AdminRoute component={Dashboard} />}

@@ -1,0 +1,412 @@
+Now refine the existing Partner Commerce Portal by building a selective billing execution and invoice workflow layer. The platform already has partners, portal types, products, packages, branding zones, inventory, reservations, fulfillment modes, supplier routing, quote/spec references, quote ingestion/catalog enrichment, financial scaffolding, exports, reconciliation, and communications. This pass should activate billing execution pathways without forcing one universal money model.
+
+Important:
+Do not rebuild from scratch.
+Work from the existing codebase.
+Preserve current architecture and workflows where sensible.
+Do not implement a mandatory direct payment gateway for every partner.
+Implement selective billing execution so the platform can support different collection models per partner, per event, and per order.
+
+Primary objective for this pass:
+Make the system operationally capable of handling multiple billing paths:
+- A3 collected
+- Alyssa entity collected
+- manual invoice
+- split payout placeholder
+- external payment pending
+
+This pass should support invoice generation, billing records, payment tracking, and partner-specific execution rules, while still allowing “play nice first” rollout with A3 collected as default.
+
+This pass has 9 major priorities:
+
+1. Billing execution architecture
+2. Partner billing activation controls
+3. Invoice record model and workflow
+4. Payment request and payment tracking workflow
+5. Billing path by partner, event, and order
+6. Internal billing command center
+7. Better order-to-billing visibility
+8. Role-safe billing UX
+9. Documentation and seed data
+
+-----------------------------------
+1. BILLING EXECUTION ARCHITECTURE
+-----------------------------------
+
+Extend the financial architecture so the platform can execute billing workflows without requiring one fixed collection model.
+
+Supported billing execution models:
+- A3 collected
+- Alyssa entity collected
+- manual invoice
+- split payout placeholder
+- external payment pending
+
+For each order, support:
+- billing execution model
+- billing entity
+- invoice required yes/no
+- invoice status
+- payment request status
+- payment received status
+- payment received amount
+- payment received date
+- partial payment support
+- balance due
+- billing notes
+- internal billing owner
+- billing reference number
+- external invoice reference placeholder
+- payment link placeholder
+- collection path source
+  - partner default
+  - event override
+  - order override
+
+Do not require live payment processor integration in this pass.
+Support manual and semi-manual operational execution cleanly.
+
+-----------------------------------
+2. PARTNER BILLING ACTIVATION CONTROLS
+-----------------------------------
+
+Deepen partner level Financial Settings to support selective activation.
+
+For each partner, allow internal admin to configure:
+- default billing execution model
+- billing entity name
+- invoice template selection
+- payment terms
+- deposit required yes/no
+- deposit percentage or amount
+- allow partial payment yes/no
+- allow internal override yes/no
+- default collection notes
+- billing contact defaults
+- active/inactive billing configuration
+
+Important:
+Make this easy to control so one partner can remain A3 collected while another can be Alyssa entity collected.
+
+Add safe admin UX:
+- warning confirmations when changing billing model
+- visible indicator of active billing mode
+- clear inherited settings on downstream events/orders
+
+-----------------------------------
+3. INVOICE RECORD MODEL AND WORKFLOW
+-----------------------------------
+
+Build an internal invoice record system.
+
+Each invoice should support:
+- invoice number or internal reference
+- linked order
+- linked partner
+- linked event if applicable
+- billing execution model
+- billing entity
+- invoice status
+  - draft
+  - ready
+  - sent
+  - partially paid
+  - paid
+  - overdue
+  - cancelled
+- issue date
+- due date
+- subtotal
+- tax placeholder if needed
+- total amount
+- amount paid
+- balance due
+- deposit amount
+- deposit paid status
+- payment instructions summary
+- external invoice reference
+- notes
+
+Requirements:
+- create invoice from order
+- view invoice detail page
+- editable draft before sending
+- printable invoice layout
+- invoice PDF/download placeholder
+- ability to regenerate invoice from updated order values with warning if needed
+
+Support:
+- one invoice per order initially
+- structure code so multiple invoices per order can be supported later if needed
+
+-----------------------------------
+4. PAYMENT REQUEST AND PAYMENT TRACKING WORKFLOW
+-----------------------------------
+
+Build practical payment request and payment tracking actions.
+
+Support actions such as:
+- create invoice
+- mark invoice ready
+- mark invoice sent
+- mark deposit received
+- mark payment partially received
+- mark payment fully received
+- mark overdue
+- add payment note
+- add billing reference
+- mark billing complete
+
+For now, this can be operational/manual rather than connected to a gateway.
+But the UI and records should be real and useful.
+
+For each payment record or invoice, support:
+- payment amount
+- payment date
+- payment method placeholder
+- payment reference
+- received by
+- notes
+
+Auto-calculate:
+- remaining balance
+- paid in full yes/no
+- overdue flag based on due date where possible
+
+-----------------------------------
+5. BILLING PATH BY PARTNER, EVENT, AND ORDER
+-----------------------------------
+
+Implement the inheritance and override logic cleanly.
+
+Requirements:
+- partner default billing model cascades to new events and new orders
+- event can override if allowed
+- order can override by internal admin only
+- UI must clearly show where billing mode came from:
+  - partner default
+  - event override
+  - order override
+
+Examples:
+- Social Commerce Festival remains A3 collected
+- future partner can be Alyssa entity collected
+- one-off order can be manual invoice
+- split payout can exist as placeholder mode even if not fully automated yet
+
+Make these flows visible but not confusing.
+
+-----------------------------------
+6. INTERNAL BILLING COMMAND CENTER
+-----------------------------------
+
+Build a dedicated internal Billing workspace for Super Admin and Internal Admin.
+
+This workspace should show:
+- invoices not created
+- draft invoices
+- ready to send invoices
+- sent unpaid invoices
+- partially paid invoices
+- overdue invoices
+- paid invoices
+- orders using A3 collected
+- orders using Alyssa entity collected
+- orders using manual invoice
+- orders using split payout placeholder
+- billing discrepancies
+- missing billing contact or billing info
+
+For each record, show:
+- order
+- partner
+- billing execution model
+- invoice status
+- total amount
+- amount paid
+- balance due
+- due date
+- billing contact
+- internal billing owner
+- discrepancy flag if applicable
+
+Add filters for:
+- billing model
+- invoice status
+- due date
+- partner
+- event
+- payment received status
+- billing owner
+- discrepancy flag
+
+Use premium, operationally clear tables and summary cards.
+
+-----------------------------------
+7. ORDER-TO-BILLING VISIBILITY
+-----------------------------------
+
+Deepen order detail pages with a Billing section.
+
+For each order, show:
+- billing execution model
+- billing entity
+- invoice status
+- invoice number
+- amount invoiced
+- amount paid
+- balance due
+- due date
+- payment request status
+- billing notes
+- linked invoice
+- billing contact
+- internal billing owner
+
+Add quick actions:
+- create invoice
+- open invoice
+- mark sent
+- mark paid
+- add payment note
+- change billing model if allowed
+- mark billing exception
+
+Make the relationship between order, invoice, payment, and reconciliation clear.
+
+-----------------------------------
+8. ROLE SAFE BILLING UX
+-----------------------------------
+
+Ensure billing visibility is tightly controlled.
+
+Rules:
+- Super Admin and Internal Admin can view all billing controls
+- Partner Managers may see limited commercial billing info for their partner if appropriate, but not internal margin or commission verification
+- Vendor users should not see billing execution controls or unrelated billing data
+- Client users should only see client-facing invoice/payment information intended for them
+
+Do not expose internal commission logic or reconciliation notes in client-facing billing screens.
+
+-----------------------------------
+9. CLIENT-FACING BILLING EXPERIENCE
+-----------------------------------
+
+Build a lightweight but polished client-facing billing experience where appropriate.
+
+Support:
+- invoice view page or portal section
+- invoice summary
+- due date
+- amount due
+- payment status
+- payment instructions summary
+- note that payment links/integration can be added later
+- downloadable invoice view placeholder
+
+Do not overbuild a full accounts receivable portal.
+Keep this concise and elegant.
+
+-----------------------------------
+10. COMMUNICATIONS INTEGRATION
+-----------------------------------
+
+Tie billing workflow into the communications system.
+
+Support draft or logged communications for:
+- invoice sent
+- payment reminder
+- overdue reminder
+- deposit request
+- payment received confirmation
+
+These can use the communications template system already built.
+Log them in the activity/communications history.
+
+-----------------------------------
+11. RECONCILIATION INTEGRATION
+-----------------------------------
+
+Connect billing execution to reconciliation views.
+
+Show in reconciliation:
+- invoice created yes/no
+- invoice status
+- amount invoiced
+- amount paid
+- balance due
+- payment model
+- billing discrepancy flags
+- mismatch between expected and received if relevant
+
+This is important for commission verification and payout tracking later.
+
+-----------------------------------
+12. BULK ACTIONS AND QUICK ACTIONS
+-----------------------------------
+
+Add sensible bulk actions such as:
+- create invoices for selected orders
+- mark invoices ready
+- mark invoices sent
+- export billing records
+- mark selected invoices overdue
+- assign billing owner
+
+Keep actions safe with confirmations where needed.
+
+-----------------------------------
+13. SEED DATA
+-----------------------------------
+
+Refine seed data to demonstrate:
+- Social Commerce Festival using A3 collected
+- one partner using Alyssa entity collected
+- one partner using manual invoice
+- draft invoice example
+- sent invoice example
+- partially paid invoice example
+- overdue invoice example
+- billing model inherited from partner
+- event override example
+- order override example
+
+-----------------------------------
+14. DESIGN AND UX
+-----------------------------------
+
+Keep the interface premium, clear, and operational.
+
+Improve:
+- billing badges
+- invoice status chips
+- invoice detail layout
+- billing summary cards
+- due date callouts
+- balance due presentation
+- invoice action menus
+- client invoice presentation
+
+Avoid:
+- ugly accounting software feel
+- long clunky forms
+- overcomplicated payment processor setup
+- exposing irrelevant controls to wrong roles
+
+-----------------------------------
+15. DOCUMENTATION
+-----------------------------------
+
+Update replit.md with:
+- billing execution architecture
+- invoice model
+- billing inheritance logic
+- order-to-invoice workflow
+- visibility rules
+- communications integration
+- reconciliation integration
+- recommended next phase
+
+Also create or update a session plan and implement as much of the above as possible in this pass.
+Do not stop after describing the work.
+Actually build it.

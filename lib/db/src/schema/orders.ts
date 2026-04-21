@@ -44,6 +44,16 @@ export const ordersTable = pgTable("orders", {
   reconciliationStatus: text("reconciliation_status").notNull().default("not_started"), // not_started | in_review | waiting_payment | waiting_supplier_final | waiting_commission | discrepancy_found | reconciled
   reconciliationNotes: text("reconciliation_notes"),
   financeNotes: text("finance_notes"),
+  // Billing execution
+  billingExecModel: text("billing_exec_model"), // resolved value (null = use partner default at runtime)
+  billingExecModelSource: text("billing_exec_model_source"), // partner | event | order
+  invoiceRequired: boolean("invoice_required").notNull().default(true),
+  internalBillingOwnerUserId: text("internal_billing_owner_user_id"),
+  billingReferenceNumber: text("billing_reference_number"),
+  externalInvoiceRef: text("external_invoice_ref"),
+  paymentLinkPlaceholder: text("payment_link_placeholder"),
+  billingNotes: text("billing_notes"),
+  billingContactJson: jsonb("billing_contact_json").$type<{ name?: string; email?: string; phone?: string }>(),
   notes: text("notes"),
   internalNotes: text("internal_notes"),
   vendorNotes: text("vendor_notes"),
