@@ -1,9 +1,33 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, FileText, ShoppingCart, AlertTriangle, ArrowUpRight, Loader2, Clock, Truck, Calendar, TrendingUp, Boxes, Package, Printer, FileWarning } from "lucide-react";
+import { Users, FileText, ShoppingCart, AlertTriangle, ArrowUpRight, Loader2, Clock, Truck, Calendar, TrendingUp, Boxes, Package, Printer, FileWarning, Rocket } from "lucide-react";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+
+function LaunchBanner() {
+  const { data } = useQuery<any>({ queryKey: ["/api/launch/platform"], queryFn: () => apiFetch("/api/launch/platform") });
+  if (!data) return null;
+  if (data.completionPct === 100 && data.livePartnerCount > 0) return null;
+  return (
+    <Card className="border-primary/40 bg-gradient-to-r from-primary/5 to-transparent">
+      <CardContent className="flex flex-wrap items-center justify-between gap-4 p-4">
+        <div className="flex items-center gap-3">
+          <div className="rounded-full bg-primary/10 p-2.5"><Rocket className="h-5 w-5 text-primary" /></div>
+          <div>
+            <div className="font-semibold">{data.livePartnerCount === 0 ? "Get your first partner live" : "Finish platform launch"}</div>
+            <div className="text-sm text-muted-foreground">
+              {data.completionPct}% complete · {data.partnerCount} partner(s) · {data.livePartnerCount} live
+              {data.blockerCount > 0 && ` · ${data.blockerCount} blocker(s)`}
+            </div>
+          </div>
+        </div>
+        <Link href="/admin/launch"><Button size="sm">Open launch wizard</Button></Link>
+      </CardContent>
+    </Card>
+  );
+}
 
 type Summary = {
   totalPartners: number; activePartners: number; orderingPartners: number; brandingPartners: number;
@@ -76,6 +100,8 @@ export default function Dashboard() {
         <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground mt-1">Operations overview across all partners and orders.</p>
       </div>
+
+      <LaunchBanner />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard icon={Users} label="Partners" value={s.totalPartners} sub={`${s.activePartners} active · ${s.orderingPartners} ordering · ${s.brandingPartners} branding`} href="/admin/partners" />

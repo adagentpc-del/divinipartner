@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, apiUrl } from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,7 +32,7 @@ export function RolloutChecklist({ partnerId }: { partnerId: number }) {
 
   const activate = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`/api/launch/partner/${partnerId}/activate`, {
+      const res = await fetch(apiUrl(`/api/launch/partner/${partnerId}/activate`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: pendingStatus, overrideNote: overrideNote || null }),

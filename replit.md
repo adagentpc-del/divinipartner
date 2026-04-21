@@ -610,3 +610,29 @@ In-app analytics layer answering revenue, profitability, supplier performance, f
 - Add city × billing-model heatmap and partner trend sparklines on the Overview tab.
 - Wire forecast horizon cards to drill into the underlying order list.
 - Per-partner-manager dashboard scoped to their partnerId (route-level role gate already supports it via filters).
+
+## Launch Polish & Onboarding (April 2026)
+### What was added
+- **Schema**: `partners.launchStatus` (draft/preview/internal_only/live/paused), `launchedAt`, `launchOverrideNote`, `demoFlag`, `setupTemplate`. New `onboarding_progress` table tracking per-user step completion.
+- **Backend (`launchReadiness.ts`)**: per-partner readiness checklist across Branding / Contacts / Locations / Catalog / Billing / Fulfillment / Rollout (blocker vs warning), platform-level readiness summary, and `setLaunchStatus()` that flips `partners.isActive` on live/paused transitions.
+- **Routes (`/api/launch/*`, `/api/onboarding/*`)**:
+  - `GET /api/launch/platform` — global readiness card data
+  - `GET /api/launch/partner/:id` — per-partner checklist with completionPct, blocker/warning counts, readyToLaunch flag
+  - `POST /api/launch/partner/:id/activate` — change launch state. Returns 409 + requiresOverride when blockers present and no `overrideNote` was supplied; the override note is persisted on `launchOverrideNote` and audited.
+  - `GET/POST /api/onboarding/progress`, `POST /api/onboarding/dismiss` for first-use checklists.
+- **Frontend**:
+  - `/admin/launch` — multi-step Launch Wizard with sidebar nav and live platform-readiness card.
+  - `RolloutChecklist` component embedded at the top of the partner edit page, showing status badge, progress bar, grouped checklist with deep-links, and an override-note dialog when launching despite blockers.
+  - `LaunchBanner` on the Dashboard nudges admins toward the wizard until the first partner is live and platform readiness hits 100%.
+  - Reusable `EmptyStateCard` for first-use empty states.
+- **Nav**: "Launch" item (Rocket icon) in AdminLayout between Analytics and Billing.
+
+### Launch state semantics
+- **draft** — internal only, not addressable
+- **preview** — private preview link sharable
+- **internal_only** — staff sees portal, public does not
+- **live** — fully launched (also flips `partners.isActive=true`)
+- **paused** — temporarily disabled (flips `isActive=false`)
+
+### Override flow
+Launching a partner with outstanding blockers requires an `overrideNote` string. The note is stored on `partners.launchOverrideNote` and surfaced in the rollout checklist UI.

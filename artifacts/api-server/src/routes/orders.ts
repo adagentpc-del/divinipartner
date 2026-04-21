@@ -349,6 +349,8 @@ router.get("/orders/:id", async (req, res): Promise<void> => {
   res.json({ ...order, items, partner, event, venue, supplier });
 });
 
+import { fire } from "../services/workflowEngine";
+
 router.post("/orders", async (req, res): Promise<void> => {
   const parsed = OrderBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
@@ -440,7 +442,10 @@ router.patch("/orders/:id", async (req, res): Promise<void> => {
   const { items, ...orderData } = parsed.data;
 
   try {
+    let prevStatus: string | null = null;
     const updated = await db.transaction(async (tx) => {
+      const [prev] = await tx.select({ status: ordersTable.status }).from(ordersTable).where(eq(ordersTable.id, id));
+      prevStatus = prev?.status ?? null;
       const [row] = await tx.update(ordersTable).set(orderData).where(eq(ordersTable.id, id)).returning();
       if (!row) return null;
       if (items) {
@@ -494,6 +499,13 @@ router.patch("/orders/:id", async (req, res): Promise<void> => {
       return row;
     });
     if (!updated) { res.status(404).json({ error: "Not found" }); return; }
+    if (orderData.status && orderData.status !== prevStatus) {
+      if (orderData.status === "approved") {
+        fire("order.approved", { objectType: "order", objectId: id, orderId: id, partnerId: updated.partnerId ?? null, eventId: updated.eventId ?? null, orderNumber: updated.orderNumber }).catch(() => {});
+      } else if (orderData.status === "in_production") {
+        fire("order.in_production", { objectType: "order", objectId: id, orderId: id, partnerId: updated.partnerId ?? null, orderNumber: updated.orderNumber }).catch(() => {});
+      }
+    }
     res.json(updated);
   } catch (e: any) {
     res.status(400).json({ error: e?.message ?? "Update failed" });
@@ -541,6 +553,7 @@ router.post("/orders/:orderId/items/:itemId/assign-supplier", async (req, res): 
     return row;
   });
   if (!updated) { res.status(404).json({ error: "Item not found" }); return; }
+  fire("supplier.assigned", { objectType: "order_item", objectId: itemId, orderItemId: itemId, orderId: parseInt(req.params.orderId), supplierId, source }).catch(() => {});
   res.json(updated);
 });
 
