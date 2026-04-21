@@ -555,3 +555,58 @@ PATCH `/api/order-items/:id/production-block` accepts `overrideNote`. When clear
 - Status guardrails service consumed by asset approval and invoice send.
 - Per-portal-type rule scoping via `portalTypes` array.
 - Owner assignment + email digest delivery.
+
+## Executive Analytics & Profitability Intelligence (April 2026)
+
+In-app analytics layer answering revenue, profitability, supplier performance, forecast, and operational risk questions for Super Admin / Internal Admin. Aggregates current operational tables (orders, orderItems, invoices, invoicePayments, partners, events, suppliers, packages, productCatalog, partnerBrandingLocations, cities, venues) — no separate warehouse.
+
+### Service (`artifacts/api-server/src/services/analytics.ts`)
+- `loadWorkspace(filters)` — single batched fetch, builds `Map`s for joins, applies order-level filters (date range, partner, portalType, cityId, supplierId, billingExecModel). Excludes `cancelled` orders.
+- `orderMetrics(o, ws)` — per-order snapshot: retail, est/final cost, est/actual margin, expected/paid commission, commission variance, invoiced/collected/outstanding, blocked-item / shortage-item counts.
+- `kpis(filters)` — totals + counts for Overview KPIs (retail, invoiced, collected, est/actual margin, commission variance, blocked, shortages, discrepancies, overdue invoices, upcoming and at-risk events) + status/billing-model breakdowns.
+- `profitability(dimension, filters)` — buckets revenue + margin + commission by `partner | event | city | portalType | billingModel | supplier | package | zone | productCategory`. Package/zone/productCategory roll up at line-item level; others at order level.
+- `supplierPerformance(filters)` — order-level revenue + cost + variance plus item-level blocked/shortage/missing-artwork/overdue/due-soon counts; computes `issueRate = (blocked+shortage+overdue)/items`.
+- `packageAnalytics`, `zoneAnalytics`, `productAnalytics` — package/zone/product detail tables with retail, margin, qty, print-only vs full-unit demand mix, shortage/missing-artwork exposure.
+- `forecast(filters)` — horizon buckets (next 30/60/90 days) by event start; pipeline stages derived from current state: `confirmed | awaiting_approval | awaiting_assets | awaiting_billing | at_risk | delayed`.
+- `risk(filters)` — exposure across blocked orders, blocked items, shortages, missing artwork, unassigned items, overdue invoices, unreconciled, commission discrepancies, events approaching with readiness issues; computes `revenueAtRisk` (sum of retail tied to any order with a risk flag).
+- `trends(filters, granularity)` — month/week/day buckets of retail, est/actual cost, est/actual margin, expected/paid commission.
+- `toCsv(rows)` — generic CSV serializer used by export.
+
+### Routes (`artifacts/api-server/src/routes/analytics.ts`, mounted at `/api`)
+- `GET /api/analytics/kpis`
+- `GET /api/analytics/profitability?dimension=...`
+- `GET /api/analytics/suppliers`
+- `GET /api/analytics/packages` · `/zones` · `/products`
+- `GET /api/analytics/forecast`
+- `GET /api/analytics/risk`
+- `GET /api/analytics/trends?granularity=day|week|month`
+- `GET /api/analytics/export?view=profitability|suppliers|packages|zones|products|trends&dimension=...`
+- All endpoints accept the same filter set: `from`, `to`, `partnerId`, `portalType`, `cityId`, `supplierId`, `billingExecModel`.
+
+### Frontend (`artifacts/a3-portal/src/pages/admin/Analytics.tsx`, route `/admin/analytics`)
+- Single page with sticky filter bar and 6 tabs:
+  - **Overview** — 16 KPI cards plus 4 charts (retail vs cost area, margin line, commission bars, status/billing pies).
+  - **Profitability** — switchable across 9 dimensions; sortable table with margin %, commission variance, open A/R, average order value; CSV export.
+  - **Suppliers** — top-5 by revenue + highest issue-rate bar charts; full performance table with cost variance and issue %; CSV export.
+  - **Packages / zones / products** — three sortable tables with per-section CSV exports; product table shows print-only vs full-unit mix + shortage exposure.
+  - **Forecast** — 30/60/90-day horizon cards (retail, est. cost, est. margin, expected commission, event count); pipeline stage table.
+  - **Risk** — revenue-at-risk hero card, 9 risk count tiles, and 6 drill-list cards with deep-links into orders/invoices.
+- All risk-list rows link into `/admin/orders/:id` or `/admin/invoices/:id` via wouter.
+- Nav: "Analytics" item added to AdminLayout (BarChart3 icon), positioned between Workflow and Billing.
+
+### Metric definitions (consistent across cards & tables)
+- estimated gross margin = retail − supplier estimated cost
+- actual gross margin = retail − (supplier final cost OR supplier estimated cost if final not yet recorded)
+- commission variance = expected commission − paid commission
+- revenue at risk = retail of any order with at least one blocked / shortage / missing-artwork item
+- forecast retail = total retail of orders whose linked event start date falls inside the horizon
+- open receivables = sum of `invoices.balanceDue` for non-cancelled invoices
+
+### Role visibility
+- Routes are mounted under the same router as workflow/reconciliation; the page is only registered behind `AdminRoute`, so only Super Admin / Internal Admin can reach it. Vendor and client roles never see the nav item or page. Per-partner partner-manager analytics are out of scope for this pass — server filters already accept `partnerId`, so partner-scoped surfaces can plug in later.
+
+### Next phase
+- Save filter views per user.
+- Add city × billing-model heatmap and partner trend sparklines on the Overview tab.
+- Wire forecast horizon cards to drill into the underlying order list.
+- Per-partner-manager dashboard scoped to their partnerId (route-level role gate already supports it via filters).
