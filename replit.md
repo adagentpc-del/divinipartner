@@ -769,3 +769,50 @@ A presentation/activation layer on top of the commercialization architecture. De
 1. Wire `useDemoMode()` into a few high-noise admin screens (workflow logs, deck extractions, analytics drill-downs) so demo mode visibly cleans them up — the architecture is in place but most operational screens haven't been gated yet.
 2. Add a print stylesheet + a "Send to prospect" action on proposals that generates a clean PDF/print view (the print button currently uses browser print; styling hides the edit panes via `print:hidden` but a dedicated print layout would polish this).
 3. Optional: a "Reset demo data" admin action to make scenario switching during back-to-back demos friction-free.
+
+## Phase: Stabilization, Objections, Blocker Intelligence, FAQ (April 2026)
+
+This layer extends — not replaces — the existing commercial/sales surfaces. Three new tables, one new router, one new top-level domain (`/admin/rollout`), one new help domain (`/admin/help`), and two new pages under `/admin/sales`.
+
+### Schema (`lib/db/src/schema/stabilization.ts`)
+- **`objections`** — category (12 enum: pricing, implementation, speed, security, integration, support, competition, scope, contract, branding, technical, other), status (open / in_review / resolved / won / lost), accountId, proposalId, summary, recommendedResponse (auto-suggested from `RECOMMENDED_RESPONSES` map keyed by category), tags, internalNotes, followUpNeeded.
+- **`demo_followups`** — accountId, status (open / in_progress / completed / lost), outcome (strong_interest / warm / cold / closed_won / closed_lost), interestAreas[], objectionSummary, recommendedPlan, whiteLabelInterest (none / partial / full), activationReadiness (ready / needs_branding / needs_contract / blocked), priorityFeatures[], nextStep.
+- **`faq_entries`** — audience (internal / partner / client), category (10 enum: sales, billing, onboarding, branding, ordering, shipping, artwork, support, rollout, other), question, answer, sortOrder, isActive.
+
+### Services
+- `services/objections.ts` — list/filter/CRUD plus `summarizeObjections()` (totals, by category, by status, follow-up count). Constants exported: `OBJECTION_CATEGORIES`, `OBJECTION_STATUSES`, `RECOMMENDED_RESPONSES`.
+- `services/rolloutStabilization.ts` — `computeAccountBlockers(accountId)` runs a per-account scan and emits typed blocker objects (kind: missing_partner / missing_branding / no_packages / inactive_partner / no_white_label_settings / paused / suspended / stalled / activation_incomplete) with severity (low / medium / high / critical). It joins commercial accounts to partners via `partnersTable.commercialAccountId` first, then a slug-heuristic fallback. `getStabilizationDashboard()` aggregates totals (accounts, active, inActivation, stalled, paused, flagged, openFollowups), inActivation queue, stalled list, flaggedAccounts (severity-sorted), and recent followups.
+- `services/faq.ts` — `listFaq({audience?, category?, includeInactive?})`, plus `FAQ_AUDIENCES` and `FAQ_CATEGORIES` constants.
+
+### Routes (`routes/stabilization.ts`, mounted under `/api`)
+- `GET/POST /api/objections`, `GET/PATCH/DELETE /api/objections/:id`, `GET /api/objections/summary`, `GET /api/objections/constants`
+- `GET/POST /api/demo-followups`, `GET/PATCH/DELETE /api/demo-followups/:id`
+- `GET/POST /api/faq`, `PATCH/DELETE /api/faq/:id`, `GET /api/faq/constants`
+- `GET /api/rollout/stabilization` — dashboard summary
+- `GET /api/rollout/account/:id/blockers` — per-account drilldown (account, blockers, partner, packageCount, openFollowups, openObjections)
+
+### Frontend
+- `/admin/rollout` (RolloutStabilization) — KPI cards + tabs: Flagged / In activation / Stalled / Follow-ups. Each row links to drilldown.
+- `/admin/rollout/account/:accountId` (AccountBlockers) — full blocker list grouped by severity, partner status, package counts, related objections + followups.
+- `/admin/sales/objections` (ObjectionsBoard) — status-filter tabs, sheet-based create/edit. Selecting a category auto-fills `recommendedResponse`.
+- `/admin/sales/followups` (DemoFollowups) — sheet editor with status/outcome/white-label/readiness selects + interest-areas + priority-features chips.
+- `/admin/help` (HelpFaq) — audience tabs (internal / partner / client), category filter, full CRUD.
+- `BuyerHelpDrawer` — reusable Sheet that surfaces FAQ filtered by audience. When demo mode is active, defaults audience to `client` so prospects only see safe content.
+- `BlockerBadge` — color-coded readiness chip (critical / high / medium / low / none).
+
+### Audience layering for FAQ
+- `internal` entries are admin-only — never surfaced through `BuyerHelpDrawer` when demo mode is on.
+- `partner` is the default audience for partner-portal contexts.
+- `client` is the safest tier — used in demo mode and for buyer-facing surfaces.
+
+### Blocker computation contract
+A blocker is any condition that prevents an account from reliably operating in production. Severities cascade: `critical` (no partner / suspended) > `high` (no packages / no branding for white-label / paused active account) > `medium` (stalled in activation, partner inactive) > `low` (incomplete checklist items in activation).
+
+### Seed
+- 5 objections across all 5 statuses and 5 categories.
+- 3 demo follow-ups (in_progress strong_interest / open warm / completed closed_won).
+- 12 FAQ entries (4 per audience).
+- Existing demo accounts unchanged; stabilization dashboard reflects them automatically (Hilton/MoveMiami active, BetaCo activating, Acme paused, NewVenue activating).
+
+### Nav
+- Added "Rollout" (ShieldCheck) and "Help" (HelpCircle) entries to AdminLayout sidebar.

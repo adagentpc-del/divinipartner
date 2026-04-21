@@ -24,7 +24,9 @@ import {
   Activity,
   MessageSquare,
   Crown,
-  Briefcase
+  Briefcase,
+  ShieldCheck,
+  HelpCircle
 } from "lucide-react";
 import { FeedbackButton } from "@/components/admin/FeedbackButton";
 import { DemoModeBanner, DemoModeToggle } from "@/components/admin/DemoModeBanner";
@@ -45,6 +47,8 @@ const navigation = [
   { name: "Feedback", href: "/admin/feedback", icon: MessageSquare },
   { name: "Commercial", href: "/admin/commercial", icon: Crown },
   { name: "Sales", href: "/admin/sales", icon: Briefcase },
+  { name: "Rollout", href: "/admin/rollout", icon: ShieldCheck },
+  { name: "Help", href: "/admin/help", icon: HelpCircle },
   { name: "Billing", href: "/admin/billing", icon: Banknote },
   { name: "Reconciliation", href: "/admin/reconciliation", icon: Calculator },
   { name: "Suppliers", href: "/admin/suppliers", icon: Truck },

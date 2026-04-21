@@ -50,6 +50,11 @@ import SalesCommandCenter from "@/pages/admin/SalesCommandCenter";
 import ProposalDetail from "@/pages/admin/ProposalDetail";
 import AccountActivation from "@/pages/admin/AccountActivation";
 import SalesShowcase from "@/pages/admin/SalesShowcase";
+import RolloutStabilization from "@/pages/admin/RolloutStabilization";
+import AccountBlockers from "@/pages/admin/AccountBlockers";
+import ObjectionsBoard from "@/pages/admin/ObjectionsBoard";
+import DemoFollowups from "@/pages/admin/DemoFollowups";
+import HelpFaq from "@/pages/admin/HelpFaq";
 import { DemoModeProvider } from "@/contexts/DemoModeContext";
 import WorkflowRules from "@/pages/admin/WorkflowRules";
 
@@ -265,6 +270,21 @@ function ClerkProviderWithRoutes() {
             </Route>
             <Route path="/admin/sales/activation/:accountId">
               {() => <AdminRoute component={AccountActivation} />}
+            </Route>
+            <Route path="/admin/sales/objections">
+              {() => <AdminRoute component={ObjectionsBoard} />}
+            </Route>
+            <Route path="/admin/sales/followups">
+              {() => <AdminRoute component={DemoFollowups} />}
+            </Route>
+            <Route path="/admin/rollout">
+              {() => <AdminRoute component={RolloutStabilization} />}
+            </Route>
+            <Route path="/admin/rollout/account/:accountId">
+              {() => <AdminRoute component={AccountBlockers} />}
+            </Route>
+            <Route path="/admin/help">
+              {() => <AdminRoute component={HelpFaq} />}
             </Route>
             <Route path="/admin/workflow">
               {() => <AdminRoute component={WorkflowDashboard} />}
