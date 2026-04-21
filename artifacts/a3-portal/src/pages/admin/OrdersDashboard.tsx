@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, ShoppingCart, Search } from "lucide-react";
+import { Loader2, ShoppingCart, Search, FileSpreadsheet } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 type Order = { id: number; orderNumber: string; partnerId: number; partnerName?: string; eventId: number | null; eventName?: string | null; portalType: string; status: string; paymentStatus: string; fulfillmentMode: string | null; assignedSupplierId: number | null; supplierName?: string | null; venueName?: string | null; contactName: string; companyName: string | null; totalEstimate: string | null; createdAt: string; totalShortage?: number; totalReserved?: number; itemFulfillmentModes?: string[] };
 type Partner = { id: number; companyName: string };
@@ -56,9 +57,23 @@ export default function OrdersDashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Orders</h1>
-        <p className="text-muted-foreground mt-1">{filtered.length} of {orders.length} order{orders.length !== 1 ? "s" : ""}</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Orders</h1>
+          <p className="text-muted-foreground mt-1">{filtered.length} of {orders.length} order{orders.length !== 1 ? "s" : ""}</p>
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="gap-2"><FileSpreadsheet className="h-4 w-4" /> Export ▾</Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => window.open(`/api/exports/orders.csv${qs ? `?${qs}` : ""}`, "_blank")}>Orders CSV (current filters)</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => window.open(`/api/exports/order-items.csv${qs ? `?${qs}` : ""}`, "_blank")}>Line items CSV</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => window.open(`/api/exports/finance.csv${qs ? `?${qs}` : ""}`, "_blank")}>Finance / reconciliation CSV</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => window.open(`/api/exports/suppliers.csv`, "_blank")}>Suppliers summary CSV</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => window.open(`/api/exports/events.csv`, "_blank")}>Events summary CSV</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <div className="flex flex-wrap gap-2 items-center">

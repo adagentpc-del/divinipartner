@@ -24,6 +24,8 @@ import userRolesRouter from "./userRoles";
 import savedAddressesRouter from "./savedAddresses";
 import partnerOnboardingRouter from "./partnerOnboarding";
 import partnerInventoryRouter from "./partnerInventory";
+import exportsRouter from "./exports";
+import reconciliationRouter from "./reconciliation";
 
 const router: IRouter = Router();
 
@@ -52,5 +54,7 @@ router.use(userRolesRouter);
 router.use(savedAddressesRouter);
 router.use(partnerOnboardingRouter);
 router.use(partnerInventoryRouter);
+router.use(exportsRouter);
+router.use(reconciliationRouter);
 
 export default router;

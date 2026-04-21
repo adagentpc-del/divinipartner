@@ -29,6 +29,21 @@ export const ordersTable = pgTable("orders", {
   billingAddressJson: jsonb("billing_address_json").$type<{ line1?: string; line2?: string; city?: string; state?: string; postalCode?: string; country?: string }>(),
   artworkFilesJson: jsonb("artwork_files_json").$type<Array<{ url: string; name?: string; size?: number; type?: string }>>(),
   totalEstimate: numeric("total_estimate", { precision: 12, scale: 2 }),
+  // Financial / reconciliation
+  paymentModel: text("payment_model").notNull().default("partner_billed"), // partner_billed | client_direct | a3_billed | prepaid
+  billingEntity: text("billing_entity"), // free-text who is billed
+  supplierEstimatedCost: numeric("supplier_estimated_cost", { precision: 12, scale: 2 }),
+  supplierFinalCost: numeric("supplier_final_cost", { precision: 12, scale: 2 }),
+  expectedCommission: numeric("expected_commission", { precision: 12, scale: 2 }),
+  paidCommission: numeric("paid_commission", { precision: 12, scale: 2 }),
+  commissionPaidDate: text("commission_paid_date"),
+  commissionPaidThrough: text("commission_paid_through"), // ach | check | wire | platform
+  commissionStatus: text("commission_status").notNull().default("not_started"), // not_started | expected | partially_paid | paid | disputed | verified
+  supplierPayableStatus: text("supplier_payable_status").notNull().default("not_started"), // not_started | invoiced | paid | overdue
+  payoutStatus: text("payout_status").notNull().default("pending"),
+  reconciliationStatus: text("reconciliation_status").notNull().default("not_started"), // not_started | in_review | waiting_payment | waiting_supplier_final | waiting_commission | discrepancy_found | reconciled
+  reconciliationNotes: text("reconciliation_notes"),
+  financeNotes: text("finance_notes"),
   notes: text("notes"),
   internalNotes: text("internal_notes"),
   vendorNotes: text("vendor_notes"),
@@ -48,6 +63,8 @@ export const orderItemsTable = pgTable("order_items", {
   name: text("name").notNull(),
   quantity: integer("quantity").notNull().default(1),
   unitPrice: numeric("unit_price", { precision: 12, scale: 2 }),
+  estimatedSupplierCost: numeric("estimated_supplier_cost", { precision: 12, scale: 2 }),
+  finalSupplierCost: numeric("final_supplier_cost", { precision: 12, scale: 2 }),
   fulfillmentMode: text("fulfillment_mode"),
   hardwareRequired: boolean("hardware_required").notNull().default(false),
   printDemandQuantity: integer("print_demand_quantity").notNull().default(0),

@@ -137,7 +137,10 @@ export default function OrderDetail() {
           </div>
           <p className="text-muted-foreground mt-1">{order.partnerName} · {new Date(order.createdAt).toLocaleString()}</p>
         </div>
-        <Button variant="outline" className="gap-2 no-print" onClick={() => window.print()}><Printer className="h-4 w-4" />Print Packet</Button>
+        <div className="flex gap-2 no-print">
+          <Button variant="outline" className="gap-2" onClick={() => window.open(`/api/exports/orders/${id}/packet.html`, "_blank")}><Printer className="h-4 w-4" />Ops Packet</Button>
+          {order.assignedSupplierId && <Button variant="outline" className="gap-2" onClick={() => window.open(`/api/exports/orders/${id}/packet.html?supplierId=${order.assignedSupplierId}`, "_blank")}><Truck className="h-4 w-4" />Supplier Packet</Button>}
+        </div>
       </div>
 
       {totalShortage > 0 && (
@@ -277,9 +280,100 @@ export default function OrderDetail() {
               <Button onClick={handleSave} disabled={update.isPending} className="w-full gap-2">{update.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}Save</Button>
             </div>
           </Card>
+
+          <FinancePanel orderId={id} />
         </div>
       </div>
     </div>
+  );
+}
+
+function FinancePanel({ orderId }: { orderId: number }) {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const { data: rec } = useQuery<any>({ queryKey: ["/api/reconciliation/orders", "for-order", orderId], queryFn: async () => {
+    const all = await apiFetch<any[]>("/api/reconciliation/orders");
+    return all.find(r => r.id === orderId);
+  } });
+  const { data: payouts = [] } = useQuery<any[]>({ queryKey: [`/api/orders/${orderId}/commission-payouts`], queryFn: () => apiFetch(`/api/orders/${orderId}/commission-payouts`) });
+  const [f, setF] = useState<any>(null);
+  useEffect(() => {
+    if (rec && !f) setF({
+      paymentModel: rec.paymentModel, billingEntity: rec.billingEntity || "",
+      supplierEstimatedCost: rec.supplierEstimatedCost || "", supplierFinalCost: rec.supplierFinalCost || "",
+      expectedCommission: rec.expectedCommission || "",
+      commissionStatus: rec.commissionStatus, supplierPayableStatus: rec.supplierPayableStatus,
+      reconciliationStatus: rec.reconciliationStatus,
+      financeNotes: rec.financeNotes || "", reconciliationNotes: rec.reconciliationNotes || "",
+    });
+  }, [rec?.id]);
+  const update = useMutation({
+    mutationFn: (patch: any) => apiFetch(`/api/reconciliation/orders/${orderId}`, { method: "PATCH", body: JSON.stringify(patch) }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/reconciliation/orders"] }); toast({ title: "Finance saved" }); },
+  });
+  const autoFlag = useMutation({
+    mutationFn: () => apiFetch(`/api/reconciliation/orders/${orderId}/auto-flag`, { method: "POST" }),
+    onSuccess: (res: any) => { qc.invalidateQueries({ queryKey: ["/api/reconciliation/orders"] }); qc.invalidateQueries({ queryKey: ["/api/discrepancies"] }); toast({ title: `Flagged ${res.flaggedCount}` }); },
+  });
+  if (!rec || !f) return null;
+  const money = (v: any) => `$${(parseFloat(v || "0") || 0).toFixed(2)}`;
+
+  return (
+    <Card className="p-5 no-print">
+      <h2 className="font-semibold text-base mb-3 flex items-center gap-2"><FileText className="h-4 w-4 text-muted-foreground" />Finance & Reconciliation</h2>
+      <div className="rounded-lg bg-muted/40 p-3 mb-3 grid grid-cols-2 gap-2 text-xs">
+        <div><div className="text-muted-foreground">Margin</div><div className={`font-bold ${rec.grossMargin < 0 ? "text-red-700" : "text-emerald-700"}`}>{money(rec.grossMargin)}</div></div>
+        <div><div className="text-muted-foreground">Commission var.</div><div className={`font-bold ${Math.abs(rec.commissionVariance) > 0.01 ? "text-red-700" : "text-emerald-700"}`}>{money(rec.commissionVariance)}</div></div>
+        <div><div className="text-muted-foreground">Open issues</div><div className="font-bold">{rec.openDiscrepancies}</div></div>
+        <div><div className="text-muted-foreground">Recon</div><Badge variant="outline" className="text-[10px]">{rec.reconciliationStatus.replace(/_/g, " ")}</Badge></div>
+      </div>
+      <div className="space-y-3">
+        <div><Label className="text-xs">Payment model</Label><Select value={f.paymentModel} onValueChange={v => setF({ ...f, paymentModel: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{["partner_billed","client_direct","a3_billed","prepaid"].map(m => <SelectItem key={m} value={m}>{m.replace(/_/g, " ")}</SelectItem>)}</SelectContent></Select></div>
+        <div><Label className="text-xs">Billing entity</Label><Input value={f.billingEntity} onChange={e => setF({ ...f, billingEntity: e.target.value })} /></div>
+        <div className="grid grid-cols-2 gap-2">
+          <div><Label className="text-xs">Est. supplier cost</Label><Input value={f.supplierEstimatedCost} onChange={e => setF({ ...f, supplierEstimatedCost: e.target.value })} placeholder="0.00" /></div>
+          <div><Label className="text-xs">Final supplier cost</Label><Input value={f.supplierFinalCost} onChange={e => setF({ ...f, supplierFinalCost: e.target.value })} placeholder="0.00" /></div>
+        </div>
+        <div><Label className="text-xs">Expected commission</Label><Input value={f.expectedCommission} onChange={e => setF({ ...f, expectedCommission: e.target.value })} placeholder="0.00" /></div>
+        <div><Label className="text-xs">Commission status</Label><Select value={f.commissionStatus} onValueChange={v => setF({ ...f, commissionStatus: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{["not_started","expected","partially_paid","paid","disputed","verified"].map(m => <SelectItem key={m} value={m}>{m.replace(/_/g, " ")}</SelectItem>)}</SelectContent></Select></div>
+        <div><Label className="text-xs">Supplier payable</Label><Select value={f.supplierPayableStatus} onValueChange={v => setF({ ...f, supplierPayableStatus: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{["not_started","invoiced","paid","overdue"].map(m => <SelectItem key={m} value={m}>{m.replace(/_/g, " ")}</SelectItem>)}</SelectContent></Select></div>
+        <div><Label className="text-xs">Reconciliation status</Label><Select value={f.reconciliationStatus} onValueChange={v => setF({ ...f, reconciliationStatus: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{["not_started","in_review","waiting_payment","waiting_supplier_final","waiting_commission","discrepancy_found","reconciled"].map(m => <SelectItem key={m} value={m}>{m.replace(/_/g, " ")}</SelectItem>)}</SelectContent></Select></div>
+        <div><Label className="text-xs">Finance notes</Label><Textarea value={f.financeNotes} onChange={e => setF({ ...f, financeNotes: e.target.value })} rows={2} /></div>
+        <div><Label className="text-xs">Reconciliation notes</Label><Textarea value={f.reconciliationNotes} onChange={e => setF({ ...f, reconciliationNotes: e.target.value })} rows={2} /></div>
+        <div className="flex gap-2">
+          <Button onClick={() => update.mutate(f)} disabled={update.isPending} className="flex-1 gap-2">{update.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}Save</Button>
+          <Button variant="outline" onClick={() => autoFlag.mutate()}><AlertTriangle className="h-4 w-4" /></Button>
+        </div>
+      </div>
+
+      {rec.discrepancies.length > 0 && (
+        <div className="mt-4 pt-4 border-t">
+          <div className="text-xs font-semibold uppercase text-muted-foreground tracking-wide mb-2">Discrepancies</div>
+          {rec.discrepancies.map((d: any) => (
+            <div key={d.id} className="text-xs border-l-2 border-amber-300 pl-2 py-1 mb-1">
+              <Badge className="text-[10px] mr-1">{d.severity}</Badge>{d.type.replace(/_/g, " ")} · <span className="text-muted-foreground">{d.status}</span>
+              {d.reason && <div className="text-muted-foreground">{d.reason}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {payouts.length > 0 && (
+        <div className="mt-4 pt-4 border-t">
+          <div className="text-xs font-semibold uppercase text-muted-foreground tracking-wide mb-2">Commission payouts</div>
+          {payouts.map((p: any) => (
+            <div key={p.id} className="text-xs flex justify-between border-b py-1">
+              <span>{money(p.amount)} via {p.paidThrough || "—"}</span>
+              <span className="text-muted-foreground">{p.paidDate || ""}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-3 pt-3 border-t">
+        <Link href="/admin/reconciliation"><Button variant="link" size="sm" className="px-0 h-auto text-xs">Open in Reconciliation workspace →</Button></Link>
+      </div>
+    </Card>
   );
 }
 

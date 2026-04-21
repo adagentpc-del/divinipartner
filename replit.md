@@ -326,3 +326,55 @@ The portal supports per-line-item supplier routing on top of the order-level sup
 - `/admin/orders/:id` — OrderDetail items now have `ItemSupplierControls` per row: supplier picker (override-confirm prompt when overriding inherited), source badge, status pill, due-date popover, supplier reference inline editor, exception flag/clear; checkboxes enable bulk supplier assignment toolbar.
 - `/admin/vendor` — Vendor Workspace: supplier perspective switcher + bucket tabs (All / Due in 7d / Awaiting Assets / In Production / Issues), vendor-only status transitions, click any item to open Packet View (printable, includes vendor-visible quote assets and ship-to).
 - Sidebar nav adds "Fulfillment" link next to Orders.
+
+## ERP, Export & Reconciliation Layer (April 2026)
+
+Adds a finance/ops bridge on top of orders so daily ops can be exported into the supplier-facing or NetSuite-facing world, and so commission verification and discrepancy handling have a real workspace. **Extends** existing tables — does not rebuild any prior feature.
+
+### Schema (`lib/db/src/schema/orders.ts`, `lib/db/src/schema/reconciliation.ts`)
+- `orders` extended with: `paymentModel` (partner_billed | client_direct | a3_billed | prepaid), `billingEntity`, `supplierEstimatedCost`, `supplierFinalCost`, `expectedCommission`, `paidCommission`, `commissionPaidDate`, `commissionPaidThrough`, `commissionStatus` (not_started | expected | partially_paid | paid | disputed | verified), `supplierPayableStatus` (not_started | invoiced | paid | overdue), `payoutStatus`, `reconciliationStatus` (not_started | in_review | waiting_payment | waiting_supplier_final | waiting_commission | discrepancy_found | reconciled), `reconciliationNotes`, `financeNotes`.
+- `order_items` extended with `estimatedSupplierCost`, `finalSupplierCost`.
+- New `discrepancies` table — orderId, type (supplier_cost_variance | commission_variance | billing_mismatch | missing_payment | missing_supplier_final | wrong_billing_model | missing_quote_ref | shortage_unresolved | manual_review), severity, status (open | in_review | resolved | wont_fix), reason, notes, expected/actual/varianceAmount, assignedToUserId, resolutionNotes, autoFlagged.
+- New `commission_payouts` table — orderId, amount, paidDate, paidThrough, reference, notes; recording a payout auto-recomputes the order's `paidCommission` total and bumps `commissionStatus` (paid / partially_paid / disputed).
+
+### Backend exports (`artifacts/api-server/src/routes/exports.ts`)
+- `GET /api/exports/orders.csv?...filters` — order-level export with retail, costs, commission columns, variance, billing entity (NetSuite/spreadsheet preset).
+- `GET /api/exports/order-items.csv?...filters` — line-item export with supplier, fulfillment mode, demand, reservations, shortages, supplier cost, ops notes, and quote/spec references.
+- `GET /api/exports/finance.csv?...filters` — finance/recon preset: gross margin, commission variance, statuses, open discrepancies.
+- `GET /api/exports/suppliers.csv` — supplier rollup (assignment count, due-soon, issues, supplier cost totals).
+- `GET /api/exports/events.csv` — event rollup (reserved/shortage/orders/booked).
+- `GET /api/exports/orders/:id/packet.html?supplierId=` — printable Operational Packet (full order) or Supplier Packet (scoped to one supplier's items + ship-to). Includes Quote/Spec references attached to each product.
+- `GET /api/exports/suppliers/:id/packet.html` — printable supplier packet across all their assignments.
+- All CSVs filter via the same querystring shape used by the Orders dashboard, so filter→export workflows share the same model.
+
+### Backend reconciliation (`artifacts/api-server/src/routes/reconciliation.ts`)
+- `GET /api/reconciliation/summary` — totals, awaiting count, variance totals, breakdowns by billing model and recon status.
+- `GET /api/reconciliation/orders?...filters` — decorated list (partner/event/supplier names, gross margin, commission variance, supplier cost variance, open discrepancy count, embedded discrepancies). Filters: partnerId, supplierId, paymentModel, paymentStatus, supplierPayableStatus, reconciliationStatus, commissionStatus, plus toggle filters `discrepancyOnly`, `missingSupplierFinal`, `missingCommissionVerification`, `missingPaymentConfirmation`.
+- `PATCH /api/reconciliation/orders/:id` — update billing/cost/commission/recon fields and notes (zod-validated).
+- `POST /api/reconciliation/orders/:id/auto-flag` — heuristic flagger: emits `commission_variance` (paid ≠ expected), `supplier_cost_variance` (>5% from estimate), `missing_payment` (completed but unpaid), `missing_supplier_final` (delivered/completed without final cost). Skips if same auto-flag already open.
+- `GET/POST/PATCH/DELETE /api/discrepancies` — CRUD with order# / partner decoration. Status update auto-stamps `resolvedAt`.
+- `GET /api/orders/:id/commission-payouts`, `POST /api/orders/:id/commission-payouts`, `DELETE /api/orders/:id/commission-payouts/:payoutId` — payout history with auto-recompute of order paidCommission/status.
+- `POST /api/reconciliation/bulk-update` — apply patch to many orders.
+
+### UI surfaces
+- `/admin/reconciliation` — Reconciliation Workspace (`pages/admin/Reconciliation.tsx`):
+  - 5 summary cards (retail booked, supplier final cost, commission paid, awaiting recon, open discrepancies) tinted by health.
+  - Tabs: **Orders** (filterable table with retail/cost-with-arrow/margin/commission columns, recon + issue badges), **Discrepancies** (severity, inline status select, delete), **Commission** (verification table with auto-flag-all button).
+  - Side drawer per order: sub-totals, full Billing & Costs + Reconciliation form, embedded discrepancy list, commission payout history with inline add form, "Open in OrderDetail" + "Packet" shortcuts.
+  - "Export finance CSV" honors active filters.
+- `/admin/orders/:id` — OrderDetail now shows:
+  - **Ops Packet** + (when supplier assigned) **Supplier Packet** buttons next to Print, opening printable HTML in new tabs.
+  - **Finance & Reconciliation** card in the right column (margin/variance/issues mini-stats, full editable finance form, embedded discrepancy mini-list, commission payout history, link to the Reconciliation workspace).
+- `/admin/orders` — header now has an **Export ▾** menu (Orders CSV / Line items CSV / Finance CSV with current filters; plus suppliers and events rollups).
+- Sidebar nav adds "Reconciliation" with Calculator icon between Fulfillment and Suppliers.
+
+### Visibility / role gating
+All finance fields and the Reconciliation workspace live exclusively under `/admin/*` which is gated by `AdminRoute` (Clerk). Partner managers, vendors, and clients use distinct surfaces (vendor portal, public partner portal) and never see commission, supplier cost, or reconciliation status.
+
+**Known gap (consistent with rest of API):** API routes themselves are not yet role-gated server-side; the codebase relies on frontend `AdminRoute` for access control across all admin endpoints (orders, suppliers, finance, exports). To harden, add a `requireAdmin` express middleware that reads the Clerk session and a user→role lookup, then mount it on `/exports*`, `/reconciliation*`, `/discrepancies*`, `/orders/:id/commission-payouts*`, and other sensitive routes. This requires the frontend `apiFetch` to forward the Clerk session token (currently it does not).
+
+### Hardening applied in this layer
+- CSV cells starting with `=`, `+`, `-`, `@`, tab, or carriage-return are prefixed with `'` to defuse Excel/Sheets formula injection from user-controlled fields (names, notes, emails).
+- `supplierId` and `assignedSupplierId` are both accepted by export filters so the dashboard's filter shape works end-to-end for supplier-scoped CSVs.
+- Commission payout DELETE recomputes `paidCommission` **and** `commissionStatus` (paid / partially_paid / disputed / expected / not_started), matching the POST recompute path.
+- Auto-flag emits `commission_variance` whenever `expectedCommission > 0` and paid differs from expected (including paid=0 case).
