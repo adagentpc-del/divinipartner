@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { eq, and, sql } from "drizzle-orm";
 import { db, eventsTable, citiesTable, venuesTable } from "@workspace/db";
 import { z } from "zod";
+import { emit as usageEmit, emitFirst as usageEmitFirst } from "../services/usageTracking";
 
 const EventBody = z.object({
   partnerId: z.number().int(),
@@ -79,6 +80,10 @@ router.post("/events", async (req, res): Promise<void> => {
   const parsed = EventBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const [row] = await db.insert(eventsTable).values(parsed.data).returning();
+  if (row?.partnerId) {
+    usageEmit("event.created", { partnerId: row.partnerId, objectType: "event", objectId: row.id }).catch(() => {});
+    usageEmitFirst("first_event_created", { partnerId: row.partnerId, objectType: "event", objectId: row.id }).catch(() => {});
+  }
   res.status(201).json(row);
 });
 

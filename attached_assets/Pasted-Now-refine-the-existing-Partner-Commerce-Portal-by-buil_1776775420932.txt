@@ -1,0 +1,378 @@
+Now refine the existing Partner Commerce Portal by building a commercialization, white-label packaging, monetization control, and scaling architecture layer. The platform already has partners, portal types, products, packages, branding zones, inventory, reservations, fulfillment modes, supplier routing, quote/spec references, quote ingestion/catalog enrichment, exports, reconciliation, communications, selective billing execution, document/asset intelligence, workflow orchestration, executive analytics/profitability intelligence, production hardening, launch/onboarding flows, and post-launch optimization/adoption intelligence. This pass should make the platform structurally ready to be sold, licensed, white-labeled, and scaled across multiple entities, brands, and account types.
+
+Important:
+Do not rebuild from scratch.
+Work from the existing codebase.
+Preserve the current architecture, permissions, hardening work, commercialization-sensitive data, and existing operational workflows.
+This pass is about productizing and monetizing the system properly.
+Implement real controls and architecture, not placeholders only.
+
+Primary objective for this pass:
+Make the platform capable of supporting:
+- white-label deployment
+- multi-brand / multi-entity ownership
+- plan and feature gating
+- portal licensing controls
+- enterprise account structures
+- internal monetization readiness
+- scalable account hierarchy for future growth
+
+This pass has 12 major priorities:
+
+1. Commercialization architecture
+2. Multi-entity and multi-brand ownership model
+3. White-label controls and branding packages
+4. Plan/tier and feature gating
+5. Portal licensing and monetization controls
+6. Enterprise and multi-location account structure
+7. Subscription/billing product architecture
+8. Usage limits and monetized thresholds
+9. Commercial admin command center
+10. Role-safe monetization visibility
+11. Seed/demo commercialization scenarios
+12. Documentation and scaling readiness
+
+-----------------------------------
+1. COMMERCIALIZATION ARCHITECTURE
+-----------------------------------
+
+Build a structured commercialization layer on top of the existing system.
+
+The platform should now be capable of being sold or licensed in multiple forms, including:
+- internal managed service portal
+- partner-branded portal
+- fully white-labeled portal
+- enterprise multi-location account
+- future SaaS-style subscription model
+
+Requirements:
+- introduce a clean account/commercial model without breaking existing partner records
+- allow operational partner records to sit under a broader commercial account where useful
+- separate “who uses the portal operationally” from “who owns/pays for the portal commercially”
+- support future expansion into standalone product offerings
+
+Do not hardcode one business model.
+Create a flexible commercialization foundation.
+
+-----------------------------------
+2. MULTI-ENTITY AND MULTI-BRAND OWNERSHIP MODEL
+-----------------------------------
+
+Extend the account structure to support ownership by multiple entities and brands.
+
+Support concepts such as:
+- parent organization
+- sub-brand
+- operating entity
+- partner account
+- location group
+- portal instance
+
+Examples:
+- one parent company owning multiple branded portals
+- one advisory entity managing portals for several external brands
+- one enterprise client with several regions/cities/locations
+- one white-label reseller managing multiple partner-facing portal instances
+
+Requirements:
+- support parent-child account relationships
+- support brand-level settings inheritance where useful
+- support separate branding and billing entities
+- support multiple portals under one parent org
+- keep operational data isolated appropriately by account structure
+
+Do not expose cross-account data improperly.
+Preserve strong permissions boundaries.
+
+-----------------------------------
+3. WHITE-LABEL CONTROLS AND BRANDING PACKAGES
+-----------------------------------
+
+Build deeper white-label capability.
+
+Support branding controls such as:
+- logo
+- brand name
+- portal title
+- accent colors
+- typography options if already feasible
+- header/footer presentation
+- favicon placeholder if relevant
+- email/communication branding defaults
+- invoice branding defaults
+- portal intro copy
+- help/support copy
+- hidden/show “powered by” controls if applicable
+
+Requirements:
+- allow different branding packages or white-label levels
+- support internal managed brand vs partial white-label vs full white-label
+- make branding settings feel commercial and polished
+- allow preview before publish
+- keep configuration safe and reversible
+
+This should make the product feel licensable, not just configurable.
+
+-----------------------------------
+4. PLAN / TIER AND FEATURE GATING
+-----------------------------------
+
+Build a proper plan and feature-access model.
+
+Support example plan/tier concepts such as:
+- internal managed
+- starter
+- pro
+- enterprise
+- white-label premium
+
+For each plan, support feature flags / gating for modules such as:
+- number of partners or portal instances
+- number of users
+- number of events
+- number of suppliers
+- inventory module access
+- analytics access
+- profitability analytics access
+- automation access
+- quote ingestion/catalog intelligence access
+- reconciliation access
+- billing execution access
+- white-label controls
+- export capabilities
+- bulk imports
+- custom branding
+- multi-location support
+- enterprise hierarchy support
+
+Requirements:
+- centralize feature gating cleanly
+- support plan inheritance at account level
+- allow admin override where needed
+- show upgrade/locked-state UX where appropriate internally
+- do not expose fake paywalls to end users if not intended yet
+- keep gating architecture real and extensible
+
+-----------------------------------
+5. PORTAL LICENSING AND MONETIZATION CONTROLS
+-----------------------------------
+
+Build commercialization controls for each portal/account.
+
+For each commercial account or portal instance, support:
+- plan name
+- commercial status
+  - trial
+  - active
+  - paused
+  - suspended
+  - internal
+  - beta
+- start date
+- renewal date placeholder
+- contract term placeholder
+- billing entity
+- billing owner
+- seat count or user allowance
+- portal instance count
+- activation status
+- monetization notes
+- internal revenue owner
+- commercial account manager
+
+Add a commercial settings area that is distinct from normal partner ops settings.
+
+-----------------------------------
+6. ENTERPRISE AND MULTI-LOCATION ACCOUNT STRUCTURE
+-----------------------------------
+
+Build support for enterprise-style account structures.
+
+Examples:
+- one enterprise account with multiple cities
+- one master brand with multiple venue groups
+- one client with several departments/business units
+- one reseller managing multiple branded portal instances
+
+Support:
+- parent account dashboard
+- child account list
+- location/brand grouping
+- shared vs isolated templates
+- shared vs isolated suppliers
+- shared vs isolated products/packages
+- shared analytics rollups for authorized admin
+- per-child account activation status
+
+Keep permissions safe.
+This should enable scaling without flattening everything into one messy partner list.
+
+-----------------------------------
+7. SUBSCRIPTION / BILLING PRODUCT ARCHITECTURE
+-----------------------------------
+
+Without requiring live payment integration yet, build a clean commercialization record model for subscription or license billing.
+
+Support:
+- subscription or plan record
+- pricing model
+  - flat monthly
+  - flat annual
+  - per portal
+  - per seat
+  - per event volume
+  - custom/manual
+- pricing amount placeholder
+- included limits
+- overage placeholder
+- invoice relationship placeholder
+- contract notes
+- commercial billing contact
+- commercial invoice status placeholder
+- renewal reminder placeholder
+
+This should not replace operational invoices for event orders.
+It is a separate commercialization layer for the platform itself.
+
+-----------------------------------
+8. USAGE LIMITS AND MONETIZED THRESHOLDS
+-----------------------------------
+
+Build the architecture for usage-based controls.
+
+Examples:
+- max active users
+- max active events
+- max partner records
+- max suppliers
+- max file storage placeholder
+- max automation rules
+- max white-label portals
+- max exports or analytics depth where relevant
+
+Requirements:
+- track current usage vs allowance
+- show usage summaries in internal commercial admin
+- allow warnings before thresholds are hit
+- allow admin override
+- do not abruptly break critical live workflows
+- support “soft limits” and “hard limits” if feasible
+
+This should support future monetization without damaging usability now.
+
+-----------------------------------
+9. COMMERCIAL ADMIN COMMAND CENTER
+-----------------------------------
+
+Build a commercial admin dashboard/command center for Super Admin and Internal Admin.
+
+This should show:
+- commercial accounts
+- plan mix
+- active vs trial vs paused accounts
+- white-label accounts
+- enterprise accounts
+- accounts nearing limits
+- accounts with inactive usage
+- accounts with strong adoption
+- commercialization readiness
+- subscription/licensing placeholders
+- internal revenue ownership visibility
+
+Support filters for:
+- plan
+- commercial status
+- account manager
+- billing model
+- white-label level
+- enterprise vs standard
+- nearing usage limit
+- activation status
+
+Make this feel premium and strategic.
+
+-----------------------------------
+10. ROLE-SAFE MONETIZATION VISIBILITY
+-----------------------------------
+
+Keep commercialization data tightly controlled.
+
+Rules:
+- Super Admin and Internal Admin can access commercialization settings, plan controls, monetization architecture, and usage limits
+- Partner Managers should only see what is intentionally exposed about their portal/account
+- Vendor and Client users should not see commercialization controls, internal pricing architecture, plan models, or white-label administration
+- internal revenue ownership and commercial notes remain internal only unless intentionally exposed
+
+-----------------------------------
+11. COMMERCIAL UX, LOCKED STATES, AND UPGRADE READINESS
+-----------------------------------
+
+Build clean UX for plan-aware states.
+
+Requirements:
+- show feature availability clearly in internal account admin
+- show locked/unavailable modules gracefully where feature gating applies
+- support upgrade-ready messaging internally
+- support “coming soon” or “not in this plan” states where useful
+- avoid ugly or aggressive SaaS paywall patterns
+- keep the experience premium, intentional, and controlled
+
+This should feel like a serious platform product, not a hacked-together pricing toggle.
+
+-----------------------------------
+12. WHITE-LABEL AND COMMERCIALIZATION DEMO SCENARIOS
+-----------------------------------
+
+Refine seed/demo data to demonstrate commercialization realities such as:
+- one internal managed portal
+- one white-label premium portal
+- one enterprise multi-location account
+- one trial or beta account
+- one paused/suspended account
+- usage near threshold examples
+- feature-gated examples
+- multiple branding package levels
+
+This will help with demos, sales conversations, and internal planning.
+
+-----------------------------------
+13. DESIGN AND UX
+-----------------------------------
+
+Keep the interface premium, strategic, and commercial.
+
+Improve:
+- commercialization settings screens
+- plan cards
+- usage summaries
+- account hierarchy displays
+- white-label previews
+- feature availability indicators
+- commercial dashboard cards
+- enterprise account drilldowns
+- locked-state and upgrade-ready messaging
+
+Avoid:
+- cluttered billing-software feel
+- confusing overlap between operational billing and platform commercialization
+- exposing technical complexity unnecessarily
+- flattening enterprise structures into simplistic lists
+
+-----------------------------------
+14. DOCUMENTATION
+-----------------------------------
+
+Update replit.md with:
+- commercialization architecture
+- multi-entity / multi-brand model
+- feature gating model
+- licensing/subscription record model
+- white-label controls
+- enterprise account hierarchy
+- usage limit model
+- commercial admin dashboard structure
+- recommended true final next phase
+
+Also create or update a session plan and implement as much of the above as possible in this pass.
+Do not stop after describing the work.
+Actually build it.

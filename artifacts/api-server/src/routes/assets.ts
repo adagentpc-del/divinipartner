@@ -14,6 +14,7 @@ import {
   suppliersTable,
 } from "@workspace/db";
 import { fire } from "../services/workflowEngine";
+import { emit as usageEmit, emitFirst as usageEmitFirst } from "../services/usageTracking";
 
 const router: IRouter = Router();
 
@@ -189,6 +190,8 @@ router.post("/assets/:id/approve", async (req, res) => {
   await logEvent({ assetId: id, orderId: prev.orderId ?? undefined, eventType: "approved", toValue: patch.status, actorUserId: userId });
   if (releaseToVendor) await logEvent({ assetId: id, orderId: prev.orderId ?? undefined, eventType: "released_to_vendor", actorUserId: userId });
   fire("asset.approved", { objectType: "asset", objectId: id, assetId: id, orderId: row.orderId ?? null, partnerId: row.partnerId ?? null, eventId: row.eventId ?? null, assetTitle: row.title, releasedToVendor: releaseToVendor }).catch(() => {});
+  usageEmit("asset.approved", { partnerId: row.partnerId ?? null, objectType: "asset", objectId: id }).catch(() => {});
+  usageEmitFirst("first_asset_approved", { partnerId: row.partnerId ?? null, objectType: "asset", objectId: id }).catch(() => {});
   res.json(row);
 });
 

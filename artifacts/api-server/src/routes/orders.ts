@@ -350,6 +350,7 @@ router.get("/orders/:id", async (req, res): Promise<void> => {
 });
 
 import { fire } from "../services/workflowEngine";
+import { emit, emitFirst } from "../services/usageTracking";
 
 router.post("/orders", async (req, res): Promise<void> => {
   const parsed = OrderBody.safeParse(req.body);
@@ -428,6 +429,10 @@ router.post("/orders", async (req, res): Promise<void> => {
       }
       return createdOrder;
     });
+    if (order?.partnerId) {
+      emit("order.submitted", { partnerId: order.partnerId, objectType: "order", objectId: order.id, meta: { orderNumber: order.orderNumber } }).catch(() => {});
+      emitFirst("first_order_submitted", { partnerId: order.partnerId, objectType: "order", objectId: order.id }).catch(() => {});
+    }
     res.status(201).json(order);
   } catch (e: any) {
     res.status(400).json({ error: e?.message ?? "Order create failed" });
@@ -500,6 +505,8 @@ router.patch("/orders/:id", async (req, res): Promise<void> => {
     });
     if (!updated) { res.status(404).json({ error: "Not found" }); return; }
     if (orderData.status && orderData.status !== prevStatus) {
+      emit(`order.status.${orderData.status}`, { partnerId: updated.partnerId ?? null, objectType: "order", objectId: id, meta: { orderNumber: updated.orderNumber } }).catch(() => {});
+      if (orderData.status === "completed") emitFirst("first_order_completed", { partnerId: updated.partnerId ?? null, objectType: "order", objectId: id }).catch(() => {});
       if (orderData.status === "approved") {
         fire("order.approved", { objectType: "order", objectId: id, orderId: id, partnerId: updated.partnerId ?? null, eventId: updated.eventId ?? null, orderNumber: updated.orderNumber }).catch(() => {});
       } else if (orderData.status === "in_production") {

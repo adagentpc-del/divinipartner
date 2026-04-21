@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
 import { db, partnersTable, partnerAssetsTable, partnerThemesTable, partnerSectionsTable } from "@workspace/db";
+import { emit } from "../services/usageTracking";
 import { z } from "zod";
 import {
   ListPartnersQueryParams,
@@ -77,6 +78,7 @@ router.post("/partners", async (req, res): Promise<void> => {
   }
 
   const [partner] = await db.insert(partnersTable).values(parsed.data).returning();
+  emit("partner.created", { partnerId: partner.id, objectType: "partner", objectId: partner.id, meta: { companyName: partner.companyName } }).catch(() => {});
   res.status(201).json(partner);
 });
 

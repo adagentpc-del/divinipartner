@@ -20,8 +20,11 @@ import {
   ClipboardCheck,
   Workflow,
   BarChart3,
-  Rocket
+  Rocket,
+  Activity,
+  MessageSquare
 } from "lucide-react";
+import { FeedbackButton } from "@/components/admin/FeedbackButton";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
@@ -35,6 +38,8 @@ const navigation = [
   { name: "Workflow", href: "/admin/workflow", icon: Workflow },
   { name: "Analytics", href: "/admin/analytics", icon: BarChart3 },
   { name: "Launch", href: "/admin/launch", icon: Rocket },
+  { name: "Post-Launch", href: "/admin/post-launch", icon: Activity },
+  { name: "Feedback", href: "/admin/feedback", icon: MessageSquare },
   { name: "Billing", href: "/admin/billing", icon: Banknote },
   { name: "Reconciliation", href: "/admin/reconciliation", icon: Calculator },
   { name: "Suppliers", href: "/admin/suppliers", icon: Truck },
@@ -131,6 +136,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <main className="p-4 md:p-8 max-w-screen-2xl mx-auto w-full">
         {children}
       </main>
+      <FeedbackButton />
     </div>
   );
 }

@@ -1,0 +1,377 @@
+Now refine the existing Partner Commerce Portal by building a post-launch optimization, adoption intelligence, and friction-reduction layer. The platform already has partners, portal types, products, packages, branding zones, inventory, reservations, fulfillment modes, supplier routing, quote/spec references, quote ingestion/catalog enrichment, exports, reconciliation, communications, selective billing execution, document/asset intelligence, workflow orchestration, executive analytics/profitability intelligence, production hardening, and launch/onboarding flows. This pass should make the product easier to use in real-world operation by identifying friction, reducing unnecessary steps, improving adoption, and tightening the highest-frequency workflows.
+
+Important:
+Do not rebuild from scratch.
+Work from the existing codebase.
+Preserve the current architecture, permissions, hardening work, launch tooling, and core workflows.
+This pass is about optimization based on actual use patterns, not about inventing whole new systems.
+Implement real improvements, not placeholders only.
+
+Primary objective for this pass:
+Make the platform better after initial rollout by:
+- reducing user friction
+- shortening setup and order time
+- improving completion rates
+- surfacing confusing steps
+- identifying underused features
+- tightening the highest-value workflows for admins, partners, clients, and vendors
+
+This pass has 11 major priorities:
+
+1. Adoption and usage analytics
+2. Workflow friction intelligence
+3. UX tightening for highest-frequency tasks
+4. Real-world form and field reduction
+5. Faster repeat-order and repeat-event flows
+6. Feedback capture and review workflow
+7. Admin optimization recommendations
+8. Smarter defaults and personalization
+9. Partner health and adoption scoring
+10. Post-launch success dashboard
+11. Documentation and seed/demo cleanup
+
+-----------------------------------
+1. ADOPTION AND USAGE ANALYTICS
+-----------------------------------
+
+Build a lightweight product usage and adoption analytics layer.
+
+Track meaningful usage events such as:
+- partner created
+- partner launched live
+- onboarding started
+- onboarding completed
+- first event created
+- first order submitted
+- first supplier assignment completed
+- first invoice created
+- first asset approved
+- first vendor update submitted
+- first reconciliation completed
+
+Also track ongoing behaviors such as:
+- number of events created per partner
+- number of orders submitted per partner
+- number of active users by role
+- time to first order
+- time to first successful workflow completion
+- repeated use of templates/duplication
+- usage of bulk tools
+- usage of exports
+- usage of analytics dashboards
+
+Requirements:
+- build clean internal adoption dashboards
+- allow filtering by partner, portal type, role, and date range
+- do not build invasive tracking
+- keep metrics practical and product-ops focused
+
+-----------------------------------
+2. WORKFLOW FRICTION INTELLIGENCE
+-----------------------------------
+
+Build a friction analysis layer that helps identify where users get stuck or slowed down.
+
+Track and surface signals such as:
+- abandoned onboarding steps
+- abandoned event creation
+- abandoned order flows
+- repeated edit/reopen behavior
+- repeated validation errors on the same step
+- assets repeatedly missing at the same line item stage
+- repeated supplier reassignment
+- repeated billing corrections
+- repeated reconciliation discrepancies
+- long delays between workflow stages
+
+Create internal views showing:
+- most abandoned flows
+- most common error points
+- longest time-in-stage workflows
+- workflows with most manual overrides
+- workflows with highest issue/exception rates
+
+Keep this practical and operational, not vanity product metrics.
+
+-----------------------------------
+3. UX TIGHTENING FOR HIGHEST-FREQUENCY TASKS
+-----------------------------------
+
+Identify and improve the most frequently used workflows.
+
+Focus on tightening and simplifying:
+- create event
+- duplicate event
+- submit order
+- upload assets
+- map assets to line items
+- assign supplier
+- update supplier status
+- create invoice
+- verify commission
+- reconcile order
+- approve artwork
+- mark item production-ready
+
+Requirements:
+- reduce clicks where possible
+- reduce visual clutter
+- improve button placement
+- improve table row actions
+- add keyboard-friendly shortcuts if feasible
+- add faster repeat patterns
+- improve mobile responsiveness for quick actions if relevant
+- make the “next best action” more obvious
+
+Do not redesign everything.
+Refine based on real operational use.
+
+-----------------------------------
+4. REAL-WORLD FORM AND FIELD REDUCTION
+-----------------------------------
+
+Reduce unnecessary fields and simplify data entry where practical.
+
+Requirements:
+- identify fields rarely used or repeatedly skipped
+- convert manual text inputs into smarter defaults/selectors where possible
+- collapse advanced/internal-only fields
+- create “essential vs advanced” sections on dense forms
+- reduce repeated entry across order, event, and billing flows
+- improve autofill and inheritance from partner/event defaults
+- improve copy-from-existing behavior
+- save common contacts, addresses, and settings more aggressively where useful
+
+The goal is to make the product feel lighter without losing operational control.
+
+-----------------------------------
+5. FASTER REPEAT-ORDER AND REPEAT-EVENT FLOWS
+-----------------------------------
+
+Build stronger reuse tools for recurring business.
+
+Support fast actions such as:
+- reorder from prior order
+- duplicate event with smarter defaults
+- repeat venue setup
+- reorder same package setup
+- reuse prior supplier routing
+- reuse prior asset mappings where appropriate
+- reuse prior billing setup
+- reuse prior shipping/install notes
+
+Requirements:
+- make these flows feel safe and obvious
+- allow selective reuse of parts of a past workflow
+- warn when reused data may be outdated
+- significantly reduce setup time for repeat partners and repeat events
+
+This is especially important for multi-city recurring event partners.
+
+-----------------------------------
+6. FEEDBACK CAPTURE AND REVIEW WORKFLOW
+-----------------------------------
+
+Build a lightweight feedback capture system inside the platform.
+
+Support feedback from:
+- internal admins
+- partner managers
+- clients if appropriate
+- vendors if appropriate
+
+Feedback examples:
+- confusing step
+- missing feature
+- slow screen
+- upload issue
+- billing confusion
+- inventory confusion
+- supplier packet issue
+- onboarding unclear
+- reporting need
+
+Requirements:
+- allow quick in-app feedback submission
+- link feedback to the current screen/workflow if feasible
+- support internal tagging and review status
+- support priority/severity
+- support admin review list
+- allow internal notes and resolution status
+
+Do not build a giant support ticket system.
+Keep this product-improvement focused.
+
+-----------------------------------
+7. ADMIN OPTIMIZATION RECOMMENDATIONS
+-----------------------------------
+
+Build a practical internal recommendations layer.
+
+Surface insights such as:
+- partners missing key setup that delays usage
+- underused templates that should be improved
+- products/packages/zones with frequent confusion
+- suppliers with repeated status issues
+- workflows with highest abandonment
+- steps causing most manual overrides
+- orders frequently delayed by missing assets or approvals
+- unused fields/modules that may need simplification
+
+Present this as an internal recommendations panel or dashboard section.
+Keep it curated and actionable.
+
+-----------------------------------
+8. SMARTER DEFAULTS AND PERSONALIZATION
+-----------------------------------
+
+Make the system more adaptive to repeat behavior.
+
+Examples:
+- remember last used city for a partner manager
+- remember most used supplier for a product/category
+- suggest most likely package based on partner/event history
+- suggest recent venues
+- suggest recent contacts
+- suggest recent fulfillment modes
+- suggest recent billing settings
+- suggest recent export presets
+
+Requirements:
+- keep suggestions helpful, not intrusive
+- do not over-automate sensitive choices
+- allow internal admin override
+- clearly distinguish suggested vs confirmed values
+
+-----------------------------------
+9. PARTNER HEALTH AND ADOPTION SCORING
+-----------------------------------
+
+Build a partner adoption/health view for internal admins.
+
+For each partner, show signals such as:
+- onboarding completion
+- setup completeness
+- time to first event
+- time to first order
+- active user count
+- event/order frequency
+- unresolved blockers
+- missing critical configuration
+- open issue count
+- overdue workflows
+- recent usage activity
+
+If feasible, create a simple partner health status such as:
+- not started
+- onboarding
+- live but fragile
+- active
+- healthy
+- at risk
+
+This should help prioritize partner support and cleanup.
+
+-----------------------------------
+10. POST-LAUNCH SUCCESS DASHBOARD
+-----------------------------------
+
+Build a post-launch success dashboard for internal leadership.
+
+Show:
+- launched partners count
+- partners with first order completed
+- partners stalled in onboarding
+- partners live but inactive
+- average time to launch
+- average time to first order
+- average order completion cycle
+- repeated event usage
+- template reuse rate
+- workflow friction hotspots
+- partner health distribution
+- feedback volume and top issue categories
+
+This should become the “what needs attention next” dashboard.
+
+-----------------------------------
+11. NOTIFICATIONS AND COMMUNICATIONS TUNING
+-----------------------------------
+
+Refine existing communications and alerts based on likely overuse or underuse.
+
+Requirements:
+- reduce noisy alerts where possible
+- prioritize more actionable alerts
+- improve message clarity for first-use workflows
+- show more context in reminders
+- help internal admins identify which notifications are actually useful vs excessive
+
+Do not overbuild a notification preference center unless simple and worthwhile.
+Keep it practical.
+
+-----------------------------------
+12. DESIGN AND UX POLISH
+-----------------------------------
+
+Continue tightening the visual experience based on post-launch use.
+
+Improve:
+- dense admin screens used daily
+- repeat action flows
+- compact quick actions
+- recommendations panels
+- feedback UI
+- health score displays
+- adoption dashboard cards
+- friction reporting tables
+- empty or stale state messaging
+- contextual shortcuts
+
+Avoid:
+- adding too much new visual complexity
+- overloading users with dashboards
+- turning feedback and adoption into abstract BI noise
+
+-----------------------------------
+13. ROLE SAFETY
+-----------------------------------
+
+Keep all new optimization and usage intelligence role-safe.
+
+Rules:
+- Super Admin and Internal Admin can access full usage, friction, and health analytics
+- Partner Managers should only see limited partner-relevant improvement hints if intentionally exposed
+- Vendor and Client users should not see internal adoption analytics, friction scoring, or admin recommendations
+- internal feedback review remains internal unless intentionally shared
+
+-----------------------------------
+14. SEED DATA / DEMO POLISH
+-----------------------------------
+
+Refine demo/sample data so the optimization layer has meaningful examples:
+- active vs stalled partners
+- completed vs abandoned onboarding
+- frequent repeat-event partner
+- partner with friction issues
+- feedback examples
+- recommendations examples
+- health score examples
+- reuse of templates and repeat orders
+
+-----------------------------------
+15. DOCUMENTATION
+-----------------------------------
+
+Update replit.md with:
+- adoption analytics model
+- friction analytics model
+- optimization/recommendation logic
+- smarter defaults behavior
+- partner health model
+- post-launch dashboard structure
+- recommended final next phase
+
+Also create or update a session plan and implement as much of the above as possible in this pass.
+Do not stop after describing the work.
+Actually build it.

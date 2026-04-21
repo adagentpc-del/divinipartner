@@ -31,3 +31,4 @@ export * from "./invoices";
 export * from "./assets";
 export * from "./workflow";
 export * from "./onboarding";
+export * from "./usage";

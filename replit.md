@@ -636,3 +636,29 @@ In-app analytics layer answering revenue, profitability, supplier performance, f
 
 ### Override flow
 Launching a partner with outstanding blockers requires an `overrideNote` string. The note is stored on `partners.launchOverrideNote` and surfaced in the rollout checklist UI.
+
+## Post-Launch Optimization Layer
+
+Built on top of the launch system to track adoption, friction, feedback, and partner health after go-live.
+
+**Schema (`lib/db/src/schema/usage.ts`)**
+- `usage_events` — eventType, partnerId?, userId?, role?, objectType?, objectId?, meta jsonb, occurredAt. Indexed by partner+type+time.
+- `feedback_items` — submitterUserId/Role, partnerId?, screenPath, category (ux/bug/performance/missing_feature/data/onboarding/billing/other), severity, message, status (new/triaged/in_progress/resolved/wontfix), tags[], assignedTo, internalNotes, resolvedAt.
+
+**Services**
+- `usageTracking.ts` — `emit(eventType, ctx)` (fire-and-forget), `emitFirst(eventType, ctx)` (idempotent per partner+type), `firstEventAt`, `summary`, `timeline`.
+- `partnerHealth.ts` — `computePartnerHealth(partnerId)` returns `{status, score 0-100, signals[], metrics}`. Score blends launchReadiness, open workflow_tasks, unresolved alerts, recent activity, and staleness. Statuses: not_started / onboarding / live_fragile / active / healthy / at_risk.
+
+**Usage hooks wired** — partners.ts (partner.created), orders.ts (order.submitted, first_order_submitted, order.status.*, first_order_completed), assets.ts (asset.approved, first_asset_approved), invoices.ts (invoice.sent, first_invoice_sent).
+
+**Routes (`routes/postLaunch.ts`)**
+- `/api/usage/{summary,timeline,emit}`
+- `/api/feedback` GET/POST/PATCH/DELETE
+- `/api/partner-health` (list) and `/api/partner-health/:id`
+- `/api/post-launch/dashboard` — consolidated KPIs, health distribution, recent activity, feedback summary
+
+**Frontend**
+- `/admin/post-launch` — `PostLaunchDashboard`: KPI cards, health distribution, activity, feedback by category, sortable partner-health table.
+- `/admin/feedback` — `FeedbackInbox`: filters, status updates, internal notes editor.
+- `FeedbackButton` — floating widget mounted globally in `AdminLayout`; submits to `/api/feedback` with current screen path.
+- `PartnerHealthBadge` — shared status pill.

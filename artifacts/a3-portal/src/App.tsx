@@ -41,6 +41,8 @@ import Assets from "@/pages/admin/Assets";
 import WorkflowDashboard from "@/pages/admin/WorkflowDashboard";
 import Analytics from "@/pages/admin/Analytics";
 import LaunchWizard from "@/pages/admin/LaunchWizard";
+import PostLaunchDashboard from "@/pages/admin/PostLaunchDashboard";
+import FeedbackInbox from "@/pages/admin/FeedbackInbox";
 import WorkflowRules from "@/pages/admin/WorkflowRules";
 
 import PublicLayout from "@/components/layout/PublicLayout";
@@ -227,6 +229,12 @@ function ClerkProviderWithRoutes() {
             </Route>
             <Route path="/admin/launch">
               {() => <AdminRoute component={LaunchWizard} />}
+            </Route>
+            <Route path="/admin/post-launch">
+              {() => <AdminRoute component={PostLaunchDashboard} />}
+            </Route>
+            <Route path="/admin/feedback">
+              {() => <AdminRoute component={FeedbackInbox} />}
             </Route>
             <Route path="/admin/workflow">
               {() => <AdminRoute component={WorkflowDashboard} />}

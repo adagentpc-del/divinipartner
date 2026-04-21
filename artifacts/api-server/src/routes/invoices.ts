@@ -13,6 +13,7 @@ import { z } from "zod";
 import crypto from "crypto";
 import { resolveBillingExecModel } from "./billingResolver";
 import { fire } from "../services/workflowEngine";
+import { emit as usageEmit, emitFirst as usageEmitFirst } from "../services/usageTracking";
 
 const router: IRouter = Router();
 
@@ -265,6 +266,8 @@ router.patch("/invoices/:id", async (req, res) => {
   } else if (patch.status === "sent") {
     await db.update(ordersTable).set({ paymentStatus: "invoiced" } as any).where(eq(ordersTable.id, row.orderId));
     fire("invoice.sent", { objectType: "invoice", objectId: id, invoiceId: id, orderId: row.orderId, partnerId: row.partnerId ?? null, invoiceNumber: row.invoiceNumber, dueDate: row.dueDate }).catch(() => {});
+    usageEmit("invoice.sent", { partnerId: row.partnerId ?? null, objectType: "invoice", objectId: id }).catch(() => {});
+    usageEmitFirst("first_invoice_sent", { partnerId: row.partnerId ?? null, objectType: "invoice", objectId: id }).catch(() => {});
   }
   const [fresh] = await db.select().from(invoicesTable).where(eq(invoicesTable.id, id));
   res.json(fresh);
