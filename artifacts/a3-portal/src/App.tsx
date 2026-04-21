@@ -38,6 +38,8 @@ import PublicInvoice from "@/pages/Invoice";
 import Production from "@/pages/admin/Production";
 import SupplierPacket from "@/pages/admin/SupplierPacket";
 import Assets from "@/pages/admin/Assets";
+import WorkflowDashboard from "@/pages/admin/WorkflowDashboard";
+import WorkflowRules from "@/pages/admin/WorkflowRules";
 
 import PublicLayout from "@/components/layout/PublicLayout";
 import PartnerPortal from "@/pages/public/PartnerPortal";
@@ -214,6 +216,12 @@ function ClerkProviderWithRoutes() {
             </Route>
             <Route path="/admin/production">
               {() => <AdminRoute component={Production} />}
+            </Route>
+            <Route path="/admin/workflow/rules">
+              {() => <AdminRoute component={WorkflowRules} />}
+            </Route>
+            <Route path="/admin/workflow">
+              {() => <AdminRoute component={WorkflowDashboard} />}
             </Route>
             <Route path="/admin/orders/:orderId/packet/:supplierId">
               {() => <AdminRoute component={SupplierPacket} />}

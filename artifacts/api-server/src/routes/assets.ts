@@ -13,6 +13,7 @@ import {
   productCatalogTable,
   suppliersTable,
 } from "@workspace/db";
+import { fire } from "../services/workflowEngine";
 
 const router: IRouter = Router();
 
@@ -124,6 +125,7 @@ router.post("/assets", async (req, res) => {
     })) as any);
   }
   await logEvent({ assetId: row.id, orderId: row.orderId ?? undefined, eventType: "uploaded", toValue: row.title, actorUserId: data.uploadedByUserId ?? null });
+  fire("asset.uploaded", { objectType: "asset", objectId: row.id, assetId: row.id, orderId: row.orderId ?? null, partnerId: row.partnerId ?? null, eventId: row.eventId ?? null, assetTitle: row.title }).catch(() => {});
   res.json(row);
 });
 
@@ -186,6 +188,7 @@ router.post("/assets/:id/approve", async (req, res) => {
   const [row] = await db.update(assetsTable).set(patch).where(eq(assetsTable.id, id)).returning();
   await logEvent({ assetId: id, orderId: prev.orderId ?? undefined, eventType: "approved", toValue: patch.status, actorUserId: userId });
   if (releaseToVendor) await logEvent({ assetId: id, orderId: prev.orderId ?? undefined, eventType: "released_to_vendor", actorUserId: userId });
+  fire("asset.approved", { objectType: "asset", objectId: id, assetId: id, orderId: row.orderId ?? null, partnerId: row.partnerId ?? null, eventId: row.eventId ?? null, assetTitle: row.title, releasedToVendor: releaseToVendor }).catch(() => {});
   res.json(row);
 });
 
@@ -197,6 +200,7 @@ router.post("/assets/:id/request-revision", async (req, res) => {
   const [row] = await db.update(assetsTable).set({ status: "revision_requested", approvalStatus: "rejected", productionReady: false, updatedAt: new Date() } as any).where(eq(assetsTable.id, id)).returning();
   if (!row) return res.status(404).json({ error: "Not found" });
   await logEvent({ assetId: id, orderId: row.orderId ?? undefined, eventType: "revision_requested", actorUserId: userId, notes: note });
+  fire("asset.revision_requested", { objectType: "asset", objectId: id, assetId: id, orderId: row.orderId ?? null, partnerId: row.partnerId ?? null, eventId: row.eventId ?? null, assetTitle: row.title, note }).catch(() => {});
   res.json(row);
 });
 

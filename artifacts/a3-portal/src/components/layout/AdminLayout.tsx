@@ -17,7 +17,8 @@ import {
   Sparkles,
   Calculator,
   Banknote,
-  ClipboardCheck
+  ClipboardCheck,
+  Workflow
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -29,6 +30,7 @@ const navigation = [
   { name: "Orders", href: "/admin/orders", icon: ShoppingCart },
   { name: "Fulfillment", href: "/admin/fulfillment", icon: Truck },
   { name: "Production", href: "/admin/production", icon: ClipboardCheck },
+  { name: "Workflow", href: "/admin/workflow", icon: Workflow },
   { name: "Billing", href: "/admin/billing", icon: Banknote },
   { name: "Reconciliation", href: "/admin/reconciliation", icon: Calculator },
   { name: "Suppliers", href: "/admin/suppliers", icon: Truck },

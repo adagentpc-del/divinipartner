@@ -500,3 +500,58 @@ Every transition writes to `asset_events`. Surfaced in `GET /assets/:id.events` 
 - Client-facing asset upload page and missing-file reminder flows.
 - Required-asset rules per product/zone (currently inferred from fulfillmentMode + capabilities).
 - Seed data updated to demonstrate the new asset workflow.
+
+## Workflow Automation & Orchestration (April 2026)
+
+Layered on top of reconciliation, billing, fulfillment, supplier routing, and the asset/artwork workflow. Operational nerve center for the portal.
+
+### Schema (`lib/db/src/schema/workflow.ts`)
+- `workflow_rules` — name, triggerType, objectType, conditionsJson, actionsJson, priority, escalationLevel, isActive, isSystem.
+- `workflow_tasks` — title, category, status (open/in_progress/snoozed/completed/cancelled), priority, deadlineHealth (on_track/due_soon/at_risk/overdue/blocked), escalationLevel, ownerUserId, dueDate, links to partner/event/order/orderItem/supplier/invoice/asset, autoCreated, sourceRuleId, dedupeKey.
+- `workflow_alerts` — title, severity (info/warning/critical), message, links, isRead, isResolved, autoCreated, sourceRuleId, dedupeKey.
+- `workflow_audit` — eventType (rule_fired, task_created, alert_created, task_completed, override_applied, etc.), summary, detailsJson, isAutomated, sourceRuleId, objectType/objectId, overrideNote.
+
+### Engine (`artifacts/api-server/src/services/workflowEngine.ts`)
+- `fire(triggerType, ctx)` loads active rules, evaluates conditions (`all`/`any` with eq/neq/gt/gte/lt/lte/in/exists/missing comparators), runs actions, audits everything.
+- Action handlers: `create_task`, `create_alert`, `draft_communication`, `set_priority`, `flag_blocked`, `log_audit`.
+- `{var}` interpolation in titles/messages from ctx.
+- Dedupe by `rule:{ruleId}:{linkedObjectType}:{linkedObjectId}` — open/unresolved matches are skipped so re-firing is idempotent.
+- 10 default rules seeded automatically when `workflow_rules` is empty (missing artwork follow-up, supplier unassigned, asset awaiting approval, revision follow-up, production blocked escalation, invoice sent confirmation, overdue invoice chase, event readiness check, deadline approaching vendor reminder, recon discrepancy follow-up).
+
+### Deadline ticker (`services/deadlineMonitor.ts`)
+- Boots at +5s, sweeps every 60s (configurable via `WORKFLOW_TICK_MS`).
+- Sweeps invoices (overdue / due-soon by `dueDate`), orders (`supplierDueDate`), events (eventStartDate||installDate within 21d), and stale pending assets (>24h old).
+- Fires `deadline.approaching` / `deadline.overdue` / `event.approaching` / `invoice.overdue` / `asset.awaiting_approval`.
+
+### Hooks wired
+- assets: `asset.uploaded`, `asset.approved`, `asset.revision_requested`.
+- production block/unblock: `production.blocked` / `production.unblocked` with override-note audit.
+- invoices: `invoice.sent` (on status patch), `invoice.overdue` (per-row in scan-overdue).
+- orders submitted/approved + supplier assignment hooks: TODO (ticker compensates by sweeping `supplierDueDate`).
+
+### Override flow
+PATCH `/api/order-items/:id/production-block` accepts `overrideNote`. When clearing a blocked reason with a note, an `override_applied` audit entry is written carrying the note, visible in the activity log and rendered in the dashboard with an italic "Override:" caption.
+
+### Backend routes (`/api/workflow/*`)
+- `rules` — GET, POST, PATCH, DELETE, `:id/toggle`, `:id/duplicate`.
+- `tasks` — GET (with filters: status, ownerUserId, partnerId, eventId, orderId, supplierId, invoiceId, assetId, autoCreated, deadlineHealth, escalationLevel, priority, status=open_any), POST, PATCH, `:id/complete`, `:id/snooze` (deadlineHealth recomputed on the fly).
+- `alerts` — GET, `:id/read`, `:id/resolve`.
+- `audit` — GET (filter by linked object).
+- `queue` — consolidated counters + tasks + alerts for dashboard.
+- `override` — manual override with required note.
+- `fire` / `tick` — debug endpoints to manually fire triggers / run a sweep.
+
+### Frontend
+- `/admin/workflow` — orchestration dashboard with 7 counter cards (open, overdue, due_soon, urgent, escalated, alerts, critical) and tabs: All / Overdue / Due soon / Escalated / Alerts / Activity / Rules. Each task row shows priority badge, deadline-health badge, auto badge, escalation, category, due date, linked object, snooze (+1d), Done.
+- `/admin/workflow/rules` — full CRUD grouped by trigger, JSON editors for conditions/actions, system-rule protection (no delete), enable/disable, duplicate.
+- `TaskPanel` component embedded into OrderDetail and InvoiceDetail; lists open tasks for the record with quick complete / snooze / inline add.
+- "Workflow" nav link added to AdminLayout.
+
+### Role permissions
+- All workflow routes are admin-protected via existing AdminRoute / requireAdmin chain. No partner-portal exposure.
+
+### Next phase
+- Wire `order.submitted` / `order.approved` / `supplier.assigned` hooks in orders/suppliers routes.
+- Status guardrails service consumed by asset approval and invoice send.
+- Per-portal-type rule scoping via `portalTypes` array.
+- Owner assignment + email digest delivery.

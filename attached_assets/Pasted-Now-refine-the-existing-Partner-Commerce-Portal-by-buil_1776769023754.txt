@@ -1,0 +1,369 @@
+Now refine the existing Partner Commerce Portal by building an executive analytics, profitability intelligence, and forecasting layer. The platform already has partners, portal types, products, packages, branding zones, inventory, reservations, fulfillment modes, supplier routing, quote/spec references, quote ingestion/catalog enrichment, exports, reconciliation, communications, selective billing execution, document/asset intelligence, and workflow orchestration. This pass should make the platform analytically powerful for leadership decision making without turning it into bloated BI software.
+
+Important:
+Do not rebuild from scratch.
+Work from the existing codebase.
+Preserve the existing architecture, role permissions, financial scaffolding, billing logic, reconciliation logic, supplier routing, and workflow orchestration.
+Implement real analytics and reporting views, not empty placeholders only.
+
+Primary objective for this pass:
+Give Super Admin and Internal Admin users clear visibility into:
+- revenue
+- estimated and actual cost
+- gross margin
+- commission expected and paid
+- profitability by partner
+- profitability by event
+- profitability by city
+- profitability by package
+- profitability by supplier
+- operational risk
+- pipeline and forecast signals
+
+This pass has 10 major priorities:
+
+1. Executive analytics architecture
+2. Core KPI dashboard
+3. Profitability breakdowns
+4. Supplier performance analytics
+5. Package, zone, and product performance analytics
+6. Forecasting and pipeline visibility
+7. Operational risk analytics
+8. Drilldowns, filters, and exports
+9. Role-safe analytics visibility
+10. Documentation and seed data
+
+-----------------------------------
+1. EXECUTIVE ANALYTICS ARCHITECTURE
+-----------------------------------
+
+Build a structured analytics layer on top of the existing operational and financial data.
+
+The analytics layer should use current system data such as:
+- orders
+- line items
+- partner settings
+- billing models
+- invoice/payment records
+- supplier estimated and final costs
+- commission expected and paid
+- shortages
+- blocked items
+- due dates
+- fulfillment statuses
+- reconciliation statuses
+- package usage
+- zone selection
+- asset readiness
+- workflow alerts/tasks
+
+Do not build a huge generic data warehouse.
+Build practical in-app intelligence views that answer high-value business questions.
+
+Support at minimum:
+- date range filtering
+- partner filtering
+- portal type filtering
+- city filtering
+- supplier filtering
+- billing model filtering
+
+-----------------------------------
+2. CORE KPI DASHBOARD
+-----------------------------------
+
+Build a strong executive KPI dashboard for Super Admin and Internal Admin.
+
+Show key summary cards and trend views such as:
+- total retail booked
+- total invoiced
+- total collected
+- supplier estimated cost total
+- supplier final cost total
+- estimated gross margin
+- actual gross margin
+- expected commission
+- commission paid
+- outstanding commission variance
+- open discrepancy count
+- open blocked item count
+- orders by status
+- orders by billing model
+- overdue invoices count
+- upcoming event count
+- at-risk event count
+
+Add trend views where feasible:
+- retail booked over time
+- margin over time
+- partner revenue over time
+- supplier cost over time
+- commission paid vs expected over time
+
+Keep charts clean and readable.
+Do not overdo visual clutter.
+
+-----------------------------------
+3. PROFITABILITY BREAKDOWNS
+-----------------------------------
+
+Build profitability views that allow internal leadership to analyze performance by key dimensions.
+
+Support breakdowns by:
+- partner
+- event
+- city
+- portal type
+- billing model
+- supplier
+- package
+- branding zone
+- product category
+
+For each breakdown, show metrics such as:
+- total retail
+- estimated supplier cost
+- final supplier cost
+- estimated gross margin
+- actual gross margin
+- expected commission
+- paid commission
+- open receivables
+- discrepancy count
+- order count
+- average order value
+
+Add clear list/table views with sortable columns and drilldown links.
+Allow users to click from summary rows into detailed order/event/partner views.
+
+-----------------------------------
+4. SUPPLIER PERFORMANCE ANALYTICS
+-----------------------------------
+
+Build a supplier intelligence view.
+
+For each supplier, show:
+- total assigned revenue
+- total estimated supplier cost
+- total final supplier cost
+- cost variance
+- number of assigned line items
+- average fulfillment time if feasible
+- due soon count
+- overdue/issue flagged count
+- shortage-linked orders count
+- missing quote/spec count
+- blocked production count
+- issue rate if feasible
+
+Support comparisons across suppliers.
+Highlight:
+- best-performing suppliers
+- suppliers with most issues
+- suppliers with most cost variance
+- suppliers with most overdue items
+
+Keep this practical and operationally useful.
+
+-----------------------------------
+5. PACKAGE, ZONE, AND PRODUCT PERFORMANCE ANALYTICS
+-----------------------------------
+
+Build commercial performance views for:
+- package tiers
+- branding zones
+- products
+- add-ons
+- fulfillment modes
+
+For packages, show:
+- number of times selected
+- total retail value
+- average revenue contribution
+- city/partner usage patterns
+- associated margin if measurable
+
+For branding zones, show:
+- most selected zones
+- least selected zones
+- revenue by zone
+- venue area performance
+- bundle tendencies if feasible
+
+For products/add-ons, show:
+- most ordered products
+- graphic only vs full unit trends
+- inventory-backed usage
+- hardware demand vs print demand
+- products with most shortages
+- products missing approved specs
+
+This should help improve pricing, merchandising, and operational planning.
+
+-----------------------------------
+6. FORECASTING AND PIPELINE VISIBILITY
+-----------------------------------
+
+Build a lightweight forecasting layer using current system data.
+
+Support views such as:
+- upcoming booked revenue
+- forecasted supplier cost
+- forecasted gross margin
+- expected commission upcoming
+- events in next 30 / 60 / 90 days
+- unbilled booked orders
+- unpaid invoices
+- at-risk upcoming events
+- forecast by partner
+- forecast by city
+- forecast by supplier
+
+If feasible, create forecast buckets such as:
+- confirmed
+- awaiting approval
+- awaiting assets
+- awaiting billing
+- at risk
+- delayed
+
+This does not need to be a sales CRM pipeline.
+It should be an operations-driven revenue forecast.
+
+-----------------------------------
+7. OPERATIONAL RISK ANALYTICS
+-----------------------------------
+
+Build risk and friction analytics that surface operational problems before they hurt revenue.
+
+Support risk views for:
+- blocked orders
+- blocked line items
+- unresolved shortages
+- missing approved artwork
+- missing supplier assignments
+- overdue invoices
+- unreconciled orders
+- commission discrepancies
+- supplier issues flagged
+- events approaching with readiness issues
+
+For each risk bucket, show:
+- count
+- estimated revenue impacted
+- affected partners
+- affected events
+- due soon severity
+- owner if assigned
+
+Add a simple “revenue at risk” metric if feasible based on blocked or unresolved records.
+
+-----------------------------------
+8. DRILLDOWNS, FILTERS, SAVED VIEWS, AND EXPORTS
+-----------------------------------
+
+Make analytics interactive and useful.
+
+Requirements:
+- click summary cards to drill into underlying records
+- filter by date range, partner, city, supplier, portal type, billing model, event status, risk status
+- save useful views if feasible
+- export analytics tables to CSV/Excel-friendly formats
+- allow sorting and grouping where sensible
+
+Do not build a complex custom BI builder.
+Build a curated set of powerful operational analytics screens.
+
+-----------------------------------
+9. ROLE SAFE ANALYTICS VISIBILITY
+-----------------------------------
+
+Keep visibility clean.
+
+Rules:
+- Super Admin and Internal Admin can view full financial and profitability analytics
+- Partner Managers can only view limited analytics for their own partner if appropriate
+- Vendor users should not see internal margin, commission, or unrelated cross-account analytics
+- Client users should not see internal executive analytics
+
+If partner-facing analytics are shown, keep them limited to their own event/order usage and operational counts, not internal profitability.
+
+-----------------------------------
+10. EXECUTIVE DASHBOARD UX
+-----------------------------------
+
+Create a premium executive dashboard experience.
+
+Use:
+- summary KPI cards
+- clean charts
+- trend lines
+- comparison tables
+- top/bottom performer panels
+- risk panels
+- quick filters
+- drilldown drawers or detail routes
+
+Design should feel:
+- high-end
+- clean
+- decisive
+- analytical
+- easy to scan
+
+Avoid:
+- dense BI clutter
+- too many low-value charts
+- visual noise
+- confusing metric definitions
+
+-----------------------------------
+11. METRIC DEFINITIONS AND CONSISTENCY
+-----------------------------------
+
+Ensure core metrics are calculated consistently and clearly.
+
+Examples:
+- estimated gross margin = retail amount minus estimated supplier cost
+- actual gross margin = retail amount minus final supplier cost
+- commission variance = expected commission minus paid commission
+- revenue at risk = revenue linked to blocked, overdue, or unresolved at-risk records
+- forecasted revenue = booked revenue for upcoming events/orders within selected range
+- open receivables = invoiced but unpaid balance
+
+Show metric tooltips or small info helpers where useful.
+Make definitions consistent across dashboard cards and tables.
+
+-----------------------------------
+12. SEED DATA
+-----------------------------------
+
+Refine seed data to demonstrate:
+- profitable and less profitable partners
+- supplier cost variance examples
+- commission mismatch examples
+- blocked and at-risk events
+- package performance patterns
+- zone revenue patterns
+- city-level revenue mix
+- multiple billing models
+- forecasted upcoming revenue
+- unresolved shortages affecting revenue
+
+-----------------------------------
+13. DOCUMENTATION
+-----------------------------------
+
+Update replit.md with:
+- analytics architecture
+- KPI definitions
+- profitability model
+- forecasting logic
+- risk analytics model
+- drilldown and export approach
+- role visibility rules
+- recommended next phase
+
+Also create or update a session plan and implement as much of the above as possible in this pass.
+Do not stop after describing the work.
+Actually build it.

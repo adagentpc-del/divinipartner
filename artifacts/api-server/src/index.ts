@@ -1,5 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { seedDefaultRulesIfEmpty } from "./services/workflowEngine";
+import { startDeadlineMonitor } from "./services/deadlineMonitor";
 
 const rawPort = process.env["PORT"];
 
@@ -22,4 +24,7 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+  // Boot the workflow automation layer
+  seedDefaultRulesIfEmpty().then((r) => r.seeded && logger.info({ count: r.count }, "Seeded default workflow rules"));
+  startDeadlineMonitor();
 });

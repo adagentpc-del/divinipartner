@@ -12,6 +12,7 @@ import {
 import { z } from "zod";
 import crypto from "crypto";
 import { resolveBillingExecModel } from "./billingResolver";
+import { fire } from "../services/workflowEngine";
 
 const router: IRouter = Router();
 
@@ -263,6 +264,7 @@ router.patch("/invoices/:id", async (req, res) => {
     await db.update(ordersTable).set({ paymentStatus: "not_charged" } as any).where(eq(ordersTable.id, row.orderId));
   } else if (patch.status === "sent") {
     await db.update(ordersTable).set({ paymentStatus: "invoiced" } as any).where(eq(ordersTable.id, row.orderId));
+    fire("invoice.sent", { objectType: "invoice", objectId: id, invoiceId: id, orderId: row.orderId, partnerId: row.partnerId ?? null, invoiceNumber: row.invoiceNumber, dueDate: row.dueDate }).catch(() => {});
   }
   const [fresh] = await db.select().from(invoicesTable).where(eq(invoicesTable.id, id));
   res.json(fresh);
@@ -334,6 +336,10 @@ router.post("/invoices/scan-overdue", async (_req, res) => {
   const toMark = candidates.filter(c => c.dueDate && c.dueDate < today);
   if (toMark.length > 0) {
     await db.update(invoicesTable).set({ status: "overdue" } as any).where(inArray(invoicesTable.id, toMark.map(c => c.id)));
+    for (const inv of toMark) {
+      const days = Math.floor((Date.now() - new Date(inv.dueDate!).getTime()) / 86400_000);
+      fire("invoice.overdue", { objectType: "invoice", objectId: inv.id, invoiceId: inv.id, orderId: inv.orderId, partnerId: inv.partnerId ?? null, invoiceNumber: inv.invoiceNumber, daysOverdue: days }).catch(() => {});
+    }
   }
   res.json({ markedOverdue: toMark.length });
 });

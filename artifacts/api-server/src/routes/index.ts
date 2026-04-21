@@ -25,6 +25,7 @@ import savedAddressesRouter from "./savedAddresses";
 import partnerOnboardingRouter from "./partnerOnboarding";
 import { assetsRouter } from "./assets";
 import { productionRouter } from "./production";
+import workflowRouter from "./workflow";
 import partnerInventoryRouter from "./partnerInventory";
 import exportsRouter from "./exports";
 import reconciliationRouter from "./reconciliation";
@@ -64,5 +65,6 @@ router.use(invoicesRouter);
 router.use(billingRouter);
 router.use(assetsRouter);
 router.use(productionRouter);
+router.use(workflowRouter);
 
 export default router;

@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ChevronLeft, Save, Printer, ShoppingCart, MapPin, Calendar, Truck, User, Building2, FileText, Image as ImageIcon, AlertTriangle, Package, Boxes, Printer as PrintIcon, FolderOpen } from "lucide-react";
 import OrderAssetsPanel from "@/components/admin/OrderAssetsPanel";
+import TaskPanel from "@/components/admin/TaskPanel";
 
 type OrderItem = {
   id: number; itemType: string; productId: number | null; productName?: string | null; productImageUrl?: string | null;
@@ -221,6 +222,7 @@ export default function OrderDetail() {
           <Card className="p-5">
             <h2 className="font-semibold text-lg mb-3 flex items-center gap-2"><FolderOpen className="h-5 w-5 text-muted-foreground" />Production Assets</h2>
             <OrderAssetsPanel orderId={order.id} partnerId={order.partnerId} eventId={order.eventId} />
+            <TaskPanel orderId={order.id} partnerId={order.partnerId} eventId={order.eventId} supplierId={order.assignedSupplierId ?? undefined} />
             {order.artworkFilesJson && order.artworkFilesJson.length > 0 && (
               <div className="mt-4 pt-4 border-t">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Legacy attachments</p>

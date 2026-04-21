@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, FileText, Send, Save, Plus, Trash2, RotateCcw, ExternalLink, Printer } from "lucide-react";
+import TaskPanel from "@/components/admin/TaskPanel";
 
 const STATUSES = ["draft", "ready", "sent", "partially_paid", "paid", "overdue", "cancelled"];
 const TONE: Record<string, string> = {
@@ -72,6 +73,7 @@ export default function InvoiceDetail() {
 
   return (
     <div className="space-y-5">
+      <TaskPanel invoiceId={inv.id} orderId={inv.orderId ?? inv.order?.id} partnerId={inv.partnerId ?? undefined} />
       <div className="flex items-start justify-between gap-4">
         <div>
           <Link href="/admin/billing"><Button variant="ghost" size="sm" className="gap-1 -ml-2 mb-2"><ArrowLeft className="h-4 w-4" /> Back to Billing</Button></Link>

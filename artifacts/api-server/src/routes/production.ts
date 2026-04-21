@@ -11,6 +11,7 @@ import {
   productCatalogTable,
   suppliersTable,
 } from "@workspace/db";
+import { fire } from "../services/workflowEngine";
 
 const router: IRouter = Router();
 
@@ -104,8 +105,25 @@ router.get("/orders/:id/readiness", async (req, res) => {
 router.patch("/order-items/:id/production-block", async (req, res) => {
   const id = parseInt(req.params.id);
   const reason: string | null = req.body?.reason ?? null;
-  const [row] = await db.update(orderItemsTable).set({ productionBlockedReason: reason } as any).where(eq(orderItemsTable.id, id)).returning();
-  if (!row) return res.status(404).json({ error: "Not found" });
+  const overrideNote: string | null = req.body?.overrideNote ?? null;
+  const result = await db.transaction(async (tx) => {
+    const [prev] = await tx.select().from(orderItemsTable).where(eq(orderItemsTable.id, id));
+    if (!prev) return { notFound: true } as any;
+    const [row] = await tx.update(orderItemsTable).set({ productionBlockedReason: reason } as any).where(eq(orderItemsTable.id, id)).returning();
+    if (!reason && prev.productionBlockedReason && overrideNote) {
+      const { logAudit } = await import("../services/workflowEngine");
+      await logAudit({ eventType: "override_applied", summary: `Cleared production block on order item #${id}`, details: { previousReason: prev.productionBlockedReason }, isAutomated: false, objectType: "order_item", objectId: id, overrideNote }, tx as any);
+    }
+    return { row, prev };
+  });
+  if ((result as any).notFound) return res.status(404).json({ error: "Not found" });
+  const { row, prev } = result as any;
+  const ord = (await db.select().from(ordersTable).where(eq(ordersTable.id, row.orderId)))[0];
+  if (reason && reason !== prev.productionBlockedReason) {
+    fire("production.blocked", { objectType: "order_item", objectId: id, orderItemId: id, orderId: row.orderId, supplierId: row.assignedSupplierId ?? null, orderNumber: ord?.orderNumber, blockedReason: reason }).catch(() => {});
+  } else if (!reason && prev.productionBlockedReason) {
+    fire("production.unblocked", { objectType: "order_item", objectId: id, orderItemId: id, orderId: row.orderId, orderNumber: ord?.orderNumber, overrideNote }).catch(() => {});
+  }
   res.json(row);
 });
 
