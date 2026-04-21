@@ -7,6 +7,7 @@ import {
   ArrowRight, Download, ExternalLink, Package, FileText, Layers
 } from "lucide-react";
 import RequestFormDialog from "./RequestFormDialog";
+import { formatWxH, type UnitSystem } from "@/lib/units";
 
 interface PortalData {
   partner: {
@@ -127,6 +128,18 @@ export default function FullPortal({ slug }: { slug: string }) {
 
   const theme = data?.theme;
   const partner = data?.partner;
+
+  const [preferredSystem, setPreferredSystem] = useState<UnitSystem | undefined>(undefined);
+  useEffect(() => {
+    setPreferredSystem(undefined);
+    if (!partner?.id) return;
+    let cancelled = false;
+    fetch(`/api/units/resolve?partnerId=${partner.id}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(j => { if (!cancelled && j?.system) setPreferredSystem(j.system); })
+      .catch(() => { if (!cancelled) setPreferredSystem(undefined); });
+    return () => { cancelled = true; };
+  }, [partner?.id]);
   const primaryColor = theme?.primaryColor || "#0f1729";
   const accentColor = theme?.accentColor || "#f59e0b";
   const bgColor = theme?.backgroundColor || "#f8fafc";
@@ -471,9 +484,9 @@ export default function FullPortal({ slug }: { slug: string }) {
                             {loc.description && (
                               <p className="text-xs text-muted-foreground line-clamp-2">{loc.description}</p>
                             )}
-                            {loc.sizeWidth && loc.sizeHeight && (
+                            {(loc.sizeWidth || loc.sizeHeight) && (
                               <p className="text-xs text-muted-foreground">
-                                {loc.sizeWidth} x {loc.sizeHeight} {loc.sizeUnit || "inches"}
+                                {formatWxH(loc.sizeWidth, loc.sizeHeight, loc.sizeUnit, preferredSystem)}
                               </p>
                             )}
                             <div className="flex gap-2 mt-2">

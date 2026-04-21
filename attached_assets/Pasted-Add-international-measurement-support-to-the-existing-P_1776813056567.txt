@@ -1,0 +1,88 @@
+Add international measurement support to the existing Partner Commerce Portal without rebuilding current flows.
+
+Goal:
+Support both imperial and metric measurements cleanly, especially for overseas events where clients may request dimensions like 2 meters.
+
+Scope:
+Keep this pass narrowly focused on measurement system support only.
+
+Requirements:
+
+1. Measurement preferences
+- add a preferred measurement system setting at:
+  - partner/account level
+  - venue level
+  - event level
+- event level can override venue/partner defaults
+- default to inherited value when not explicitly set
+
+2. Supported units
+Support:
+- inches
+- feet
+- millimeters
+- centimeters
+- meters
+
+3. Internal data model
+- store normalized dimension values internally in a consistent base unit
+- also preserve the originally entered value and unit
+- support fields for:
+  - width
+  - height
+  - depth
+  - diameter where relevant
+- ensure conversions are consistent and reversible
+
+4. UI behavior
+- dimension fields should include an adjacent unit selector
+- show placeholders that match the chosen unit, such as:
+  - 2 m
+  - 200 cm
+  - 78.74 in
+- keep entry simple and obvious
+- do not require users to manually convert anything
+
+5. Conversion/display logic
+- convert and display dimensions based on the selected preferred measurement system
+- use sensible rounding
+- for large venue/event dimensions, prefer meters
+- for print/spec detail, allow centimeters or millimeters where useful
+- internal admin views may show both original and converted values if helpful
+
+6. Ordering and onboarding
+- when onboarding a partner or creating an event, allow choosing imperial or metric preference
+- in client ordering flows, show product/zone dimensions in the preferred unit
+- allow custom requested measurements in metric, including examples like 2 meters
+- support overseas event workflows where metric is the default across the full experience
+
+7. Products, zones, and specs
+- extend products, branding zones, quote/spec references, and venue dimensions to support metric and imperial display
+- preserve original source dimensions from quote/spec references
+- if useful internally, show:
+  - original value/unit
+  - converted display value/unit
+
+8. Supplier and ops impact
+- supplier packets should show the most relevant unit for the event or supplier context
+- order summaries and internal ops views should display measurements clearly to avoid production confusion
+- if an overseas event is metric-first, keep metric primary in all downstream views
+
+9. Seed/demo updates
+- add one overseas event example using metric defaults
+- add at least one branding zone and one product with metric values
+- add one sample custom request using 2 meters
+
+10. Documentation
+- update replit.md with:
+  - measurement preference model
+  - supported units
+  - storage/conversion approach
+  - where metric defaults apply
+  - how original vs converted values are handled
+
+Important:
+Do not rebuild the app.
+Do not change unrelated workflows.
+Extend the current partner, venue, event, product, zone, quote/spec, order, and supplier packet flows cleanly.
+Actually implement the measurement logic and UI, not placeholders only.

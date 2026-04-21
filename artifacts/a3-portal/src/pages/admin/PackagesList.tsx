@@ -13,8 +13,10 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Loader2, Pencil, Trash2, Package, Copy, ChevronLeft, GripVertical } from "lucide-react";
+import { DimensionInput } from "@/components/units/DimensionInput";
+import type { LengthUnit } from "@/lib/units";
 
-type Pkg = { id: number; partnerId: number | null; supplierId: number | null; name: string; displayName: string | null; description: string | null; tier: number; price: string | null; currency: string; isActive: boolean };
+type Pkg = { id: number; partnerId: number | null; supplierId: number | null; name: string; displayName: string | null; description: string | null; tier: number; price: string | null; currency: string; isActive: boolean; sizeWidth?: number | null; sizeHeight?: number | null; sizeDepth?: number | null; sizeDiameter?: number | null; sizeUnit?: string | null };
 type Supplier = { id: number; name: string };
 type Product = { id: number; name: string; category: string };
 type PkgItem = { id: number; productId: number; productName?: string | null; productCategory?: string | null; quantity: number; isOptional: boolean; sortOrder: number };
@@ -27,6 +29,11 @@ function PkgDialog({ partnerId, suppliers, pkg, trigger, onSaved }: { partnerId:
     name: pkg?.name || "", displayName: pkg?.displayName || "", description: pkg?.description || "",
     tier: pkg?.tier?.toString() || "1", price: pkg?.price || "", supplierId: pkg?.supplierId?.toString() || "",
     isActive: pkg?.isActive ?? true,
+    sizeWidth: pkg?.sizeWidth ?? null as number | null,
+    sizeHeight: pkg?.sizeHeight ?? null as number | null,
+    sizeDepth: pkg?.sizeDepth ?? null as number | null,
+    sizeDiameter: pkg?.sizeDiameter ?? null as number | null,
+    sizeUnit: (pkg?.sizeUnit as LengthUnit | null) ?? "in" as LengthUnit,
   });
   const handleSave = async () => {
     try {
@@ -36,6 +43,9 @@ function PkgDialog({ partnerId, suppliers, pkg, trigger, onSaved }: { partnerId:
         tier: parseInt(form.tier), price: form.price || null,
         supplierId: form.supplierId ? parseInt(form.supplierId) : null,
         isActive: form.isActive,
+        sizeWidth: form.sizeWidth, sizeHeight: form.sizeHeight,
+        sizeDepth: form.sizeDepth, sizeDiameter: form.sizeDiameter,
+        sizeUnit: form.sizeUnit,
       };
       if (pkg) await apiFetch(`/api/packages/${pkg.id}`, { method: "PATCH", body: JSON.stringify(body) });
       else await apiFetch(`/api/packages`, { method: "POST", body: JSON.stringify(body) });
@@ -58,6 +68,13 @@ function PkgDialog({ partnerId, suppliers, pkg, trigger, onSaved }: { partnerId:
             <div><Label>Supplier</Label><Select value={form.supplierId} onValueChange={v => setForm({ ...form, supplierId: v })}><SelectTrigger><SelectValue placeholder="None" /></SelectTrigger><SelectContent><SelectItem value="0">None</SelectItem>{suppliers.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}</SelectContent></Select></div>
           </div>
           <div className="flex items-center gap-2"><Switch checked={form.isActive} onCheckedChange={v => setForm({ ...form, isActive: v })} /><Label>Active</Label></div>
+          <DimensionInput
+            label="Package dimensions (optional)"
+            helperText="Overall printed/installed footprint. Stored normalized to mm."
+            showDepth
+            value={{ width: form.sizeWidth, height: form.sizeHeight, depth: form.sizeDepth, diameter: form.sizeDiameter, unit: form.sizeUnit }}
+            onChange={(v) => setForm({ ...form, sizeWidth: v.width, sizeHeight: v.height, sizeDepth: v.depth ?? null, sizeDiameter: v.diameter ?? null, sizeUnit: v.unit })}
+          />
         </div>
         <DialogFooter><Button onClick={handleSave} disabled={!form.name}>Save</Button></DialogFooter>
       </DialogContent>

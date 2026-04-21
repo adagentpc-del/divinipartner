@@ -17,6 +17,7 @@ export interface DimensionValue {
   width: number | null;
   height: number | null;
   depth?: number | null;
+  diameter?: number | null;
   unit: LengthUnit;
 }
 
@@ -25,10 +26,19 @@ interface Props {
   onChange: (next: DimensionValue) => void;
   preferredSystem?: UnitSystem;
   showDepth?: boolean;
+  showDiameter?: boolean;
   className?: string;
   label?: string;
   helperText?: string;
 }
+
+const PLACEHOLDERS: Record<LengthUnit, { w: string; h: string; d: string }> = {
+  m:  { w: "2",   h: "1",   d: "0.4" },
+  cm: { w: "200", h: "100", d: "40"  },
+  mm: { w: "2000", h: "1000", d: "400" },
+  in: { w: "78.74", h: "39.37", d: "16" },
+  ft: { w: "6.5", h: "3.3", d: "1.3" },
+};
 
 function num(s: string): number | null {
   if (s === "" || s == null) return null;
@@ -37,7 +47,7 @@ function num(s: string): number | null {
 }
 
 export function DimensionInput({
-  value, onChange, preferredSystem, showDepth, className, label, helperText,
+  value, onChange, preferredSystem, showDepth, showDiameter, className, label, helperText,
 }: Props) {
   const unit: LengthUnit = (value?.unit || "in") as LengthUnit;
 
@@ -58,35 +68,48 @@ export function DimensionInput({
   return (
     <div className={className}>
       {label && <Label className="block mb-1 text-sm font-medium">{label}</Label>}
-      <div className="flex gap-2 items-end">
-        <div className="flex-1">
+      <div className="flex gap-2 items-end flex-wrap">
+        <div className="flex-1 min-w-[90px]">
           <Label className="block text-xs text-muted-foreground mb-1">Width</Label>
           <Input
             type="number"
             step="any"
-            placeholder={`e.g. ${unit === "m" ? "2" : unit === "cm" ? "200" : "48"}`}
+            placeholder={`e.g. ${PLACEHOLDERS[unit].w} ${unit}`}
             value={value.width ?? ""}
             onChange={(e) => onChange({ ...value, width: num(e.target.value) })}
           />
         </div>
-        <div className="flex-1">
+        <div className="flex-1 min-w-[90px]">
           <Label className="block text-xs text-muted-foreground mb-1">Height</Label>
           <Input
             type="number"
             step="any"
-            placeholder={`e.g. ${unit === "m" ? "1" : unit === "cm" ? "100" : "24"}`}
+            placeholder={`e.g. ${PLACEHOLDERS[unit].h} ${unit}`}
             value={value.height ?? ""}
             onChange={(e) => onChange({ ...value, height: num(e.target.value) })}
           />
         </div>
         {showDepth && (
-          <div className="flex-1">
+          <div className="flex-1 min-w-[90px]">
             <Label className="block text-xs text-muted-foreground mb-1">Depth</Label>
             <Input
               type="number"
               step="any"
+              placeholder={`e.g. ${PLACEHOLDERS[unit].d} ${unit}`}
               value={value.depth ?? ""}
               onChange={(e) => onChange({ ...value, depth: num(e.target.value) })}
+            />
+          </div>
+        )}
+        {showDiameter && (
+          <div className="flex-1 min-w-[90px]">
+            <Label className="block text-xs text-muted-foreground mb-1">Diameter</Label>
+            <Input
+              type="number"
+              step="any"
+              placeholder={`e.g. ${PLACEHOLDERS[unit].w} ${unit}`}
+              value={value.diameter ?? ""}
+              onChange={(e) => onChange({ ...value, diameter: num(e.target.value) })}
             />
           </div>
         )}

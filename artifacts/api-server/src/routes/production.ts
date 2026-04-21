@@ -10,6 +10,10 @@ import {
   eventsTable,
   productCatalogTable,
   suppliersTable,
+  venuesTable,
+  resolvePreference,
+  formatWxH,
+  type UnitSystem,
 } from "@workspace/db";
 import { fire } from "../services/workflowEngine";
 
@@ -167,6 +171,14 @@ router.get("/orders/:orderId/supplier-packet/:supplierId", async (req, res) => {
   if (!order) return res.status(404).json({ error: "Order not found" });
   const [partner] = await db.select().from(partnersTable).where(eq(partnersTable.id, order.partnerId));
   const event = order.eventId ? (await db.select().from(eventsTable).where(eq(eventsTable.id, order.eventId)))[0] : null;
+  const venue = event?.venueId ? (await db.select().from(venuesTable).where(eq(venuesTable.id, event.venueId)))[0] : null;
+  const resolved = resolvePreference({
+    event: event ? { unitPreference: (event as any).unitPreference } : null,
+    venue: venue ? { unitPreference: (venue as any).unitPreference, country: (venue as any).country } : null,
+    partner: partner ? { unitPreference: (partner as any).unitPreference } : null,
+    account: null,
+  });
+  const preferredSystem: UnitSystem = resolved.system;
   const [supplier] = await db.select().from(suppliersTable).where(eq(suppliersTable.id, supplierId));
   if (!supplier) return res.status(404).json({ error: "Supplier not found" });
 
@@ -198,11 +210,16 @@ router.get("/orders/:orderId/supplier-packet/:supplierId", async (req, res) => {
     const flags: string[] = [];
     if (exp.needsArtwork && !approvedArtwork) flags.push("missing_approved_artwork");
     if (it.productionBlockedReason) flags.push("blocked");
+    const prod = pById.get(it.productId || -1);
+    const dimDisplay = prod && (prod.sizeWidth || prod.sizeHeight)
+      ? formatWxH(prod.sizeWidth, prod.sizeHeight, prod.sizeUnit, preferredSystem)
+      : null;
     return {
       itemId: it.id,
       name: it.name,
       productId: it.productId,
-      productName: pById.get(it.productId || -1)?.name || null,
+      productName: prod?.name || null,
+      dimensionDisplay: dimDisplay,
       quantity: it.quantity,
       fulfillmentMode: it.fulfillmentMode,
       supplierStatus: it.supplierStatus,
@@ -227,6 +244,7 @@ router.get("/orders/:orderId/supplier-packet/:supplierId", async (req, res) => {
     event: event ? { id: event.id, name: event.name, startDate: event.startDate, endDate: event.endDate, venueId: event.venueId } : null,
     supplier: { id: supplier.id, name: supplier.name },
     items: packetItems,
+    measurementContext: { system: preferredSystem, source: resolved.source, reason: resolved.reason },
     orderLevelAssets,
     summary: {
       totalItems: packetItems.length,

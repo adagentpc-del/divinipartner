@@ -13,6 +13,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus, Pencil, Trash2, Package, Search, FileText, CheckCircle2, AlertCircle, Star, Upload, Download, X } from "lucide-react";
+import { DimensionInput } from "@/components/units/DimensionInput";
+import type { LengthUnit } from "@/lib/units";
 
 interface Product {
   id: number;
@@ -25,6 +27,11 @@ interface Product {
   imageUrl: string | null;
   galleryImagesJson: string[] | null;
   visibleDimensions: string | null;
+  sizeWidth: number | null;
+  sizeHeight: number | null;
+  sizeDepth: number | null;
+  sizeDiameter: number | null;
+  sizeUnit: string | null;
   backendProductionNotes: string | null;
   installNotes: string | null;
   internalOpsSummary: string | null;
@@ -227,7 +234,7 @@ export default function ProductCatalog() {
                   <Field label="Category" value={editing.category} onChange={v => setEditing(p => ({ ...p!, category: v }))} />
                   <Field label="Slug" value={editing.slug} onChange={v => setEditing(p => ({ ...p!, slug: v }))} />
                   <Field label="SKU" value={editing.sku} onChange={v => setEditing(p => ({ ...p!, sku: v }))} />
-                  <Field label="Visible Dimensions" value={editing.visibleDimensions} onChange={v => setEditing(p => ({ ...p!, visibleDimensions: v }))} placeholder="8ft x 8ft" />
+                  <Field label="Visible Dimensions (label)" value={editing.visibleDimensions} onChange={v => setEditing(p => ({ ...p!, visibleDimensions: v }))} placeholder="8ft x 8ft" />
                 </div>
                 <div><Label className="text-xs">Short Description</Label><Textarea value={editing.description || ""} onChange={e => setEditing(p => ({ ...p!, description: e.target.value }))} className="min-h-[60px]" /></div>
                 <div><Label className="text-xs">Customer-facing summary (longer)</Label><Textarea value={editing.customerFacingSummary || ""} onChange={e => setEditing(p => ({ ...p!, customerFacingSummary: e.target.value }))} className="min-h-[60px]" /></div>
@@ -235,6 +242,27 @@ export default function ProductCatalog() {
                 <Field label="Thumbnail URL" value={editing.imageUrl} onChange={v => setEditing(p => ({ ...p!, imageUrl: v }))} />
                 <div><Label className="text-xs">Feature badges (comma-separated)</Label><Input value={(editing.featureBadgesJson || []).join(", ")} onChange={e => setEditing(p => ({ ...p!, featureBadgesJson: e.target.value.split(",").map(s => s.trim()).filter(Boolean) }))} placeholder="LED, Heavy duty, Quick install" /></div>
                 <div><Label className="text-xs">Size options (comma-separated)</Label><Input value={(editing.sizeOptionsJson || []).join(", ")} onChange={e => setEditing(p => ({ ...p!, sizeOptionsJson: e.target.value.split(",").map(s => s.trim()).filter(Boolean) }))} /></div>
+                <DimensionInput
+                  label="Structured dimensions"
+                  helperText="Stored normalized to mm so this product reads cleanly in either unit system."
+                  showDepth
+                  showDiameter
+                  value={{
+                    width: editing.sizeWidth ?? null,
+                    height: editing.sizeHeight ?? null,
+                    depth: editing.sizeDepth ?? null,
+                    diameter: editing.sizeDiameter ?? null,
+                    unit: ((editing.sizeUnit as LengthUnit) || "in"),
+                  }}
+                  onChange={(v) => setEditing(p => ({
+                    ...p!,
+                    sizeWidth: v.width,
+                    sizeHeight: v.height,
+                    sizeDepth: v.depth ?? null,
+                    sizeDiameter: v.diameter ?? null,
+                    sizeUnit: v.unit,
+                  }))}
+                />
               </TabsContent>
 
               <TabsContent value="caps" className="space-y-1 mt-4">

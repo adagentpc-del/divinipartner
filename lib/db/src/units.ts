@@ -180,3 +180,64 @@ export function resolvePreference(input: PreferenceCascadeInput): PreferenceReso
 export function defaultEntryUnit(system: UnitSystem): LengthUnit {
   return system === "metric" ? "cm" : "in";
 }
+
+/**
+ * Compute the normalized base-unit (mm) columns for any payload that carries
+ * structured size_* fields. Use at insert/update time so downstream queries
+ * can sort, filter, and compare across mixed unit entries.
+ *
+ * Returns a shallow merge of the input plus computed *_mm fields. Pass-through
+ * if no `sizeUnit` is set (we have no way to convert).
+ */
+export function withMmColumns<T extends {
+  sizeUnit?: string | null;
+  sizeWidth?: number | null;
+  sizeHeight?: number | null;
+  sizeDepth?: number | null;
+  sizeDiameter?: number | null;
+}>(
+  input: T,
+  /** Optional persisted unit fallback: pass the row's existing sizeUnit when
+   *  performing a PATCH that updates dimensions but omits the unit. */
+  existingUnit?: string | null,
+): T & {
+  sizeWidthMm?: number | null;
+  sizeHeightMm?: number | null;
+  sizeDepthMm?: number | null;
+  sizeDiameterMm?: number | null;
+} {
+  const out: any = { ...input };
+  const dimKeys: Array<["sizeWidth"|"sizeHeight"|"sizeDepth"|"sizeDiameter", "sizeWidthMm"|"sizeHeightMm"|"sizeDepthMm"|"sizeDiameterMm"]> = [
+    ["sizeWidth", "sizeWidthMm"],
+    ["sizeHeight", "sizeHeightMm"],
+    ["sizeDepth", "sizeDepthMm"],
+    ["sizeDiameter", "sizeDiameterMm"],
+  ];
+  const unitInPayload = "sizeUnit" in input;
+  const unitRaw = unitInPayload ? input.sizeUnit : existingUnit;
+  const u = normalizeUnit(unitRaw ?? null);
+
+  // Case 1: sizeUnit explicitly cleared/invalid in payload -> null all mm columns
+  // (stale normalized data must not survive a unit reset).
+  if (unitInPayload && !u) {
+    for (const [, mmKey] of dimKeys) out[mmKey] = null;
+    return out;
+  }
+
+  // Case 2: no usable unit anywhere -> for any dim field present, null its mm
+  // companion to avoid stale values; leave untouched fields alone.
+  if (!u) {
+    for (const [dimKey, mmKey] of dimKeys) {
+      if (dimKey in input) out[mmKey] = null;
+    }
+    return out;
+  }
+
+  // Case 3: we have a unit -> recompute mm for every dim field present in payload.
+  const toMm = (v: number | null | undefined) =>
+    v == null || isNaN(Number(v)) ? null : Number(v) * TO_MM[u];
+  for (const [dimKey, mmKey] of dimKeys) {
+    if (dimKey in input) out[mmKey] = toMm((input as any)[dimKey]);
+  }
+  return out;
+}

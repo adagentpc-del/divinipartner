@@ -13,11 +13,13 @@ type Packet = {
   order: any; partner: any; event: any; supplier: any;
   items: Array<{
     itemId: number; name: string; productName: string | null; quantity: number;
+    dimensionDisplay: string | null;
     fulfillmentMode: string | null; supplierStatus: string;
     supplierDueDate: string | null; supplierShipDate: string | null; supplierInstallDate: string | null;
     internalFulfillmentNotes: string | null; productionBlockedReason: string | null;
     assets: PacketAsset[]; flags: string[]; ready: boolean;
   }>;
+  measurementContext?: { system: string; source: string; reason: string };
   orderLevelAssets: any[];
   summary: { totalItems: number; ready: number; blocked: number };
 };
@@ -97,6 +99,7 @@ export default function SupplierPacket() {
                         {it.fulfillmentMode && <Badge variant="secondary">{it.fulfillmentMode.replace(/_/g," ")}</Badge>}
                       </div>
                       {it.productName && <p className="text-xs text-muted-foreground mt-0.5">{it.productName}</p>}
+                      {it.dimensionDisplay && <p className="text-xs font-medium mt-0.5">Size: {it.dimensionDisplay}</p>}
                     </div>
                     <div className="flex items-center gap-1.5">
                       {it.ready ? (

@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
-import { db, productCatalogTable } from "@workspace/db";
+import { db, productCatalogTable, withMmColumns } from "@workspace/db";
 import { z } from "zod";
 
 const router: IRouter = Router();
@@ -15,6 +15,11 @@ const ProductBody = z.object({
   imageUrl: z.string().nullable().optional(),
   galleryImagesJson: z.array(z.string()).nullable().optional(),
   visibleDimensions: z.string().nullable().optional(),
+  sizeWidth: z.number().nullable().optional(),
+  sizeHeight: z.number().nullable().optional(),
+  sizeDepth: z.number().nullable().optional(),
+  sizeDiameter: z.number().nullable().optional(),
+  sizeUnit: z.string().nullable().optional(),
   backendProductionNotes: z.string().nullable().optional(),
   installNotes: z.string().nullable().optional(),
   internalOpsSummary: z.string().nullable().optional(),
@@ -53,7 +58,7 @@ router.post("/products", async (req, res): Promise<void> => {
   const parsed = ProductBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
 
-  const [product] = await db.insert(productCatalogTable).values(parsed.data).returning();
+  const [product] = await db.insert(productCatalogTable).values(withMmColumns(parsed.data)).returning();
   res.status(201).json(product);
 });
 
@@ -73,7 +78,7 @@ router.patch("/products/:id", async (req, res): Promise<void> => {
   const parsed = UpdateProductBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
 
-  const [product] = await db.update(productCatalogTable).set(parsed.data).where(eq(productCatalogTable.id, id)).returning();
+  const [product] = await db.update(productCatalogTable).set(withMmColumns(parsed.data)).where(eq(productCatalogTable.id, id)).returning();
   if (!product) { res.status(404).json({ error: "Product not found" }); return; }
   res.json(product);
 });

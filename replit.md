@@ -826,7 +826,10 @@ International support for both imperial and metric across the portal — extende
 ### Storage
 - `unit_preference` (text, nullable, `imperial`|`metric`) on: `partners`, `commercial_accounts`, `venues`, `events`.
 - `country` (text, nullable, ISO-2) on `venues` (e.g. `GB`, `FR`, `DE`).
-- Structured dimension columns on `partner_branding_locations`, `packages`, `product_catalog`: `size_width`, `size_height`, `size_depth` (doubles), `size_unit` (one of `in`, `ft`, `mm`, `cm`, `m`; legacy strings like `inches`/`feet`/`meters` are normalized).
+- Structured dimension columns on `partner_branding_locations`, `packages`, `product_catalog`:
+  - **Original entry:** `size_width`, `size_height`, `size_depth`, `size_diameter` (doubles) + `size_unit` (one of `in`, `ft`, `mm`, `cm`, `m`; legacy strings like `inches` / `feet` / `meters` are normalized via `normalizeUnit`).
+  - **Canonical base:** `size_width_mm`, `size_height_mm`, `size_depth_mm`, `size_diameter_mm` — populated automatically at insert/update by the `withMmColumns()` helper in `lib/db/src/units.ts`. Use these for cross-unit sorting/comparison/filtering.
+- The original entered value+unit is always preserved alongside the normalized mm value, so admin views can show either.
 
 ### Cascade resolution (most → least specific)
 1. `event.unitPreference`
@@ -844,12 +847,19 @@ Implemented in `lib/db/src/units.ts → resolvePreference()` and exposed at `GET
 - `pickDisplayUnit(unit, system)` picks a friendly display unit (e.g. `m` for large metric, `ft` for large imperial).
 
 ### UI
-- `components/units/DimensionInput.tsx` — width/height numeric inputs + unit selector with live converted value. Used in: branding location editor (and reusable in packages/product editors).
+- `components/units/DimensionInput.tsx` — width/height + optional depth + optional diameter numeric inputs + unit selector. Placeholders are unit-aware (`e.g. 200 cm` vs `e.g. 78.74 in`) and a live "≈ … (preferred)" hint appears when entered values are in a different system from the resolved preference. Used in: Branding Locations, Product Catalog, and Packages editors.
 - `UnitPreferenceSelect` — small "Inherit / Imperial / Metric" select used on Venue, Event, Partner, and Commercial Account editors.
 - Mirror client lib at `artifacts/a3-portal/src/lib/units.ts`.
 
+### Where the preferred unit is shown downstream
+- **Client portal (`FullPortal.tsx`)** — venue branding sizes are rendered with `formatWxH(..., preferredSystem)` after a one-shot `GET /api/units/resolve?partnerId=...` call, so a UK partner sees the same zone in metric while a US partner sees it in imperial.
+- **Supplier packet (`/api/orders/:orderId/supplier-packet/:supplierId`)** — the route runs the cascade (event → venue → venue.country → partner → default), attaches a `measurementContext` block to the response, and pre-formats each line item's `dimensionDisplay` in the supplier's relevant unit, so an overseas event prints metric on the production handoff sheet.
+
 ### Seed
-- London city (`country=GB`), `ExCeL London` venue (`country=GB`, `unit_preference=metric`), `London Activation 2026` event (`unit_preference=metric`), and a `London Stage Backdrop (2m × 1m)` branding location were inserted directly under partner `move-miami` for demo/QA of the metric path. (Inserted via SQL — not part of `scripts/src/seed.ts`; persists in the live DB.)
+- London city (`country=GB`), `ExCeL London` venue (`country=GB`, `unit_preference=metric`), `London Activation 2026` event (`unit_preference=metric`), and a `London Stage Backdrop (2 m × 1 m)` branding location were inserted directly under partner `move-miami` for demo/QA of the metric path.
+- A metric product `Metric Pop-Up Banner 200cm` (200 × 100 cm, normalized to 2000 × 1000 mm) was added to `product_catalog`.
+- A sample custom request (`Globex EU` / `London Activation 2026`) with one `request_items` row sized `2 m × 1 m (metric)` demonstrates the overseas custom-fabrication path.
+- All seeded via direct SQL — not part of `scripts/src/seed.ts`; persists in the live DB.
 
 ---
 

@@ -17,7 +17,12 @@ export const productCatalogTable = pgTable("product_catalog", {
   sizeWidth: doublePrecision("size_width"),
   sizeHeight: doublePrecision("size_height"),
   sizeDepth: doublePrecision("size_depth"),
-  sizeUnit: text("size_unit"), // inches | feet | cm | m | mm
+  sizeDiameter: doublePrecision("size_diameter"),
+  sizeUnit: text("size_unit"), // in | ft | cm | m | mm
+  sizeWidthMm: doublePrecision("size_width_mm"),
+  sizeHeightMm: doublePrecision("size_height_mm"),
+  sizeDepthMm: doublePrecision("size_depth_mm"),
+  sizeDiameterMm: doublePrecision("size_diameter_mm"),
   backendProductionNotes: text("backend_production_notes"),
   hardwareIncluded: boolean("hardware_included").notNull().default(false),
   printOnlyAvailable: boolean("print_only_available").notNull().default(false),

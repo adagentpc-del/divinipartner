@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and } from "drizzle-orm";
-import { db, partnerBrandingLocationsTable } from "@workspace/db";
+import { db, partnerBrandingLocationsTable, withMmColumns } from "@workspace/db";
 import { z } from "zod";
 
 const router: IRouter = Router();
@@ -12,6 +12,8 @@ const LocationBody = z.object({
   description: z.string().optional(),
   sizeWidth: z.number().optional(),
   sizeHeight: z.number().optional(),
+  sizeDepth: z.number().optional(),
+  sizeDiameter: z.number().optional(),
   sizeUnit: z.string().optional(),
   sourcePageNumber: z.number().optional(),
   sourceFileUrl: z.string().optional(),
@@ -45,7 +47,7 @@ router.post("/partners/:id/branding-locations", async (req, res): Promise<void> 
   const parsed = LocationBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
 
-  const [location] = await db.insert(partnerBrandingLocationsTable).values({ ...parsed.data, partnerId }).returning();
+  const [location] = await db.insert(partnerBrandingLocationsTable).values(withMmColumns({ ...parsed.data, partnerId })).returning();
   res.status(201).json(location);
 });
 
@@ -58,7 +60,7 @@ router.post("/partners/:id/branding-locations/bulk", async (req, res): Promise<v
 
   const results = [];
   for (const loc of parsed.data) {
-    const [created] = await db.insert(partnerBrandingLocationsTable).values({ ...loc, partnerId }).returning();
+    const [created] = await db.insert(partnerBrandingLocationsTable).values(withMmColumns({ ...loc, partnerId })).returning();
     results.push(created);
   }
   res.status(201).json(results);
@@ -73,7 +75,7 @@ router.patch("/partners/:id/branding-locations/:locationId", async (req, res): P
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
 
   const [location] = await db.update(partnerBrandingLocationsTable)
-    .set(parsed.data)
+    .set(withMmColumns(parsed.data))
     .where(and(eq(partnerBrandingLocationsTable.id, locationId), eq(partnerBrandingLocationsTable.partnerId, partnerId)))
     .returning();
 
@@ -106,7 +108,7 @@ router.post("/partners/:id/branding-locations/bulk-update", async (req, res): Pr
   const results = [];
   for (const id of parsed.data.ids) {
     const [updated] = await db.update(partnerBrandingLocationsTable)
-      .set(parsed.data.update)
+      .set(withMmColumns(parsed.data.update))
       .where(and(eq(partnerBrandingLocationsTable.id, id), eq(partnerBrandingLocationsTable.partnerId, partnerId)))
       .returning();
     if (updated) results.push(updated);

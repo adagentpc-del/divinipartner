@@ -20,7 +20,13 @@ export const packagesTable = pgTable("packages", {
   sizeWidth: doublePrecision("size_width"),
   sizeHeight: doublePrecision("size_height"),
   sizeDepth: doublePrecision("size_depth"),
-  sizeUnit: text("size_unit"), // inches | feet | cm | m | mm
+  sizeDiameter: doublePrecision("size_diameter"),
+  sizeUnit: text("size_unit"), // in | ft | cm | m | mm (legacy: inches/feet/meters)
+  // Normalized base value (mm) for stable sorting/comparison across units. Set on insert/update by the unit lib.
+  sizeWidthMm: doublePrecision("size_width_mm"),
+  sizeHeightMm: doublePrecision("size_height_mm"),
+  sizeDepthMm: doublePrecision("size_depth_mm"),
+  sizeDiameterMm: doublePrecision("size_diameter_mm"),
   isActive: boolean("is_active").notNull().default(true),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

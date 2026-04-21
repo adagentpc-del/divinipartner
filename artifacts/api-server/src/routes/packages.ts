@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, sql } from "drizzle-orm";
-import { db, packagesTable, packageItemsTable, productCatalogTable } from "@workspace/db";
+import { db, packagesTable, packageItemsTable, productCatalogTable, withMmColumns } from "@workspace/db";
 import { z } from "zod";
 
 const PackageBody = z.object({
@@ -13,6 +13,11 @@ const PackageBody = z.object({
   price: z.string().regex(/^\d+(\.\d{1,2})?$/).nullable().optional(),
   currency: z.string().optional(),
   imageUrl: z.string().nullable().optional(),
+  sizeWidth: z.number().nullable().optional(),
+  sizeHeight: z.number().nullable().optional(),
+  sizeDepth: z.number().nullable().optional(),
+  sizeDiameter: z.number().nullable().optional(),
+  sizeUnit: z.string().nullable().optional(),
   isActive: z.boolean().optional(),
   sortOrder: z.number().int().optional(),
 });
@@ -62,7 +67,7 @@ router.get("/packages/:id", async (req, res): Promise<void> => {
 router.post("/packages", async (req, res): Promise<void> => {
   const parsed = PackageBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const [row] = await db.insert(packagesTable).values(parsed.data).returning();
+  const [row] = await db.insert(packagesTable).values(withMmColumns(parsed.data)).returning();
   res.status(201).json(row);
 });
 
@@ -85,7 +90,7 @@ router.patch("/packages/:id", async (req, res): Promise<void> => {
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const parsed = PackageBody.partial().safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const [row] = await db.update(packagesTable).set(parsed.data).where(eq(packagesTable.id, id)).returning();
+  const [row] = await db.update(packagesTable).set(withMmColumns(parsed.data)).where(eq(packagesTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
   res.json(row);
 });

@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { eq, desc, and } from "drizzle-orm";
 import {
   db, deckExtractionsTable, deckExtractionItemsTable,
-  partnerBrandingLocationsTable, partnersTable
+  partnerBrandingLocationsTable, partnersTable, withMmColumns
 } from "@workspace/db";
 import { z } from "zod";
 import { processDeckExtraction } from "../lib/deckExtraction";
@@ -165,7 +165,7 @@ router.post("/deck-extraction-items/approve", async (req, res): Promise<void> =>
     const [extraction] = await db.select().from(deckExtractionsTable)
       .where(eq(deckExtractionsTable.id, item.extractionId));
 
-    const [loc] = await db.insert(partnerBrandingLocationsTable).values({
+    const [loc] = await db.insert(partnerBrandingLocationsTable).values(withMmColumns({
       partnerId: item.partnerId,
       name: item.locationName,
       category: item.category,
@@ -178,7 +178,7 @@ router.post("/deck-extraction-items/approve", async (req, res): Promise<void> =>
       confidenceScore: item.confidenceScore,
       reviewStatus: "approved",
       isActive: true,
-    }).returning();
+    })).returning();
 
     await db.update(deckExtractionItemsTable)
       .set({ reviewStatus: "approved" })
