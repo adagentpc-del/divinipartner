@@ -22,7 +22,8 @@ import {
   BarChart3,
   Rocket,
   Activity,
-  MessageSquare
+  MessageSquare,
+  Crown
 } from "lucide-react";
 import { FeedbackButton } from "@/components/admin/FeedbackButton";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,7 @@ const navigation = [
   { name: "Launch", href: "/admin/launch", icon: Rocket },
   { name: "Post-Launch", href: "/admin/post-launch", icon: Activity },
   { name: "Feedback", href: "/admin/feedback", icon: MessageSquare },
+  { name: "Commercial", href: "/admin/commercial", icon: Crown },
   { name: "Billing", href: "/admin/billing", icon: Banknote },
   { name: "Reconciliation", href: "/admin/reconciliation", icon: Calculator },
   { name: "Suppliers", href: "/admin/suppliers", icon: Truck },

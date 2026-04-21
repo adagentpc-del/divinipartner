@@ -53,6 +53,8 @@ export const partnersTable = pgTable("partners", {
   launchOverrideNote: text("launch_override_note"),
   demoFlag: boolean("demo_flag").notNull().default(false),
   setupTemplate: text("setup_template"), // social_commerce | branding_partner | inventory_backed | zone_venue
+  // Commercialization linkage (additive — partner can stand alone or roll up under a commercial account)
+  commercialAccountId: integer("commercial_account_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

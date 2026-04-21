@@ -43,6 +43,9 @@ import Analytics from "@/pages/admin/Analytics";
 import LaunchWizard from "@/pages/admin/LaunchWizard";
 import PostLaunchDashboard from "@/pages/admin/PostLaunchDashboard";
 import FeedbackInbox from "@/pages/admin/FeedbackInbox";
+import CommercialDashboard from "@/pages/admin/CommercialDashboard";
+import CommercialAccountDetail from "@/pages/admin/CommercialAccountDetail";
+import CommercialPlans from "@/pages/admin/CommercialPlans";
 import WorkflowRules from "@/pages/admin/WorkflowRules";
 
 import PublicLayout from "@/components/layout/PublicLayout";
@@ -235,6 +238,15 @@ function ClerkProviderWithRoutes() {
             </Route>
             <Route path="/admin/feedback">
               {() => <AdminRoute component={FeedbackInbox} />}
+            </Route>
+            <Route path="/admin/commercial">
+              {() => <AdminRoute component={CommercialDashboard} />}
+            </Route>
+            <Route path="/admin/commercial/plans">
+              {() => <AdminRoute component={CommercialPlans} />}
+            </Route>
+            <Route path="/admin/commercial/accounts/:id">
+              {() => <AdminRoute component={CommercialAccountDetail} />}
             </Route>
             <Route path="/admin/workflow">
               {() => <AdminRoute component={WorkflowDashboard} />}

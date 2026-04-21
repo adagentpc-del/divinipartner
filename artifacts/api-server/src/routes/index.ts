@@ -29,6 +29,7 @@ import workflowRouter from "./workflow";
 import analyticsRouter from "./analytics";
 import onboardingRouter from "./onboarding";
 import postLaunchRouter from "./postLaunch";
+import commercializationRouter from "./commercialization";
 import partnerInventoryRouter from "./partnerInventory";
 import exportsRouter from "./exports";
 import reconciliationRouter from "./reconciliation";
@@ -72,5 +73,6 @@ router.use(workflowRouter);
 router.use(analyticsRouter);
 router.use(onboardingRouter);
 router.use(postLaunchRouter);
+router.use(commercializationRouter);
 
 export default router;

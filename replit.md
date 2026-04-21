@@ -662,3 +662,44 @@ Built on top of the launch system to track adoption, friction, feedback, and par
 - `/admin/feedback` — `FeedbackInbox`: filters, status updates, internal notes editor.
 - `FeedbackButton` — floating widget mounted globally in `AdminLayout`; submits to `/api/feedback` with current screen path.
 - `PartnerHealthBadge` — shared status pill.
+
+## Commercialization Layer
+
+A clean monetization architecture sitting on top of operational partner data. Lets one platform support: internal-managed portals, partner-branded portals, full white-label, enterprise multi-location accounts, and reseller hierarchies.
+
+**Schema (`lib/db/src/schema/commercialization.ts`)**
+- `commercial_accounts` — name, slug, accountType (internal/managed/white_label/reseller/enterprise), parentAccountId (self-FK for hierarchy), planId, brandingPackageId, whiteLabelLevel (none/partial/full), brandingJson, commercialStatus (trial/active/paused/suspended/internal/beta), startDate/renewalDate/contractTerm, seatAllowance, portalInstanceAllowance, billing entity/contact, accountManager, internalRevenueOwner, monetizationNotes.
+- `commercial_plans` — code, name, tier (internal/starter/pro/enterprise/white_label_premium), pricingModel (flat_monthly/flat_annual/per_portal/per_seat/per_event/custom), priceAmount, includedLimitsJson, featureFlagsJson.
+- `branding_packages` — level (basic/partial/full), allowsCustom{Logo,Colors,Domain,Emails,InvoiceBranding}, hidesPoweredBy, defaultBrandingJson.
+- `account_subscriptions` — accountId, planId, status, startDate, renewalDate, billingContact, contractNotes, invoiceStatus, lastInvoicedAt, nextReminderAt. (Separate from operational event invoices.)
+- `account_usage_limits` — accountId, limitKey (partners/users/events/suppliers/portals/automation_rules/exports), allowance, currentUsage, hardLimit, warningThresholdPct, lastComputedAt. Cached and recomputed on demand.
+- `partners.commercialAccountId` — additive nullable link; partners can stand alone or roll up under a commercial account without breaking existing data.
+
+**Service (`services/commercialization.ts`)**
+- `FEATURE_KEYS` and `LIMIT_KEYS` are the single source of truth for feature gating and usage caps.
+- `DEFAULT_PLAN_PRESETS` ships starter/pro/enterprise/white-label/internal presets; `/api/commercial/plans/seed-defaults` materializes them once.
+- `getEffectivePlan(accountId)` resolves the plan, walking up to the parent account when the child has none.
+- `getEntitlements(accountId)` returns a flat boolean map; internal accounts always get every feature.
+- `recomputeUsage(accountId)` upserts current vs allowance counts for the limit keys.
+- `listAccountsWithRollup` and `getDashboardSummary` power the command-center view (plan mix, status mix, type mix, near-limit count) without N+1 per-account compute.
+
+**Routes (`routes/commercialization.ts`)**
+- `/api/commercial/plans` GET/POST/PATCH + `/seed-defaults`
+- `/api/commercial/branding-packages` GET/POST/PATCH
+- `/api/commercial/accounts` GET/POST/PATCH/DELETE, `/:id` (full detail with plan/branding/entitlements/usage/children/subscriptions/partners), `/:id/recompute-usage`, `/:id/link-partners`
+- `/api/commercial/entitlements/account/:id` and `/entitlements/partner/:id` (resolves via `partners.commercialAccountId`)
+- `/api/commercial/dashboard` — KPI rollup
+- `/api/commercial/feature-keys` — exposes the canonical feature/limit key lists for client gating UI
+
+**Frontend (admin only)**
+- `/admin/commercial` — `CommercialDashboard`: KPI cards (accounts, trial, white-label, paused, near-limit), plan/status/type distribution bars, accounts table with badges.
+- `/admin/commercial/accounts/:id` — `CommercialAccountDetail`: editable commercial settings (separate from partner ops settings), plan card, usage bars with warning thresholds, feature entitlements grid (check/lock per feature), child accounts, linked partners. Accepts `id="new"` for creation flow.
+- `/admin/commercial/plans` — `CommercialPlans`: plan tier cards with limits and feature gating preview.
+- Nav: "Commercial" entry (Crown icon) in `AdminLayout`.
+
+**Role-safety** — All `/api/commercial/*` routes are admin-only (registered in the admin router; no partner/vendor exposure). Internal revenue ownership and monetization notes never leak to partner/vendor surfaces.
+
+**Demo scenarios seeded** — A3 Internal, Hilton White-Label (full), Move Miami Enterprise (multi-loc), BetaCo Trial, Acme Paused. Realistic plan/status/branding mix for sales conversations.
+
+### Recommended next phase
+**Plan-aware enforcement & soft-limit UX.** The architecture is in place but feature gating is currently informational only. Next pass should: (a) wire `checkFeature()` into a small set of high-value gates (analytics, automation, white-label settings page) so locked features render `FeatureGate` empty states instead of fully-rendered modules, (b) add soft-limit warnings on creation flows (events/partners/users) that read against `account_usage_limits`, (c) introduce a lightweight Stripe-ready billing connector for the subscription table so trial→active conversion and renewal reminders can fire automatically.

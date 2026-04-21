@@ -1,0 +1,225 @@
+import type { Request, Response } from "express";
+import { Router } from "express";
+import { z } from "zod";
+import {
+  db, commercialAccountsTable, commercialPlansTable, brandingPackagesTable,
+  accountSubscriptionsTable, accountUsageLimitsTable, partnersTable,
+} from "@workspace/db";
+import { eq } from "drizzle-orm";
+import {
+  FEATURE_KEYS, LIMIT_KEYS, DEFAULT_PLAN_PRESETS,
+  getEntitlements, recomputeUsage, getAccountWithDetail,
+  listAccountsWithRollup, getDashboardSummary, wouldCreateCycle,
+} from "../services/commercialization";
+
+const PriceAmount = z.union([
+  z.number(),
+  z.string().regex(/^-?\d+(\.\d+)?$/, "priceAmount must be a numeric string"),
+]).nullable().optional();
+
+const router = Router();
+
+// ===== Plans =====
+router.get("/commercial/plans", async (_req, res) => {
+  const rows = await db.select().from(commercialPlansTable).orderBy(commercialPlansTable.tier);
+  res.json(rows);
+});
+
+const PlanBody = z.object({
+  code: z.string().min(1),
+  name: z.string().min(1),
+  tier: z.string().default("starter"),
+  pricingModel: z.string().default("flat_monthly"),
+  priceAmount: PriceAmount,
+  currency: z.string().default("USD"),
+  includedLimitsJson: z.record(z.string(), z.number()).optional(),
+  featureFlagsJson: z.record(z.string(), z.boolean()).optional(),
+  description: z.string().nullable().optional(),
+  isActive: z.boolean().optional(),
+});
+
+router.post("/commercial/plans", async (req, res) => {
+  const parsed = PlanBody.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  const data: any = { ...parsed.data };
+  if (data.priceAmount != null) data.priceAmount = String(data.priceAmount);
+  const [row] = await db.insert(commercialPlansTable).values(data).returning();
+  res.status(201).json(row);
+});
+
+router.patch("/commercial/plans/:id", async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.status(400).json({ error: "bad id" });
+  const parsed = PlanBody.partial().safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  const data: any = { ...parsed.data };
+  if (data.priceAmount != null) data.priceAmount = String(data.priceAmount);
+  const [row] = await db.update(commercialPlansTable).set(data).where(eq(commercialPlansTable.id, id)).returning();
+  res.json(row);
+});
+
+router.post("/commercial/plans/seed-defaults", async (_req, res) => {
+  const created: any[] = [];
+  for (const [code, preset] of Object.entries(DEFAULT_PLAN_PRESETS)) {
+    const existing = await db.select().from(commercialPlansTable).where(eq(commercialPlansTable.code, code));
+    if (existing.length) continue;
+    const [row] = await db.insert(commercialPlansTable).values({
+      code, name: code.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()),
+      tier: code, pricingModel: code === "internal" ? "custom" : "flat_monthly",
+      priceAmount: code === "internal" ? null : code === "starter" ? "299" : code === "pro" ? "899" : code === "enterprise" ? "2499" : "3999",
+      includedLimitsJson: preset.limits as any, featureFlagsJson: preset.features as any,
+    }).returning();
+    created.push(row);
+  }
+  res.json({ created });
+});
+
+// ===== Branding packages =====
+router.get("/commercial/branding-packages", async (_req, res) => {
+  const rows = await db.select().from(brandingPackagesTable).orderBy(brandingPackagesTable.level);
+  res.json(rows);
+});
+
+const BrandingBody = z.object({
+  name: z.string().min(1),
+  level: z.string().default("basic"),
+  allowsCustomLogo: z.boolean().optional(),
+  allowsCustomColors: z.boolean().optional(),
+  allowsCustomDomain: z.boolean().optional(),
+  allowsCustomEmails: z.boolean().optional(),
+  allowsCustomInvoiceBranding: z.boolean().optional(),
+  hidesPoweredBy: z.boolean().optional(),
+  defaultBrandingJson: z.record(z.string(), z.any()).optional(),
+});
+
+router.post("/commercial/branding-packages", async (req, res) => {
+  const parsed = BrandingBody.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  const [row] = await db.insert(brandingPackagesTable).values(parsed.data).returning();
+  res.status(201).json(row);
+});
+
+router.patch("/commercial/branding-packages/:id", async (req, res) => {
+  const id = parseInt(req.params.id);
+  const parsed = BrandingBody.partial().safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  const [row] = await db.update(brandingPackagesTable).set(parsed.data).where(eq(brandingPackagesTable.id, id)).returning();
+  res.json(row);
+});
+
+// ===== Accounts =====
+router.get("/commercial/accounts", async (_req, res) => {
+  res.json(await listAccountsWithRollup());
+});
+
+router.get("/commercial/accounts/:id", async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.status(400).json({ error: "bad id" });
+  const detail = await getAccountWithDetail(id);
+  if (!detail) return res.status(404).json({ error: "not found" });
+  res.json(detail);
+});
+
+const AccountBody = z.object({
+  name: z.string().min(1),
+  slug: z.string().min(1),
+  accountType: z.string().default("managed"),
+  parentAccountId: z.number().nullable().optional(),
+  planId: z.number().nullable().optional(),
+  brandingPackageId: z.number().nullable().optional(),
+  whiteLabelLevel: z.string().default("none"),
+  brandingJson: z.record(z.string(), z.any()).optional(),
+  commercialStatus: z.string().default("trial"),
+  startDate: z.string().nullable().optional(),
+  renewalDate: z.string().nullable().optional(),
+  contractTerm: z.string().nullable().optional(),
+  seatAllowance: z.number().nullable().optional(),
+  portalInstanceAllowance: z.number().nullable().optional(),
+  billingEntityName: z.string().nullable().optional(),
+  billingContactName: z.string().nullable().optional(),
+  billingContactEmail: z.string().nullable().optional(),
+  accountManager: z.string().nullable().optional(),
+  internalRevenueOwner: z.string().nullable().optional(),
+  monetizationNotes: z.string().nullable().optional(),
+  isActive: z.boolean().optional(),
+});
+
+function coerceDates(d: any) {
+  for (const k of ["startDate", "renewalDate"] as const) {
+    if (d[k]) d[k] = new Date(d[k]);
+  }
+  return d;
+}
+
+router.post("/commercial/accounts", async (req, res) => {
+  const parsed = AccountBody.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  const [row] = await db.insert(commercialAccountsTable).values(coerceDates({ ...parsed.data })).returning();
+  await recomputeUsage(row.id).catch(() => {});
+  res.status(201).json(row);
+});
+
+router.patch("/commercial/accounts/:id", async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.status(400).json({ error: "bad id" });
+  const parsed = AccountBody.partial().safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  if (parsed.data.parentAccountId !== undefined && await wouldCreateCycle(id, parsed.data.parentAccountId ?? null)) {
+    return res.status(400).json({ error: "Parent assignment would create an account hierarchy cycle." });
+  }
+  const [row] = await db.update(commercialAccountsTable).set(coerceDates({ ...parsed.data })).where(eq(commercialAccountsTable.id, id)).returning();
+  await recomputeUsage(id).catch(() => {});
+  res.json(row);
+});
+
+router.delete("/commercial/accounts/:id", async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.status(400).json({ error: "bad id" });
+  await db.delete(commercialAccountsTable).where(eq(commercialAccountsTable.id, id));
+  res.status(204).end();
+});
+
+router.post("/commercial/accounts/:id/recompute-usage", async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.status(400).json({ error: "bad id" });
+  res.json(await recomputeUsage(id));
+});
+
+router.post("/commercial/accounts/:id/link-partners", async (req, res) => {
+  const id = parseInt(req.params.id);
+  const Body = z.object({ partnerIds: z.array(z.number()) });
+  const parsed = Body.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  for (const pid of parsed.data.partnerIds) {
+    await db.update(partnersTable).set({ commercialAccountId: id }).where(eq(partnersTable.id, pid));
+  }
+  await recomputeUsage(id).catch(() => {});
+  res.json({ ok: true, linked: parsed.data.partnerIds.length });
+});
+
+// ===== Entitlements =====
+router.get("/commercial/entitlements/account/:id", async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.status(400).json({ error: "bad id" });
+  res.json({ entitlements: await getEntitlements(id), featureKeys: FEATURE_KEYS });
+});
+
+router.get("/commercial/entitlements/partner/:id", async (req, res) => {
+  const pid = parseInt(req.params.id);
+  if (isNaN(pid)) return res.status(400).json({ error: "bad id" });
+  const [p] = await db.select().from(partnersTable).where(eq(partnersTable.id, pid));
+  if (!p) return res.status(404).json({ error: "not found" });
+  if (!p.commercialAccountId) return res.json({ entitlements: Object.fromEntries(FEATURE_KEYS.map(k => [k, true])), reason: "no_account_full_access" });
+  res.json({ entitlements: await getEntitlements(p.commercialAccountId), accountId: p.commercialAccountId });
+});
+
+// ===== Dashboard =====
+router.get("/commercial/dashboard", async (_req, res) => {
+  res.json(await getDashboardSummary());
+});
+
+router.get("/commercial/feature-keys", (_req, res) => {
+  res.json({ features: FEATURE_KEYS, limits: LIMIT_KEYS });
+});
+
+export default router;
