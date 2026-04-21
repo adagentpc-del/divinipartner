@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus, Pencil, Trash2, Package, Search, FileText, CheckCircle2, AlertCircle, Star, Upload, Download, X } from "lucide-react";
 import { DimensionInput } from "@/components/units/DimensionInput";
+import { ArtworkSpecInput } from "@/components/units/ArtworkSpecInput";
 import type { LengthUnit } from "@/lib/units";
 
 interface Product {
@@ -32,6 +33,13 @@ interface Product {
   sizeDepth: number | null;
   sizeDiameter: number | null;
   sizeUnit: string | null;
+  artworkUnit: string | null;
+  artworkWidth: number | null;
+  artworkHeight: number | null;
+  bleed: number | null;
+  safeArea: number | null;
+  visibleWidth: number | null;
+  visibleHeight: number | null;
   backendProductionNotes: string | null;
   installNotes: string | null;
   internalOpsSummary: string | null;
@@ -261,6 +269,28 @@ export default function ProductCatalog() {
                     sizeDepth: v.depth ?? null,
                     sizeDiameter: v.diameter ?? null,
                     sizeUnit: v.unit,
+                  }))}
+                />
+                <ArtworkSpecInput
+                  label="Artwork specs (bleed, safe area, visible)"
+                  value={{
+                    artworkWidth: editing.artworkWidth ?? null,
+                    artworkHeight: editing.artworkHeight ?? null,
+                    bleed: editing.bleed ?? null,
+                    safeArea: editing.safeArea ?? null,
+                    visibleWidth: editing.visibleWidth ?? null,
+                    visibleHeight: editing.visibleHeight ?? null,
+                    artworkUnit: ((editing.artworkUnit as LengthUnit) || (editing.sizeUnit as LengthUnit) || "in"),
+                  }}
+                  onChange={(v) => setEditing(p => ({
+                    ...p!,
+                    artworkWidth: v.artworkWidth,
+                    artworkHeight: v.artworkHeight,
+                    bleed: v.bleed,
+                    safeArea: v.safeArea,
+                    visibleWidth: v.visibleWidth,
+                    visibleHeight: v.visibleHeight,
+                    artworkUnit: v.artworkUnit,
                   }))}
                 />
               </TabsContent>

@@ -20,6 +20,13 @@ const ProductBody = z.object({
   sizeDepth: z.number().nullable().optional(),
   sizeDiameter: z.number().nullable().optional(),
   sizeUnit: z.string().nullable().optional(),
+  artworkUnit: z.string().nullable().optional(),
+  artworkWidth: z.number().nullable().optional(),
+  artworkHeight: z.number().nullable().optional(),
+  bleed: z.number().nullable().optional(),
+  safeArea: z.number().nullable().optional(),
+  visibleWidth: z.number().nullable().optional(),
+  visibleHeight: z.number().nullable().optional(),
   backendProductionNotes: z.string().nullable().optional(),
   installNotes: z.string().nullable().optional(),
   internalOpsSummary: z.string().nullable().optional(),
@@ -78,7 +85,9 @@ router.patch("/products/:id", async (req, res): Promise<void> => {
   const parsed = UpdateProductBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
 
-  const [product] = await db.update(productCatalogTable).set(withMmColumns(parsed.data)).where(eq(productCatalogTable.id, id)).returning();
+  const [existing] = await db.select().from(productCatalogTable).where(eq(productCatalogTable.id, id));
+  if (!existing) { res.status(404).json({ error: "Product not found" }); return; }
+  const [product] = await db.update(productCatalogTable).set(withMmColumns(parsed.data, { sizeUnit: existing.sizeUnit, artworkUnit: (existing as any).artworkUnit })).where(eq(productCatalogTable.id, id)).returning();
   if (!product) { res.status(404).json({ error: "Product not found" }); return; }
   res.json(product);
 });

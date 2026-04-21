@@ -13,6 +13,8 @@ import {
   venuesTable,
   resolvePreference,
   formatWxH,
+  formatWxHDual,
+  formatPrimarySecondary,
   type UnitSystem,
 } from "@workspace/db";
 import { fire } from "../services/workflowEngine";
@@ -214,12 +216,29 @@ router.get("/orders/:orderId/supplier-packet/:supplierId", async (req, res) => {
     const dimDisplay = prod && (prod.sizeWidth || prod.sizeHeight)
       ? formatWxH(prod.sizeWidth, prod.sizeHeight, prod.sizeUnit, preferredSystem)
       : null;
+    // Build a structured spec block: each dim is rendered as primary (in its
+    // native unit) plus an optional secondary in the resolved preferred system.
+    const aUnit = prod?.artworkUnit || prod?.sizeUnit || null;
+    const finished = prod && (prod.sizeWidth || prod.sizeHeight)
+      ? formatWxHDual(prod.sizeWidth, prod.sizeHeight, prod.sizeUnit, preferredSystem) : null;
+    const artwork = prod && (prod.artworkWidth || prod.artworkHeight)
+      ? formatWxHDual(prod.artworkWidth, prod.artworkHeight, aUnit, preferredSystem) : null;
+    const visible = prod && (prod.visibleWidth || prod.visibleHeight)
+      ? formatWxHDual(prod.visibleWidth, prod.visibleHeight, aUnit, preferredSystem) : null;
+    const bleed = prod && prod.bleed != null
+      ? formatPrimarySecondary(prod.bleed, aUnit, preferredSystem) : null;
+    const safeArea = prod && prod.safeArea != null
+      ? formatPrimarySecondary(prod.safeArea, aUnit, preferredSystem) : null;
+    const specs = (finished || artwork || visible || bleed || safeArea) ? {
+      finished, artwork, visible, bleed, safeArea,
+    } : null;
     return {
       itemId: it.id,
       name: it.name,
       productId: it.productId,
       productName: prod?.name || null,
       dimensionDisplay: dimDisplay,
+      specs,
       quantity: it.quantity,
       fulfillmentMode: it.fulfillmentMode,
       supplierStatus: it.supplierStatus,
@@ -244,7 +263,13 @@ router.get("/orders/:orderId/supplier-packet/:supplierId", async (req, res) => {
     event: event ? { id: event.id, name: event.name, startDate: event.startDate, endDate: event.endDate, venueId: event.venueId } : null,
     supplier: { id: supplier.id, name: supplier.name },
     items: packetItems,
-    measurementContext: { system: preferredSystem, source: resolved.source, reason: resolved.reason },
+    measurementContext: {
+      system: preferredSystem,
+      primarySystem: preferredSystem,
+      secondarySystem: preferredSystem === "metric" ? "imperial" : "metric",
+      source: resolved.source,
+      reason: resolved.reason,
+    },
     orderLevelAssets,
     summary: {
       totalItems: packetItems.length,

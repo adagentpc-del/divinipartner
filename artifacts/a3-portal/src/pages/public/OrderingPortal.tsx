@@ -9,7 +9,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ChevronRight, ChevronLeft, Calendar, MapPin, Package, Plus, Minus, Check, Upload, ShoppingCart, Sparkles, X } from "lucide-react";
+import { Loader2, ChevronRight, ChevronLeft, Calendar, MapPin, Package, Plus, Minus, Check, Upload, ShoppingCart, Sparkles, X, Ruler } from "lucide-react";
+import { formatWxHDual, formatPrimarySecondary, type UnitSystem } from "@/lib/units";
 
 type City = { id: number; name: string; state: string | null };
 type Venue = { id: number; cityId: number | null; name: string; venueAddress: string | null; shippingAddress: string | null };
@@ -239,6 +240,13 @@ export default function OrderingPortal({ slug }: { slug: string }) {
           {step === 3 && (
             <div className="space-y-4">
               <h2 className="text-xl font-bold">Upload artwork</h2>
+              <ArtworkGuidancePanel
+                partnerId={data.partner?.id}
+                productIds={[
+                  ...(selectedPkg?.items || []).map((i: any) => i.productId).filter(Boolean),
+                  ...cart.map(c => c.productId).filter(Boolean),
+                ]}
+              />
               <p className="text-sm text-muted-foreground">Paste a link to your artwork (Drive, Dropbox, Figma, etc.). You can also send files later by replying to your order confirmation.</p>
               <div className="flex gap-2">
                 <Input placeholder="https://drive.google.com/..." value={artworkUrlInput} onChange={e => setArtworkUrlInput(e.target.value)} />
@@ -378,5 +386,52 @@ export default function OrderingPortal({ slug }: { slug: string }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function ArtworkGuidancePanel({ partnerId, productIds }: { partnerId?: number; productIds: number[] }) {
+  const ids = Array.from(new Set(productIds.filter(Boolean)));
+  const { data: products = [] } = useQuery<any[]>({
+    queryKey: ["/api/products", "for-guidance"],
+    queryFn: () => apiFetch("/api/products"),
+    enabled: ids.length > 0,
+  });
+  const { data: pref } = useQuery<{ system: UnitSystem }>({
+    queryKey: ["/api/units/resolve", "partner", partnerId],
+    queryFn: () => apiFetch(`/api/units/resolve?partnerId=${partnerId}`),
+    enabled: !!partnerId,
+  });
+  const preferredSystem: UnitSystem | undefined = pref?.system;
+
+  const relevant = (products || []).filter((p: any) => ids.includes(p.id) &&
+    (p.artworkWidth || p.artworkHeight || p.bleed != null || p.safeArea != null || p.sizeWidth || p.sizeHeight));
+  if (!relevant.length) return null;
+
+  return (
+    <Card className="p-3 bg-blue-50 border-blue-200">
+      <div className="flex items-center gap-2 text-sm font-semibold text-blue-900 mb-2">
+        <Ruler className="h-4 w-4" />File guidance{preferredSystem ? ` (${preferredSystem})` : ""}
+      </div>
+      <div className="space-y-2">
+        {relevant.map((p: any) => {
+          const aUnit = p.artworkUnit || p.sizeUnit;
+          const finished = formatWxHDual(p.sizeWidth, p.sizeHeight, p.sizeUnit, preferredSystem);
+          const artwork  = formatWxHDual(p.artworkWidth, p.artworkHeight, aUnit, preferredSystem);
+          const bleed    = formatPrimarySecondary(p.bleed, aUnit, preferredSystem);
+          const safe     = formatPrimarySecondary(p.safeArea, aUnit, preferredSystem);
+          return (
+            <div key={p.id} className="text-xs text-blue-900/90">
+              <div className="font-medium">{p.displayName || p.name}</div>
+              <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+                {finished.primary && <span>Finished: <span className="font-medium">{finished.primary}</span>{finished.secondary && <span className="opacity-70"> (≈ {finished.secondary})</span>}</span>}
+                {artwork.primary  && <span>Artwork: <span className="font-medium">{artwork.primary}</span>{artwork.secondary && <span className="opacity-70"> (≈ {artwork.secondary})</span>}</span>}
+                {bleed.primary    && <span>Bleed: <span className="font-medium">{bleed.primary}</span>{bleed.secondary && <span className="opacity-70"> (≈ {bleed.secondary})</span>}</span>}
+                {safe.primary     && <span>Safe: <span className="font-medium">{safe.primary}</span>{safe.secondary && <span className="opacity-70"> (≈ {safe.secondary})</span>}</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
   );
 }

@@ -857,9 +857,31 @@ Implemented in `lib/db/src/units.ts → resolvePreference()` and exposed at `GET
 
 ### Seed
 - London city (`country=GB`), `ExCeL London` venue (`country=GB`, `unit_preference=metric`), `London Activation 2026` event (`unit_preference=metric`), and a `London Stage Backdrop (2 m × 1 m)` branding location were inserted directly under partner `move-miami` for demo/QA of the metric path.
-- A metric product `Metric Pop-Up Banner 200cm` (200 × 100 cm, normalized to 2000 × 1000 mm) was added to `product_catalog`.
+- A metric product `Metric Pop-Up Banner 200cm` (200 × 100 cm, normalized to 2000 × 1000 mm) was added to `product_catalog`. It also carries seeded artwork specs: artwork 200 × 100 cm, bleed 5 mm, safe area 10 mm, visible area 195 × 95 cm.
 - A sample custom request (`Globex EU` / `London Activation 2026`) with one `request_items` row sized `2 m × 1 m (metric)` demonstrates the overseas custom-fabrication path.
 - All seeded via direct SQL — not part of `scripts/src/seed.ts`; persists in the live DB.
+
+### Artwork-spec storage (April 2026 extension)
+Per-product/branding-zone print artwork specifications are stored alongside (not replacing) finished install size:
+- `product_catalog` and `partner_branding_locations` carry: `artwork_unit`, `artwork_width`/`artwork_height` (+ `_mm`), `bleed` (+ `_mm`), `safe_area` (+ `_mm`), `visible_width`/`visible_height` (+ `_mm`).
+- `withMmColumns()` was extended with an `ARTWORK_DIMS` group and an `applyMmGroup` helper that keys artwork conversions off `artwork_unit` (falling back to `size_unit` if not provided). `bleed` and `safe_area` are scalars, not w×h.
+- `formatPrimarySecondary(value, unit, system)` and `formatWxHDual(w, h, unit, system)` return `{ primary, secondary }` so any UI can render the value in the originally-entered unit AND a converted secondary in the resolved system when they differ.
+
+### How supplier packets choose displayed units
+The supplier-packet route (`/api/orders/:orderId/supplier-packet/:supplierId`) runs the same cascade and now emits a per-line `specs` block in addition to the legacy `dimensionDisplay`:
+```
+specs: { finished, artwork, visible, bleed, safeArea }   // each = { primary, secondary?, converted? }
+```
+`measurementContext.primarySystem` reflects the resolved system. The packet UI renders primary (entered unit) bold and a small "(≈ secondary)" hint in muted text — never silently converting away the original.
+
+### Where original-vs-converted is shown
+- **Supplier packet card** (`SupplierPacket.tsx`) — finished + artwork + visible + bleed + safe inline strip, primary unit big, converted in parentheses.
+- **Order line item** (`OrderDetail.tsx → ItemSpecsLine`) — same dual rendering, fed by `/api/products` + `/api/units/resolve?partnerId=…`.
+- **Public ordering portal step 3** (`OrderingPortal.tsx → ArtworkGuidancePanel`) — when uploading artwork, the partner sees the file specs in their preferred system, with secondary as fallback for clarity.
+- **Product Catalog editor** (`ArtworkSpecInput.tsx`) — admin entry form with the same unit selector as `DimensionInput`.
+
+### Metric-first overseas event flow
+For the seeded London event: cascade resolves to `metric` via the event's own preference. The Pop-Up Banner 200cm appears on supplier packets and the portal as `Artwork: 200 × 100 cm` with `Bleed: 5 mm` / `Safe: 10 mm`, and converted-imperial only as a parenthetical aid. No imperial defaults sneak in for overseas suppliers.
 
 ---
 

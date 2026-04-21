@@ -1,0 +1,98 @@
+Refine the existing Partner Commerce Portal by extending the new international measurement support into artwork templates, production specs, and supplier packet output.
+
+Goal:
+Now that the platform supports imperial and metric preferences, make sure metric measurements flow cleanly into artwork requirements, proofing, internal ops, and vendor-facing production packets, especially for overseas events.
+
+Scope:
+Keep this pass narrowly focused on measurement-aware asset/spec output and production clarity.
+
+Requirements:
+
+1. Artwork and template measurement support
+- extend artwork/spec requirements so they support metric and imperial display
+- support width, height, bleed, safe area, and visible area in the chosen unit system
+- for print/detail contexts, support:
+  - millimeters
+  - centimeters
+  - inches
+- for larger display/event contexts, support:
+  - meters
+  - feet
+- preserve original source values and units where available
+
+2. Product and zone spec display
+- when a product, branding zone, or quote/spec reference has dimensions, show them in the event or partner preferred unit
+- internally, allow showing:
+  - original source measurement
+  - converted display measurement
+- clearly label when a value is converted
+- avoid rounding in ways that create production confusion
+
+3. Supplier packet output
+- update supplier packets so dimensions render in the most relevant unit for that supplier/event context
+- if the event is metric-first, keep metric primary throughout the packet
+- if helpful internally, show imperial as a secondary value in smaller text
+- ensure dimensions in supplier packets are easy to scan and unambiguous
+
+4. Order and line item spec panels
+- on order detail and line-item detail pages, show dimension/spec summaries using the selected measurement system
+- include:
+  - finished size
+  - artwork size
+  - bleed
+  - safe zone
+  - install dimensions where relevant
+- if a line item is custom-sized, support custom metric values such as 2 meters
+
+5. Artwork upload guidance
+- when users upload artwork, show file guidance in the preferred unit system
+- examples:
+  - Width: 2 m
+  - Height: 1.2 m
+  - Bleed: 5 mm
+- keep upload guidance simple and clean
+- ensure overseas clients are not forced into imperial wording
+
+6. Proof and approval workflow impact
+- proof views and approval summaries should display measurements in the preferred unit
+- if internal ops needs both, show primary metric with secondary imperial conversion or vice versa depending on event context
+- keep client-facing approval screens polished and easy to understand
+
+7. Quote/spec reference enrichment
+- extend quote/spec records so they can store:
+  - original dimension value
+  - original dimension unit
+  - normalized base value
+  - preferred display value
+  - preferred display unit
+- support dimensions for:
+  - finished size
+  - graphic area
+  - visible area
+  - attachment spacing where useful
+  - installation footprint where useful
+
+8. Production clarity safeguards
+- add clear labels to reduce measurement mistakes
+- if original and converted values are both shown internally, distinguish them visually
+- avoid mixing units in a confusing way on the same supplier packet or line item
+- if a custom request is entered in meters, preserve that fact clearly throughout downstream views
+
+9. Seed/demo updates
+- add at least one overseas metric-first event with:
+  - a product using artwork dimensions in meters/centimeters
+  - a supplier packet showing metric-first output
+  - a proof or order summary using metric display
+- add one example where both original and converted dimensions are shown internally
+
+10. Documentation
+- update replit.md with:
+  - how measurement preferences affect artwork guidance
+  - how supplier packets choose displayed units
+  - how original vs converted spec values are stored
+  - how metric-first overseas events are handled in downstream production views
+
+Important:
+Do not rebuild unrelated workflows.
+Work from the current codebase and extend the new measurement system into asset guidance, specs, proofs, line-item detail, and supplier packet output.
+Actually implement the measurement-aware production logic and UI, not placeholders only.

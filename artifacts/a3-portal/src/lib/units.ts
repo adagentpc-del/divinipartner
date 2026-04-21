@@ -97,3 +97,45 @@ export function formatWxH(
 export function defaultEntryUnit(system: UnitSystem): LengthUnit {
   return system === "metric" ? "cm" : "in";
 }
+
+export function formatPrimarySecondary(
+  value: number | null | undefined,
+  unit: LengthUnit | string | null | undefined,
+  preferredSystem?: UnitSystem,
+): { primary: string; secondary: string | null; converted: boolean } {
+  if (value == null || isNaN(Number(value)) || !unit) return { primary: "", secondary: null, converted: false };
+  const u = normalizeUnit(unit as string);
+  if (!u) return { primary: `${value} ${unit}`, secondary: null, converted: false };
+  const v = roundForUnit(Number(value), u);
+  const primary = `${v} ${UNIT_SHORT[u]}`;
+  if (!preferredSystem || unitSystemOf(u) === preferredSystem) {
+    return { primary, secondary: null, converted: false };
+  }
+  const mm = Number(value) * TO_MM[u];
+  const target = pickDisplayUnit(mm, preferredSystem);
+  const cv = roundForUnit(mm / TO_MM[target], target);
+  return { primary, secondary: `${cv} ${UNIT_SHORT[target]}`, converted: true };
+}
+
+export function formatWxHDual(
+  width: number | null | undefined,
+  height: number | null | undefined,
+  sourceUnit: LengthUnit | string | null | undefined,
+  preferredSystem?: UnitSystem,
+): { primary: string; secondary: string | null; converted: boolean } {
+  if (width == null && height == null) return { primary: "", secondary: null, converted: false };
+  const u = normalizeUnit(sourceUnit as string);
+  if (!u) return { primary: "", secondary: null, converted: false };
+  const w = width != null ? roundForUnit(Number(width), u) : null;
+  const h = height != null ? roundForUnit(Number(height), u) : null;
+  const primary = `${w ?? "?"} × ${h ?? "?"} ${UNIT_SHORT[u]}`;
+  if (!preferredSystem || unitSystemOf(u) === preferredSystem) {
+    return { primary, secondary: null, converted: false };
+  }
+  const baseMmW = width != null ? Number(width) * TO_MM[u] : null;
+  const baseMmH = height != null ? Number(height) * TO_MM[u] : null;
+  const target = pickDisplayUnit(Math.max(baseMmW ?? 0, baseMmH ?? 0), preferredSystem);
+  const cw = baseMmW != null ? roundForUnit(baseMmW / TO_MM[target], target) : null;
+  const ch = baseMmH != null ? roundForUnit(baseMmH / TO_MM[target], target) : null;
+  return { primary, secondary: `${cw ?? "?"} × ${ch ?? "?"} ${UNIT_SHORT[target]}`, converted: true };
+}

@@ -189,55 +189,127 @@ export function defaultEntryUnit(system: UnitSystem): LengthUnit {
  * Returns a shallow merge of the input plus computed *_mm fields. Pass-through
  * if no `sizeUnit` is set (we have no way to convert).
  */
-export function withMmColumns<T extends {
-  sizeUnit?: string | null;
-  sizeWidth?: number | null;
-  sizeHeight?: number | null;
-  sizeDepth?: number | null;
-  sizeDiameter?: number | null;
-}>(
-  input: T,
-  /** Optional persisted unit fallback: pass the row's existing sizeUnit when
-   *  performing a PATCH that updates dimensions but omits the unit. */
-  existingUnit?: string | null,
-): T & {
-  sizeWidthMm?: number | null;
-  sizeHeightMm?: number | null;
-  sizeDepthMm?: number | null;
-  sizeDiameterMm?: number | null;
-} {
-  const out: any = { ...input };
-  const dimKeys: Array<["sizeWidth"|"sizeHeight"|"sizeDepth"|"sizeDiameter", "sizeWidthMm"|"sizeHeightMm"|"sizeDepthMm"|"sizeDiameterMm"]> = [
-    ["sizeWidth", "sizeWidthMm"],
-    ["sizeHeight", "sizeHeightMm"],
-    ["sizeDepth", "sizeDepthMm"],
-    ["sizeDiameter", "sizeDiameterMm"],
-  ];
-  const unitInPayload = "sizeUnit" in input;
-  const unitRaw = unitInPayload ? input.sizeUnit : existingUnit;
+type DimMap = Array<[string, string]>;
+
+const SIZE_DIMS: DimMap = [
+  ["sizeWidth", "sizeWidthMm"],
+  ["sizeHeight", "sizeHeightMm"],
+  ["sizeDepth", "sizeDepthMm"],
+  ["sizeDiameter", "sizeDiameterMm"],
+];
+
+const ARTWORK_DIMS: DimMap = [
+  ["artworkWidth", "artworkWidthMm"],
+  ["artworkHeight", "artworkHeightMm"],
+  ["bleed", "bleedMm"],
+  ["safeArea", "safeAreaMm"],
+  ["visibleWidth", "visibleWidthMm"],
+  ["visibleHeight", "visibleHeightMm"],
+];
+
+function applyMmGroup(
+  input: Record<string, any>,
+  out: Record<string, any>,
+  unitKey: string,
+  existingUnit: string | null | undefined,
+  dimKeys: DimMap,
+  fallbackUnit?: string | null,
+) {
+  const unitInPayload = unitKey in input;
+  const unitRaw = unitInPayload ? input[unitKey] : (existingUnit ?? fallbackUnit);
   const u = normalizeUnit(unitRaw ?? null);
 
-  // Case 1: sizeUnit explicitly cleared/invalid in payload -> null all mm columns
-  // (stale normalized data must not survive a unit reset).
+  // Case 1: unit explicitly cleared/invalid in payload -> null all mm columns
   if (unitInPayload && !u) {
     for (const [, mmKey] of dimKeys) out[mmKey] = null;
-    return out;
+    return;
   }
-
   // Case 2: no usable unit anywhere -> for any dim field present, null its mm
-  // companion to avoid stale values; leave untouched fields alone.
   if (!u) {
     for (const [dimKey, mmKey] of dimKeys) {
       if (dimKey in input) out[mmKey] = null;
     }
-    return out;
+    return;
   }
-
-  // Case 3: we have a unit -> recompute mm for every dim field present in payload.
-  const toMm = (v: number | null | undefined) =>
+  // Case 3: we have a unit -> recompute mm for every dim field present in payload
+  const toMm = (v: any) =>
     v == null || isNaN(Number(v)) ? null : Number(v) * TO_MM[u];
   for (const [dimKey, mmKey] of dimKeys) {
-    if (dimKey in input) out[mmKey] = toMm((input as any)[dimKey]);
+    if (dimKey in input) out[mmKey] = toMm(input[dimKey]);
   }
+}
+
+/**
+ * Compute normalized base-unit (mm) columns for both finished-size and artwork
+ * spec fields on any payload. Use at insert/update time so downstream queries
+ * can sort/filter/compare across mixed unit entries.
+ *
+ * - Finished size fields (sizeWidth/Height/Depth/Diameter) use `sizeUnit`.
+ * - Artwork-spec fields (artworkWidth/Height, bleed, safeArea, visibleWidth/
+ *   Height) use `artworkUnit`, falling back to `sizeUnit` when absent.
+ *
+ * Pass the persisted unit(s) via `existing` for PATCH calls that update only
+ * a numeric field without re-sending the unit.
+ */
+export function withMmColumns<T extends Record<string, any>>(
+  input: T,
+  existing?: { sizeUnit?: string | null; artworkUnit?: string | null } | string | null,
+): T & Record<string, any> {
+  const existingSize = typeof existing === "string" || existing == null
+    ? existing as (string | null | undefined)
+    : existing.sizeUnit;
+  const existingArtwork = typeof existing === "object" && existing != null ? existing.artworkUnit : null;
+
+  const out: any = { ...input };
+  applyMmGroup(input as any, out, "sizeUnit", existingSize, SIZE_DIMS);
+  // Artwork unit falls back to whatever size unit is in scope (payload or existing).
+  const sizeFallback = ("sizeUnit" in (input as any)) ? (input as any).sizeUnit : (existingSize ?? null);
+  applyMmGroup(input as any, out, "artworkUnit", existingArtwork, ARTWORK_DIMS, sizeFallback);
   return out;
+}
+
+/** Render a single value in its native unit + (when system differs) a
+ *  converted secondary in the preferred system. Returns structured pieces so
+ *  the UI can style the secondary differently. */
+export function formatPrimarySecondary(
+  value: number | null | undefined,
+  unit: LengthUnit | string | null | undefined,
+  preferredSystem?: UnitSystem,
+): { primary: string; secondary: string | null; converted: boolean } {
+  if (value == null || isNaN(Number(value)) || !unit) return { primary: "", secondary: null, converted: false };
+  const u = normalizeUnit(unit as string);
+  if (!u) return { primary: `${value} ${unit}`, secondary: null, converted: false };
+  const v = roundForUnit(Number(value), u);
+  const primary = `${v} ${UNIT_SHORT[u]}`;
+  if (!preferredSystem || unitSystemOf(u) === preferredSystem) {
+    return { primary, secondary: null, converted: false };
+  }
+  const mm = Number(value) * TO_MM[u];
+  const target = pickDisplayUnit(mm, preferredSystem);
+  const cv = roundForUnit(mm / TO_MM[target], target);
+  return { primary, secondary: `${cv} ${UNIT_SHORT[target]}`, converted: true };
+}
+
+/** Same idea as formatWxH but returns `{ primary, secondary }` for richer UI. */
+export function formatWxHDual(
+  width: number | null | undefined,
+  height: number | null | undefined,
+  sourceUnit: LengthUnit | string | null | undefined,
+  preferredSystem?: UnitSystem,
+): { primary: string; secondary: string | null; converted: boolean } {
+  if (width == null && height == null) return { primary: "", secondary: null, converted: false };
+  const u = normalizeUnit(sourceUnit as string);
+  if (!u) return { primary: "", secondary: null, converted: false };
+  const w = width != null ? roundForUnit(Number(width), u) : null;
+  const h = height != null ? roundForUnit(Number(height), u) : null;
+  const primary = `${w ?? "?"} × ${h ?? "?"} ${UNIT_SHORT[u]}`;
+  if (!preferredSystem || unitSystemOf(u) === preferredSystem) {
+    return { primary, secondary: null, converted: false };
+  }
+  const baseMmW = width != null ? Number(width) * TO_MM[u] : null;
+  const baseMmH = height != null ? Number(height) * TO_MM[u] : null;
+  const target = pickDisplayUnit(Math.max(baseMmW ?? 0, baseMmH ?? 0), preferredSystem);
+  const cw = baseMmW != null ? roundForUnit(baseMmW / TO_MM[target], target) : null;
+  const ch = baseMmH != null ? roundForUnit(baseMmH / TO_MM[target], target) : null;
+  return { primary, secondary: `${cw ?? "?"} × ${ch ?? "?"} ${UNIT_SHORT[target]}`, converted: true };
 }

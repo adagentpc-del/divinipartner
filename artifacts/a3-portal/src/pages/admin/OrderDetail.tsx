@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, ChevronLeft, Save, Printer, ShoppingCart, MapPin, Calendar, Truck, User, Building2, FileText, Image as ImageIcon, AlertTriangle, Package, Boxes, Printer as PrintIcon, FolderOpen } from "lucide-react";
 import OrderAssetsPanel from "@/components/admin/OrderAssetsPanel";
 import TaskPanel from "@/components/admin/TaskPanel";
+import { formatWxHDual, formatPrimarySecondary, type UnitSystem } from "@/lib/units";
 
 type OrderItem = {
   id: number; itemType: string; productId: number | null; productName?: string | null; productImageUrl?: string | null;
@@ -206,6 +207,7 @@ export default function OrderDetail() {
                         {it.artworkFileUrl && <Badge variant="secondary" className="text-[10px]">artwork</Badge>}
                       </div>
 
+                      {it.productId && <ItemSpecsLine productId={it.productId} partnerId={order.partnerId} />}
                       {it.productId && <ProductSpecRefs productId={it.productId} />}
 
                       <ItemSupplierControls item={it} orderId={id} suppliers={suppliers} />
@@ -502,6 +504,33 @@ function ItemSupplierControls({ item, orderId, suppliers }: { item: OrderItem; o
         </Button>
       </div>
       {item.exceptionFlag && item.exceptionReason && <div className="text-xs text-red-700">⚠ {item.exceptionReason}</div>}
+    </div>
+  );
+}
+
+function ItemSpecsLine({ productId, partnerId }: { productId: number; partnerId: number }) {
+  const { data: products = [] } = useQuery<any[]>({ queryKey: ["/api/products"], queryFn: () => apiFetch("/api/products") });
+  const { data: pref } = useQuery<{ system: UnitSystem }>({ queryKey: ["/api/units/resolve", "partner", partnerId], queryFn: () => apiFetch(`/api/units/resolve?partnerId=${partnerId}`) });
+  const p = products.find((x: any) => x.id === productId);
+  if (!p) return null;
+  const sys = pref?.system;
+  const aUnit = p.artworkUnit || p.sizeUnit;
+  const finished = formatWxHDual(p.sizeWidth, p.sizeHeight, p.sizeUnit, sys);
+  const artwork  = formatWxHDual(p.artworkWidth, p.artworkHeight, aUnit, sys);
+  const bleed    = formatPrimarySecondary(p.bleed, aUnit, sys);
+  const safe     = formatPrimarySecondary(p.safeArea, aUnit, sys);
+  const visible  = formatWxHDual(p.visibleWidth, p.visibleHeight, aUnit, sys);
+  if (!finished.primary && !artwork.primary && !bleed.primary && !safe.primary && !visible.primary) return null;
+  const Bit = ({ label, v }: { label: string; v: { primary: string; secondary?: string } }) => (
+    v.primary ? <span className="mr-3"><span className="text-muted-foreground">{label}:</span> <span className="font-medium">{v.primary}</span>{v.secondary && <span className="text-muted-foreground/80"> (≈ {v.secondary})</span>}</span> : null
+  );
+  return (
+    <div className="text-[11px] mt-1 flex flex-wrap">
+      <Bit label="Finished" v={finished} />
+      <Bit label="Artwork"  v={artwork} />
+      <Bit label="Visible"  v={visible} />
+      <Bit label="Bleed"    v={bleed} />
+      <Bit label="Safe"     v={safe} />
     </div>
   );
 }

@@ -15,6 +15,13 @@ const LocationBody = z.object({
   sizeDepth: z.number().optional(),
   sizeDiameter: z.number().optional(),
   sizeUnit: z.string().optional(),
+  artworkUnit: z.string().nullable().optional(),
+  artworkWidth: z.number().nullable().optional(),
+  artworkHeight: z.number().nullable().optional(),
+  bleed: z.number().nullable().optional(),
+  safeArea: z.number().nullable().optional(),
+  visibleWidth: z.number().nullable().optional(),
+  visibleHeight: z.number().nullable().optional(),
   sourcePageNumber: z.number().optional(),
   sourceFileUrl: z.string().optional(),
   previewImageUrl: z.string().optional(),
@@ -74,8 +81,12 @@ router.patch("/partners/:id/branding-locations/:locationId", async (req, res): P
   const parsed = UpdateLocationBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
 
+  const [existing] = await db.select().from(partnerBrandingLocationsTable)
+    .where(and(eq(partnerBrandingLocationsTable.id, locationId), eq(partnerBrandingLocationsTable.partnerId, partnerId)));
+  if (!existing) { res.status(404).json({ error: "Location not found" }); return; }
+
   const [location] = await db.update(partnerBrandingLocationsTable)
-    .set(withMmColumns(parsed.data))
+    .set(withMmColumns(parsed.data, { sizeUnit: existing.sizeUnit, artworkUnit: (existing as any).artworkUnit }))
     .where(and(eq(partnerBrandingLocationsTable.id, locationId), eq(partnerBrandingLocationsTable.partnerId, partnerId)))
     .returning();
 
@@ -107,8 +118,11 @@ router.post("/partners/:id/branding-locations/bulk-update", async (req, res): Pr
 
   const results = [];
   for (const id of parsed.data.ids) {
+    const [existing] = await db.select().from(partnerBrandingLocationsTable)
+      .where(and(eq(partnerBrandingLocationsTable.id, id), eq(partnerBrandingLocationsTable.partnerId, partnerId)));
+    if (!existing) continue;
     const [updated] = await db.update(partnerBrandingLocationsTable)
-      .set(withMmColumns(parsed.data.update))
+      .set(withMmColumns(parsed.data.update, { sizeUnit: existing.sizeUnit, artworkUnit: (existing as any).artworkUnit }))
       .where(and(eq(partnerBrandingLocationsTable.id, id), eq(partnerBrandingLocationsTable.partnerId, partnerId)))
       .returning();
     if (updated) results.push(updated);
