@@ -50,6 +50,7 @@ const PartnerBody = z.object({
   billingContactPhone: z.string().optional().nullable(),
   internalBillingOwnerUserId: z.string().optional().nullable(),
   billingActive: z.boolean().optional(),
+  unitPreference: z.enum(["imperial", "metric"]).nullable().optional(),
 });
 
 const UpdatePartnerBodySchema = PartnerBody.partial();

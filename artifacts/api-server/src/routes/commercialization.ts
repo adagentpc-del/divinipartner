@@ -146,6 +146,7 @@ const AccountBody = z.object({
   salesNotes: z.string().nullable().optional(),
   lastDemoAt: z.string().nullable().optional(),
   isActive: z.boolean().optional(),
+  unitPreference: z.enum(["imperial", "metric"]).nullable().optional(),
 });
 
 function coerceDates(d: any) {

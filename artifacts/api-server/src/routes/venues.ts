@@ -18,6 +18,8 @@ const VenueBody = z.object({
   imageUrl: z.string().nullable().optional(),
   isActive: z.boolean().optional(),
   sortOrder: z.number().int().optional(),
+  unitPreference: z.enum(["imperial", "metric"]).nullable().optional(),
+  country: z.string().max(8).nullable().optional(),
 });
 
 const router: IRouter = Router();
@@ -46,6 +48,8 @@ router.get("/venues", async (req, res) => {
     isActive: venuesTable.isActive,
     sortOrder: venuesTable.sortOrder,
     createdAt: venuesTable.createdAt,
+    country: venuesTable.country,
+    unitPreference: venuesTable.unitPreference,
   }).from(venuesTable).leftJoin(citiesTable, eq(venuesTable.cityId, citiesTable.id))
     .where(conditions.length ? and(...conditions) : sql`true`)
     .orderBy(venuesTable.sortOrder, venuesTable.name);

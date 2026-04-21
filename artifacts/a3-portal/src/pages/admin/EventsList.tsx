@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Loader2, Pencil, Trash2, Calendar, Copy, ChevronLeft, MapPin, Boxes } from "lucide-react";
 import { EventInventoryDialog } from "@/components/admin/EventInventoryDialog";
+import { UnitPreferenceSelect } from "@/components/units/DimensionInput";
 
 type EventRow = { id: number; partnerId: number; cityId: number | null; cityName?: string | null; venueId: number | null; venueName?: string | null; name: string; eventStartDate: string | null; eventEndDate: string | null; installDate: string | null; teardownDate: string | null; shippingDeadline: string | null; status: string; notes: string | null; isActive: boolean; availablePackageIdsJson: number[] | null };
 type City = { id: number; name: string };
@@ -45,6 +46,7 @@ function EventDialog({ partnerId, cities, venues, packages, ev, trigger, onSaved
     notes: ev?.notes || "",
     isActive: ev?.isActive ?? true,
     availablePackageIds: ev?.availablePackageIdsJson || [],
+    unitPreference: ((ev as any)?.unitPreference || "") as string,
   });
   const filteredVenues = form.cityId ? venues.filter(v => v.cityId === parseInt(form.cityId)) : venues;
 
@@ -64,6 +66,7 @@ function EventDialog({ partnerId, cities, venues, packages, ev, trigger, onSaved
         notes: form.notes || null,
         isActive: form.isActive,
         availablePackageIdsJson: form.availablePackageIds,
+        unitPreference: form.unitPreference || null,
       };
       if (ev) await apiFetch(`/api/events/${ev.id}`, { method: "PATCH", body: JSON.stringify(body) });
       else await apiFetch(`/api/events`, { method: "POST", body: JSON.stringify(body) });
@@ -96,6 +99,11 @@ function EventDialog({ partnerId, cities, venues, packages, ev, trigger, onSaved
             <div><Label>Status</Label><Select value={form.status} onValueChange={v => setForm({ ...form, status: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{STATUS_OPTIONS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select></div>
           </div>
           <div><Label>Notes</Label><Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} /></div>
+          <div>
+            <Label>Measurement Preference</Label>
+            <UnitPreferenceSelect value={form.unitPreference || null} onChange={v => setForm({ ...form, unitPreference: v || "" })} inheritLabel="Inherit from venue / partner" />
+            <p className="text-xs text-muted-foreground mt-1">Use Metric for overseas events to keep all dimensions in cm/m.</p>
+          </div>
           {packages.length > 0 && <div>
             <Label>Available Packages</Label>
             <div className="flex flex-wrap gap-2 mt-2">

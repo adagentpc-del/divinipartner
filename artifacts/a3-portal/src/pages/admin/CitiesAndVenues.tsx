@@ -13,9 +13,10 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Loader2, Pencil, Trash2, MapPin, Building2, Copy, ChevronLeft } from "lucide-react";
+import { UnitPreferenceSelect } from "@/components/units/DimensionInput";
 
 type City = { id: number; partnerId: number | null; name: string; state: string | null; country: string | null; notes: string | null; isActive: boolean; sortOrder: number };
-type Venue = { id: number; partnerId: number | null; cityId: number | null; cityName?: string | null; name: string; venueAddress: string | null; shippingAddress: string | null; onsiteContactName: string | null; onsiteContactPhone: string | null; onsiteContactEmail: string | null; installNotes: string | null; shippingInstructions: string | null; deadlineNotes: string | null; isActive: boolean };
+type Venue = { id: number; partnerId: number | null; cityId: number | null; cityName?: string | null; name: string; venueAddress: string | null; shippingAddress: string | null; onsiteContactName: string | null; onsiteContactPhone: string | null; onsiteContactEmail: string | null; installNotes: string | null; shippingInstructions: string | null; deadlineNotes: string | null; isActive: boolean; unitPreference?: string | null; country?: string | null };
 
 function CityDialog({ partnerId, city, trigger, onSaved }: { partnerId: number; city?: City | null; trigger: React.ReactNode; onSaved: () => void }) {
   const [open, setOpen] = useState(false);
@@ -61,10 +62,18 @@ function VenueDialog({ partnerId, cities, venue, trigger, onSaved }: { partnerId
     onsiteContactName: venue?.onsiteContactName || "", onsiteContactPhone: venue?.onsiteContactPhone || "", onsiteContactEmail: venue?.onsiteContactEmail || "",
     installNotes: venue?.installNotes || "", shippingInstructions: venue?.shippingInstructions || "", deadlineNotes: venue?.deadlineNotes || "",
     isActive: venue?.isActive ?? true,
+    country: venue?.country || "",
+    unitPreference: (venue?.unitPreference || "") as string,
   });
   const handleSave = async () => {
     try {
-      const body = { partnerId, ...form, cityId: parseInt(form.cityId) || null };
+      const body = {
+        partnerId,
+        ...form,
+        cityId: parseInt(form.cityId) || null,
+        country: form.country || null,
+        unitPreference: form.unitPreference || null,
+      };
       if (venue) await apiFetch(`/api/venues/${venue.id}`, { method: "PATCH", body: JSON.stringify(body) });
       else await apiFetch(`/api/venues`, { method: "POST", body: JSON.stringify(body) });
       toast({ title: venue ? "Venue updated" : "Venue added" });
@@ -96,6 +105,17 @@ function VenueDialog({ partnerId, cities, venue, trigger, onSaved }: { partnerId
           <div><Label>Install Notes</Label><Textarea value={form.installNotes} onChange={e => setForm({ ...form, installNotes: e.target.value })} rows={2} /></div>
           <div><Label>Shipping Instructions</Label><Textarea value={form.shippingInstructions} onChange={e => setForm({ ...form, shippingInstructions: e.target.value })} rows={2} /></div>
           <div><Label>Deadline Notes</Label><Input value={form.deadlineNotes} onChange={e => setForm({ ...form, deadlineNotes: e.target.value })} /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Country (ISO, e.g. US, GB, FR)</Label>
+              <Input value={form.country} onChange={e => setForm({ ...form, country: e.target.value.toUpperCase() })} placeholder="US" />
+              <p className="text-xs text-muted-foreground mt-1">Overseas venues default to metric.</p>
+            </div>
+            <div>
+              <Label>Measurement Preference</Label>
+              <UnitPreferenceSelect value={form.unitPreference || null} onChange={v => setForm({ ...form, unitPreference: v || "" })} inheritLabel="Inherit from partner / country" />
+            </div>
+          </div>
           <div className="flex items-center gap-2"><Switch checked={form.isActive} onCheckedChange={v => setForm({ ...form, isActive: v })} /><Label>Active</Label></div>
         </div>
         <DialogFooter><Button onClick={handleSave} disabled={!form.name}>Save</Button></DialogFooter>

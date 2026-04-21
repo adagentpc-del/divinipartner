@@ -62,6 +62,8 @@ export const commercialAccountsTable = pgTable("commercial_accounts", {
   monetizationNotes: text("monetization_notes"),
   activationStatus: text("activation_status").notNull().default("lead"), // lead | proposal_prepared | in_review | approved | activating | active | paused | suspended
   demoReady: boolean("demo_ready").notNull().default(false),
+  // Measurement preference (imperial | metric). null = imperial default.
+  unitPreference: text("unit_preference"),
   salesNotes: text("sales_notes"),
   lastDemoAt: timestamp("last_demo_at", { withTimezone: true }),
   isActive: boolean("is_active").notNull().default(true),

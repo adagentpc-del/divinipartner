@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, boolean, timestamp, numeric } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, boolean, timestamp, numeric, doublePrecision } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { partnersTable } from "./partners";
@@ -16,6 +16,11 @@ export const packagesTable = pgTable("packages", {
   price: numeric("price", { precision: 12, scale: 2 }),
   currency: text("currency").notNull().default("USD"),
   imageUrl: text("image_url"),
+  // Optional package-level dimensions (e.g. printed wall package overall size).
+  sizeWidth: doublePrecision("size_width"),
+  sizeHeight: doublePrecision("size_height"),
+  sizeDepth: doublePrecision("size_depth"),
+  sizeUnit: text("size_unit"), // inches | feet | cm | m | mm
   isActive: boolean("is_active").notNull().default(true),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

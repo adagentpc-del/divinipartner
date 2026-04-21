@@ -39,6 +39,7 @@ const formSchema = z.object({
   siteSurveyDeckFileUrl: z.string().optional(),
   portalMode: z.enum(["intake", "full", "ordering"]).default("intake"),
   partnerType: z.enum(["branding", "ordering"]).nullable().optional(),
+  unitPreference: z.enum(["imperial", "metric"]).nullable().optional(),
   isActive: z.boolean().default(true),
   smallA3BadgeEnabled: z.boolean().default(true),
   pricingDisplayEnabled: z.boolean().default(false),
@@ -83,6 +84,7 @@ export default function PartnerForm() {
       partnerDeckFileUrl: "", siteSurveyDeckFileUrl: "",
       portalMode: "intake",
       partnerType: "branding",
+      unitPreference: null,
       isActive: true, smallA3BadgeEnabled: true, pricingDisplayEnabled: false,
       defaultBillingExecModel: "a3_collected", billingEntityName: "", paymentTerms: "net_30",
       depositRequired: false, depositPct: "", allowPartialPayment: true, allowOrderOverride: true,
@@ -110,6 +112,7 @@ export default function PartnerForm() {
         siteSurveyDeckFileUrl: (partner as any).siteSurveyDeckFileUrl || "",
         portalMode: (partner as any).portalMode || "intake",
         partnerType: (partner as any).partnerType || "branding",
+        unitPreference: ((partner as any).unitPreference || null) as any,
         isActive: partner.isActive, smallA3BadgeEnabled: partner.smallA3BadgeEnabled || false,
         pricingDisplayEnabled: partner.pricingDisplayEnabled || false,
         defaultBillingExecModel: (partner as any).defaultBillingExecModel || "a3_collected",
@@ -343,6 +346,20 @@ export default function PartnerForm() {
                       </SelectContent>
                     </Select>
                     <FormDescription className="text-xs">What clients see at /partner/{`{slug}`}</FormDescription>
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="unitPreference" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Measurement System</FormLabel>
+                    <Select onValueChange={(v) => field.onChange(v === "inherit" ? null : v)} value={field.value || "inherit"}>
+                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                      <SelectContent>
+                        <SelectItem value="inherit">Inherit from account / country</SelectItem>
+                        <SelectItem value="imperial">Imperial (in / ft)</SelectItem>
+                        <SelectItem value="metric">Metric (cm / m)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormDescription className="text-xs">Default unit for new venues, packages, and product specs.</FormDescription>
                   </FormItem>
                 )} />
               </div>

@@ -1,4 +1,4 @@
-import { pgTable, serial, text, boolean, timestamp, jsonb, integer } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, boolean, timestamp, jsonb, integer, doublePrecision } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -13,6 +13,11 @@ export const productCatalogTable = pgTable("product_catalog", {
   imageUrl: text("image_url"),
   galleryImagesJson: jsonb("gallery_images_json").$type<string[]>(),
   visibleDimensions: text("visible_dimensions"),
+  // Structured dimensions (kept alongside the freeform `visibleDimensions` text).
+  sizeWidth: doublePrecision("size_width"),
+  sizeHeight: doublePrecision("size_height"),
+  sizeDepth: doublePrecision("size_depth"),
+  sizeUnit: text("size_unit"), // inches | feet | cm | m | mm
   backendProductionNotes: text("backend_production_notes"),
   hardwareIncluded: boolean("hardware_included").notNull().default(false),
   printOnlyAvailable: boolean("print_only_available").notNull().default(false),

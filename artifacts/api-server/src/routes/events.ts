@@ -26,6 +26,7 @@ const EventBody = z.object({
   quantityLimitsJson: z.record(z.string(), z.number()).nullable().optional(),
   imageUrl: z.string().nullable().optional(),
   isActive: z.boolean().optional(),
+  unitPreference: z.enum(["imperial", "metric"]).nullable().optional(),
 });
 
 const router: IRouter = Router();
@@ -60,6 +61,7 @@ router.get("/events", async (req, res) => {
     imageUrl: eventsTable.imageUrl,
     isActive: eventsTable.isActive,
     createdAt: eventsTable.createdAt,
+    unitPreference: eventsTable.unitPreference,
   }).from(eventsTable)
     .leftJoin(citiesTable, eq(eventsTable.cityId, citiesTable.id))
     .leftJoin(venuesTable, eq(eventsTable.venueId, venuesTable.id))

@@ -819,6 +819,40 @@ A blocker is any condition that prevents an account from reliably operating in p
 
 ---
 
+## Measurement / Units Model (April 2026)
+
+International support for both imperial and metric across the portal — extended, not rebuilt.
+
+### Storage
+- `unit_preference` (text, nullable, `imperial`|`metric`) on: `partners`, `commercial_accounts`, `venues`, `events`.
+- `country` (text, nullable, ISO-2) on `venues` (e.g. `GB`, `FR`, `DE`).
+- Structured dimension columns on `partner_branding_locations`, `packages`, `product_catalog`: `size_width`, `size_height`, `size_depth` (doubles), `size_unit` (one of `in`, `ft`, `mm`, `cm`, `m`; legacy strings like `inches`/`feet`/`meters` are normalized).
+
+### Cascade resolution (most → least specific)
+1. `event.unitPreference`
+2. `venue.unitPreference`
+3. Venue country → if not US/CA/LR/MM, default `metric` (overseas rule)
+4. `partner.unitPreference`
+5. `commercial_account.unitPreference`
+6. Hard default: `imperial`
+
+Implemented in `lib/db/src/units.ts → resolvePreference()` and exposed at `GET /api/units/resolve?eventId|venueId|partnerId|accountId` which returns `{ system, source, reason, context }`.
+
+### Conversion
+- All conversions go through millimeters as the canonical base inside `convert(value, from, to)`.
+- `formatDimension(value, unit)` and `formatWxH(w, h, unit, prefSystem?)` render values, optionally re-expressed in the resolved system.
+- `pickDisplayUnit(unit, system)` picks a friendly display unit (e.g. `m` for large metric, `ft` for large imperial).
+
+### UI
+- `components/units/DimensionInput.tsx` — width/height numeric inputs + unit selector with live converted value. Used in: branding location editor (and reusable in packages/product editors).
+- `UnitPreferenceSelect` — small "Inherit / Imperial / Metric" select used on Venue, Event, Partner, and Commercial Account editors.
+- Mirror client lib at `artifacts/a3-portal/src/lib/units.ts`.
+
+### Seed
+- London city (`country=GB`), `ExCeL London` venue (`country=GB`, `unit_preference=metric`), `London Activation 2026` event (`unit_preference=metric`), and a `London Stage Backdrop (2m × 1m)` branding location were inserted directly under partner `move-miami` for demo/QA of the metric path. (Inserted via SQL — not part of `scripts/src/seed.ts`; persists in the live DB.)
+
+---
+
 ## Final Overview (Handoff)
 
 ### Architecture summary

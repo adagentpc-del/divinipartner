@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { DimensionInput } from "@/components/units/DimensionInput";
+import { normalizeUnit, type LengthUnit } from "@/lib/units";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Loader2, Plus, Pencil, Trash2, MapPin, Eye, EyeOff, Check, AlertTriangle, Upload, FileText } from "lucide-react";
@@ -341,28 +343,17 @@ export default function BrandingLocations() {
                 <Label className="text-xs">Client-Facing Description</Label>
                 <Textarea value={editingLocation.description || ""} onChange={e => setEditingLocation(p => p ? { ...p, description: e.target.value } : p)} className="min-h-[60px] resize-none" />
               </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs">Width</Label>
-                  <Input type="number" value={editingLocation.sizeWidth ?? ""} onChange={e => setEditingLocation(p => p ? { ...p, sizeWidth: e.target.value ? Number(e.target.value) : null } : p)} />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Height</Label>
-                  <Input type="number" value={editingLocation.sizeHeight ?? ""} onChange={e => setEditingLocation(p => p ? { ...p, sizeHeight: e.target.value ? Number(e.target.value) : null } : p)} />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Unit</Label>
-                  <Select value={editingLocation.sizeUnit || "inches"} onValueChange={v => setEditingLocation(p => p ? { ...p, sizeUnit: v } : p)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="inches">Inches</SelectItem>
-                      <SelectItem value="feet">Feet</SelectItem>
-                      <SelectItem value="cm">CM</SelectItem>
-                      <SelectItem value="meters">Meters</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+              <DimensionInput
+                label="Dimensions"
+                value={{
+                  width: editingLocation.sizeWidth ?? null,
+                  height: editingLocation.sizeHeight ?? null,
+                  unit: (normalizeUnit(editingLocation.sizeUnit) || "in") as LengthUnit,
+                }}
+                onChange={(v) => setEditingLocation(p => p ? { ...p, sizeWidth: v.width, sizeHeight: v.height, sizeUnit: v.unit } : p)}
+                helperText="Mix imperial and metric freely — values are stored as entered."
+              />
+              
               <div className="grid sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label className="text-xs">Preview Image URL</Label>

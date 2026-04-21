@@ -145,6 +145,16 @@ export default function CommercialAccountDetail() {
                 <SelectContent>{["lead", "proposal_prepared", "in_review", "approved", "activating", "active", "paused", "suspended"].map(s => <SelectItem key={s} value={s} className="capitalize">{s.replace(/_/g, " ")}</SelectItem>)}</SelectContent>
               </Select>
             </Field>
+            <Field label="Measurement system">
+              <Select value={account.unitPreference || "inherit"} onValueChange={v => set("unitPreference", v === "inherit" ? null : v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="inherit">Inherit (default Imperial)</SelectItem>
+                  <SelectItem value="imperial">Imperial (in / ft)</SelectItem>
+                  <SelectItem value="metric">Metric (cm / m)</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
             <Field label="Demo-ready">
               <div className="flex items-center gap-2 h-10">
                 <input type="checkbox" checked={!!account.demoReady} onChange={e => set("demoReady", e.target.checked)} className="h-4 w-4" />

@@ -18,6 +18,10 @@ export const venuesTable = pgTable("venues", {
   shippingInstructions: text("shipping_instructions"),
   deadlineNotes: text("deadline_notes"),
   imageUrl: text("image_url"),
+  // Measurement system preference (imperial | metric). null = inherit from partner.
+  unitPreference: text("unit_preference"),
+  // ISO country code (e.g. US, GB, FR) — used for overseas detection.
+  country: text("country"),
   isActive: boolean("is_active").notNull().default(true),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
