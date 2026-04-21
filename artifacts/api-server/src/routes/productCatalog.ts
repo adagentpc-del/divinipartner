@@ -37,6 +37,9 @@ const ProductBody = z.object({
   sizeOptionsJson: z.array(z.string()).nullable().optional(),
   isActive: z.boolean().optional(),
   sortOrder: z.string().nullable().optional(),
+  customerFacingSummary: z.string().nullable().optional(),
+  reviewStatus: z.enum(["new", "in_review", "needs_clarification", "approved", "archived"]).optional(),
+  missingDataFlagsJson: z.array(z.string()).nullable().optional(),
 });
 
 const UpdateProductBody = ProductBody.partial();

@@ -35,6 +35,9 @@ export const productCatalogTable = pgTable("product_catalog", {
   sizeOptionsJson: jsonb("size_options_json").$type<string[]>(),
   isActive: boolean("is_active").notNull().default(true),
   sortOrder: text("sort_order"),
+  customerFacingSummary: text("customer_facing_summary"),
+  reviewStatus: text("review_status").notNull().default("approved"),
+  missingDataFlagsJson: jsonb("missing_data_flags_json").$type<string[]>(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

@@ -30,6 +30,7 @@ import OrderDetail from "@/pages/admin/OrderDetail";
 import UserRoles from "@/pages/admin/UserRoles";
 import VendorPortal from "@/pages/admin/VendorPortal";
 import FulfillmentCommandCenter from "@/pages/admin/FulfillmentCommandCenter";
+import QuoteIngestion from "@/pages/admin/QuoteIngestion";
 
 import PublicLayout from "@/components/layout/PublicLayout";
 import PartnerPortal from "@/pages/public/PartnerPortal";
@@ -190,6 +191,9 @@ function ClerkProviderWithRoutes() {
             </Route>
             <Route path="/admin/fulfillment">
               {() => <AdminRoute component={FulfillmentCommandCenter} />}
+            </Route>
+            <Route path="/admin/quote-ingestion">
+              {() => <AdminRoute component={QuoteIngestion} />}
             </Route>
             <Route path="/admin/vendor">
               {() => <AdminRoute component={VendorPortal} />}

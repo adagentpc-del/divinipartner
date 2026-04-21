@@ -13,7 +13,8 @@ import {
   ShoppingCart,
   Boxes,
   UserCog,
-  Inbox
+  Inbox,
+  Sparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -27,6 +28,7 @@ const navigation = [
   { name: "Suppliers", href: "/admin/suppliers", icon: Truck },
   { name: "Inventory", href: "/admin/inventory", icon: Boxes },
   { name: "Products", href: "/admin/products", icon: Package },
+  { name: "Ingestion", href: "/admin/quote-ingestion", icon: Sparkles },
   { name: "Requests", href: "/admin/requests", icon: FileText },
   { name: "Assets", href: "/admin/assets", icon: FolderOpen },
   { name: "Pricing", href: "/admin/pricing", icon: Tags },

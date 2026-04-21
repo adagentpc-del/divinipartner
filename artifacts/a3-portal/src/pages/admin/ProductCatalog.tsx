@@ -46,6 +46,34 @@ interface Product {
   allowsDesignRequest: boolean;
   sizeOptionsJson: string[] | null;
   isActive: boolean;
+  customerFacingSummary: string | null;
+  reviewStatus: string;
+  missingDataFlagsJson: string[] | null;
+}
+
+interface SpecStandard {
+  id: number;
+  productId: number;
+  supplierId: number | null;
+  title: string;
+  standardType: string;
+  isCurrent: boolean;
+  isApproved: boolean;
+  isActive: boolean;
+  dimensionsSummary: string | null;
+  materialSummary: string | null;
+  finishingSummary: string | null;
+  attachmentSummary: string | null;
+  hardwareSummary: string | null;
+  leadTimeDays: number | null;
+  printFileRequirements: string | null;
+  installNotes: string | null;
+  internalOpsNotes: string | null;
+  effectiveDate: string | null;
+  expirationDate: string | null;
+  reviewStatus: string;
+  reviewNotes: string | null;
+  missingDataFlagsJson: string[] | null;
 }
 
 interface QuoteAsset {
@@ -184,11 +212,12 @@ export default function ProductCatalog() {
           </DialogHeader>
           {editing && (
             <Tabs defaultValue="customer" className="mt-2">
-              <TabsList className="grid grid-cols-4 w-full">
+              <TabsList className="grid grid-cols-5 w-full">
                 <TabsTrigger value="customer">Customer-facing</TabsTrigger>
                 <TabsTrigger value="caps">Capabilities</TabsTrigger>
                 <TabsTrigger value="ops">Backend Ops</TabsTrigger>
-                <TabsTrigger value="quotes" disabled={isNew}>Quote / Spec ({editing.id ? <QuoteCount productId={editing.id} /> : 0})</TabsTrigger>
+                <TabsTrigger value="standards" disabled={isNew}>Spec Standards</TabsTrigger>
+                <TabsTrigger value="quotes" disabled={isNew}>Sources ({editing.id ? <QuoteCount productId={editing.id} /> : 0})</TabsTrigger>
               </TabsList>
 
               <TabsContent value="customer" className="space-y-3 mt-4">
@@ -201,6 +230,8 @@ export default function ProductCatalog() {
                   <Field label="Visible Dimensions" value={editing.visibleDimensions} onChange={v => setEditing(p => ({ ...p!, visibleDimensions: v }))} placeholder="8ft x 8ft" />
                 </div>
                 <div><Label className="text-xs">Short Description</Label><Textarea value={editing.description || ""} onChange={e => setEditing(p => ({ ...p!, description: e.target.value }))} className="min-h-[60px]" /></div>
+                <div><Label className="text-xs">Customer-facing summary (longer)</Label><Textarea value={editing.customerFacingSummary || ""} onChange={e => setEditing(p => ({ ...p!, customerFacingSummary: e.target.value }))} className="min-h-[60px]" /></div>
+                {!isNew && editing.id && <ProductIntelligencePanel product={editing as Product} onChange={(p) => setEditing(prev => ({ ...prev!, ...p }))} />}
                 <Field label="Thumbnail URL" value={editing.imageUrl} onChange={v => setEditing(p => ({ ...p!, imageUrl: v }))} />
                 <div><Label className="text-xs">Feature badges (comma-separated)</Label><Input value={(editing.featureBadgesJson || []).join(", ")} onChange={e => setEditing(p => ({ ...p!, featureBadgesJson: e.target.value.split(",").map(s => s.trim()).filter(Boolean) }))} placeholder="LED, Heavy duty, Quick install" /></div>
                 <div><Label className="text-xs">Size options (comma-separated)</Label><Input value={(editing.sizeOptionsJson || []).join(", ")} onChange={e => setEditing(p => ({ ...p!, sizeOptionsJson: e.target.value.split(",").map(s => s.trim()).filter(Boolean) }))} /></div>
@@ -230,6 +261,12 @@ export default function ProductCatalog() {
                 <div><Label className="text-xs">Install notes</Label><Textarea value={editing.installNotes || ""} onChange={e => setEditing(p => ({ ...p!, installNotes: e.target.value }))} className="min-h-[60px]" /></div>
                 <div><Label className="text-xs">Internal ops summary</Label><Textarea value={editing.internalOpsSummary || ""} onChange={e => setEditing(p => ({ ...p!, internalOpsSummary: e.target.value }))} className="min-h-[60px]" placeholder="Stuff your team needs to remember about this product." /></div>
               </TabsContent>
+
+              {!isNew && editing.id && (
+                <TabsContent value="standards" className="mt-4">
+                  <SpecStandardsPanel productId={editing.id} />
+                </TabsContent>
+              )}
 
               {!isNew && editing.id && (
                 <TabsContent value="quotes" className="mt-4">
@@ -391,5 +428,174 @@ function QuoteForm({ initial, attachableType, attachableId, onClose }: { initial
         <div className="flex justify-end gap-2"><Button variant="outline" size="sm" onClick={onClose}>Cancel</Button><Button size="sm" onClick={handleSave} disabled={saving}>{saving && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}Save</Button></div>
       </CardContent>
     </Card>
+  );
+}
+
+const MISSING_FLAGS_PRODUCT = [
+  "missing_dimensions", "missing_material", "missing_attachment", "missing_lead_time",
+  "unclear_hardware", "missing_customer_summary", "missing_ops_summary", "needs_supplier",
+];
+const REVIEW_STATUSES = [
+  { value: "new", label: "New", color: "bg-slate-100 text-slate-700 border-slate-200" },
+  { value: "in_review", label: "In review", color: "bg-amber-100 text-amber-800 border-amber-200" },
+  { value: "needs_clarification", label: "Needs clarification", color: "bg-orange-100 text-orange-800 border-orange-200" },
+  { value: "approved", label: "Approved", color: "bg-emerald-100 text-emerald-800 border-emerald-200" },
+  { value: "archived", label: "Archived", color: "bg-zinc-100 text-zinc-500 border-zinc-200" },
+];
+
+function ProductIntelligencePanel({ product, onChange }: { product: Partial<Product>; onChange: (patch: Partial<Product>) => void }) {
+  const flags = product.missingDataFlagsJson || [];
+  const toggleFlag = (flag: string) => {
+    const cur = new Set(flags);
+    cur.has(flag) ? cur.delete(flag) : cur.add(flag);
+    onChange({ missingDataFlagsJson: [...cur] });
+  };
+  return (
+    <div className="border rounded-lg p-3 space-y-3 bg-muted/20">
+      <div className="flex items-center justify-between">
+        <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Internal review</Label>
+        <Select value={product.reviewStatus || "approved"} onValueChange={v => onChange({ reviewStatus: v })}>
+          <SelectTrigger className="h-7 text-xs w-44"><SelectValue /></SelectTrigger>
+          <SelectContent>{REVIEW_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
+        </Select>
+      </div>
+      <div>
+        <Label className="text-[11px] text-muted-foreground">Missing data flags</Label>
+        <div className="flex flex-wrap gap-1.5 mt-1">
+          {MISSING_FLAGS_PRODUCT.map(f => {
+            const on = flags.includes(f);
+            return (
+              <button key={f} type="button" onClick={() => toggleFlag(f)} className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${on ? "bg-rose-100 border-rose-300 text-rose-800" : "bg-card border-border hover:bg-muted"}`}>
+                {on ? "✓ " : ""}{f.replace(/_/g, " ")}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SpecStandardsPanel({ productId }: { productId: number }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const { data: standards = [] } = useQuery<SpecStandard[]>({ queryKey: [`/api/products/${productId}/spec-standards`], queryFn: () => apiFetch(`/api/products/${productId}/spec-standards`) });
+  const { data: suppliers = [] } = useQuery<{ id: number; name: string }[]>({ queryKey: ["/api/suppliers"], queryFn: () => apiFetch("/api/suppliers") });
+  const [editing, setEditing] = useState<Partial<SpecStandard> | null>(null);
+  const isNew = editing && !editing.id;
+
+  const save = useMutation({
+    mutationFn: () => {
+      const url = editing!.id ? `/api/products/${productId}/spec-standards/${editing!.id}` : `/api/products/${productId}/spec-standards`;
+      return apiFetch(url, { method: editing!.id ? "PATCH" : "POST", body: JSON.stringify(editing) });
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: [`/api/products/${productId}/spec-standards`] }); setEditing(null); toast({ title: "Saved" }); },
+    onError: (e: any) => toast({ title: "Failed", description: e.message, variant: "destructive" }),
+  });
+  const del = useMutation({
+    mutationFn: (id: number) => apiFetch(`/api/products/${productId}/spec-standards/${id}`, { method: "DELETE" }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: [`/api/products/${productId}/spec-standards`] }); toast({ title: "Removed" }); },
+  });
+  const setCurrent = useMutation({
+    mutationFn: (id: number) => apiFetch(`/api/products/${productId}/spec-standards/${id}/set-current`, { method: "POST" }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: [`/api/products/${productId}/spec-standards`] }); toast({ title: "Set as current preferred" }); },
+  });
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">Standardized spec records — one is marked as the current preferred. Multiple suppliers can each have their own standard.</p>
+        <Button size="sm" variant="outline" className="gap-1" onClick={() => setEditing({ title: "", standardType: "preferred", isActive: true, isApproved: false, isCurrent: standards.length === 0 })}><Plus className="h-3.5 w-3.5" /> Add standard</Button>
+      </div>
+
+      {standards.length === 0 && !editing && <div className="border-2 border-dashed rounded-lg p-6 text-center text-sm text-muted-foreground"><Star className="h-8 w-8 mx-auto mb-2 opacity-40" />No spec standards yet. Add one or promote a source from the Ingestion workspace.</div>}
+
+      <div className="space-y-2">
+        {standards.map(s => (
+          <Card key={s.id} className={s.isCurrent ? "border-emerald-300 bg-emerald-50/40" : ""}>
+            <CardContent className="p-3">
+              <div className="flex items-start gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-medium text-sm">{s.title}</span>
+                    {s.isCurrent && <Badge className="text-[10px] bg-emerald-600"><Star className="h-2.5 w-2.5 mr-0.5" />Current preferred</Badge>}
+                    <Badge variant="outline" className="text-[10px]">{s.standardType.replace(/_/g, " ")}</Badge>
+                    {s.isApproved && <Badge variant="outline" className="text-[10px] border-emerald-300 text-emerald-800">Approved</Badge>}
+                    {!s.isActive && <Badge variant="outline" className="text-[10px]">Inactive</Badge>}
+                    {s.supplierId && <Badge variant="secondary" className="text-[10px]">{suppliers.find(x => x.id === s.supplierId)?.name || `Supplier #${s.supplierId}`}</Badge>}
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2 text-[11px]">
+                    {s.dimensionsSummary && <div><span className="text-muted-foreground">Dimensions:</span> {s.dimensionsSummary}</div>}
+                    {s.materialSummary && <div><span className="text-muted-foreground">Material:</span> {s.materialSummary}</div>}
+                    {s.attachmentSummary && <div><span className="text-muted-foreground">Attachment:</span> {s.attachmentSummary}</div>}
+                    {s.hardwareSummary && <div><span className="text-muted-foreground">Hardware:</span> {s.hardwareSummary}</div>}
+                    {s.leadTimeDays != null && <div><span className="text-muted-foreground">Lead time:</span> {s.leadTimeDays}d</div>}
+                  </div>
+                  {s.missingDataFlagsJson && s.missingDataFlagsJson.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1.5">{s.missingDataFlagsJson.map(f => <Badge key={f} variant="outline" className="text-[10px] border-rose-300 text-rose-700">{f.replace(/_/g, " ")}</Badge>)}</div>
+                  )}
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  {!s.isCurrent && <Button variant="ghost" size="sm" className="h-7 text-[11px] gap-1" onClick={() => setCurrent.mutate(s.id)}><Star className="h-3 w-3" />Set current</Button>}
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditing({ ...s })}><Pencil className="h-3.5 w-3.5" /></Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { if (confirm("Delete?")) del.mutate(s.id); }}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {editing && (
+        <Card className="border-primary/30">
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="font-semibold text-sm">{isNew ? "New spec standard" : "Edit standard"}</h4>
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditing(null)}><X className="h-3.5 w-3.5" /></Button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="Title" value={editing.title} onChange={v => setEditing(e => ({ ...e!, title: v }))} />
+              <div>
+                <Label className="text-xs">Standard type</Label>
+                <Select value={editing.standardType || "preferred"} onValueChange={v => setEditing(e => ({ ...e!, standardType: v }))}>
+                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="preferred">Preferred</SelectItem>
+                    <SelectItem value="alternate">Alternate</SelectItem>
+                    <SelectItem value="legacy">Legacy</SelectItem>
+                    <SelectItem value="zone_specific">Zone-specific</SelectItem>
+                    <SelectItem value="package_specific">Package-specific</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Supplier</Label>
+                <Select value={editing.supplierId ? String(editing.supplierId) : "__none__"} onValueChange={v => setEditing(e => ({ ...e!, supplierId: v === "__none__" ? null : parseInt(v) }))}>
+                  <SelectTrigger className="h-9"><SelectValue placeholder="(none)" /></SelectTrigger>
+                  <SelectContent><SelectItem value="__none__">(none)</SelectItem>{suppliers.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <Field label="Lead time (days)" type="number" value={editing.leadTimeDays?.toString()} onChange={v => setEditing(e => ({ ...e!, leadTimeDays: v ? parseInt(v) : null }))} />
+              <Field label="Dimensions" value={editing.dimensionsSummary} onChange={v => setEditing(e => ({ ...e!, dimensionsSummary: v }))} />
+              <Field label="Material" value={editing.materialSummary} onChange={v => setEditing(e => ({ ...e!, materialSummary: v }))} />
+              <Field label="Finishing" value={editing.finishingSummary} onChange={v => setEditing(e => ({ ...e!, finishingSummary: v }))} />
+              <Field label="Attachment" value={editing.attachmentSummary} onChange={v => setEditing(e => ({ ...e!, attachmentSummary: v }))} />
+              <Field label="Hardware" value={editing.hardwareSummary} onChange={v => setEditing(e => ({ ...e!, hardwareSummary: v }))} />
+              <Field label="Effective date" type="date" value={editing.effectiveDate} onChange={v => setEditing(e => ({ ...e!, effectiveDate: v }))} />
+              <Field label="Expiration date" type="date" value={editing.expirationDate} onChange={v => setEditing(e => ({ ...e!, expirationDate: v }))} />
+            </div>
+            <div><Label className="text-xs">Print file requirements</Label><Textarea value={editing.printFileRequirements || ""} onChange={e => setEditing(p => ({ ...p!, printFileRequirements: e.target.value }))} className="min-h-[50px]" /></div>
+            <div><Label className="text-xs">Install notes</Label><Textarea value={editing.installNotes || ""} onChange={e => setEditing(p => ({ ...p!, installNotes: e.target.value }))} className="min-h-[50px]" /></div>
+            <div><Label className="text-xs">Internal ops notes</Label><Textarea value={editing.internalOpsNotes || ""} onChange={e => setEditing(p => ({ ...p!, internalOpsNotes: e.target.value }))} className="min-h-[50px]" /></div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-1.5"><Switch checked={!!editing.isApproved} onCheckedChange={v => setEditing(e => ({ ...e!, isApproved: v }))} /><Label className="text-xs">Approved</Label></div>
+              <div className="flex items-center gap-1.5"><Switch checked={editing.isActive ?? true} onCheckedChange={v => setEditing(e => ({ ...e!, isActive: v }))} /><Label className="text-xs">Active</Label></div>
+              <div className="flex items-center gap-1.5"><Switch checked={!!editing.isCurrent} onCheckedChange={v => setEditing(e => ({ ...e!, isCurrent: v }))} /><Label className="text-xs">Current preferred</Label></div>
+            </div>
+            <div className="flex justify-end gap-2"><Button variant="outline" size="sm" onClick={() => setEditing(null)}>Cancel</Button><Button size="sm" onClick={() => save.mutate()} disabled={!editing.title || save.isPending}>{save.isPending && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}Save</Button></div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 }

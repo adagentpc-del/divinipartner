@@ -33,6 +33,28 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `artifacts/api-server` — Express API server (port 8080)
 - `artifacts/a3-portal` — React + Vite frontend (previewPath `/`)
 
+### Quote Ingestion & Catalog Intelligence
+A workflow for turning supplier quotes, spec sheets, screenshots, ERP exports, and notes into structured catalog data. Built on top of the existing `quote_assets` table — no rewrite.
+
+**Schema (`lib/db/src/schema/quoteAssets.ts`)**
+- `quote_assets` extended: `sourceType` (quote / spec_sheet / screenshot / website_reference / erp_export / manual_note / prior_job_reference), `processingStatus` (new / needs_review / needs_clarification / mapped / approved / superseded / archived), structured `supplierId` (FK), `confidenceFlag`, all extracted enrichment fields (extractedDisplayName/InternalName/Category, customerFacingSummary, backendOpsSummary, finishingSummary, leadTimeText, printFileRequirements, install/opsNotes, reviewNotes, clarificationNeeded, missingDataFlagsJson).
+- `quote_asset_mappings` — m2m linking a source to product / package / branding_zone / supplier.
+- `product_spec_standards` — standardized spec records per product, with one `isCurrent` (preferred), supplier/zone/package scoping, full summaries, lead time, approval/active/effective/expiration, sourceQuoteAssetIds, missingDataFlagsJson.
+- `product_catalog` extended: `customerFacingSummary`, `reviewStatus`, `missingDataFlagsJson`.
+
+**API (`artifacts/api-server/src/routes/quoteAssets.ts`)**
+- Enriched `/api/quote-assets` GET/POST/PATCH/DELETE with filters: sourceType, processingStatus, supplierId, mappingStatus, missingDataOnly, expiredOnly, search.
+- `/api/quote-ingestion/stats` — dashboard counts.
+- `/api/quote-assets/bulk-update` — batch processingStatus / supplier patch.
+- `/api/quote-assets/:id/mappings` GET/POST + `/mappings/:mid` DELETE — chip-style m2m.
+- `/api/quote-assets/:id/promote` — creates a new product (and optional preferred spec standard) from a source, auto-maps it.
+- `/api/products/:id/spec-standards` CRUD + `/spec-standards/:sid/set-current` — catalog spec standardization.
+- `/api/catalog-intelligence/overview` — products with missing data, expired sources, products without an approved standard, multi-supplier products.
+
+**UI**
+- `pages/admin/QuoteIngestion.tsx` at `/admin/quote-ingestion` (nav: "Ingestion") — stat cards, filter rail, source cards with checkbox bulk-select, file upload via `/api/storage/uploads/request-url`, side drawer with Enrich / Mappings / Review tabs, missing-data flag chips, Promote-to-product dialog.
+- `pages/admin/ProductCatalog.tsx` — added `Spec Standards` tab (list with starred current preferred + inline editor), customer-facing summary field, internal Intelligence panel (review status pill + missing-data flag chips). Quote tab renamed "Sources".
+
 ### Shared Libraries
 - `lib/db` — Drizzle schema + db connection
 - `lib/api-spec` — OpenAPI YAML spec
