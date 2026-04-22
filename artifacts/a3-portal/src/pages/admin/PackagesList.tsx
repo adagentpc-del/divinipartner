@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, resolveAssetUrl } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,11 +12,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Loader2, Pencil, Trash2, Package, Copy, ChevronLeft, GripVertical } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2, Package, Copy, ChevronLeft, GripVertical, Upload, X as XIcon } from "lucide-react";
 import { DimensionInput } from "@/components/units/DimensionInput";
 import type { LengthUnit } from "@/lib/units";
 
-type Pkg = { id: number; partnerId: number | null; supplierId: number | null; name: string; displayName: string | null; description: string | null; tier: number; price: string | null; currency: string; isActive: boolean; sizeWidth?: number | null; sizeHeight?: number | null; sizeDepth?: number | null; sizeDiameter?: number | null; sizeUnit?: string | null };
+type Pkg = { id: number; partnerId: number | null; supplierId: number | null; name: string; displayName: string | null; description: string | null; tier: number; price: string | null; currency: string; isActive: boolean; imageUrl?: string | null; sizeWidth?: number | null; sizeHeight?: number | null; sizeDepth?: number | null; sizeDiameter?: number | null; sizeUnit?: string | null };
 type Supplier = { id: number; name: string };
 type Product = { id: number; name: string; category: string };
 type PkgItem = { id: number; productId: number; productName?: string | null; productCategory?: string | null; quantity: number; isOptional: boolean; sortOrder: number };
@@ -29,12 +29,33 @@ function PkgDialog({ partnerId, suppliers, pkg, trigger, onSaved }: { partnerId:
     name: pkg?.name || "", displayName: pkg?.displayName || "", description: pkg?.description || "",
     tier: pkg?.tier?.toString() || "1", price: pkg?.price || "", supplierId: pkg?.supplierId?.toString() || "",
     isActive: pkg?.isActive ?? true,
+    imageUrl: pkg?.imageUrl ?? "",
     sizeWidth: pkg?.sizeWidth ?? null as number | null,
     sizeHeight: pkg?.sizeHeight ?? null as number | null,
     sizeDepth: pkg?.sizeDepth ?? null as number | null,
     sizeDiameter: pkg?.sizeDiameter ?? null as number | null,
     sizeUnit: (pkg?.sizeUnit as LengthUnit | null) ?? "in" as LengthUnit,
   });
+  const [uploadingImg, setUploadingImg] = useState(false);
+  const onPickImage = async (file: File | null | undefined) => {
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { toast({ title: "Image too large", description: "Max 10MB", variant: "destructive" }); return; }
+    setUploadingImg(true);
+    try {
+      const r = await fetch("/api/storage/uploads/request-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type || "image/jpeg" }),
+      });
+      if (!r.ok) throw new Error("Failed to prepare upload");
+      const { uploadURL, objectPath } = await r.json();
+      const put = await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type || "image/jpeg" } });
+      if (!put.ok) throw new Error("Upload failed");
+      setForm(f => ({ ...f, imageUrl: objectPath }));
+    } catch (e: any) {
+      toast({ title: "Upload failed", description: e.message, variant: "destructive" });
+    } finally { setUploadingImg(false); }
+  };
   const handleSave = async () => {
     try {
       const body: any = {
@@ -46,6 +67,7 @@ function PkgDialog({ partnerId, suppliers, pkg, trigger, onSaved }: { partnerId:
         sizeWidth: form.sizeWidth, sizeHeight: form.sizeHeight,
         sizeDepth: form.sizeDepth, sizeDiameter: form.sizeDiameter,
         sizeUnit: form.sizeUnit,
+        imageUrl: form.imageUrl || null,
       };
       if (pkg) await apiFetch(`/api/packages/${pkg.id}`, { method: "PATCH", body: JSON.stringify(body) });
       else await apiFetch(`/api/packages`, { method: "POST", body: JSON.stringify(body) });
@@ -62,6 +84,28 @@ function PkgDialog({ partnerId, suppliers, pkg, trigger, onSaved }: { partnerId:
           <div><Label>Name</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
           <div><Label>Display Name</Label><Input value={form.displayName} onChange={e => setForm({ ...form, displayName: e.target.value })} placeholder="Tier 1 - Essentials" /></div>
           <div><Label>Description</Label><Textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={3} /></div>
+          <div>
+            <Label>Tier image (shown to customers)</Label>
+            <div className="mt-1.5 flex items-start gap-3">
+              {form.imageUrl ? (
+                <div className="relative">
+                  <img src={resolveAssetUrl(form.imageUrl)} alt="Tier preview" className="h-24 w-32 rounded-md object-cover border" />
+                  <button type="button" onClick={() => setForm({ ...form, imageUrl: "" })} className="absolute -top-2 -right-2 bg-background border rounded-full p-0.5 shadow-sm hover:bg-muted"><XIcon className="h-3.5 w-3.5" /></button>
+                </div>
+              ) : (
+                <div className="h-24 w-32 rounded-md bg-muted/50 border-2 border-dashed flex items-center justify-center"><Package className="h-7 w-7 text-muted-foreground/40" /></div>
+              )}
+              <div className="flex-1">
+                <label className="inline-flex">
+                  <input type="file" accept="image/*" className="hidden" onChange={e => onPickImage(e.target.files?.[0])} disabled={uploadingImg} />
+                  <span className="cursor-pointer inline-flex items-center gap-1.5 rounded-md border bg-background hover:bg-muted px-3 py-1.5 text-sm font-medium">
+                    {uploadingImg ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Uploading…</> : <><Upload className="h-3.5 w-3.5" />{form.imageUrl ? "Replace image" : "Upload image"}</>}
+                  </span>
+                </label>
+                <p className="text-xs text-muted-foreground mt-1.5">JPG or PNG, up to 10MB. Recommended 16:9.</p>
+              </div>
+            </div>
+          </div>
           <div className="grid grid-cols-3 gap-3">
             <div><Label>Tier</Label><Select value={form.tier} onValueChange={v => setForm({ ...form, tier: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{[1,2,3,4,5].map(n => <SelectItem key={n} value={n.toString()}>Tier {n}</SelectItem>)}</SelectContent></Select></div>
             <div><Label>Price</Label><Input value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} placeholder="1850.00" /></div>

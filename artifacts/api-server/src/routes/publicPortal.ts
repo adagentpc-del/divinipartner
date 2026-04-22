@@ -437,7 +437,13 @@ const PublicOrderSchema = z.object({
   contactPhone: z.string().max(80).nullable().optional(),
   companyName: z.string().max(200).nullable().optional(),
   notes: z.string().max(5000).nullable().optional(),
-  artworkFiles: z.array(z.object({ name: z.string().max(500), url: z.string().url().max(2000) })).max(50).optional(),
+  artworkFiles: z.array(z.object({
+    name: z.string().max(500),
+    url: z.string().min(1).max(2000).refine(
+      (v) => /^https?:\/\//i.test(v) || v.startsWith("/objects/") || v.startsWith("/public-objects/"),
+      { message: "url must be an http(s) link or an internal object path" }
+    ),
+  })).max(50).optional(),
   totalEstimate: z.string().max(40).nullable().optional(),
   items: z.array(PublicOrderItemSchema).max(200).default([]),
 }).strict();

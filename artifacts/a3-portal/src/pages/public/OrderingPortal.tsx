@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, resolveAssetUrl } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,7 +16,7 @@ type City = { id: number; name: string; state: string | null };
 type Venue = { id: number; cityId: number | null; name: string; venueAddress: string | null; shippingAddress: string | null };
 type Event = { id: number; cityId: number | null; venueId: number | null; name: string; eventStartDate: string | null; eventEndDate: string | null; shippingDeadline: string | null; status: string; availablePackageIdsJson: number[] | null };
 type PkgItem = { id: number; productId: number; productName: string | null; productCategory: string | null; productImageUrl: string | null; quantity: number; isOptional: boolean };
-type Pkg = { id: number; name: string; displayName: string | null; description: string | null; tier: number; price: string | null; items: PkgItem[] };
+type Pkg = { id: number; name: string; displayName: string | null; description: string | null; tier: number; price: string | null; imageUrl: string | null; items: PkgItem[] };
 type Product = {
   id: number; name: string; category: string; imageUrl: string | null; sku: string | null;
   rentalEligible: boolean | null; printOnlyAvailable: boolean | null;
@@ -49,6 +49,38 @@ export default function OrderingPortal({ slug }: { slug: string }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [artworkFiles, setArtworkFiles] = useState<{ name: string; url: string }[]>([]);
   const [artworkUrlInput, setArtworkUrlInput] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const uploadArtwork = async (fileList: FileList | null) => {
+    if (!fileList || fileList.length === 0) return;
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const uploaded: { name: string; url: string }[] = [];
+      for (const file of Array.from(fileList)) {
+        if (file.size > 50 * 1024 * 1024) {
+          throw new Error(`${file.name} exceeds 50MB limit`);
+        }
+        const r = await fetch("/api/storage/uploads/request-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type || "application/octet-stream" }),
+        });
+        if (!r.ok) throw new Error(`Failed to prepare upload for ${file.name}`);
+        const { uploadURL, objectPath } = await r.json();
+        if (!uploadURL || !objectPath) throw new Error(`Invalid upload response for ${file.name}`);
+        const put = await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type || "application/octet-stream" } });
+        if (!put.ok) throw new Error(`Upload failed for ${file.name}`);
+        uploaded.push({ name: file.name, url: objectPath });
+      }
+      setArtworkFiles(prev => [...prev, ...uploaded]);
+    } catch (e: any) {
+      setUploadError(e.message || "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  };
   const [contact, setContact] = useState({ contactName: "", contactEmail: "", contactPhone: "", companyName: "", notes: "" });
   const [submitted, setSubmitted] = useState<{ orderNumber: string } | null>(null);
 
@@ -260,6 +292,11 @@ export default function OrderingPortal({ slug }: { slug: string }) {
                   const sel = selectedPkgId === p.id;
                   return (
                     <button key={p.id} type="button" onClick={() => setSelectedPkgId(p.id)} className={`text-left p-5 rounded-xl border-2 transition ${sel ? "border-primary bg-primary/5 shadow-md" : "border-border hover:border-primary/40 bg-card"}`}>
+                      {p.imageUrl ? (
+                        <img src={resolveAssetUrl(p.imageUrl)} alt={p.displayName || p.name} className="aspect-video w-full rounded-lg object-cover bg-muted mb-3" />
+                      ) : (
+                        <div className="aspect-video w-full rounded-lg bg-muted/50 mb-3 flex items-center justify-center"><Package className="h-10 w-10 text-muted-foreground/40" /></div>
+                      )}
                       <div className="flex items-center justify-between mb-2"><Badge variant={sel ? "default" : "secondary"}>Tier {p.tier}</Badge>{sel && <Check className="h-4 w-4 text-primary" />}</div>
                       <div className="font-bold text-lg">{p.displayName || p.name}</div>
                       <p className="text-xs text-muted-foreground mt-1 line-clamp-3">{p.description}</p>
@@ -359,10 +396,36 @@ export default function OrderingPortal({ slug }: { slug: string }) {
                   ...cart.map(c => c.productId).filter(Boolean),
                 ]}
               />
-              <p className="text-sm text-muted-foreground">Paste a link to your artwork (Drive, Dropbox, Figma, etc.). You can also send files later by replying to your order confirmation.</p>
+              <p className="text-sm text-muted-foreground">Upload your artwork files directly, or paste a link if they live in Drive, Dropbox, Figma, etc. You can also send them later by replying to your order confirmation.</p>
+
+              <div className="rounded-lg border-2 border-dashed p-6 text-center bg-muted/20">
+                <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                <div className="text-sm font-medium mb-1">Upload artwork files</div>
+                <div className="text-xs text-muted-foreground mb-3">PNG, JPG, PDF, AI, PSD, EPS, SVG, ZIP — up to 50MB each</div>
+                <label className="inline-flex">
+                  <input
+                    type="file"
+                    multiple
+                    className="hidden"
+                    accept="image/*,.pdf,.ai,.psd,.eps,.svg,.zip,.tiff,.tif"
+                    onChange={e => { uploadArtwork(e.target.files); e.target.value = ""; }}
+                    disabled={uploading}
+                  />
+                  <span className="cursor-pointer inline-flex items-center gap-1.5 rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-sm font-medium hover:opacity-90">
+                    {uploading ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Uploading…</> : <><Upload className="h-3.5 w-3.5" />Choose files</>}
+                  </span>
+                </label>
+                {uploadError && <div className="text-xs text-destructive mt-2">{uploadError}</div>}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-xs text-muted-foreground uppercase tracking-wide">or paste a link</span>
+                <div className="flex-1 h-px bg-border" />
+              </div>
               <div className="flex gap-2">
                 <Input placeholder="https://drive.google.com/..." value={artworkUrlInput} onChange={e => setArtworkUrlInput(e.target.value)} />
-                <Button onClick={() => { if (artworkUrlInput) { setArtworkFiles([...artworkFiles, { name: artworkUrlInput, url: artworkUrlInput }]); setArtworkUrlInput(""); } }} className="gap-1"><Upload className="h-4 w-4" />Add</Button>
+                <Button onClick={() => { if (artworkUrlInput) { setArtworkFiles([...artworkFiles, { name: artworkUrlInput, url: artworkUrlInput }]); setArtworkUrlInput(""); } }} className="gap-1"><Upload className="h-4 w-4" />Add link</Button>
               </div>
               <div className="space-y-2">
                 {artworkFiles.map((f, i) => (
