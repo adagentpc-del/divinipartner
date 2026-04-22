@@ -143,7 +143,7 @@ const SOURCE_LABEL: Record<string, string> = {
   zone: "Inherited from zone", order: "Inherited from order",
   manual: "Manually assigned", none: "Unassigned",
 };
-type OrderFull = { id: number; orderNumber: string; partnerId: number; partnerName?: string; eventId: number | null; eventName?: string; status: string; paymentStatus: string; fulfillmentMode: string | null; assignedSupplierId: number | null; supplierName?: string; contactName: string; contactEmail: string; contactPhone: string | null; companyName: string | null; shippingAddressJson: any; billingAddressJson: any; artworkFilesJson: any[] | null; totalEstimate: string | null; notes: string | null; internalNotes: string | null; vendorNotes: string | null; fulfillmentStatus: string | null; createdAt: string; items: OrderItem[]; partner?: any; event?: any; venue?: any; supplier?: any; exceptionState: string | null; exceptionType: string | null; exceptionMessage: string | null; exceptionUpdatedAt: string | null; artworkNeededFlag: boolean; artworkBrief: string | null; artworkContactName: string | null; artworkContactEmail: string | null;
+type OrderFull = { id: number; orderNumber: string; partnerId: number; partnerName?: string; eventId: number | null; eventName?: string; status: string; paymentStatus: string; fulfillmentMode: string | null; assignedSupplierId: number | null; supplierName?: string; contactName: string; contactEmail: string; contactPhone: string | null; companyName: string | null; shippingAddressJson: any; billingAddressJson: any; artworkFilesJson: any[] | null; totalEstimate: string | null; notes: string | null; internalNotes: string | null; vendorNotes: string | null; fulfillmentStatus: string | null; createdAt: string; items: OrderItem[]; partner?: any; event?: any; venue?: any; supplier?: any; exceptionState: string | null; exceptionType: string | null; exceptionMessage: string | null; exceptionUpdatedAt: string | null; artworkNeededFlag: boolean; artworkBrief: string | null; artworkContactName: string | null; artworkContactEmail: string | null; partnerContacts?: Array<{ id: number; role: string; fullName: string; email: string | null; phone: string | null; isPrimary: boolean; isActive: boolean }>;
   shipDateTarget: string | null; deliveryByDate: string | null; packageCount: number | null;
   totalShipmentWeight: number | null; totalShipmentWeightUnit: string | null;
   measurementSystem: "imperial" | "metric" | null;
@@ -436,24 +436,34 @@ export default function OrderDetail() {
 
           {order.notes && <Card className="p-5"><h2 className="font-semibold text-lg mb-2">Client Notes</h2><p className="text-sm whitespace-pre-wrap">{order.notes}</p></Card>}
 
-          <OrderExceptionPanel
-            order={{
-              id: order.id,
-              orderNumber: order.orderNumber,
-              contactEmail: order.contactEmail,
-              contactName: order.contactName,
-              exceptionState: order.exceptionState,
-              exceptionType: order.exceptionType,
-              exceptionMessage: order.exceptionMessage,
-              exceptionUpdatedAt: order.exceptionUpdatedAt,
-              artworkNeededFlag: order.artworkNeededFlag,
-              artworkBrief: order.artworkBrief,
-              artworkContactName: order.artworkContactName,
-              artworkContactEmail: order.artworkContactEmail,
-            }}
-            partnerDesignContactName={order.partner?.designContactName}
-            partnerDesignContactEmail={order.partner?.designContactEmail}
-          />
+          {(() => {
+            // Section 30 — prefer the designated graphic_designer partner contact
+            // (primary first, then any active one) over the legacy
+            // partner.designContactName/Email columns.
+            const designer = (order.partnerContacts || [])
+              .filter(c => c.role === "graphic_designer" && c.isActive)
+              .sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary))[0];
+            return (
+              <OrderExceptionPanel
+                order={{
+                  id: order.id,
+                  orderNumber: order.orderNumber,
+                  contactEmail: order.contactEmail,
+                  contactName: order.contactName,
+                  exceptionState: order.exceptionState,
+                  exceptionType: order.exceptionType,
+                  exceptionMessage: order.exceptionMessage,
+                  exceptionUpdatedAt: order.exceptionUpdatedAt,
+                  artworkNeededFlag: order.artworkNeededFlag,
+                  artworkBrief: order.artworkBrief,
+                  artworkContactName: order.artworkContactName,
+                  artworkContactEmail: order.artworkContactEmail,
+                }}
+                partnerDesignContactName={designer?.fullName ?? order.partner?.designContactName}
+                partnerDesignContactEmail={designer?.email ?? order.partner?.designContactEmail}
+              />
+            );
+          })()}
 
           {/* Section 28 — per-order email delivery timeline. Reads usage_events. */}
           <OrderEmailDeliveryPanel orderId={order.id} />
@@ -469,6 +479,27 @@ export default function OrderDetail() {
               {order.contactPhone && <div className="text-muted-foreground">{order.contactPhone}</div>}
             </div>
           </Card>
+
+          {order.partnerContacts && order.partnerContacts.length > 0 && (
+            <Card className="p-5">
+              <h2 className="font-semibold text-base mb-3 flex items-center gap-2"><User className="h-4 w-4 text-muted-foreground" />Partner Contacts</h2>
+              <div className="space-y-2">
+                {order.partnerContacts.filter(c => c.isActive).slice(0, 8).map(c => (
+                  <div key={c.id} className="text-xs border rounded p-2 bg-muted/30">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium">{c.fullName}</span>
+                      <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{c.role.replace(/_/g, " ")}</span>
+                      {c.isPrimary && <span className="text-[10px] px-1 rounded bg-amber-100 text-amber-800 border border-amber-200">primary</span>}
+                    </div>
+                    <div className="text-muted-foreground mt-0.5 flex flex-wrap gap-x-2">
+                      {c.email && <a href={`mailto:${c.email}`} className="hover:underline">{c.email}</a>}
+                      {c.phone && <a href={`tel:${c.phone}`} className="hover:underline">{c.phone}</a>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
 
           {order.event && <Card className="p-5">
             <h2 className="font-semibold text-base mb-3 flex items-center gap-2"><Calendar className="h-4 w-4 text-muted-foreground" />Event</h2>

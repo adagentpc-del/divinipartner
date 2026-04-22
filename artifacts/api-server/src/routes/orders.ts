@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, sql, desc, inArray } from "drizzle-orm";
-import { db, ordersTable, orderItemsTable, partnersTable, eventsTable, packagesTable, suppliersTable, venuesTable, productCatalogTable, partnerBrandingLocationsTable, citiesTable, inventoryTable, inventoryReservationsTable, supplierAssignmentHistoryTable, supplierStatusEventsTable, quoteAssetsTable, usageEvents, withMmColumns, withWeightColumns } from "@workspace/db";
+import { db, ordersTable, orderItemsTable, partnersTable, eventsTable, packagesTable, suppliersTable, venuesTable, productCatalogTable, partnerBrandingLocationsTable, citiesTable, inventoryTable, inventoryReservationsTable, supplierAssignmentHistoryTable, supplierStatusEventsTable, quoteAssetsTable, usageEvents, partnerContactsTable, withMmColumns, withWeightColumns } from "@workspace/db";
 import { z } from "zod";
 
 const FULFILLMENT_MODES = [
@@ -495,7 +495,13 @@ router.get("/orders/:id", async (req, res): Promise<void> => {
   const [venue] = order.shippingVenueId ? await db.select().from(venuesTable).where(eq(venuesTable.id, order.shippingVenueId)) : [null];
   const [supplier] = order.assignedSupplierId ? await db.select().from(suppliersTable).where(eq(suppliersTable.id, order.assignedSupplierId)) : [null];
 
-  res.json({ ...order, items, partner, event, venue, supplier });
+  // Section 30 — attach partner role-based contacts so the Order Detail page
+  // can surface primary / billing / design / support contacts inline without
+  // a second round-trip.
+  const partnerContacts = order.partnerId ? await db.select().from(partnerContactsTable)
+    .where(eq(partnerContactsTable.partnerId, order.partnerId)) : [];
+
+  res.json({ ...order, items, partner, event, venue, supplier, partnerContacts });
 });
 
 import { fire } from "../services/workflowEngine";

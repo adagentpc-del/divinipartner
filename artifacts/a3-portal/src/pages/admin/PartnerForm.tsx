@@ -20,6 +20,7 @@ import { PartnerLogo } from "@/components/branding/PartnerLogo";
 import { resolveBranding } from "@/components/branding/usePartnerBranding";
 import { apiUrl } from "@/lib/api";
 import { RecipientsManager } from "@/components/admin/RecipientsManager";
+import PartnerContactsPanel from "@/components/admin/PartnerContactsPanel";
 import { FamilyStatusGrid, type FamilyAvailability } from "@/components/admin/FamilyStatusCard";
 import { RentableAssetsCard } from "@/components/admin/RentableAssetsCard";
 import { useQuery } from "@tanstack/react-query";
@@ -595,6 +596,7 @@ export default function PartnerForm() {
           {isEditing && id && (
             <>
               <CommunicationsCard partnerId={id} form={form} />
+              <PartnerContactsPanel partnerId={id} />
               <RecipientsManager partnerId={id} />
               <ReusableAssetsCard partnerId={id} />
               <RentableAssetsCard partnerId={id} />

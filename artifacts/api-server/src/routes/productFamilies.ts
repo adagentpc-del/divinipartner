@@ -7,7 +7,7 @@ import {
   productFamiliesTable, productFamilyMembersTable, productCatalogTable,
   inventoryTable, citiesTable,
   inventoryBlackoutsTable, inventoryReservationsTable, eventsTable,
-  partnerEmailRecipientsTable, ordersTable, usageEvents, partnersTable,
+  partnerEmailRecipientsTable, ordersTable, usageEvents, partnersTable, partnerContactsTable,
 } from "@workspace/db";
 import {
   getPartnerFamilyAvailability,
@@ -460,6 +460,25 @@ router.post("/dev/seed-easy-up-family", async (req, res): Promise<void> => {
     designContactName: sql`COALESCE(${partnersTable.designContactName}, 'Riley — partner design')`,
     designContactEmail: sql`COALESCE(${partnersTable.designContactEmail}, 'design@a3-demo.test')`,
   } as any).where(eq(partnersTable.id, partnerId));
+
+  // Section 30 — seed role-based partner contacts so the contacts panel and
+  // OrderDetail reference card have realistic data the moment a demo loads.
+  const seedContacts = [
+    { role: "primary",          fullName: "Avery Chen",     email: "avery@a3-demo.test",   phone: "+1 (415) 555-0102", isPrimary: true,  notes: "Main day-to-day contact, PT timezone." },
+    { role: "billing",          fullName: "Morgan Patel",   email: "billing@a3-demo.test", phone: "+1 (415) 555-0144", isPrimary: true,  notes: "AP team, prefers PDF invoices." },
+    { role: "graphic_designer", fullName: "Riley Park",     email: "design@a3-demo.test",  phone: "+1 (415) 555-0188", isPrimary: true,  notes: "Send all artwork briefs here." },
+    { role: "support",          fullName: "Jordan Rivera",  email: "support@a3-demo.test", phone: "+1 (415) 555-0177", isPrimary: true,  notes: "Escalation for fulfillment issues." },
+    { role: "onsite",           fullName: "Sam Okafor",     email: "onsite@a3-demo.test",  phone: "+1 (415) 555-0199", isPrimary: true,  notes: "Reach during event setup window." },
+  ];
+  let contactsCreated = 0;
+  for (const c of seedContacts) {
+    const existing = await db.select({ id: partnerContactsTable.id }).from(partnerContactsTable)
+      .where(and(eq(partnerContactsTable.partnerId, partnerId), eq(partnerContactsTable.role, c.role), eq(partnerContactsTable.fullName, c.fullName)));
+    if (existing.length === 0) {
+      await db.insert(partnerContactsTable).values({ partnerId, ...c } as any);
+      contactsCreated++;
+    }
+  }
 
   res.json({
     exceptionDemosApplied,
