@@ -1,0 +1,231 @@
+Refine the existing Partner Commerce Portal by adding CSV and Excel import support for suppliers, supplier information, products, and measurement/spec data.
+
+Goal:
+I need the ability to upload a CSV or Excel file so I can bulk add suppliers and their information, and also bulk add products with measurement specs, instead of entering everything manually.
+
+Scope:
+Keep this pass tightly focused on:
+1. supplier import
+2. product import
+3. measurement/spec import
+4. import preview, validation, and mapping
+5. bulk creation/update behavior
+
+Do not rebuild unrelated workflows.
+
+Requirements:
+
+1. Supported file types
+Support imports from:
+- CSV
+- Excel .xlsx
+
+If feasible, also support:
+- .xls as read-only import compatibility
+But prioritize CSV and .xlsx first.
+
+2. Import entry points
+Add clear import actions in the admin/software UI for:
+- Suppliers
+- Products
+- Product specs / measurement data
+
+These should live in the relevant admin sections, such as:
+- Supplier management page
+- Product catalog page
+- Quote/spec or backend catalog area if relevant
+
+Requirements:
+- make the import buttons obvious
+- label them clearly, such as:
+  - Import Suppliers
+  - Import Products
+  - Import Specs
+- do not bury this in a generic utility menu
+
+3. Supplier import fields
+Support bulk import of supplier records including fields such as:
+- supplier name
+- company name if separate
+- contact name
+- email
+- phone
+- website
+- address
+- city
+- state/province
+- postal code
+- country
+- supplier category
+- capabilities
+- territory/coverage
+- default lead time
+- notes
+- active/inactive status
+
+If some of these fields do not exist yet, extend the current supplier model carefully where useful.
+
+4. Product import fields
+Support bulk import of product records including fields such as:
+- product name
+- display name
+- SKU
+- category
+- subcategory if useful
+- short description
+- supplier/default supplier
+- active/inactive
+- pricing model placeholder if already supported
+- fixed price or base price if available
+- print only available yes/no
+- hardware included yes/no
+- rental eligible yes/no
+- attachment method
+- material
+- finishing
+- lead time
+- internal ops notes
+
+5. Measurement/spec import fields
+Support bulk import of measurement and spec-related data including fields such as:
+- width
+- height
+- depth
+- diameter if relevant
+- unit
+- finished size
+- artwork size
+- visible area
+- bleed
+- safe zone
+- installation dimensions
+- packed dimensions if already supported
+- weight if supported
+- metric or imperial source unit
+- original source dimension value
+- normalized base value if needed internally
+
+Requirements:
+- support metric and imperial units
+- support inches, feet, mm, cm, meters at minimum
+- preserve original unit where provided
+- validate dimension fields cleanly
+
+6. Import mapping UI
+When a CSV or Excel file is uploaded, provide a mapping step so I can match spreadsheet columns to portal fields.
+
+Requirements:
+- show uploaded column headers
+- show destination system fields
+- support dropdown mapping per column
+- allow ignoring unused columns
+- show required fields clearly
+- allow saving or reusing import mappings if feasible
+- make this intuitive and admin-friendly
+
+7. Import preview and validation
+Before committing the import:
+- show a preview of rows to be created/updated
+- validate required fields
+- validate email fields
+- validate numeric and dimension fields
+- validate unit fields
+- show duplicate warnings
+- show missing supplier/product reference warnings
+- show row-level errors clearly
+
+Requirements:
+- do not import blindly
+- give me the chance to confirm before final import
+- make validation feedback readable and useful
+
+8. Create vs update behavior
+Support sensible import behavior for:
+- create new records
+- update existing records when matched
+- skip duplicates
+- allow user to choose import mode where appropriate
+
+Matching logic can use:
+- supplier name
+- email
+- SKU
+- product name
+- internal ID if present
+- configurable matching if feasible
+
+Keep this practical and safe.
+
+9. Spec-to-product linking
+When importing product specs and dimensions:
+- allow linking specs to an existing product
+- allow creating a product and specs together if the file contains both
+- allow supplier association if present
+- allow importing one row per product/spec combination
+
+If a supplier name in the file matches an existing supplier, link it.
+If not, flag it for review rather than silently failing.
+
+10. Templates for download
+Provide downloadable template files for:
+- Supplier import CSV
+- Product import CSV
+- Product/spec import CSV
+
+If feasible, also provide Excel templates.
+
+Requirements:
+- include proper headers
+- include sample rows
+- include unit examples like:
+  - 2 m
+  - 200 cm
+  - 78.74 in
+- include clean examples for supplier/product linking
+
+11. Import results summary
+After import, show a clear results screen with:
+- rows created
+- rows updated
+- rows skipped
+- rows failed
+- downloadable error report if feasible
+- quick links to view imported suppliers/products
+
+12. Bulk import UX
+Keep the full import flow polished and easy:
+- upload file
+- map columns
+- validate preview
+- confirm import
+- show results
+
+Avoid:
+- raw technical import tooling
+- unclear field mapping
+- hidden validation errors
+- silent failures
+
+13. Seed/demo updates
+Add demo examples or templates showing:
+- supplier import example
+- product import example
+- measurement/spec import example
+- metric and imperial sample rows
+- supplier/product linked import example
+
+14. Documentation
+Update replit.md with:
+- supported import file types
+- supported fields for suppliers/products/specs
+- import mapping behavior
+- create vs update behavior
+- unit/measurement handling in imports
+- template download behavior
+- validation and error handling
+
+Important:
+Do not rebuild the app.
+Do not change unrelated workflows.
+Extend the current supplier, product, and spec/admin flows cleanly.
+Actually implement CSV and Excel import support with mapping, validation, and preview, not placeholders only.

@@ -9,7 +9,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ChevronRight, ChevronLeft, Calendar, MapPin, Package, Plus, Minus, Check, Upload, ShoppingCart, Sparkles, X, Ruler, AlertTriangle } from "lucide-react";
+import { Loader2, ChevronRight, ChevronLeft, Calendar, MapPin, Package, Plus, Minus, Check, Upload, ShoppingCart, Sparkles, X, Ruler, AlertTriangle, ZoomIn } from "lucide-react";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { formatWxHDual, formatPrimarySecondary, computePrice, convert, PRICING_UNIT_LABELS, type UnitSystem, type LengthUnit, type PricingModel, type PricingUnit } from "@/lib/units";
 import { BrandedShell } from "@/components/branding/BrandedShell";
 import { resolveBranding } from "@/components/branding/usePartnerBranding";
@@ -348,29 +349,18 @@ export default function OrderingPortal({ slug }: { slug: string }) {
                 {availablePkgs.map(p => {
                   const sel = selectedPkgId === p.id;
                   return (
-                    <button key={p.id} type="button" onClick={() => setSelectedPkgId(p.id)} className={`text-left p-5 rounded-xl border-2 transition ${sel ? "border-primary bg-primary/5 shadow-md" : "border-border hover:border-primary/40 bg-card"}`}>
-                      {(() => {
-                        const gallery = (p.imageUrls && p.imageUrls.length > 0) ? p.imageUrls : (p.imageUrl ? [p.imageUrl] : []);
-                        const cover = gallery[0];
-                        const extra = Math.max(0, gallery.length - 1);
-                        return cover ? (
-                          <div className="relative mb-3">
-                            <img src={resolveAssetUrl(cover)} alt={p.displayName || p.name} className="aspect-video w-full rounded-lg object-cover bg-muted" />
-                            {extra > 0 && (
-                              <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-black/70 text-white text-[11px] font-semibold">+{extra} more</span>
-                            )}
-                            {gallery.length > 1 && (
-                              <div className="mt-2 flex gap-1 overflow-x-auto">
-                                {gallery.slice(1, 5).map((u, i) => (
-                                  <img key={u + i} src={resolveAssetUrl(u)} alt="" className="h-10 w-14 rounded object-cover border bg-muted shrink-0" />
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="aspect-video w-full rounded-lg bg-muted/50 mb-3 flex items-center justify-center"><Package className="h-10 w-10 text-muted-foreground/40" /></div>
-                        );
-                      })()}
+                    <div
+                      key={p.id}
+                      role="button"
+                      tabIndex={0}
+                      aria-pressed={sel}
+                      aria-label={`Select package ${p.displayName || p.name}`}
+                      onClick={() => setSelectedPkgId(p.id)}
+                      onKeyDown={(e) => { if (e.currentTarget !== e.target) return; if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedPkgId(p.id); } }}
+                      className={`text-left p-5 rounded-xl border-2 transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${sel ? "border-primary bg-primary/5 shadow-md" : "border-border hover:border-primary/40 bg-card"}`}
+                    >
+                      <PackageGallery pkg={p} />
+
                       <div className="flex items-center justify-between mb-2"><Badge variant={sel ? "default" : "secondary"}>Tier {p.tier}</Badge>{sel && <Check className="h-4 w-4 text-primary" />}</div>
                       <div className="font-bold text-lg">{p.displayName || p.name}</div>
                       <p className="text-xs text-muted-foreground mt-1 line-clamp-3">{p.description}</p>
@@ -379,7 +369,7 @@ export default function OrderingPortal({ slug }: { slug: string }) {
                         {p.items.slice(0, 5).map(it => <div key={it.id} className="text-xs text-muted-foreground flex justify-between"><span className="truncate">{it.productName}</span><span className="font-semibold">{it.quantity}x</span></div>)}
                         {p.items.length > 5 && <div className="text-xs text-muted-foreground">+{p.items.length - 5} more</div>}
                       </div>
-                    </button>
+                    </div>
                   );
                 })}
               </div>
@@ -635,6 +625,59 @@ export default function OrderingPortal({ slug }: { slug: string }) {
         </div>
       </div>
     </BrandedShell>
+  );
+}
+
+function PackageGallery({ pkg }: { pkg: Pkg }) {
+  const gallery = (pkg.imageUrls && pkg.imageUrls.length > 0) ? pkg.imageUrls : (pkg.imageUrl ? [pkg.imageUrl] : []);
+  const [active, setActive] = useState(0);
+  const [lightbox, setLightbox] = useState(false);
+  if (gallery.length === 0) {
+    return <div className="aspect-video w-full rounded-lg bg-muted/50 mb-3 flex items-center justify-center"><Package className="h-10 w-10 text-muted-foreground/40" /></div>;
+  }
+  const current = gallery[Math.min(active, gallery.length - 1)];
+  const open = (i: number, e: React.MouseEvent) => { e.stopPropagation(); e.preventDefault(); setActive(i); setLightbox(true); };
+  return (
+    <div className="mb-3" onClick={(e) => e.stopPropagation()}>
+      <button type="button" onClick={(e) => open(active, e)} aria-label={`View ${pkg.displayName || pkg.name} larger`} className="relative block w-full group">
+        <img src={resolveAssetUrl(current)} alt={`${pkg.displayName || pkg.name} — image ${active + 1} of ${gallery.length}`} className="aspect-video w-full rounded-lg object-cover bg-muted" />
+        <span className="absolute top-2 right-2 rounded-full bg-black/60 text-white p-1.5 opacity-0 group-hover:opacity-100 transition" aria-hidden="true"><ZoomIn className="h-3.5 w-3.5" /></span>
+        {gallery.length > 1 && (
+          <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-black/70 text-white text-[11px] font-semibold">{active + 1} / {gallery.length}</span>
+        )}
+      </button>
+      {gallery.length > 1 && (
+        <div className="mt-2 flex gap-1 overflow-x-auto pb-1">
+          {gallery.map((u, i) => (
+            <button
+              key={u + i}
+              type="button"
+              onClick={(e) => { e.stopPropagation(); e.preventDefault(); setActive(i); }}
+              onDoubleClick={(e) => open(i, e)}
+              className={`shrink-0 rounded border-2 transition ${i === active ? "border-primary" : "border-transparent hover:border-primary/40"}`}
+              aria-label={`View image ${i + 1}`}
+            >
+              <img src={resolveAssetUrl(u)} alt="" className="h-10 w-14 rounded object-cover bg-muted" />
+            </button>
+          ))}
+        </div>
+      )}
+      <Dialog open={lightbox} onOpenChange={setLightbox}>
+        <DialogContent className="max-w-5xl p-0 bg-black/95 border-0">
+          <DialogTitle className="sr-only">{pkg.displayName || pkg.name} — image {active + 1} of {gallery.length}</DialogTitle>
+          <div className="relative">
+            <img src={resolveAssetUrl(gallery[active])} alt={`${pkg.displayName || pkg.name} — image ${active + 1} of ${gallery.length}`} className="w-full max-h-[85vh] object-contain" />
+            {gallery.length > 1 && (
+              <>
+                <button type="button" aria-label="Previous image" onClick={() => setActive((active - 1 + gallery.length) % gallery.length)} className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/10 hover:bg-white/20 text-white p-2"><ChevronLeft className="h-6 w-6" /></button>
+                <button type="button" aria-label="Next image" onClick={() => setActive((active + 1) % gallery.length)} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/10 hover:bg-white/20 text-white p-2"><ChevronRight className="h-6 w-6" /></button>
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-black/60 text-white text-xs">{active + 1} / {gallery.length}</div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
 

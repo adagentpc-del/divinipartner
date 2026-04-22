@@ -1,0 +1,201 @@
+Refine the existing Partner Commerce Portal by adding CSV and Excel import support for venue branding locations, branding zones, and their measurements/spec details.
+
+Goal:
+I need the ability to upload a CSV or Excel file for a venue or partner and bulk import branding locations, branding zone names, descriptions, and measurements instead of entering every area manually.
+
+Scope:
+Keep this pass tightly focused on:
+1. venue branding location import
+2. branding zone import
+3. measurements/spec import for each zone
+4. mapping, preview, validation, and create/update behavior
+
+Do not rebuild unrelated workflows.
+
+Requirements:
+
+1. Supported file types
+Support imports from:
+- CSV
+- Excel .xlsx
+
+If feasible, also support:
+- .xls compatibility
+But prioritize CSV and .xlsx first.
+
+2. Import entry points
+Add clear import actions in the relevant admin areas such as:
+- Venue management
+- Branding zone management
+- Partner portal builder for branding partners
+- Location/zone setup section
+
+Label them clearly, such as:
+- Import Branding Zones
+- Import Venue Locations
+- Import Zone Measurements
+
+3. Branding zone import fields
+Support bulk import of venue/branding location records including fields such as:
+- partner name or partner ID
+- venue name
+- city
+- country if relevant
+- zone name
+- zone code or internal reference
+- zone category
+- short description
+- recommended product
+- pricing model if already supported
+- fixed price or base price if available
+- active/inactive
+- display order if useful
+- notes
+- image reference/path placeholder if applicable
+- install notes
+- attachment method
+- material
+- finishing
+- custom/manual quote allowed yes/no
+
+4. Measurement/spec import fields
+Support import of measurement-related data for each branding zone, such as:
+- width
+- height
+- depth
+- diameter if relevant
+- unit
+- finished size
+- visible area
+- artwork size
+- bleed
+- safe zone
+- installation dimensions
+- coverage area if relevant
+- original source value
+- original source unit
+- normalized value if needed internally
+
+Requirements:
+- support both imperial and metric units
+- support inches, feet, mm, cm, meters at minimum
+- preserve original unit from spreadsheet
+- validate dimension/unit fields cleanly
+
+5. Venue linking behavior
+When importing branding zones:
+- allow linking imported rows to an existing venue
+- allow linking to an existing partner
+- allow import into a selected venue context so each row does not have to include venue if the import is done from within that venue
+- if venue/partner references do not match existing records, flag for review instead of silently failing
+
+6. Import mapping UI
+When a CSV or Excel file is uploaded, provide a column-mapping step.
+
+Requirements:
+- show uploaded spreadsheet headers
+- map spreadsheet columns to system fields
+- allow ignoring unused columns
+- clearly show required fields
+- allow saved/reusable import mappings if feasible
+- make the mapping step easy to understand
+
+7. Import preview and validation
+Before final import:
+- show row preview
+- validate required fields
+- validate numeric dimension fields
+- validate units
+- validate pricing values if included
+- validate venue/partner references
+- show duplicates and missing links clearly
+- show row-level errors in a readable way
+
+Do not import blindly.
+
+8. Create vs update behavior
+Support practical import modes such as:
+- create new zones
+- update existing zones
+- skip duplicates
+- choose import mode when appropriate
+
+Matching can use:
+- venue + zone name
+- zone code
+- internal ID if present
+- partner + venue + zone combination
+
+Keep this safe and practical.
+
+9. Section/builder integration
+After import, the new branding zones/venue locations should appear correctly in the partner portal builder and relevant branding zone sections.
+
+Requirements:
+- imported zones should be visible in the section manager
+- they should be available in ordering/selection flows if active
+- they should preserve imported measurements and notes
+
+10. Downloadable templates
+Provide downloadable sample templates for:
+- Branding zone import CSV
+- Venue location import CSV
+- Zone measurement/spec import CSV
+
+If feasible, also provide Excel templates.
+
+Requirements:
+- include sample headers
+- include example rows
+- show both metric and imperial examples
+- include examples like:
+  - Width = 2 m
+  - Height = 1.5 m
+  - Width = 78.74 in
+
+11. Import results summary
+After import, show:
+- rows created
+- rows updated
+- rows skipped
+- rows failed
+- downloadable error summary if feasible
+- quick links to view imported zones/venues
+
+12. UX requirements
+Keep the import flow polished and admin-friendly:
+- upload file
+- map columns
+- preview data
+- validate rows
+- confirm import
+- show results
+
+Avoid:
+- raw technical import behavior
+- unclear field mapping
+- silent failures
+- confusing unit handling
+
+13. Seed/demo updates
+Add demo/template examples showing:
+- venue branding zone import
+- metric and imperial zone measurements
+- zone linked to existing venue
+- zone import visible in partner builder afterward
+
+14. Documentation
+Update replit.md with:
+- supported file types
+- supported branding zone and measurement fields
+- venue/partner linking logic
+- create vs update behavior
+- metric/imperial handling in imports
+- template download behavior
+- validation and error handling
+
+Important:
+Do not rebuild the app.
+Do not change unrelated workflows.
+Extend the current venue, branding zone, measurement/spec, and partner builder/admin flows cleanly.
+Actually implement CSV and Excel import support with mapping, preview, validation, and create/update behavior, not placeholders only.

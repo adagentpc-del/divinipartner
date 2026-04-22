@@ -1,0 +1,272 @@
+Refine the existing Partner Commerce Portal by adding CSV and Excel import support for vendor package files uploaded by clients into that client’s profile.
+
+Goal:
+I need the ability to upload vendor package spreadsheets that I receive from clients and import those packages directly into that client’s profile, instead of manually rebuilding them one by one.
+
+Scope:
+Keep this pass tightly focused on:
+1. client/profile-level package import
+2. vendor package import from CSV and Excel
+3. mapping imported package data into the correct client profile
+4. preview, validation, create/update behavior
+5. making imported packages usable in that client’s portal/build
+
+Do not rebuild unrelated workflows.
+
+Requirements:
+
+1. Supported file types
+Support imports from:
+- CSV
+- Excel .xlsx
+
+If feasible, also support:
+- .xls compatibility
+But prioritize CSV and .xlsx first.
+
+2. Import entry points
+Add a clear import action from the client/partner profile page.
+
+Examples:
+- Import Vendor Packages
+- Upload Client Package File
+- Import Packages into This Profile
+
+Requirements:
+- this import should be available directly from the specific client/partner profile
+- when importing from inside a profile, the imported packages should automatically map to that profile unless changed by admin
+- make the entry point obvious and easy to find
+
+3. Package import use case
+This workflow is specifically for vendor packages provided by clients.
+
+Examples of what may come in the file:
+- package names
+- tier names
+- bundle descriptions
+- included items
+- quantities
+- product names
+- measurement specs
+- dimensions
+- units
+- package pricing
+- package notes
+- city or venue applicability
+- custom requirements
+- hardware vs print-only details
+- optional add-ons
+- vendor/source notes
+
+The import flow needs to be flexible enough to handle these real-world package files without requiring perfect formatting.
+
+4. Import targets
+Allow import into the client’s profile for:
+- package tiers
+- package descriptions
+- included package items
+- associated products if matched or created
+- measurement/spec data on package items
+- package pricing if present
+- city/event applicability if present
+- vendor/source metadata if useful
+
+5. Package import fields
+Support fields such as:
+- partner/client name or ID
+- package name
+- package tier
+- package code or internal reference
+- package description
+- package category
+- included item name
+- included item SKU if present
+- quantity
+- product category
+- width
+- height
+- depth
+- diameter if relevant
+- unit
+- material
+- finishing
+- hardware included yes/no
+- print only yes/no
+- rental eligible yes/no
+- package price
+- base price placeholder
+- city
+- venue
+- notes
+- active/inactive
+- vendor/source name
+
+Not every import file will have every field.
+The mapping flow should handle partial files cleanly.
+
+6. Profile-specific mapping behavior
+When importing from a specific client profile:
+- default the imported packages to that client profile
+- show that clearly in the UI
+- allow override only for internal admin if needed
+- do not accidentally import the packages into the wrong partner/client
+
+If the spreadsheet includes a client/partner field:
+- allow validation against the current profile
+- flag mismatches for review
+
+7. Mapping UI
+When a CSV or Excel file is uploaded:
+- show spreadsheet column headers
+- allow mapping each column to a destination field
+- allow ignoring unused columns
+- show required vs optional fields clearly
+- support saved import mappings if feasible
+- make it easy to map package-oriented spreadsheets that are messy but usable
+
+8. Flexible row handling
+Support real-world package spreadsheets that may be structured like:
+- one row per package
+- one row per package item
+- repeated package name across multiple rows
+- grouped package tier plus line items
+
+Requirements:
+- if multiple rows share the same package name/tier, treat them as belonging to the same package where appropriate
+- group included items under the correct imported package
+- do not create a separate package for every row if the file is clearly itemized under one package
+
+9. Measurement/spec handling
+Support package item measurement/spec imports including:
+- width
+- height
+- depth
+- diameter
+- unit
+- finished size
+- artwork size
+- visible area
+- bleed
+- safe zone
+- original source unit
+- original source value
+
+Requirements:
+- support both metric and imperial units
+- support inches, feet, mm, cm, meters at minimum
+- preserve original entered unit
+- validate units and numeric fields clearly
+
+10. Product linking behavior
+When imported package items reference products:
+- try to match to an existing product if possible
+- if no match exists, allow:
+  - create product placeholder
+  - leave item as unmapped package component
+  - flag for admin review
+
+Do not silently fail.
+Show matching/review outcomes clearly.
+
+11. Preview and validation
+Before final import:
+- show package grouping preview
+- show which packages will be created
+- show which included items belong to each package
+- validate required fields
+- validate dimensions/units
+- validate prices if present
+- flag duplicate package names
+- flag mismatched client/profile references
+- flag unresolved products or vendor references
+- show row-level and package-level warnings clearly
+
+12. Create vs update behavior
+Support safe import behavior such as:
+- create new packages
+- update existing packages in that client’s profile
+- skip duplicates
+- choose create/update mode where appropriate
+
+Matching logic can use:
+- client profile + package name
+- package code
+- package tier
+- internal ID if present
+
+Keep this practical and safe.
+
+13. Post-import behavior
+After import, the packages should be usable in the correct client profile and portal builder.
+
+Requirements:
+- imported packages should appear in that client’s package section
+- imported packages should show up in relevant ordering/build flows if active
+- package items and specs should be visible in admin detail
+- imported package structure should be easy to review/edit after import
+
+14. Downloadable templates
+Provide downloadable sample templates for:
+- Client vendor package import CSV
+- Client vendor package import Excel
+- Itemized package row template
+- Package + included items template
+
+Requirements:
+- include headers
+- include sample rows
+- show grouped package examples
+- include metric and imperial examples
+- include one example with repeated package name across multiple item rows
+
+15. Import results summary
+After import, show:
+- packages created
+- packages updated
+- package items created
+- rows skipped
+- rows failed
+- downloadable error report if feasible
+- quick link back to the client profile package section
+
+16. UX requirements
+Keep the import flow polished and easy:
+- upload file
+- map columns
+- preview grouped packages
+- validate
+- confirm import
+- show results
+
+Avoid:
+- raw technical import tooling
+- unclear package grouping
+- silent failures
+- importing into the wrong client profile
+- losing item/spec data from the spreadsheet
+
+17. Seed/demo updates
+Add demo/template examples showing:
+- one client profile with imported vendor packages
+- one grouped package import
+- one itemized package spreadsheet
+- metric and imperial package item specs
+- imported packages visible in that client profile afterward
+
+18. Documentation
+Update replit.md with:
+- supported file types
+- supported package import fields
+- how package grouping works
+- how imports map into a client profile
+- create vs update behavior
+- product linking behavior
+- measurement/spec handling
+- template download behavior
+- validation and error handling
+
+Important:
+Do not rebuild the app.
+Do not change unrelated workflows.
+Extend the current client/partner profile, package management, and import/admin flows cleanly.
+Actually implement CSV and Excel import support for client vendor package uploads with mapping, grouping, preview, validation, and correct profile assignment, not placeholders only.

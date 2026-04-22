@@ -20,6 +20,8 @@ type Pkg = { id: number; partnerId: number | null; supplierId: number | null; na
 type Supplier = { id: number; name: string };
 type Product = { id: number; name: string; category: string };
 type PkgItem = { id: number; productId: number; productName?: string | null; productCategory?: string | null; quantity: number; isOptional: boolean; sortOrder: number };
+
+const MAX_IMAGES = 50;
 type PkgFull = Pkg & { items: PkgItem[] };
 
 function PkgDialog({ partnerId, suppliers, pkg, trigger, onSaved }: { partnerId: number; suppliers: Supplier[]; pkg?: Pkg | null; trigger: React.ReactNode; onSaved: () => void }) {
@@ -51,7 +53,6 @@ function PkgDialog({ partnerId, suppliers, pkg, trigger, onSaved }: { partnerId:
     if (!put.ok) throw new Error("Upload failed");
     return objectPath as string;
   };
-  const MAX_IMAGES = 12;
   const onPickImages = async (files: FileList | null | undefined) => {
     if (!files || files.length === 0) return;
     const remaining = MAX_IMAGES - form.imageUrls.length;
@@ -113,7 +114,7 @@ function PkgDialog({ partnerId, suppliers, pkg, trigger, onSaved }: { partnerId:
           <div>
             <div className="flex items-center justify-between">
               <Label>Package images (shown to customers)</Label>
-              <span className="text-xs text-muted-foreground">{form.imageUrls.length} / 12</span>
+              <span className="text-xs text-muted-foreground">{form.imageUrls.length} / {MAX_IMAGES}</span>
             </div>
             <p className="text-xs text-muted-foreground mt-1">First image is the cover. Add multiple to showcase every piece included in the package.</p>
             <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -131,7 +132,7 @@ function PkgDialog({ partnerId, suppliers, pkg, trigger, onSaved }: { partnerId:
                   </div>
                 </div>
               ))}
-              {form.imageUrls.length < 12 && (
+              {form.imageUrls.length < MAX_IMAGES && (
                 <label className="aspect-[4/3] rounded-md border-2 border-dashed bg-muted/40 hover:bg-muted/70 flex flex-col items-center justify-center gap-1 cursor-pointer text-muted-foreground hover:text-foreground transition">
                   <input type="file" accept="image/*" multiple className="hidden" onChange={e => { onPickImages(e.target.files); e.currentTarget.value = ""; }} disabled={uploadingImg} />
                   {uploadingImg ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />}
