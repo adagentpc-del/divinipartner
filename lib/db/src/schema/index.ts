@@ -16,6 +16,7 @@ export * from "./requestFiles";
 export * from "./pricingRules";
 export * from "./adminNotes";
 export * from "./deckExtractions";
+export * from "./packageExtractions";
 export * from "./suppliers";
 export * from "./cities";
 export * from "./venues";

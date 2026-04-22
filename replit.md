@@ -356,3 +356,29 @@ Result payload extends the standard counts with `itemsCreated` and `productsCrea
 CSV template (`/api/imports/template/packages`) ships with a real grouped example: one Bronze booth package spread across three item rows (carry-forward), plus a metric Premium package — both in the format the system actually accepts.
 
 The whole commit runs inside `db.transaction`; any failure rolls back the package + its items + any newly created placeholder products together.
+
+### Section 25 extension #3 — Vendor package PDF intake (April 22, 2026)
+
+A third bulk-package channel sits next to the spreadsheet importer for the most common real-world artifact a partner sends: a vendor catalog PDF. Admins drop the PDF on the **"Convert Package PDF"** button on `PackagesList`, the system AI-extracts grouped package rows into a staging table, and the admin reviews/edits before the rows commit through the same `commitPackages` path used by CSV/XLSX — so all three intake channels share one validated write path.
+
+Schema (`package_extractions`, `package_extraction_claims`):
+- Self-contained, parallel to `deck_extractions` to keep the well-tested zones flow untouched. `package_extractions` holds `parsedRows` (JSONB array of rows matching `PACKAGE_FIELDS` keys + internal `_confidence`/`_sourcePage`/`_groupKey`/`_warnings`) plus document-level `parseWarnings` (e.g. partner-name mismatch). `package_extraction_claims` (PK `(partner_id, file_hash)`) gives concurrent uploads of the same PDF an atomic dedup lock — separate from `deck_extraction_claims` so a packages-parse and a zones-parse of the same PDF can run in parallel.
+
+Status state machine (mirrors deck extraction): `processing → uploaded → text_extracted → chunked → awaiting_ai → parsed | needs_review | duplicate_reused | parse_failed → imported | archived`. `needs_review` is set automatically when any row's confidence < 0.4, when `parseWarnings` is non-empty, or when the AI returned zero rows — surfacing a yellow review banner in the UI instead of a green ready state.
+
+Cost-reduction (mirrors deck extraction, same `PDF_LIMITS`-shaped caps): file-hash sha256 → reuse-from-prior path (any same partner+hash row in `parsed/needs_review/imported` is copied into the new extraction with `parseSource="reused_dedup"` for free) → atomic claim with 30s heartbeat refresh and 5min stale-takeover → `pdf-parse` once → boilerplate strip → keyword/price/dimension chunk picker (max 10 chunks, 8 KB AI input) → single `gpt-4o-mini` JSON-mode call (output capped at 2500 tokens). Tokens persisted on the extraction row for cost auditing; usage events emitted under `package_pdf.parse.{ai,rules,reused,failed}`.
+
+AI prompt is package-focused: produces a flat row stream where each row is either a package header (`packageName` + tier/price/etc.) or a sub-item (`itemName`/quantity/material/etc.) with a stable `_groupKey` per package — the same grouped-rows shape `commitPackages` already understands. The model is instructed to flag a partner-name mismatch as a top-level warning when the PDF references a different client.
+
+Frontend (`PackagePdfImportDialog`): four stages — **Upload** (with sha256 pre-flight to offer reuse before any AI cost), **Processing** (status-step polling every 1.5s), **Review** (rows grouped per package, expandable items, inline edit, low-confidence highlight, partner-mismatch banner, add/delete row, manual "Add package" escape hatch), **Results** (created/updated/skipped/failed counts plus per-row errors, mirroring the CSV importer's results UI). Edited rows are sent on commit; the staging row stores them for audit.
+
+Routes (`routes/packageExtraction.ts`):
+- `POST /api/partners/:partnerId/package-extractions` — create + kick off background processing
+- `GET /api/partners/:partnerId/package-extractions[/check-duplicate?hash=…]` — list / preflight dedup
+- `GET /api/package-extractions/:id` — full row incl. `parsedRows`
+- `PATCH /api/package-extractions/:id` — edit staged rows/warnings/status (rejected with 409 while a parse is mid-flight)
+- `POST /api/package-extractions/:id/commit` — strip internal `_*` keys, call `commitPackages` with `{ partnerId }` context, set status=`imported` (or back to `needs_review` if every row failed) and snapshot the result
+- `POST /api/package-extractions/:id/rerun` — atomic terminal→processing flip then re-process with `forceRerun`
+- `DELETE /api/package-extractions/:id`
+
+`commitPackages` was promoted from a private function to an export of `routes/imports.ts`, so the PDF commit endpoint shares the exact same validation, contiguous-block grouping, savepoint-per-group rollback, and placeholder-product behavior as the CSV/XLSX commit — no parallel write path to maintain.

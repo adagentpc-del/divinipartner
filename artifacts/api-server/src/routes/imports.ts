@@ -439,7 +439,7 @@ interface PackageCommitResult extends CommitResult {
   productsCreated: number;
 }
 
-async function commitPackages(rows: Record<string, unknown>[], mode: "create" | "update" | "upsert", context?: { partnerId?: number; venueId?: number }): Promise<PackageCommitResult> {
+export async function commitPackages(rows: Record<string, unknown>[], mode: "create" | "update" | "upsert", context?: { partnerId?: number; venueId?: number }): Promise<PackageCommitResult> {
   const result: PackageCommitResult = { created: 0, updated: 0, skipped: 0, failed: 0, errors: [], createdIds: [], updatedIds: [], itemsCreated: 0, productsCreated: 0 };
 
   // Coerce all rows first

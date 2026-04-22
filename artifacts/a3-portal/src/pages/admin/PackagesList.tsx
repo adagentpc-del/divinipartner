@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Loader2, Pencil, Trash2, Package, Copy, ChevronLeft, GripVertical, Upload, X as XIcon, ArrowUp, ArrowDown } from "lucide-react";
 import { ImportDialog } from "@/components/imports/ImportDialog";
+import { PackagePdfImportDialog } from "@/components/imports/PackagePdfImportDialog";
 import { DimensionInput } from "@/components/units/DimensionInput";
 import type { LengthUnit } from "@/lib/units";
 
@@ -235,6 +236,7 @@ export default function PackagesList() {
 
   const refetch = () => qc.invalidateQueries({ queryKey: [`/api/packages`, { partnerId }] });
   const [importOpen, setImportOpen] = useState(false);
+  const [pdfImportOpen, setPdfImportOpen] = useState(false);
   const del = useMutation({ mutationFn: (id: number) => apiFetch(`/api/packages/${id}`, { method: "DELETE" }), onSuccess: () => { refetch(); toast({ title: "Package deleted" }); } });
   const dup = useMutation({ mutationFn: (id: number) => apiFetch(`/api/packages/${id}/duplicate`, { method: "POST" }), onSuccess: () => { refetch(); toast({ title: "Package duplicated" }); } });
   const queryKey = [`/api/packages`, { partnerId }];
@@ -283,6 +285,7 @@ export default function PackagesList() {
             <p className="text-muted-foreground mt-1">{partner?.companyName} · {packages.length} package{packages.length !== 1 ? "s" : ""}</p>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" className="gap-2" onClick={() => setPdfImportOpen(true)}><Upload className="h-4 w-4" />Convert Package PDF</Button>
             <Button variant="outline" className="gap-2" onClick={() => setImportOpen(true)}><Upload className="h-4 w-4" />Import Vendor Packages</Button>
             <PkgDialog partnerId={partnerId} suppliers={suppliers} trigger={<Button className="gap-2"><Plus className="h-4 w-4" />Create Package</Button>} onSaved={refetch} />
           </div>
@@ -295,6 +298,13 @@ export default function PackagesList() {
         onOpenChange={setImportOpen}
         context={{ partnerId }}
         contextLabel={partner?.companyName}
+        onComplete={refetch}
+      />
+      <PackagePdfImportDialog
+        partnerId={partnerId}
+        partnerName={partner?.companyName}
+        open={pdfImportOpen}
+        onOpenChange={setPdfImportOpen}
         onComplete={refetch}
       />
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
