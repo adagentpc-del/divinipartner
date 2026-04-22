@@ -33,6 +33,7 @@ import FulfillmentCommandCenter from "@/pages/admin/FulfillmentCommandCenter";
 import QuoteIngestion from "@/pages/admin/QuoteIngestion";
 import Reconciliation from "@/pages/admin/Reconciliation";
 import Billing from "@/pages/admin/Billing";
+import Settings from "@/pages/admin/Settings";
 import InvoiceDetail from "@/pages/admin/InvoiceDetail";
 import PublicInvoice from "@/pages/Invoice";
 import Production from "@/pages/admin/Production";
@@ -150,6 +151,9 @@ function ClerkProviderWithRoutes() {
             <Route path="/invoice/:token" component={PublicInvoice} />
             <Route path="/admin/billing">
               {() => <AdminRoute component={Billing} />}
+            </Route>
+            <Route path="/admin/settings">
+              {() => <AdminRoute component={Settings} />}
             </Route>
             <Route path="/admin/invoices/:id">
               {() => <AdminRoute component={InvoiceDetail} />}

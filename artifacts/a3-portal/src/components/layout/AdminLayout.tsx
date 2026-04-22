@@ -28,7 +28,8 @@ import {
   ShieldCheck,
   HelpCircle,
   BookOpen,
-  Cloud
+  Cloud,
+  Settings as SettingsIcon
 } from "lucide-react";
 import { FeedbackButton } from "@/components/admin/FeedbackButton";
 import { DemoModeBanner, DemoModeToggle } from "@/components/admin/DemoModeBanner";
@@ -64,6 +65,7 @@ const navigation = [
   { name: "Pricing", href: "/admin/pricing", icon: Tags },
   { name: "Users", href: "/admin/users", icon: UserCog },
   { name: "Vendor View", href: "/admin/vendor", icon: Truck },
+  { name: "Settings", href: "/admin/settings", icon: SettingsIcon },
 ];
 
 function NavItem({ item, isActive }: { item: typeof navigation[0]; isActive: boolean }) {

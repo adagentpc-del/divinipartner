@@ -40,10 +40,12 @@ import exportsRouter from "./exports";
 import reconciliationRouter from "./reconciliation";
 import invoicesRouter from "./invoices";
 import billingRouter from "./billing";
+import publicConfigRouter from "./publicConfig";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(publicConfigRouter);
 router.use(partnersRouter);
 router.use(partnerEmailRecipientsRouter);
 router.use(publicPortalRouter);

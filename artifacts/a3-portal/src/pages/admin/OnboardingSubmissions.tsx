@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { useLocation } from "wouter";
@@ -63,7 +63,11 @@ export default function OnboardingSubmissions() {
     onError: (e: any) => toast({ title: "Could not convert", description: e?.message, variant: "destructive" }),
   });
 
-  const onboardingUrl = `${window.location.origin}${import.meta.env.BASE_URL.replace(/\/$/, "")}/onboard`;
+  const [publicCfg, setPublicCfg] = useState<import("@/lib/publicUrl").PublicConfig | null>(null);
+  useEffect(() => { import("@/lib/publicUrl").then(m => m.fetchPublicConfig().then(setPublicCfg).catch(() => {})); }, []);
+  const onboardingUrl = publicCfg && publicCfg.publicAppUrlConfigured
+    ? `${publicCfg.publicAppUrl.replace(/\/$/, "")}${import.meta.env.BASE_URL.replace(/\/$/, "")}/onboard`
+    : `${window.location.origin}${import.meta.env.BASE_URL.replace(/\/$/, "")}/onboard`;
 
   const copyLink = () => {
     navigator.clipboard.writeText(onboardingUrl);

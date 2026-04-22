@@ -254,3 +254,44 @@ Out of scope for this pass:
 - Live preview iframe (not added — would need new routing on the public
   partner portal page).
 - Drag-and-drop reorder (kept as ChevronUp/Down for now).
+
+## Section 23 — Canonical Public Domain (PUBLIC_APP_URL)
+
+The portal now treats a single env var, `PUBLIC_APP_URL`, as the canonical
+public origin for every customer-facing link. The Replit deployment hostnames
+remain reachable as internal/fallback addresses only.
+
+- **Helper (server):** `artifacts/api-server/src/lib/publicUrl.ts`
+  - `getPublicUrlInfo()` resolves the active URL: `PUBLIC_APP_URL` → first
+    `REPLIT_DOMAINS` host → `localhost`. Detects custom-domain status (any
+    host not ending in `.replit.app`/`.replit.dev`).
+  - `publicLink(path)` returns absolute URLs for emails / shareable links.
+  - `warnIfFallback()` logs once when emails are sent without `PUBLIC_APP_URL`.
+- **Helper (client):** `artifacts/a3-portal/src/lib/publicUrl.ts`
+  - `fetchPublicConfig()` (cached) + `publicLinkFrom(cfg, path)`.
+- **Endpoint:** `GET /api/public-config` returns
+  `{ publicAppUrl, publicHost, source, isCustomDomain, fallbackHosts,
+  publicAppUrlConfigured }`. Used by the Settings page and any UI that
+  generates shareable links.
+- **Canonical-host redirect:** `canonicalHostMiddleware` (mounted before
+  routers) issues a `308` from `*.replit.app`/`*.replit.dev` to the
+  canonical `PUBLIC_APP_URL` for GET/HEAD HTML requests when a custom domain
+  is configured. `/api` and `/__clerk` paths are excluded so server-to-server
+  calls and Clerk callbacks keep working on either host.
+- **Email change:** admin notification emails (`resend.ts` `sendNewRequestEmail`)
+  now build the request URL via `publicLink(...)` instead of
+  `REPLIT_DOMAINS[0]`. No other email currently embeds an app URL.
+- **Frontend usage:** `OnboardingSubmissions.tsx` shareable onboarding link
+  uses the resolved canonical URL when configured, otherwise falls back to
+  `window.location.origin`.
+- **Settings page:** new admin route `/admin/settings` (Settings nav entry)
+  shows the active public URL, source badge, custom-domain vs. fallback
+  state, the list of internal Replit hostnames, and an inline warning when
+  `PUBLIC_APP_URL` has not been set.
+
+Operator action to enable the custom domain:
+1. Set `PUBLIC_APP_URL` (e.g. `https://portal.a3visual.com`) in the
+   environment secrets pane.
+2. Restart the API server workflow.
+3. Visit `/admin/settings` to confirm the source badge reads
+   `PUBLIC_APP_URL` and the green "Custom domain" pill appears.

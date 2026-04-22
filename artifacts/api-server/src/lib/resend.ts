@@ -56,8 +56,9 @@ export async function sendRequestNotification(params: {
 
   try {
     const { client, fromEmail } = await getUncachableResendClient();
-    const domain = process.env.REPLIT_DOMAINS?.split(",")[0] || "localhost";
-    const requestUrl = `https://${domain}/admin/requests/${params.requestId}`;
+    const { publicLink, warnIfFallback } = await import("./publicUrl");
+    warnIfFallback();
+    const requestUrl = publicLink(`/admin/requests/${params.requestId}`);
 
     await client.emails.send({
       from: fromEmail || "A3 Partner Portal <noreply@resend.dev>",
