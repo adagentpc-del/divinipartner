@@ -409,3 +409,16 @@ Public ordering portal (`OrderingPortal.tsx`):
 
 Reuses (no parallel state machines):
 - `inventory` (hardwareOnHand/reserved/inUse/damaged/retired), `inventory_reservations`, `order_items.inventorySourceInventoryId/inventoryReservationId/reservedQuantity/shortageQuantity/fulfillmentMode`, `productCatalog.reusableHardwareCompatible/inventoryTracked`. Section 26 only adds the **family relationship layer** + the auto-switch policy on top.
+
+## Admin navigation IA (April 22, 2026)
+`AdminLayout.tsx` was previously a single flat row of ~30 nav items that overflowed past the viewport on standard desktops. Restructured into a primary-tabs + grouped-dropdown pattern:
+
+- **Inline primary tabs** (visible on `xl+` / ≥1280px screens): Dashboard, Partners, Orders, Fulfillment, Production, Analytics. These are the highest-frequency destinations.
+- **Grouped dropdowns** (Radix `DropdownMenu`): four labeled categories follow the primary tabs:
+  - **Catalog** — Products, Product Families, Inventory, Pricing, Suppliers, Assets, Quote Ingestion
+  - **Operations** — Workflow, Onboarding, Requests, Vendor View, Feedback
+  - **Commerce** — Commercial, Sales, Billing, Reconciliation
+  - **Platform** — Launch, Post-Launch, Rollout, Deployment, Users, Settings, Help, Runbook
+- The desktop nav row uses `flex-1 min-w-0 overflow-hidden` so it can never push the page wider than the viewport. Each dropdown trigger highlights when any descendant route is active (`groupActive`), and the active item inside the menu is tinted.
+- The `<lg` breakpoint switches to the existing left-side `Sheet` drawer, but the drawer is now itself grouped using the same `NAV_GROUPS` definition and gets `overflow-y-auto` so all items remain reachable on mobile.
+- Single source of truth: `PRIMARY_NAV` and `NAV_GROUPS` arrays at the top of `AdminLayout.tsx`. Adding a new admin page only requires appending to one array; the dropdown, mobile drawer, and active-state logic update automatically.
