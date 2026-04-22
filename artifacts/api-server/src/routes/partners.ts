@@ -1,5 +1,6 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import { eq } from "drizzle-orm";
+import { getAuth } from "@clerk/express";
 import { db, partnersTable, partnerAssetsTable, partnerThemesTable, partnerSectionsTable } from "@workspace/db";
 import { emit } from "../services/usageTracking";
 import { z } from "zod";
@@ -54,9 +55,25 @@ const PartnerBody = z.object({
   internalBillingOwnerUserId: z.string().optional().nullable(),
   billingActive: z.boolean().optional(),
   unitPreference: z.enum(["imperial", "metric"]).nullable().optional(),
+  // Communications / email config
+  emailFromName: z.string().max(120).optional().nullable(),
+  replyToEmail: z.string().email().optional().nullable().or(z.literal("")),
+  emailSenderLabel: z.string().max(120).optional().nullable(),
+  internalForwardEmail: z.string().email().optional().nullable().or(z.literal("")),
+  ccEmail: z.string().email().optional().nullable().or(z.literal("")),
+  emailEnabled: z.boolean().optional(),
 });
 
 const UpdatePartnerBodySchema = PartnerBody.partial();
+
+// Lightweight admin guard for endpoints that trigger external email sends.
+// Test-send routes hit Resend on demand, so we require an authenticated Clerk session
+// to prevent unauthenticated abuse (spam relay, partner enumeration via email blasts).
+function requireAuth(req: Request, res: Response, next: NextFunction): void {
+  const auth = getAuth(req);
+  if (!auth?.userId) { res.status(401).json({ error: "Authentication required" }); return; }
+  next();
+}
 
 const router: IRouter = Router();
 
@@ -122,6 +139,103 @@ router.patch("/partners/:id", async (req, res): Promise<void> => {
 
   res.json(partner);
 });
+
+// Test the customer-confirmation email template using a sample order shape.
+// Uses the most recent order for the partner if available, otherwise renders a
+// stub. Sends to the address provided in the body (admin-supplied).
+router.post("/partners/:id/test-confirmation-email", requireAuth, async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const to = (req.body?.to || "").trim();
+  const parsedTo = z.string().email().safeParse(to);
+  if (!parsedTo.success) { res.status(400).json({ error: "A valid 'to' email is required" }); return; }
+  try {
+    const { sendOrderConfirmation } = await import("../lib/email");
+    const ctx = await buildSampleOrderContext(id, parsedTo.data);
+    if (!ctx) { res.status(404).json({ error: "Partner not found" }); return; }
+    const result = await sendOrderConfirmation(ctx);
+    res.status(result.ok ? 200 : 500).json(result);
+  } catch (err: any) {
+    res.status(500).json({ ok: false, error: err?.message || String(err) });
+  }
+});
+
+router.post("/partners/:id/test-internal-forward", requireAuth, async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const overrideTo = (req.body?.to || "").trim() || null;
+  if (overrideTo) {
+    const parsedTo = z.string().email().safeParse(overrideTo);
+    if (!parsedTo.success) { res.status(400).json({ error: "If 'to' is provided it must be a valid email" }); return; }
+  }
+  try {
+    const { sendInternalOrderForward } = await import("../lib/email");
+    const ctx = await buildSampleOrderContext(id, "demo.customer@example.com");
+    if (!ctx) { res.status(404).json({ error: "Partner not found" }); return; }
+    if (overrideTo) {
+      // Temporarily override internalForwardEmail for this test send.
+      ctx.partner = { ...ctx.partner, internalForwardEmail: overrideTo, ccEmail: null };
+    }
+    const result = await sendInternalOrderForward(ctx);
+    res.status(result.ok ? 200 : 500).json(result);
+  } catch (err: any) {
+    res.status(500).json({ ok: false, error: err?.message || String(err) });
+  }
+});
+
+async function buildSampleOrderContext(partnerId: number, customerEmail: string) {
+  const { buildOrderEmailContext } = await import("../lib/email");
+  const [partner] = await db.select().from(partnersTable).where(eq(partnersTable.id, partnerId));
+  if (!partner) return null;
+  const [theme] = await db.select().from(partnerThemesTable).where(eq(partnerThemesTable.partnerId, partnerId));
+  // Try newest order — gives the most realistic preview.
+  const recent = await db.select().from((await import("@workspace/db")).ordersTable)
+    .where(eq((await import("@workspace/db")).ordersTable.partnerId, partnerId))
+    .orderBy((await import("drizzle-orm")).desc((await import("@workspace/db")).ordersTable.createdAt)).limit(1);
+  if (recent.length > 0) {
+    const ctx = await buildOrderEmailContext(recent[0].id);
+    if (ctx) {
+      ctx.order = { ...ctx.order, contactEmail: customerEmail };
+      return ctx;
+    }
+  }
+  // Synthetic fallback context — no items in the DB, just a preview shape.
+  const now = new Date();
+  return {
+    partner,
+    theme: theme ?? null,
+    order: {
+      id: 0,
+      orderNumber: "DEMO-" + now.getTime().toString(36).toUpperCase(),
+      partnerId: partner.id,
+      eventId: null,
+      packageId: null,
+      portalType: "ordering",
+      shippingVenueId: null,
+      shippingAddressJson: null,
+      billingAddressJson: null,
+      assignedSupplierId: null,
+      fulfillmentMode: "ship",
+      status: "new",
+      paymentStatus: "not_charged",
+      contactName: "Sample Customer",
+      contactEmail: customerEmail,
+      contactPhone: "+1 555 0100",
+      companyName: "Sample Co.",
+      notes: "This is a preview email. No real order was created.",
+      artworkFilesJson: [],
+      totalEstimate: "—",
+      measurementSystem: partner.unitPreference || "imperial",
+      createdAt: now,
+      updatedAt: now,
+    } as any,
+    items: [
+      { id: 0, orderId: 0, itemType: "product", productId: null, packageId: null, brandingZoneId: null, name: "Sample item — branded backdrop", quantity: 1, unitPrice: "0", notes: "Preview line item", sortOrder: 0 } as any,
+    ],
+    event: null,
+    venue: null,
+  };
+}
 
 router.post("/partners/:id/duplicate", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id);

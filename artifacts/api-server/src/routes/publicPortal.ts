@@ -404,7 +404,10 @@ router.get("/public/partners/:slug/ordering", async (req, res): Promise<void> =>
 
   const packagesWithItems = packages.map(p => ({ ...p, items: allPkgItems.filter(it => it.packageId === p.id) }));
 
-  res.json({ partner, cities, venues, events, packages: packagesWithItems, products });
+  // Include theme so OrderingPortal can render branded UI without a second fetch.
+  const [theme] = await db.select().from(partnerThemesTable).where(eq(partnerThemesTable.partnerId, partner.id));
+
+  res.json({ partner, theme: theme || null, cities, venues, events, packages: packagesWithItems, products });
 });
 
 import { z } from "zod";
@@ -591,7 +594,32 @@ router.post("/public/partners/:slug/orders", async (req, res): Promise<void> => 
       return order;
     });
 
-    res.status(201).json({ id: result.id, orderNumber: result.orderNumber, message: "Order received" });
+    // Fire-and-forget customer confirmation + internal forward emails. Order
+    // submission must never fail because of email issues — we surface a partial
+    // success state in the response so the UI can show "order received but
+    // email needs attention".
+    let emailStatus: { confirmation: boolean; forward: boolean; warnings: string[] } = {
+      confirmation: false,
+      forward: false,
+      warnings: [],
+    };
+    try {
+      const { sendOrderEmails } = await import("../lib/email");
+      const sent = await sendOrderEmails(result.id);
+      emailStatus.confirmation = sent.confirmation.ok;
+      emailStatus.forward = sent.forward.ok;
+      if (!sent.confirmation.ok && sent.confirmation.error) emailStatus.warnings.push(`confirmation: ${sent.confirmation.error}`);
+      if (!sent.forward.ok && sent.forward.error) emailStatus.warnings.push(`forward: ${sent.forward.error}`);
+    } catch (emailErr: any) {
+      emailStatus.warnings.push(`email_pipeline: ${emailErr?.message || String(emailErr)}`);
+    }
+
+    res.status(201).json({
+      id: result.id,
+      orderNumber: result.orderNumber,
+      message: "Order received",
+      email: emailStatus,
+    });
   } catch (e: any) {
     res.status(400).json({ error: "Could not create order", details: e?.message });
   }

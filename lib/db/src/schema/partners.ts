@@ -57,6 +57,17 @@ export const partnersTable = pgTable("partners", {
   unitPreference: text("unit_preference"),
   // Commercialization linkage (additive — partner can stand alone or roll up under a commercial account)
   commercialAccountId: integer("commercial_account_id"),
+  // Partner-level email/communications config (April 2026 communications extension).
+  // These power both the customer-facing order confirmation and the internal
+  // operations forward. internalForwardEmail is what receives the operational
+  // copy when an order is submitted; routingEmail above is older/legacy and
+  // is used as a final fallback if internalForwardEmail is empty.
+  emailFromName: text("email_from_name"),
+  replyToEmail: text("reply_to_email"),
+  emailSenderLabel: text("email_sender_label"),
+  internalForwardEmail: text("internal_forward_email"),
+  ccEmail: text("cc_email"),
+  emailEnabled: boolean("email_enabled").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

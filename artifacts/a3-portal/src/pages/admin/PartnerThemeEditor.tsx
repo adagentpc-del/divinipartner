@@ -15,6 +15,8 @@ interface ThemeData {
   secondaryColor: string;
   accentColor: string;
   backgroundColor: string;
+  buttonColor: string;
+  textColor: string;
   headingFont: string;
   bodyFont: string;
   buttonStyle: string;
@@ -41,6 +43,8 @@ export default function PartnerThemeEditor() {
     secondaryColor: "#1e293b",
     accentColor: "#f59e0b",
     backgroundColor: "#f8fafc",
+    buttonColor: "#0f1729",
+    textColor: "#0f172a",
     headingFont: "Inter",
     bodyFont: "Inter",
     buttonStyle: "rounded",
@@ -60,6 +64,8 @@ export default function PartnerThemeEditor() {
             secondaryColor: data.secondaryColor || "#1e293b",
             accentColor: data.accentColor || "#f59e0b",
             backgroundColor: data.backgroundColor || "#f8fafc",
+            buttonColor: data.buttonColor || data.primaryColor || "#0f1729",
+            textColor: data.textColor || "#0f172a",
             headingFont: data.headingFont || "Inter",
             bodyFont: data.bodyFont || "Inter",
             buttonStyle: data.buttonStyle || "rounded",
@@ -145,6 +151,8 @@ export default function PartnerThemeEditor() {
               { key: "secondaryColor", label: "Secondary" },
               { key: "accentColor", label: "Accent" },
               { key: "backgroundColor", label: "Background" },
+              { key: "buttonColor", label: "Button" },
+              { key: "textColor", label: "Text" },
             ].map(({ key, label }) => (
               <div key={key} className="space-y-2">
                 <Label className="text-xs">{label}</Label>
@@ -168,7 +176,7 @@ export default function PartnerThemeEditor() {
           <div className="mt-6 p-4 rounded-xl border">
             <p className="text-xs text-muted-foreground mb-3">Preview</p>
             <div className="flex gap-3">
-              {[theme.primaryColor, theme.secondaryColor, theme.accentColor, theme.backgroundColor].map((color, i) => (
+              {[theme.primaryColor, theme.secondaryColor, theme.accentColor, theme.backgroundColor, theme.buttonColor, theme.textColor].map((color, i) => (
                 <div key={i} className="flex-1 h-16 rounded-lg border" style={{ backgroundColor: color }} />
               ))}
             </div>

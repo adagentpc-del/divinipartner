@@ -9,8 +9,11 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ChevronRight, ChevronLeft, Calendar, MapPin, Package, Plus, Minus, Check, Upload, ShoppingCart, Sparkles, X, Ruler } from "lucide-react";
+import { Loader2, ChevronRight, ChevronLeft, Calendar, MapPin, Package, Plus, Minus, Check, Upload, ShoppingCart, Sparkles, X, Ruler, AlertTriangle } from "lucide-react";
 import { formatWxHDual, formatPrimarySecondary, computePrice, convert, PRICING_UNIT_LABELS, type UnitSystem, type LengthUnit, type PricingModel, type PricingUnit } from "@/lib/units";
+import { BrandedShell } from "@/components/branding/BrandedShell";
+import { resolveBranding } from "@/components/branding/usePartnerBranding";
+import { PartnerLogo } from "@/components/branding/PartnerLogo";
 
 type City = { id: number; name: string; state: string | null };
 type Venue = { id: number; cityId: number | null; name: string; venueAddress: string | null; shippingAddress: string | null };
@@ -24,8 +27,9 @@ type Product = {
   minBillableSize: number | null; minCharge: string | number | null; allowsCustomSize: boolean | null;
   sizeWidthMm: string | number | null; sizeHeightMm: string | number | null;
 };
-type Partner = { id: number; companyName: string; introHeadline: string | null; introText: string | null; pricingDisplayEnabled: boolean | null };
-type Data = { partner: Partner; cities: City[]; venues: Venue[]; events: Event[]; packages: Pkg[]; products: Product[] };
+type Partner = { id: number; companyName: string; logoUrl?: string | null; secondaryLogoUrl?: string | null; introHeadline: string | null; introText: string | null; pricingDisplayEnabled: boolean | null; thankYouText?: string | null; replyToEmail?: string | null; contactEmail?: string | null };
+type ThemeShape = { primaryColor?: string | null; secondaryColor?: string | null; accentColor?: string | null; backgroundColor?: string | null; buttonColor?: string | null; textColor?: string | null; headingFont?: string | null; bodyFont?: string | null; borderRadius?: string | null } | null;
+type Data = { partner: Partner; theme?: ThemeShape; cities: City[]; venues: Venue[]; events: Event[]; packages: Pkg[]; products: Product[] };
 
 type CartItem = {
   key: string; itemType: "product" | "package" | "branding_zone";
@@ -82,11 +86,11 @@ export default function OrderingPortal({ slug }: { slug: string }) {
     }
   };
   const [contact, setContact] = useState({ contactName: "", contactEmail: "", contactPhone: "", companyName: "", notes: "" });
-  const [submitted, setSubmitted] = useState<{ orderNumber: string } | null>(null);
+  const [submitted, setSubmitted] = useState<{ orderNumber: string; email?: { confirmation: boolean; forward: boolean; warnings: string[] } } | null>(null);
 
   const submit = useMutation({
     mutationFn: (body: any) => apiFetch(`/api/public/partners/${slug}/orders`, { method: "POST", body: JSON.stringify(body) }),
-    onSuccess: (res: any) => { setSubmitted({ orderNumber: res.orderNumber }); window.scrollTo(0, 0); },
+    onSuccess: (res: any) => { setSubmitted({ orderNumber: res.orderNumber, email: res.email }); window.scrollTo(0, 0); },
     onError: (e: any) => toast({ title: "Submission failed", description: e.message, variant: "destructive" }),
   });
 
@@ -103,20 +107,45 @@ export default function OrderingPortal({ slug }: { slug: string }) {
   if (isLoading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
   if (isError || !data) return <div className="min-h-screen flex items-center justify-center"><Card className="p-10 max-w-md text-center"><p className="text-lg font-semibold">We couldn't load this portal.</p><p className="text-sm text-muted-foreground mt-2">Please check the link or try again shortly.</p></Card></div>;
 
+  // Resolve branding once for use in conditional success view + main flow.
+  const branding = resolveBranding(data.theme);
+
   if (submitted) {
+    const emailFailed = submitted.email && (!submitted.email.confirmation || !submitted.email.forward);
     return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-blue-50 flex items-center justify-center p-6">
-        <Card className="max-w-lg p-10 text-center shadow-xl border-emerald-200">
-          <div className="h-16 w-16 mx-auto bg-emerald-100 rounded-full flex items-center justify-center mb-4"><Check className="h-8 w-8 text-emerald-600" /></div>
-          <h1 className="text-2xl font-bold mb-2">Order received!</h1>
-          <p className="text-muted-foreground mb-4">Your order has been submitted. Our production team will reach out shortly to confirm details.</p>
-          <div className="bg-muted/50 rounded-lg p-4 mb-6">
-            <div className="text-xs text-muted-foreground">Order Number</div>
-            <div className="font-mono font-bold text-lg">{submitted.orderNumber}</div>
-          </div>
-          <Button onClick={() => { setSubmitted(null); setStep(0); setCart([]); setSelectedPkgId(null); setEventId(null); setArtworkFiles([]); setContact({ contactName: "", contactEmail: "", contactPhone: "", companyName: "", notes: "" }); }}>Place another order</Button>
-        </Card>
-      </div>
+      <BrandedShell theme={data.theme}>
+        <div className="min-h-screen flex items-center justify-center p-6">
+          <Card className="max-w-lg p-10 text-center shadow-xl" style={{ borderColor: `${branding.primary}26` }}>
+            <div className="mb-4 flex justify-center"><PartnerLogo src={data.partner.logoUrl} name={data.partner.companyName} size={56} /></div>
+            <div className="h-16 w-16 mx-auto rounded-full flex items-center justify-center mb-4" style={{ background: `${branding.accent}26` }}>
+              <Check className="h-8 w-8" style={{ color: branding.primary }} />
+            </div>
+            <h1 className="text-2xl font-bold mb-2" style={{ color: branding.text, fontFamily: branding.headingFont }}>Order received!</h1>
+            <p className="mb-4" style={{ color: branding.muted }}>
+              {data.partner.thankYouText || `Your order has been submitted. ${data.partner.companyName} will reach out shortly to confirm details.`}
+            </p>
+            <div className="rounded-lg p-4 mb-6" style={{ background: branding.background, border: `1px solid ${branding.primary}1a` }}>
+              <div className="text-xs" style={{ color: branding.muted }}>Order Number</div>
+              <div className="font-mono font-bold text-lg" style={{ color: branding.text }}>{submitted.orderNumber}</div>
+            </div>
+            {emailFailed && (
+              <div className="mb-4 rounded-lg p-3 text-left text-xs flex items-start gap-2 bg-amber-50 border border-amber-200 text-amber-900">
+                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                <div>
+                  <div className="font-semibold">Order saved — confirmation email is being retried.</div>
+                  <div className="mt-0.5">Your order is recorded as <strong>{submitted.orderNumber}</strong>. The team has been notified directly.</div>
+                </div>
+              </div>
+            )}
+            {!emailFailed && submitted.email?.confirmation && (
+              <div className="mb-4 text-xs" style={{ color: branding.muted }}>A confirmation email is on the way to your inbox.</div>
+            )}
+            <Button onClick={() => { setSubmitted(null); setStep(0); setCart([]); setSelectedPkgId(null); setEventId(null); setArtworkFiles([]); setContact({ contactName: "", contactEmail: "", contactPhone: "", companyName: "", notes: "" }); }} style={{ background: branding.button, color: branding.buttonText }}>
+              Place another order
+            </Button>
+          </Card>
+        </div>
+      </BrandedShell>
     );
   }
 
@@ -217,17 +246,36 @@ export default function OrderingPortal({ slug }: { slug: string }) {
   const summaryItemCount = (selectedPkg ? 1 : 0) + cart.length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
+    <BrandedShell theme={data.theme}>
       {(data as any)?.previewMode && (
         <div className="bg-blue-600 text-white text-xs sm:text-sm px-4 py-2 text-center font-medium">
           Preview mode — this portal is visible for review only. Submissions are disabled until it goes live.
         </div>
       )}
+      {/* Branded header — shows the partner logo + company name across every step. */}
+      <header className="border-b" style={{ background: `linear-gradient(135deg, ${branding.primary} 0%, ${branding.primary}ee 100%)`, borderColor: `${branding.primary}33` }}>
+        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="bg-white rounded-lg p-2 shadow-sm">
+              <PartnerLogo src={data.partner.logoUrl} name={data.partner.companyName} size={36} />
+            </div>
+            <div className="text-white">
+              <div className="text-xs opacity-75">Order portal</div>
+              <div className="text-sm font-semibold">{data.partner.companyName}</div>
+            </div>
+          </div>
+          {data.partner.replyToEmail || data.partner.contactEmail ? (
+            <a href={`mailto:${data.partner.replyToEmail || data.partner.contactEmail}`} className="text-white/80 hover:text-white text-xs font-medium">
+              Need help?
+            </a>
+          ) : null}
+        </div>
+      </header>
       <div className="max-w-7xl mx-auto px-4 py-8 md:py-12">
         <div className="text-center mb-8">
-          <Badge className="mb-3" variant="secondary"><Sparkles className="h-3 w-3 mr-1" />Order Portal</Badge>
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">{data.partner.introHeadline || `Order with ${data.partner.companyName}`}</h1>
-          {data.partner.introText && <p className="text-muted-foreground mt-2 max-w-2xl mx-auto">{data.partner.introText}</p>}
+          <Badge className="mb-3" style={{ background: `${branding.accent}26`, color: branding.text, border: "none" }}><Sparkles className="h-3 w-3 mr-1" />Order Portal</Badge>
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight" style={{ color: branding.text, fontFamily: branding.headingFont }}>{data.partner.introHeadline || `Order with ${data.partner.companyName}`}</h1>
+          {data.partner.introText && <p className="mt-2 max-w-2xl mx-auto" style={{ color: branding.muted }}>{data.partner.introText}</p>}
         </div>
 
         <div className="grid lg:grid-cols-[1fr_320px] gap-6">
@@ -237,7 +285,16 @@ export default function OrderingPortal({ slug }: { slug: string }) {
         <div className="flex items-center justify-center gap-1 mb-8 flex-wrap">
           {STEPS.map((s, i) => (
             <div key={s} className="flex items-center">
-              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${i === step ? "bg-primary text-primary-foreground" : i < step ? "bg-emerald-100 text-emerald-700" : "bg-muted text-muted-foreground"}`}>
+              <div
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium"
+                style={
+                  i === step
+                    ? { background: branding.button, color: branding.buttonText }
+                    : i < step
+                      ? { background: `${branding.accent}26`, color: branding.text }
+                      : { background: `${branding.primary}10`, color: branding.muted }
+                }
+              >
                 <span className="h-5 w-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">{i < step ? <Check className="h-3 w-3" /> : i + 1}</span>{s}
               </div>
               {i < STEPS.length - 1 && <ChevronRight className="h-3 w-3 text-muted-foreground mx-1" />}
@@ -491,9 +548,9 @@ export default function OrderingPortal({ slug }: { slug: string }) {
           <div className="flex items-center justify-between pt-6 mt-6 border-t">
             <Button variant="ghost" onClick={() => setStep(s => Math.max(0, s - 1))} disabled={step === 0} className="gap-1"><ChevronLeft className="h-4 w-4" />Back</Button>
             {step < STEPS.length - 1 ? (
-              <Button onClick={() => setStep(s => s + 1)} disabled={!canAdvance()} className="gap-1">Next<ChevronRight className="h-4 w-4" /></Button>
+              <Button onClick={() => setStep(s => s + 1)} disabled={!canAdvance()} className="gap-1" style={{ background: branding.button, color: branding.buttonText }}>Next<ChevronRight className="h-4 w-4" /></Button>
             ) : (
-              <Button onClick={handleSubmit} disabled={submit.isPending || !contact.contactName || !contact.contactEmail} className="gap-2">{submit.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}Submit Order</Button>
+              <Button onClick={handleSubmit} disabled={submit.isPending || !contact.contactName || !contact.contactEmail} className="gap-2" style={{ background: branding.button, color: branding.buttonText }}>{submit.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}Submit Order</Button>
             )}
           </div>
         </Card>
@@ -560,7 +617,7 @@ export default function OrderingPortal({ slug }: { slug: string }) {
           </aside>
         </div>
       </div>
-    </div>
+    </BrandedShell>
   );
 }
 

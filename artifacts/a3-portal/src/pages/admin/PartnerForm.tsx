@@ -13,9 +13,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, ExternalLink, Palette, Settings, Building2, FileText, Globe } from "lucide-react";
+import { ArrowLeft, Loader2, ExternalLink, Palette, Settings, Building2, FileText, Globe, Mail, Send, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Link } from "wouter";
 import { RolloutChecklist } from "@/components/admin/RolloutChecklist";
+import { PartnerLogo } from "@/components/branding/PartnerLogo";
+import { resolveBranding } from "@/components/branding/usePartnerBranding";
+import { apiUrl } from "@/lib/api";
 
 const formSchema = z.object({
   companyName: z.string().min(1, "Company name is required"),
@@ -55,6 +58,13 @@ const formSchema = z.object({
   billingContactEmail: z.string().optional(),
   billingContactPhone: z.string().optional(),
   billingActive: z.boolean().default(true),
+  // Communications / email config (April 2026)
+  emailFromName: z.string().optional(),
+  replyToEmail: z.string().email().optional().or(z.literal("")),
+  emailSenderLabel: z.string().optional(),
+  internalForwardEmail: z.string().email().optional().or(z.literal("")),
+  ccEmail: z.string().email().optional().or(z.literal("")),
+  emailEnabled: z.boolean().default(true),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -90,6 +100,8 @@ export default function PartnerForm() {
       depositRequired: false, depositPct: "", allowPartialPayment: true, allowOrderOverride: true,
       defaultBillingNotes: "", billingContactName: "", billingContactEmail: "", billingContactPhone: "",
       billingActive: true,
+      emailFromName: "", replyToEmail: "", emailSenderLabel: "",
+      internalForwardEmail: "", ccEmail: "", emailEnabled: true,
     }
   });
 
@@ -127,6 +139,12 @@ export default function PartnerForm() {
         billingContactEmail: (partner as any).billingContactEmail || "",
         billingContactPhone: (partner as any).billingContactPhone || "",
         billingActive: (partner as any).billingActive ?? true,
+        emailFromName: (partner as any).emailFromName || "",
+        replyToEmail: (partner as any).replyToEmail || "",
+        emailSenderLabel: (partner as any).emailSenderLabel || "",
+        internalForwardEmail: (partner as any).internalForwardEmail || "",
+        ccEmail: (partner as any).ccEmail || "",
+        emailEnabled: (partner as any).emailEnabled ?? true,
       });
     }
   }, [partner, form]);
@@ -496,6 +514,10 @@ export default function PartnerForm() {
             </CardContent>
           </Card>
 
+          {isEditing && id && (
+            <CommunicationsCard partnerId={id} form={form} />
+          )}
+
           <Card id="sec-settings" className="scroll-mt-20">
             <CardHeader className="pb-4">
               <CardTitle className="text-base flex items-center gap-2">Settings <span className="text-xs font-normal text-muted-foreground ml-auto">Step 5 of 5</span></CardTitle>
@@ -533,6 +555,7 @@ export default function PartnerForm() {
 
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="outline" onClick={() => setLocation("/admin/partners")}>Cancel</Button>
+            {/* keep submit button below */}
             <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
               {(createMutation.isPending || updateMutation.isPending) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {isEditing ? "Update Partner" : "Create Partner"}
@@ -541,5 +564,176 @@ export default function PartnerForm() {
         </form>
       </Form>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Communications card — partner email config + branding/logo previews + test
+// send actions. Lives below the main form so it can use form.watch() reactively.
+// ---------------------------------------------------------------------------
+function CommunicationsCard({ partnerId, form }: { partnerId: number; form: any }) {
+  const { toast } = useToast();
+  const [testTo, setTestTo] = useState("");
+  const [forwardTo, setForwardTo] = useState("");
+  const [busy, setBusy] = useState<null | "confirmation" | "forward">(null);
+  // Pull theme so the preview matches what end customers actually see.
+  const [theme, setTheme] = useState<any>(null);
+  useEffect(() => {
+    fetch(apiUrl(`/api/partners/${partnerId}/theme`)).then(r => r.ok ? r.json() : null).then(setTheme).catch(() => {});
+  }, [partnerId]);
+
+  const branding = resolveBranding(theme);
+  const v = form.watch();
+  const internalForward = v.internalForwardEmail || v.routingEmail;
+  const replyTo = v.replyToEmail || v.contactEmail;
+  const senderName = v.emailFromName || v.companyName;
+  const issues: string[] = [];
+  if (!v.emailEnabled) issues.push("Outbound email is disabled — orders will save but no emails will send.");
+  if (!internalForward) issues.push("No internal forwarding email — order details won't be sent to your team.");
+  if (!replyTo) issues.push("No reply-to or contact email — replies will go to the default sender address.");
+  const ready = v.emailEnabled && !!internalForward && !!replyTo;
+
+  async function send(kind: "confirmation" | "forward") {
+    const to = kind === "confirmation" ? testTo : forwardTo;
+    if (kind === "confirmation" && !to) { toast({ title: "Enter an email to send the test to", variant: "destructive" }); return; }
+    setBusy(kind);
+    try {
+      const path = kind === "confirmation" ? "test-confirmation-email" : "test-internal-forward";
+      const res = await fetch(apiUrl(`/api/partners/${partnerId}/${path}`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok && json.ok) toast({ title: kind === "confirmation" ? "Test confirmation sent" : "Test internal forward sent" });
+      else toast({ title: "Test send failed", description: json.error || `HTTP ${res.status}`, variant: "destructive" });
+    } catch (err: any) {
+      toast({ title: "Test send failed", description: String(err?.message || err), variant: "destructive" });
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <Card id="sec-communications" className="scroll-mt-20">
+      <CardHeader className="pb-4">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Mail className="h-4 w-4" /> Communications &amp; Email
+          <span className="text-xs font-normal text-muted-foreground ml-auto">Customer confirmations &amp; internal forwarding</span>
+        </CardTitle>
+        <CardDescription className="text-xs">
+          Configure how branded order confirmations are sent to customers and forwarded to your team. Save the form after editing fields, then use the test buttons below.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <div className={`rounded-md border p-3 text-xs flex items-start gap-2 ${ready ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-amber-50 border-amber-200 text-amber-900"}`}>
+          {ready ? <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" /> : <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />}
+          <div>
+            <div className="font-semibold mb-0.5">{ready ? "Email setup looks good." : "Email setup is incomplete."}</div>
+            {issues.length > 0 ? <ul className="list-disc pl-4 space-y-0.5">{issues.map(i => <li key={i}>{i}</li>)}</ul> : <span>Customer confirmations and internal forwards will go out for every new order.</span>}
+          </div>
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-4">
+          <FormField control={form.control} name="emailFromName" render={({ field }: any) => (
+            <FormItem>
+              <FormLabel>From Name</FormLabel>
+              <FormControl><Input placeholder="Acme Events" {...field} value={field.value || ""} /></FormControl>
+              <FormDescription className="text-xs">Shown as the sender on outbound emails. Defaults to company name.</FormDescription>
+            </FormItem>
+          )} />
+          <FormField control={form.control} name="emailSenderLabel" render={({ field }: any) => (
+            <FormItem>
+              <FormLabel>Confirmation Sender Label</FormLabel>
+              <FormControl><Input placeholder="Acme Events Orders" {...field} value={field.value || ""} /></FormControl>
+              <FormDescription className="text-xs">Used in the customer subject line, e.g. "Acme Events — order received".</FormDescription>
+            </FormItem>
+          )} />
+          <FormField control={form.control} name="replyToEmail" render={({ field }: any) => (
+            <FormItem>
+              <FormLabel>Reply-To Email</FormLabel>
+              <FormControl><Input type="email" placeholder="orders@acme.com" {...field} value={field.value || ""} /></FormControl>
+              <FormDescription className="text-xs">Where customer replies are routed. Falls back to Contact Email.</FormDescription>
+              <FormMessage />
+            </FormItem>
+          )} />
+          <FormField control={form.control} name="internalForwardEmail" render={({ field }: any) => (
+            <FormItem>
+              <FormLabel>Internal Forwarding Email</FormLabel>
+              <FormControl><Input type="email" placeholder="ops@acme.com" {...field} value={field.value || ""} /></FormControl>
+              <FormDescription className="text-xs">Receives the operational copy of every new order.</FormDescription>
+              <FormMessage />
+            </FormItem>
+          )} />
+          <FormField control={form.control} name="ccEmail" render={({ field }: any) => (
+            <FormItem>
+              <FormLabel>CC Email (optional)</FormLabel>
+              <FormControl><Input type="email" placeholder="finance@acme.com" {...field} value={field.value || ""} /></FormControl>
+              <FormDescription className="text-xs">CC'd on internal forward only — not on customer confirmations.</FormDescription>
+              <FormMessage />
+            </FormItem>
+          )} />
+          <FormField control={form.control} name="emailEnabled" render={({ field }: any) => (
+            <FormItem className="flex items-end gap-3 space-y-0 pb-1.5">
+              <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+              <div>
+                <FormLabel className="text-sm">Send order emails</FormLabel>
+                <FormDescription className="text-xs">When off, orders still save but no emails are sent.</FormDescription>
+              </div>
+            </FormItem>
+          )} />
+        </div>
+
+        {/* Branding + logo preview — what customers actually see at the top of their email */}
+        <div className="space-y-2">
+          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Branding preview</div>
+          <div className="rounded-lg overflow-hidden border" style={{ background: branding.background }}>
+            <div className="p-5 text-center" style={{ background: `linear-gradient(135deg, ${branding.primary} 0%, ${branding.primary}dd 100%)` }}>
+              <div className="inline-block bg-white rounded-lg px-4 py-3">
+                <PartnerLogo src={v.logoUrl} name={v.companyName || "Partner"} size={48} />
+              </div>
+              <div className="mt-3 text-xs font-medium text-white/80">{senderName} · {replyTo || "no-reply@"}</div>
+            </div>
+            <div className="p-5 text-sm" style={{ color: branding.text }}>
+              <div className="font-semibold">Thanks, Sample Customer!</div>
+              <div className="text-xs mt-1" style={{ color: branding.muted }}>We received your order. Our team will follow up shortly.</div>
+              <div className="mt-3">
+                <span className="inline-block px-3 py-2 rounded-md text-white text-xs font-semibold" style={{ background: branding.button, color: branding.buttonText }}>Reply to this order</span>
+              </div>
+              <div className="flex gap-1.5 mt-4">
+                {[branding.primary, branding.secondary, branding.accent, branding.button, branding.background].map((c, i) => (
+                  <div key={i} className="flex-1 h-6 rounded border" style={{ background: c }} title={c} />
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="text-[11px] text-muted-foreground">Preview reflects current saved theme. Adjust colors in the <Link href={`/admin/partners/${partnerId}/theme`}><span className="underline cursor-pointer">Theme editor</span></Link>.</div>
+        </div>
+
+        {/* Test send actions */}
+        <div className="grid sm:grid-cols-2 gap-3">
+          <div className="rounded-lg border p-3 space-y-2">
+            <div className="text-xs font-semibold flex items-center gap-1.5"><Send className="h-3.5 w-3.5" /> Send a test customer confirmation</div>
+            <div className="flex gap-2">
+              <Input type="email" placeholder="you@example.com" value={testTo} onChange={(e) => setTestTo(e.target.value)} />
+              <Button type="button" variant="outline" disabled={busy === "confirmation"} onClick={() => send("confirmation")}>
+                {busy === "confirmation" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Send"}
+              </Button>
+            </div>
+            <div className="text-[11px] text-muted-foreground">Uses your most recent order as the preview, addressed to the email above.</div>
+          </div>
+          <div className="rounded-lg border p-3 space-y-2">
+            <div className="text-xs font-semibold flex items-center gap-1.5"><Send className="h-3.5 w-3.5" /> Send a test internal forward</div>
+            <div className="flex gap-2">
+              <Input type="email" placeholder="(blank = use Internal Forwarding Email)" value={forwardTo} onChange={(e) => setForwardTo(e.target.value)} />
+              <Button type="button" variant="outline" disabled={busy === "forward"} onClick={() => send("forward")}>
+                {busy === "forward" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Send"}
+              </Button>
+            </div>
+            <div className="text-[11px] text-muted-foreground">Leave blank to send to the configured internal forwarding address.</div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

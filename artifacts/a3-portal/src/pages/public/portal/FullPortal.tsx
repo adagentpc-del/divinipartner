@@ -143,6 +143,9 @@ export default function FullPortal({ slug }: { slug: string }) {
   const primaryColor = theme?.primaryColor || "#0f1729";
   const accentColor = theme?.accentColor || "#f59e0b";
   const bgColor = theme?.backgroundColor || "#f8fafc";
+  // buttonColor falls back to primaryColor for partners that haven't customized buttons yet.
+  const buttonColor = (theme as any)?.buttonColor || primaryColor;
+  const textColor = (theme as any)?.textColor || "#0f172a";
   const borderRadius = theme?.borderRadius || "0.75rem";
   const headingFont = theme?.headingFont || "inherit";
   const bodyFont = theme?.bodyFont || "inherit";
@@ -280,7 +283,7 @@ export default function FullPortal({ slug }: { slug: string }) {
                 {section.description && (
                   <p className="text-sm text-muted-foreground max-w-xl">{section.description}</p>
                 )}
-                <Button className="mt-4 gap-1.5" style={{ backgroundColor: primaryColor }} onClick={() => openSectionDialog(sectionType, section.title || SECTION_LABELS[sectionType])}>
+                <Button className="mt-4 gap-1.5" style={{ backgroundColor: buttonColor, color: "#fff" }} onClick={() => openSectionDialog(sectionType, section.title || SECTION_LABELS[sectionType])}>
                   <Icon className="h-4 w-4" /> {ctaLabel}
                 </Button>
               </div>
@@ -444,7 +447,7 @@ export default function FullPortal({ slug }: { slug: string }) {
                             {product.description && (
                               <p className="text-xs text-muted-foreground line-clamp-2">{product.description}</p>
                             )}
-                            <Button size="sm" className="w-full gap-1.5 mt-2" style={{ backgroundColor: primaryColor }}>
+                            <Button size="sm" className="w-full gap-1.5 mt-2" style={{ backgroundColor: buttonColor, color: "#fff" }}>
                               <ShoppingBag className="h-3.5 w-3.5" /> Request Quote
                             </Button>
                           </CardContent>
@@ -502,7 +505,7 @@ export default function FullPortal({ slug }: { slug: string }) {
                                   </Button>
                                 </a>
                               )}
-                              <Button size="sm" className="flex-1 gap-1.5" style={{ backgroundColor: primaryColor }}>
+                              <Button size="sm" className="flex-1 gap-1.5" style={{ backgroundColor: buttonColor, color: "#fff" }}>
                                 <MapPin className="h-3.5 w-3.5" /> Submit Artwork
                               </Button>
                             </div>

@@ -10,6 +10,8 @@ const ThemeBody = z.object({
   secondaryColor: z.string().optional(),
   accentColor: z.string().optional(),
   backgroundColor: z.string().optional(),
+  buttonColor: z.string().optional(),
+  textColor: z.string().optional(),
   headingFont: z.string().optional(),
   bodyFont: z.string().optional(),
   buttonStyle: z.string().optional(),

@@ -10,6 +10,8 @@ export const partnerThemesTable = pgTable("partner_themes", {
   secondaryColor: text("secondary_color"),
   accentColor: text("accent_color"),
   backgroundColor: text("background_color"),
+  buttonColor: text("button_color"),
+  textColor: text("text_color"),
   headingFont: text("heading_font"),
   bodyFont: text("body_font"),
   buttonStyle: text("button_style"),
