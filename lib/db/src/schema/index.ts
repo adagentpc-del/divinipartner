@@ -1,6 +1,7 @@
 export * from "./partners";
 export * from "./partnerAssets";
 export * from "./partnerThemes";
+export * from "./partnerEmailRecipients";
 export * from "./partnerSections";
 export * from "./partnerBrandingLocations";
 export * from "./partnerProductOverrides";

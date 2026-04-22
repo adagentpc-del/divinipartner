@@ -19,6 +19,7 @@ import { RolloutChecklist } from "@/components/admin/RolloutChecklist";
 import { PartnerLogo } from "@/components/branding/PartnerLogo";
 import { resolveBranding } from "@/components/branding/usePartnerBranding";
 import { apiUrl } from "@/lib/api";
+import { RecipientsManager } from "@/components/admin/RecipientsManager";
 
 const formSchema = z.object({
   companyName: z.string().min(1, "Company name is required"),
@@ -515,7 +516,10 @@ export default function PartnerForm() {
           </Card>
 
           {isEditing && id && (
-            <CommunicationsCard partnerId={id} form={form} />
+            <>
+              <CommunicationsCard partnerId={id} form={form} />
+              <RecipientsManager partnerId={id} />
+            </>
           )}
 
           <Card id="sec-settings" className="scroll-mt-20">

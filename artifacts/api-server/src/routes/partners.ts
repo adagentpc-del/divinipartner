@@ -169,21 +169,23 @@ router.post("/partners/:id/test-internal-forward", requireAuth, async (req, res)
     if (!parsedTo.success) { res.status(400).json({ error: "If 'to' is provided it must be a valid email" }); return; }
   }
   try {
-    const { sendInternalOrderForward } = await import("../lib/email");
+    const { sendOpsForward } = await import("../lib/email");
     const ctx = await buildSampleOrderContext(id, "demo.customer@example.com");
     if (!ctx) { res.status(404).json({ error: "Partner not found" }); return; }
+    // When an override address is provided, force the test send to that
+    // address — bypassing both legacy partner.internalForwardEmail and any
+    // configured ops recipients (which would otherwise hit real inboxes).
     if (overrideTo) {
-      // Temporarily override internalForwardEmail for this test send.
       ctx.partner = { ...ctx.partner, internalForwardEmail: overrideTo, ccEmail: null };
     }
-    const result = await sendInternalOrderForward(ctx);
+    const result = await sendOpsForward(ctx, overrideTo ? [overrideTo] : undefined);
     res.status(result.ok ? 200 : 500).json(result);
   } catch (err: any) {
     res.status(500).json({ ok: false, error: err?.message || String(err) });
   }
 });
 
-async function buildSampleOrderContext(partnerId: number, customerEmail: string) {
+export async function buildSampleOrderContext(partnerId: number, customerEmail: string) {
   const { buildOrderEmailContext } = await import("../lib/email");
   const [partner] = await db.select().from(partnersTable).where(eq(partnersTable.id, partnerId));
   if (!partner) return null;

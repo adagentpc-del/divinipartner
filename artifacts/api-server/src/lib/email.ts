@@ -1,7 +1,7 @@
 import { getUncachableResendClient } from "./resend";
 import { logger } from "./logger";
-import { db, partnersTable, partnerThemesTable, ordersTable, orderItemsTable, eventsTable, venuesTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, partnersTable, partnerThemesTable, ordersTable, orderItemsTable, eventsTable, venuesTable, partnerEmailRecipientsTable, type RecipientRole } from "@workspace/db";
+import { and, eq } from "drizzle-orm";
 import { emit } from "../services/usageTracking";
 
 type Partner = typeof partnersTable.$inferSelect;
@@ -249,6 +249,7 @@ async function sendBrandedEmail(params: {
   partner: Partner;
   to: EmailRecipient;
   cc?: EmailRecipient | null;
+  bcc?: EmailRecipient | null;
   subject: string;
   html: string;
   replyTo?: string | null;
@@ -271,6 +272,7 @@ async function sendBrandedEmail(params: {
       html: params.html,
     };
     if (params.cc) sendArgs.cc = params.cc;
+    if (params.bcc) sendArgs.bcc = params.bcc;
     if (params.replyTo) sendArgs.reply_to = params.replyTo;
     const result = await client.emails.send(sendArgs);
     const id = (result as any)?.data?.id || (result as any)?.id;
@@ -315,40 +317,268 @@ export async function sendOrderConfirmation(ctx: OrderEmailContext): Promise<Sen
   });
 }
 
+// ---------------------------------------------------------------------------
+// Multi-recipient routing
+// ---------------------------------------------------------------------------
+// Each partner can declare any number of email recipients with a structured
+// role (ops, finance, partner_contact, vendor, cc, bcc). We fan out one email
+// per role at order-submission time, with cc/bcc folded into the ops send.
+//
+// Backwards compatibility: when no recipients are configured for a role we
+// fall back to the legacy partner-level fields:
+//   ops              → partner.internalForwardEmail / partner.routingEmail
+//   ops cc           → partner.ccEmail
+//   finance          → partner.billingContactEmail
+//   partner_contact  → partner.contactEmail
+// This means existing partners keep working without any data migration.
+// ---------------------------------------------------------------------------
+
+export type RecipientsByRole = Record<RecipientRole, string[]>;
+
+export async function getRecipientsByRole(partnerId: number): Promise<RecipientsByRole> {
+  const rows = await db
+    .select()
+    .from(partnerEmailRecipientsTable)
+    .where(and(
+      eq(partnerEmailRecipientsTable.partnerId, partnerId),
+      eq(partnerEmailRecipientsTable.isActive, true),
+    ));
+  const out: RecipientsByRole = { ops: [], finance: [], partner_contact: [], vendor: [], cc: [], bcc: [] };
+  for (const r of rows) {
+    const role = r.role as RecipientRole;
+    if (out[role] === undefined) continue; // skip unknown roles defensively
+    if (r.email) out[role].push(r.email);
+  }
+  return out;
+}
+
+function uniq(list: (string | null | undefined)[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const s of list) {
+    if (!s) continue;
+    const k = s.trim().toLowerCase();
+    if (!k || seen.has(k)) continue;
+    seen.add(k);
+    out.push(s);
+  }
+  return out;
+}
+
+function resolveOpsRecipients(partner: Partner, configured: string[]): string[] {
+  if (configured.length > 0) return uniq(configured);
+  return uniq([partner.internalForwardEmail, partner.routingEmail]);
+}
+function resolveFinanceRecipients(partner: Partner, configured: string[]): string[] {
+  if (configured.length > 0) return uniq(configured);
+  return uniq([partner.billingContactEmail]);
+}
+function resolvePartnerContactRecipients(partner: Partner, configured: string[]): string[] {
+  if (configured.length > 0) return uniq(configured);
+  return uniq([partner.contactEmail]);
+}
+
+// ----- Templates -----------------------------------------------------------
+
+function renderFinanceHtml(ctx: OrderEmailContext): string {
+  const { partner, theme, order, event, venue } = ctx;
+  const colors = resolveBrandColors(theme);
+  const eventLine = event ? `${escapeHtml(event.name)}${event.eventDate ? ` · ${escapeHtml(new Date(event.eventDate).toLocaleDateString())}` : ""}` : "—";
+  const venueLine = venue ? `${escapeHtml(venue.name)}${venue.city ? `, ${escapeHtml(venue.city)}` : ""}` : "—";
+  const billing = (order.billingAddressJson as any) || null;
+  const billLine = billing ? [billing.line1, billing.line2, billing.city, billing.region, billing.postalCode, billing.country].filter(Boolean).map(escapeHtml).join(", ") : "";
+  return `${shellOpen(colors)}
+    ${brandHeader(partner, colors)}
+    <tr>
+      <td style="padding:24px 32px;">
+        <div style="display:inline-block;padding:4px 10px;border-radius:999px;background:#dcfce7;color:#166534;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">Finance · new order</div>
+        <h1 style="margin:0 0 4px 0;font-size:20px;color:${colors.text};">${escapeHtml(order.orderNumber)}</h1>
+        <div style="font-size:13px;color:${colors.muted};">Submitted ${escapeHtml(new Date(order.createdAt).toLocaleString())}</div>
+
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:18px;border-collapse:collapse;background:${colors.background};border-radius:10px;overflow:hidden;">
+          <tr><td style="padding:8px 12px;font-size:12px;color:${colors.muted};width:140px;">Bill to</td><td style="padding:8px 12px;font-size:13px;color:${colors.text};font-weight:600;">${escapeHtml(order.companyName || order.contactName)}</td></tr>
+          <tr><td style="padding:8px 12px;font-size:12px;color:${colors.muted};border-top:1px solid ${colors.primary}14;">Contact</td><td style="padding:8px 12px;font-size:13px;color:${colors.text};border-top:1px solid ${colors.primary}14;">${escapeHtml(order.contactName)} · <a href="mailto:${escapeHtml(order.contactEmail)}" style="color:${colors.primary};">${escapeHtml(order.contactEmail)}</a></td></tr>
+          ${billLine ? `<tr><td style="padding:8px 12px;font-size:12px;color:${colors.muted};border-top:1px solid ${colors.primary}14;">Billing address</td><td style="padding:8px 12px;font-size:13px;color:${colors.text};border-top:1px solid ${colors.primary}14;">${billLine}</td></tr>` : ""}
+          <tr><td style="padding:8px 12px;font-size:12px;color:${colors.muted};border-top:1px solid ${colors.primary}14;">Event</td><td style="padding:8px 12px;font-size:13px;color:${colors.text};border-top:1px solid ${colors.primary}14;">${eventLine}</td></tr>
+          <tr><td style="padding:8px 12px;font-size:12px;color:${colors.muted};border-top:1px solid ${colors.primary}14;">Venue</td><td style="padding:8px 12px;font-size:13px;color:${colors.text};border-top:1px solid ${colors.primary}14;">${venueLine}</td></tr>
+          <tr><td style="padding:8px 12px;font-size:12px;color:${colors.muted};border-top:1px solid ${colors.primary}14;">Payment status</td><td style="padding:8px 12px;font-size:13px;color:${colors.text};border-top:1px solid ${colors.primary}14;font-weight:600;">${escapeHtml(order.paymentStatus || "not_charged")}</td></tr>
+          ${partner.paymentTerms ? `<tr><td style="padding:8px 12px;font-size:12px;color:${colors.muted};border-top:1px solid ${colors.primary}14;">Terms</td><td style="padding:8px 12px;font-size:13px;color:${colors.text};border-top:1px solid ${colors.primary}14;">${escapeHtml(partner.paymentTerms)}</td></tr>` : ""}
+          ${partner.depositRequired ? `<tr><td style="padding:8px 12px;font-size:12px;color:${colors.muted};border-top:1px solid ${colors.primary}14;">Deposit</td><td style="padding:8px 12px;font-size:13px;color:${colors.text};border-top:1px solid ${colors.primary}14;">${escapeHtml(partner.depositPct || "—")}%</td></tr>` : ""}
+        </table>
+
+        <div style="margin-top:20px;padding:14px 18px;border-radius:10px;background:${colors.primary}0a;border:1px solid ${colors.primary}1a;">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:${colors.muted};margin-bottom:4px;">Estimated total</div>
+          <div style="font-size:24px;font-weight:700;color:${colors.text};">${escapeHtml(order.totalEstimate || "—")}</div>
+        </div>
+
+        ${partner.defaultBillingNotes ? `<div style="margin-top:18px;padding:12px;border-radius:8px;background:${colors.accent}10;border-left:3px solid ${colors.accent};font-size:13px;color:${colors.text};white-space:pre-wrap;">${escapeHtml(partner.defaultBillingNotes)}</div>` : ""}
+      </td>
+    </tr>
+    ${brandFooter(partner, colors, partner.billingContactEmail || partner.replyToEmail)}
+  ${shellClose()}`;
+}
+
+function renderPartnerContactHtml(ctx: OrderEmailContext): string {
+  const { partner, theme, order, items, event, venue } = ctx;
+  const colors = resolveBrandColors(theme);
+  const eventLine = event ? `${escapeHtml(event.name)}${event.eventDate ? ` · ${escapeHtml(new Date(event.eventDate).toLocaleDateString())}` : ""}` : "";
+  const venueLine = venue ? `${escapeHtml(venue.name)}${venue.city ? `, ${escapeHtml(venue.city)}` : ""}` : "";
+  return `${shellOpen(colors)}
+    ${brandHeader(partner, colors)}
+    <tr>
+      <td style="padding:32px;">
+        <h1 style="margin:0 0 8px 0;font-size:22px;color:${colors.text};">A new order is in</h1>
+        <p style="margin:0 0 20px 0;font-size:14px;color:${colors.muted};line-height:1.5;">A customer just submitted an order through your portal. Here's a quick summary so you can stay in the loop.</p>
+
+        <div style="background:${colors.background};border:1px solid ${colors.primary}1a;border-radius:10px;padding:16px;margin-bottom:18px;">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:${colors.muted};margin-bottom:4px;">Reference</div>
+          <div style="font-size:18px;font-weight:700;color:${colors.text};font-family:'SFMono-Regular',Consolas,monospace;">${escapeHtml(order.orderNumber)}</div>
+        </div>
+
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:18px;">
+          <tr><td style="padding:6px 0;font-size:13px;color:${colors.muted};width:110px;">Customer</td><td style="padding:6px 0;font-size:13px;color:${colors.text};font-weight:600;">${escapeHtml(order.contactName)}${order.companyName ? ` · ${escapeHtml(order.companyName)}` : ""}</td></tr>
+          ${eventLine ? `<tr><td style="padding:6px 0;font-size:13px;color:${colors.muted};">Event</td><td style="padding:6px 0;font-size:13px;color:${colors.text};">${eventLine}</td></tr>` : ""}
+          ${venueLine ? `<tr><td style="padding:6px 0;font-size:13px;color:${colors.muted};">Venue</td><td style="padding:6px 0;font-size:13px;color:${colors.text};">${venueLine}</td></tr>` : ""}
+          <tr><td style="padding:6px 0;font-size:13px;color:${colors.muted};">Items</td><td style="padding:6px 0;font-size:13px;color:${colors.text};">${items.length}</td></tr>
+        </table>
+
+        ${renderItemsTable(items, colors, { showPricing: !!partner.pricingDisplayEnabled })}
+
+        <div style="margin-top:22px;padding:14px;border-radius:8px;background:${colors.primary}08;font-size:13px;color:${colors.muted};line-height:1.5;">
+          The ops team has been notified and will follow up with the customer. No action is required from you unless flagged separately.
+        </div>
+      </td>
+    </tr>
+    ${brandFooter(partner, colors, partner.replyToEmail || partner.contactEmail)}
+  ${shellClose()}`;
+}
+
+// ----- Senders -------------------------------------------------------------
+
 export async function sendInternalOrderForward(ctx: OrderEmailContext): Promise<SendResult> {
+  // Legacy alias retained for any external caller. The new pipeline uses
+  // sendOpsForward which understands configured recipients.
+  return sendOpsForward(ctx);
+}
+
+export async function sendOpsForward(ctx: OrderEmailContext, overrideTo?: string[]): Promise<SendResult> {
   const { partner, order } = ctx;
-  const to = partner.internalForwardEmail || partner.routingEmail;
-  if (!to) return { ok: false, error: "no_internal_forward_address" };
+  const recipients = await getRecipientsByRole(partner.id);
+  const to = overrideTo && overrideTo.length > 0
+    ? uniq(overrideTo)
+    : resolveOpsRecipients(partner, recipients.ops);
+  if (to.length === 0) return { ok: false, error: "no_ops_recipient" };
+  // Legacy partner.ccEmail is only a fallback — if any role-based cc
+  // recipients are configured, the legacy field is ignored to avoid leaking
+  // order data to stale addresses after a partner migrates to the new model.
+  const cc = (recipients.cc && recipients.cc.length > 0)
+    ? uniq(recipients.cc)
+    : uniq([partner.ccEmail]);
+  const bcc = uniq(recipients.bcc || []);
   const html = renderInternalForwardHtml(ctx);
   return sendBrandedEmail({
     partner,
     to,
-    cc: partner.ccEmail || null,
+    cc: cc.length > 0 ? cc : null,
+    bcc: bcc.length > 0 ? bcc : null,
     subject: `[New order] ${partner.companyName} · ${order.orderNumber}`,
     html,
     replyTo: order.contactEmail,
-    emailType: "order_internal_forward",
+    emailType: "order_ops_forward",
     orderId: order.id,
   });
 }
 
+export async function sendFinanceNotification(ctx: OrderEmailContext, overrideTo?: string[]): Promise<SendResult> {
+  const { partner, order } = ctx;
+  const recipients = await getRecipientsByRole(partner.id);
+  const to = overrideTo && overrideTo.length > 0
+    ? uniq(overrideTo)
+    : resolveFinanceRecipients(partner, recipients.finance);
+  if (to.length === 0) return { ok: false, error: "no_finance_recipient" };
+  return sendBrandedEmail({
+    partner,
+    to,
+    subject: `[Finance] ${partner.companyName} · ${order.orderNumber}`,
+    html: renderFinanceHtml(ctx),
+    replyTo: partner.billingContactEmail || partner.replyToEmail || order.contactEmail,
+    emailType: "order_finance_notification",
+    orderId: order.id,
+  });
+}
+
+export async function sendPartnerContactNotification(ctx: OrderEmailContext, overrideTo?: string[]): Promise<SendResult> {
+  const { partner, order } = ctx;
+  const recipients = await getRecipientsByRole(partner.id);
+  const to = overrideTo && overrideTo.length > 0
+    ? uniq(overrideTo)
+    : resolvePartnerContactRecipients(partner, recipients.partner_contact);
+  if (to.length === 0) return { ok: false, error: "no_partner_contact_recipient" };
+  return sendBrandedEmail({
+    partner,
+    to,
+    subject: `New order received · ${order.orderNumber}`,
+    html: renderPartnerContactHtml(ctx),
+    replyTo: partner.replyToEmail || partner.contactEmail || order.contactEmail,
+    emailType: "order_partner_contact_notification",
+    orderId: order.id,
+  });
+}
+
+export async function sendVendorNotification(ctx: OrderEmailContext, overrideTo?: string[]): Promise<SendResult> {
+  const { partner, order } = ctx;
+  const recipients = await getRecipientsByRole(partner.id);
+  const to = overrideTo && overrideTo.length > 0 ? uniq(overrideTo) : uniq(recipients.vendor);
+  if (to.length === 0) return { ok: false, error: "no_vendor_recipient" };
+  // Vendors get the operational view (same template) so they can act on the
+  // order. A dedicated vendor template can be split out later if needed.
+  return sendBrandedEmail({
+    partner,
+    to,
+    subject: `[Vendor] ${partner.companyName} · ${order.orderNumber}`,
+    html: renderInternalForwardHtml(ctx),
+    replyTo: partner.replyToEmail || partner.contactEmail || order.contactEmail,
+    emailType: "order_vendor_notification",
+    orderId: order.id,
+  });
+}
+
+export interface OrderEmailFanoutResult {
+  confirmation: SendResult;
+  ops: SendResult;
+  finance: SendResult;
+  partnerContact: SendResult;
+  vendor: SendResult;
+  // Legacy alias so existing callers reading `forward` keep working.
+  forward: SendResult;
+}
+
 /**
- * Convenience for the order submission pipeline. Sends both emails in parallel,
- * never throws — caller should treat result as best-effort metadata.
+ * Convenience for the order submission pipeline. Sends every audience-specific
+ * email in parallel, never throws — caller should treat result as best-effort
+ * metadata.
+ *
+ * Each role independently resolves its recipient list. Roles with no
+ * configured recipients (and no legacy fallback) return `{ ok: false }` with a
+ * "no_..._recipient" error and do not produce a Resend call. This makes it
+ * easy for the UI to render a per-role status pill.
  */
-export async function sendOrderEmails(orderId: number): Promise<{ confirmation: SendResult; forward: SendResult }> {
+export async function sendOrderEmails(orderId: number): Promise<OrderEmailFanoutResult> {
   const ctx = await buildOrderEmailContext(orderId);
   if (!ctx) {
-    return {
-      confirmation: { ok: false, error: "order_not_found" },
-      forward: { ok: false, error: "order_not_found" },
-    };
+    const notFound: SendResult = { ok: false, error: "order_not_found" };
+    return { confirmation: notFound, ops: notFound, finance: notFound, partnerContact: notFound, vendor: notFound, forward: notFound };
   }
-  const [confirmation, forward] = await Promise.all([
-    sendOrderConfirmation(ctx).catch((err) => ({ ok: false, error: String(err?.message || err) }) as SendResult),
-    sendInternalOrderForward(ctx).catch((err) => ({ ok: false, error: String(err?.message || err) }) as SendResult),
+  const safe = (p: Promise<SendResult>): Promise<SendResult> =>
+    p.catch((err) => ({ ok: false, error: String(err?.message || err) }) as SendResult);
+  const [confirmation, ops, finance, partnerContact, vendor] = await Promise.all([
+    safe(sendOrderConfirmation(ctx)),
+    safe(sendOpsForward(ctx)),
+    safe(sendFinanceNotification(ctx)),
+    safe(sendPartnerContactNotification(ctx)),
+    safe(sendVendorNotification(ctx)),
   ]);
-  return { confirmation, forward };
+  return { confirmation, ops, finance, partnerContact, vendor, forward: ops };
 }
 
 export function emailConfigStatus(partner: Partial<Partner>): { ready: boolean; missing: string[]; warnings: string[] } {

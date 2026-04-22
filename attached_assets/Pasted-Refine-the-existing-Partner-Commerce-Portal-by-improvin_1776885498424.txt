@@ -1,0 +1,163 @@
+Refine the existing Partner Commerce Portal by improving the partner portal builder so section management is clear, named, and easy to control.
+
+Goal:
+On the partner page / partner website builder, I need to clearly see which sections exist in the portal build and be able to add sections from a named dropdown or selector, instead of only seeing a generic “Add Section” action with no clarity on what section is being added.
+
+Scope:
+Keep this pass tightly focused on:
+1. partner portal section visibility
+2. named section selection
+3. add/reorder/toggle section management
+4. clearer builder UX for packages, catalog, cities, and other portal sections
+
+Do not rebuild unrelated workflows.
+
+Requirements:
+
+1. Replace vague “Add Section” behavior
+The current builder should not just show a generic “Add Section” button with no clear understanding of what is being added.
+
+Instead:
+- add a section picker dropdown, modal, drawer, or menu
+- show the actual available section names before adding
+- make it obvious what each section is
+
+At minimum, available sections should include things like:
+- hero / landing section
+- packages
+- catalog
+- cities
+- venues
+- branding zones
+- event selection
+- inventory
+- partner contact / support
+- FAQ or help
+- custom text/content section if already supported
+
+2. Existing section visibility
+On each partner page / builder page, clearly show the sections that are already part of that partner’s portal.
+
+Requirements:
+- display current sections in a visible list or stack
+- each section should have a clear label/name
+- each section should show status such as:
+  - active
+  - hidden
+  - draft
+  - not configured if useful
+- make it obvious what is already on the page versus what is still available to add
+
+3. Named section selector
+When adding a new section, use a structured selector.
+
+Support:
+- dropdown menu or modal with named options
+- section description under each option if feasible
+- icon or visual indicator per section if feasible
+- prevent confusion between similar sections
+- disable or mark sections already added if duplication is not allowed
+- if duplication is allowed for some section types, label that clearly
+
+Example:
+- Packages: show available package tiers on the partner portal
+- Catalog: show product catalog or selectable items
+- Cities: show city selection for multi-city partners
+- Venues: show venue selection or venue-specific info
+- Branding Zones: show clickable/selectable branded areas
+
+4. Section management controls
+For each existing section, allow clear controls such as:
+- show / hide
+- reorder
+- edit
+- remove
+- duplicate if useful
+- preview
+
+Requirements:
+- make controls visible and intuitive
+- use drag-and-drop reorder if feasible
+- otherwise use move up / move down actions
+- keep this builder experience polished and easy to scan
+
+5. Portal type awareness
+Make the available section list aware of portal type.
+
+Examples:
+For client controlled ordering portals like Social Commerce:
+- cities
+- venues
+- event selection
+- packages
+- catalog
+- inventory-aware sections
+
+For branding partner portals like Move Miami / Wynwood:
+- branding zones
+- venue map/areas
+- packages or catalog if applicable
+- custom branded areas
+- event details
+
+Requirements:
+- only show relevant section options for that portal type
+- hide irrelevant sections
+- keep the builder clean and intentional
+
+6. Better builder layout
+Improve the partner builder UI so it is easy to understand the portal structure.
+
+Recommended layout:
+- current live/visible sections area
+- available sections dropdown or add-section modal
+- section order controls
+- section visibility toggles
+- preview action
+
+If feasible, separate:
+- visible sections
+- hidden sections
+- available to add sections
+
+7. Section labels and descriptions
+Each section type should have:
+- clear name
+- short explanation of what it does
+- optional preview snippet if feasible
+
+Examples:
+- Packages: lets clients choose package tiers and bundled offerings
+- Catalog: shows individual products or add-ons available for order
+- Cities: lets users choose city-specific event or inventory context
+- Branding Zones: shows location-based branding areas for venue partners
+
+8. Preview behavior
+If feasible, support quick preview so I can see how the selected sections will appear on the partner portal.
+
+Requirements:
+- preview should reflect section order
+- preview should reflect hidden vs visible sections
+- preview should reflect partner branding/colors/logo if already supported
+
+9. Seed/demo updates
+Update demo data so at least one partner clearly shows:
+- packages section
+- catalog section
+- cities section
+- section picker with named options
+- visible/hidden section states
+
+10. Documentation
+Update replit.md with:
+- how partner portal sections are stored
+- how the section picker works
+- how portal type affects available sections
+- how visible vs hidden sections are managed
+- how section ordering works
+
+Important:
+Do not rebuild the app.
+Do not change unrelated workflows.
+Extend the current partner page / builder experience cleanly.
+Actually implement a named section management system, not placeholders only.

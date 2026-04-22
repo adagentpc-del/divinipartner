@@ -598,18 +598,42 @@ router.post("/public/partners/:slug/orders", async (req, res): Promise<void> => 
     // submission must never fail because of email issues — we surface a partial
     // success state in the response so the UI can show "order received but
     // email needs attention".
-    let emailStatus: { confirmation: boolean; forward: boolean; warnings: string[] } = {
-      confirmation: false,
-      forward: false,
-      warnings: [],
-    };
+    // Per-role status surfaced to the client so the UI can show exactly which
+    // audiences were notified and which need attention. "forward" is kept for
+    // backwards compatibility with older clients reading the old shape.
+    let emailStatus: {
+      confirmation: boolean;
+      ops: boolean;
+      finance: boolean;
+      partnerContact: boolean;
+      vendor: boolean;
+      forward: boolean;
+      warnings: string[];
+    } = { confirmation: false, ops: false, finance: false, partnerContact: false, vendor: false, forward: false, warnings: [] };
     try {
       const { sendOrderEmails } = await import("../lib/email");
       const sent = await sendOrderEmails(result.id);
       emailStatus.confirmation = sent.confirmation.ok;
-      emailStatus.forward = sent.forward.ok;
-      if (!sent.confirmation.ok && sent.confirmation.error) emailStatus.warnings.push(`confirmation: ${sent.confirmation.error}`);
-      if (!sent.forward.ok && sent.forward.error) emailStatus.warnings.push(`forward: ${sent.forward.error}`);
+      emailStatus.ops = sent.ops.ok;
+      emailStatus.finance = sent.finance.ok;
+      emailStatus.partnerContact = sent.partnerContact.ok;
+      emailStatus.vendor = sent.vendor.ok;
+      emailStatus.forward = sent.ops.ok;
+      // Only surface a warning if the role had a recipient configured and the
+      // send still failed. "no_*_recipient" is an expected steady-state for
+      // partners that don't use a given role.
+      const noteIfNeeded = (label: string, r: { ok: boolean; error?: string }) => {
+        if (r.ok) return;
+        if (r.error && r.error.startsWith("no_") && r.error.endsWith("_recipient")) return;
+        emailStatus.warnings.push(`${label}: ${r.error || "unknown_error"}`);
+      };
+      if (!sent.confirmation.ok && sent.confirmation.error !== "no_customer_email") {
+        emailStatus.warnings.push(`confirmation: ${sent.confirmation.error}`);
+      }
+      noteIfNeeded("ops", sent.ops);
+      noteIfNeeded("finance", sent.finance);
+      noteIfNeeded("partner_contact", sent.partnerContact);
+      noteIfNeeded("vendor", sent.vendor);
     } catch (emailErr: any) {
       emailStatus.warnings.push(`email_pipeline: ${emailErr?.message || String(emailErr)}`);
     }

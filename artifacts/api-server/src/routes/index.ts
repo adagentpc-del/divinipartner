@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
 import partnersRouter from "./partners";
+import partnerEmailRecipientsRouter from "./partnerEmailRecipients";
 import publicPortalRouter from "./publicPortal";
 import requestsRouter from "./requests";
 import pricingRouter from "./pricing";
@@ -44,6 +45,7 @@ const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(partnersRouter);
+router.use(partnerEmailRecipientsRouter);
 router.use(publicPortalRouter);
 router.use(requestsRouter);
 router.use(pricingRouter);
