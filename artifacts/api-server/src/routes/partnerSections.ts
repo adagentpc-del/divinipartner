@@ -75,15 +75,31 @@ router.put("/partners/:id/sections/bulk", async (req, res): Promise<void> => {
   const sections = z.array(SectionBody).safeParse(req.body);
   if (!sections.success) { res.status(400).json({ error: sections.error.message }); return; }
 
-  await db.delete(partnerSectionsTable).where(eq(partnerSectionsTable.partnerId, partnerId));
-
-  const results = [];
-  for (const section of sections.data) {
-    const [created] = await db.insert(partnerSectionsTable).values({ ...section, partnerId }).returning();
-    results.push(created);
+  // Section 22 fix: bulk replace MUST be atomic. Without a transaction, a
+  // mid-operation failure could leave the partner with deleted-but-not-
+  // re-inserted sections (data loss). Wrap delete + inserts in a single
+  // db.transaction so any failure rolls back to the prior state.
+  try {
+    const results = await db.transaction(async (tx) => {
+      await tx.delete(partnerSectionsTable).where(eq(partnerSectionsTable.partnerId, partnerId));
+      const inserted: any[] = [];
+      for (let i = 0; i < sections.data.length; i++) {
+        const section = sections.data[i];
+        // Normalize sortOrder to the request array index so the client's
+        // visual order is the source of truth, regardless of any stale
+        // sortOrder values the client may have sent.
+        const [created] = await tx.insert(partnerSectionsTable)
+          .values({ ...section, partnerId, sortOrder: i })
+          .returning();
+        inserted.push(created);
+      }
+      return inserted;
+    });
+    res.json(results);
+  } catch (e: any) {
+    console.error("[partnerSections.bulk] transaction failed:", e?.message || e);
+    res.status(500).json({ error: "Failed to save sections; existing sections were not modified." });
   }
-
-  res.json(results);
 });
 
 export default router;

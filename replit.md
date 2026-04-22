@@ -193,3 +193,64 @@ Demo seed (`scripts/src/seed-billing-signals-demo.ts`,
 
 See `PDF_AI_COST_AUDIT.md` §6 for the cost shape and the rationale that this
 is a NEW capability, not a regression of the §2 cost reductions.
+
+## Section 22 — Partner portal section builder UX (April 22, 2026)
+
+Refines the existing partner-portal section builder so the operator can clearly
+see what is on a partner's portal and add new sections from a NAMED picker.
+Backend (`partner_sections` table, `/api/partners/:id/sections*` routes) is
+unchanged; this is a builder-UX overhaul on top of the existing CRUD.
+
+How sections are stored:
+- Table `partner_sections` (`lib/db/src/schema/partnerSections.ts`):
+  `partnerId`, `sectionType` (string), `title`, `subtitle`, `description`,
+  `featuredImageUrl`, `featuredVideoUrl`, `isEnabled` (visible vs hidden),
+  `sortOrder` (display order, 0-based).
+- Bulk save: `PUT /api/partners/:id/sections/bulk` replaces the partner's
+  section list in one transaction (re-numbers `sortOrder` from the request
+  array order). Single-section CRUD endpoints exist but the builder uses bulk.
+
+Section catalog (`artifacts/a3-portal/src/pages/admin/PartnerSections.tsx`):
+- Universal types (any partner): `hero`, `packages`, `catalog`, `contact_support`,
+  `faq`, `custom_content` (multi-instance), `partner_deck`, `capabilities`.
+- Ordering-partner types (`partnerType='ordering'`): `cities`, `venues`,
+  `event_selection`, `inventory`, `standard_products`, `event_materials`.
+- Branding-partner types (`partnerType='branding'`): `venue_branding`,
+  `branding_zones`, `immersive`, `fabrication`, `open_request`.
+- Each type has `{ label, description, audience, multiInstance, icon, defaultTitle }`.
+  `audience` filters the picker; `multiInstance` (only `custom_content`)
+  controls whether the type can appear more than once on a portal.
+
+How the picker works:
+- Single shadcn `Select` dropdown above the section list. Each option shows
+  the section icon, label, and a one-line description so the operator knows
+  what is being added before confirming. Single-instance types already on
+  the portal are rendered with `disabled` + a "(already added)" hint;
+  `custom_content` shows "(repeatable)".
+- Selecting an option immediately appends a new section row (with a sensible
+  `defaultTitle`) — no separate "confirm" step. The picker resets after add.
+- Picker options are filtered by the partner's `partnerType`. Partners with
+  no type set see the full catalog so the operator can configure freely.
+
+Existing-section visibility & controls:
+- Each section card shows: icon, named label, position badge (`#1`, `#2`…),
+  status badge (`Visible` green / `Hidden` muted-outline), `Not configured`
+  amber badge when `title` is empty, plus the type description as a hint.
+- Header summary line shows total count, visible vs hidden split, and the
+  active audience filter.
+- Per-card controls: ChevronUp / ChevronDown reorder, Show/Hide switch
+  (toggles `isEnabled`), Trash to remove. Reorder buttons are disabled at
+  the list ends. Drag-and-drop was deferred — explicit buttons keep the
+  builder predictable on touch and keyboard.
+- Inline editing of `title` / `subtitle` / `description` / featured image
+  & video URLs stays in card body. A sticky bottom bar holds Save All / Back.
+
+Demo data (`scripts/src/seed.ts`):
+- Move Miami now seeds 10 sections including `hero`, `packages`, `catalog`,
+  and a hidden `cities` row so the visible/hidden split and the named picker
+  states are observable on a fresh seed.
+
+Out of scope for this pass:
+- Live preview iframe (not added — would need new routing on the public
+  partner portal page).
+- Drag-and-drop reorder (kept as ChevronUp/Down for now).

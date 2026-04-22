@@ -174,15 +174,26 @@ async function seed() {
       { sectionType: "open_request", title: "Creative Request", subtitle: "Something else in mind?", description: "Have a unique idea? Tell us about it and we'll make it happen.", sortOrder: 6 },
     ];
 
+    // Section 22: extra demos so the named section picker / visibility states
+    // are exercised end-to-end. `packages` and `catalog` are universal types
+    // and `cities` ships hidden so the visible/hidden split is observable.
+    const extraSectionTypes = [
+      { sectionType: "hero",     title: "Brand With Move Miami", subtitle: "Premier Miami event partner",       description: "Hero banner intro for the partner portal.",     isEnabled: true,  sortOrder: 0 },
+      { sectionType: "packages", title: "Activation Packages",    subtitle: "Choose the right tier",             description: "Bundled packages clients can pick from.",       isEnabled: true,  sortOrder: 7 },
+      { sectionType: "catalog",  title: "Item Catalog",           subtitle: "À-la-carte add-ons",                 description: "Individual products available beyond packages.", isEnabled: true,  sortOrder: 8 },
+      { sectionType: "cities",   title: "Pick Your City",         subtitle: "Multi-city ordering",                description: "Hidden by default — Move Miami is single-city.", isEnabled: false, sortOrder: 9 },
+    ];
+
     const existingSections = await db.select().from(partnerSectionsTable).where(
       eq(partnerSectionsTable.partnerId, moveMiami.id)
     );
 
     if (existingSections.length === 0) {
+      const all = [...sectionTypes, ...extraSectionTypes];
       await db.insert(partnerSectionsTable).values(
-        sectionTypes.map(s => ({ ...s, partnerId: moveMiami.id, isEnabled: true }))
+        all.map(s => ({ partnerId: moveMiami.id, isEnabled: true, ...s }))
       );
-      console.log(`Seeded ${sectionTypes.length} sections for Move Miami`);
+      console.log(`Seeded ${all.length} sections for Move Miami`);
     }
 
     const existingTheme = await db.select().from(partnerThemesTable).where(
