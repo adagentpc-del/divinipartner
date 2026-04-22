@@ -66,6 +66,11 @@ const formSchema = z.object({
   internalForwardEmail: z.string().email().optional().or(z.literal("")),
   ccEmail: z.string().email().optional().or(z.literal("")),
   emailEnabled: z.boolean().default(true),
+  // PDF attachment toggles (April 2026)
+  attachPdfCustomer: z.boolean().default(false),
+  attachPdfOps: z.boolean().default(true),
+  attachPdfFinance: z.boolean().default(false),
+  attachPdfPartnerContact: z.boolean().default(false),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -103,6 +108,7 @@ export default function PartnerForm() {
       billingActive: true,
       emailFromName: "", replyToEmail: "", emailSenderLabel: "",
       internalForwardEmail: "", ccEmail: "", emailEnabled: true,
+      attachPdfCustomer: false, attachPdfOps: true, attachPdfFinance: false, attachPdfPartnerContact: false,
     }
   });
 
@@ -146,6 +152,10 @@ export default function PartnerForm() {
         internalForwardEmail: (partner as any).internalForwardEmail || "",
         ccEmail: (partner as any).ccEmail || "",
         emailEnabled: (partner as any).emailEnabled ?? true,
+        attachPdfCustomer: (partner as any).attachPdfCustomer ?? false,
+        attachPdfOps: (partner as any).attachPdfOps ?? true,
+        attachPdfFinance: (partner as any).attachPdfFinance ?? false,
+        attachPdfPartnerContact: (partner as any).attachPdfPartnerContact ?? false,
       });
     }
   }, [partner, form]);
@@ -686,6 +696,40 @@ function CommunicationsCard({ partnerId, form }: { partnerId: number; form: any 
               </div>
             </FormItem>
           )} />
+        </div>
+
+        {/* PDF attachment toggles — choose which audiences get the branded order summary PDF attached. */}
+        <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+          <div>
+            <div className="text-sm font-semibold">Attach branded PDF order summary</div>
+            <div className="text-xs text-muted-foreground">A one-page branded PDF is generated automatically for each new order. Choose which recipient roles get it as an email attachment. The customer PDF hides pricing and supplier details; the internal/finance PDFs include them.</div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <FormField control={form.control} name="attachPdfCustomer" render={({ field }: any) => (
+              <FormItem className="flex items-start gap-2 space-y-0">
+                <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                <div><FormLabel className="text-sm">Customer confirmation</FormLabel><FormDescription className="text-xs">Sent to the order's contact email.</FormDescription></div>
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="attachPdfOps" render={({ field }: any) => (
+              <FormItem className="flex items-start gap-2 space-y-0">
+                <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                <div><FormLabel className="text-sm">Internal / ops forward</FormLabel><FormDescription className="text-xs">Full operational detail — recommended ON.</FormDescription></div>
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="attachPdfFinance" render={({ field }: any) => (
+              <FormItem className="flex items-start gap-2 space-y-0">
+                <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                <div><FormLabel className="text-sm">Finance notification</FormLabel><FormDescription className="text-xs">Billing-focused header, full pricing.</FormDescription></div>
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="attachPdfPartnerContact" render={({ field }: any) => (
+              <FormItem className="flex items-start gap-2 space-y-0">
+                <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                <div><FormLabel className="text-sm">Partner contact notification</FormLabel><FormDescription className="text-xs">Customer-facing PDF (no internal pricing).</FormDescription></div>
+              </FormItem>
+            )} />
+          </div>
         </div>
 
         {/* Branding + logo preview — what customers actually see at the top of their email */}

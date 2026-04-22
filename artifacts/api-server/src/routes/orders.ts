@@ -994,4 +994,32 @@ router.get("/vendor/orders/:orderId/packet", async (req, res): Promise<void> => 
   res.json({ order, supplier, items, products, quoteAssets });
 });
 
+// Branded order summary PDF download/preview. Audience flag picks which
+// template/sensitivity-level to render. Auth-gated: even the customer-facing
+// PDF should not be enumerable by random callers.
+router.get("/orders/:id/summary-pdf", async (req, res): Promise<void> => {
+  const { getAuth } = await import("@clerk/express");
+  const auth = getAuth(req as any);
+  if (!auth?.userId) { res.status(401).json({ error: "Authentication required" }); return; }
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid order id" }); return; }
+  const audienceRaw = String(req.query.audience || "internal").toLowerCase();
+  const audience = (["customer", "internal", "finance"] as const).find(a => a === audienceRaw);
+  if (!audience) { res.status(400).json({ error: "audience must be customer | internal | finance" }); return; }
+  const disposition = (req.query.download === "1" ? "attachment" : "inline");
+  try {
+    const { buildOrderEmailContext } = await import("../lib/email");
+    const { generateOrderSummaryPdf } = await import("../lib/pdf");
+    const ctx = await buildOrderEmailContext(id);
+    if (!ctx) { res.status(404).json({ error: "Order not found" }); return; }
+    const pdf = await generateOrderSummaryPdf(ctx, audience);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `${disposition}; filename="${pdf.filename}"`);
+    res.setHeader("Content-Length", String(pdf.buffer.length));
+    res.send(pdf.buffer);
+  } catch (err: any) {
+    res.status(500).json({ error: "PDF generation failed", details: err?.message });
+  }
+});
+
 export default router;

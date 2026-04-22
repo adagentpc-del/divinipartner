@@ -53,3 +53,25 @@ The A3 Partner Commerce Portal is built as a `pnpm workspace monorepo` using Typ
 -   **Resend**: Email delivery service, integrated for sending various notifications.
 -   **OpenAI**: AI integration via Replit AI Integrations, specifically using `gpt-4o-mini` for tasks like request summaries.
 -   **Replit Object Storage**: Cloud storage solution used for handling file uploads (e.g., artwork, documents).
+## Section 18 — Branded PDF order summaries & email attachments (April 22, 2026)
+
+Generated server-side via `pdfkit` for three audiences with progressive disclosure:
+- **customer** — branded, concise; hides pricing, supplier, and internal notes; finishes with a friendly "what happens next" call-out using the partner's accent color.
+- **internal** — full operational detail (contact, event/venue, logistics, items+notes, uploaded asset filenames). Pricing visible.
+- **finance** — internal layout with billing-focused header and a Billing block (terms, deposit, billing contact, billing entity, default billing notes).
+
+Files:
+- `artifacts/api-server/src/lib/pdf.ts` — `generateOrderSummaryPdf(ctx, audience)` returning `{filename, buffer, audience}`. Header band uses partner primary color; logo fetched lazily from `partner.logoUrl` (PNG/JPEG only) with typographic fallback. Footer paginates `Page X of Y`.
+- `artifacts/api-server/src/lib/email.ts` — `sendBrandedEmail` accepts `attachments?: {filename, content: Buffer}[]` and base64-encodes at the Resend boundary. Helper `maybeAttach(ctx, audience, enabled)` generates the PDF and never throws — failures are logged and the email still sends without the attachment. Wired into `sendOrderConfirmation`, `sendOpsForward`, `sendFinanceNotification`, `sendPartnerContactNotification` (partner contacts get the **customer** PDF).
+- `artifacts/api-server/src/routes/orders.ts` — `GET /api/orders/:id/summary-pdf?audience=customer|internal|finance&download=0|1` (auth-gated, streams `application/pdf`).
+
+Partner schema (`lib/db/src/schema/partners.ts`):
+- `attachPdfCustomer` (default false), `attachPdfOps` (default true), `attachPdfFinance` (default false), `attachPdfPartnerContact` (default false). All optional in `PartnerBody`/`UpdatePartnerBodySchema`.
+
+Admin UI:
+- `PartnerForm.tsx → CommunicationsCard` — new "Attach branded PDF order summary" group with the four toggles and per-role helper text.
+- `OrderDetail.tsx` — header card with "Preview customer / internal / finance" + "Download" buttons (open the new endpoint in a new tab).
+
+Telemetry: `pdf.generated` and `pdf.failed` usage events; `email.sent` meta now carries `attached: boolean` and `attachments: string[]`.
+
+Demo: Move Miami (partner id 1) has all four toggles ON.

@@ -62,6 +62,11 @@ const PartnerBody = z.object({
   internalForwardEmail: z.string().email().optional().nullable().or(z.literal("")),
   ccEmail: z.string().email().optional().nullable().or(z.literal("")),
   emailEnabled: z.boolean().optional(),
+  // PDF attachment toggles (April 2026)
+  attachPdfCustomer: z.boolean().optional(),
+  attachPdfOps: z.boolean().optional(),
+  attachPdfFinance: z.boolean().optional(),
+  attachPdfPartnerContact: z.boolean().optional(),
 });
 
 const UpdatePartnerBodySchema = PartnerBody.partial();

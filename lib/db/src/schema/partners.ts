@@ -68,6 +68,15 @@ export const partnersTable = pgTable("partners", {
   internalForwardEmail: text("internal_forward_email"),
   ccEmail: text("cc_email"),
   emailEnabled: boolean("email_enabled").notNull().default(true),
+  // PDF attachment toggles (April 2026 attachments extension). When true, the
+  // matching audience email gets the generated branded order summary attached.
+  // Customer/finance/partner_contact default OFF so we don't surprise existing
+  // partners; ops defaults ON because the operational summary is the primary
+  // useful artifact for the inbox-driven fulfillment workflow.
+  attachPdfCustomer: boolean("attach_pdf_customer").notNull().default(false),
+  attachPdfOps: boolean("attach_pdf_ops").notNull().default(true),
+  attachPdfFinance: boolean("attach_pdf_finance").notNull().default(false),
+  attachPdfPartnerContact: boolean("attach_pdf_partner_contact").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

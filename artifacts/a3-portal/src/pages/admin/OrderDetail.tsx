@@ -245,6 +245,22 @@ export default function OrderDetail() {
         </div>
       </div>
 
+      {/* Branded order summary PDFs — preview opens inline; download forces save. */}
+      <Card className="p-4 no-print">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <div className="text-sm font-semibold">Order summary PDF</div>
+            <div className="text-xs text-muted-foreground">Branded one-pager. Customer version hides pricing/supplier; internal includes everything; finance is billing-focused.</div>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <Button size="sm" variant="outline" onClick={() => window.open(`/api/orders/${id}/summary-pdf?audience=customer`, "_blank")}>Preview customer</Button>
+            <Button size="sm" variant="outline" onClick={() => window.open(`/api/orders/${id}/summary-pdf?audience=internal`, "_blank")}>Preview internal</Button>
+            <Button size="sm" variant="outline" onClick={() => window.open(`/api/orders/${id}/summary-pdf?audience=finance`, "_blank")}>Preview finance</Button>
+            <Button size="sm" variant="ghost" onClick={() => window.open(`/api/orders/${id}/summary-pdf?audience=internal&download=1`, "_blank")}>Download</Button>
+          </div>
+        </div>
+      </Card>
+
       {totalShortage > 0 && (
         <div className="rounded-lg border-2 border-amber-300 bg-amber-50 p-4 flex items-start gap-3">
           <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />

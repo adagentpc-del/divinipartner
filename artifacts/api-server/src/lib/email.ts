@@ -245,6 +245,11 @@ export function renderInternalForwardHtml(ctx: OrderEmailContext): string {
 
 export interface SendResult { ok: boolean; id?: string; error?: string; }
 
+export interface EmailAttachment {
+  filename: string;
+  content: Buffer; // raw bytes — we base64-encode at the Resend boundary
+}
+
 async function sendBrandedEmail(params: {
   partner: Partner;
   to: EmailRecipient;
@@ -255,6 +260,7 @@ async function sendBrandedEmail(params: {
   replyTo?: string | null;
   emailType: string;
   orderId?: number | null;
+  attachments?: EmailAttachment[] | null;
 }): Promise<SendResult> {
   if (partnerEmailDisabled(params.partner)) {
     logger.warn({ partnerId: params.partner.id, type: params.emailType }, "Email disabled for partner; skipping send");
@@ -274,13 +280,20 @@ async function sendBrandedEmail(params: {
     if (params.cc) sendArgs.cc = params.cc;
     if (params.bcc) sendArgs.bcc = params.bcc;
     if (params.replyTo) sendArgs.reply_to = params.replyTo;
+    if (params.attachments && params.attachments.length > 0) {
+      sendArgs.attachments = params.attachments.map(a => ({
+        filename: a.filename,
+        content: a.content.toString("base64"),
+      }));
+    }
     const result = await client.emails.send(sendArgs);
     const id = (result as any)?.data?.id || (result as any)?.id;
+    const attachmentNames = (params.attachments || []).map(a => a.filename);
     emit("email.sent", {
       partnerId: params.partner.id,
       objectType: "order",
       objectId: params.orderId ?? null,
-      meta: { type: params.emailType, to: params.to, subject: params.subject, providerId: id },
+      meta: { type: params.emailType, to: params.to, subject: params.subject, providerId: id, attached: attachmentNames.length > 0, attachments: attachmentNames },
     }).catch(() => {});
     logger.info({ partnerId: params.partner.id, type: params.emailType, id }, "Email sent");
     return { ok: true, id };
@@ -301,11 +314,39 @@ function partnerEmailDisabled(partner: Partner): boolean {
   return partner.emailEnabled === false;
 }
 
+// Attachment helper. Generates a PDF for the given audience but never throws —
+// failures are logged and the email sends without the attachment so we never
+// regress the customer-facing notification because of a rendering bug.
+async function maybeAttach(ctx: OrderEmailContext, audience: "customer" | "internal" | "finance", enabled: boolean): Promise<EmailAttachment[] | null> {
+  if (!enabled) return null;
+  try {
+    const { generateOrderSummaryPdf } = await import("./pdf");
+    const pdf = await generateOrderSummaryPdf(ctx, audience);
+    emit("pdf.generated", {
+      partnerId: ctx.partner.id,
+      objectType: "order",
+      objectId: ctx.order.id,
+      meta: { audience, filename: pdf.filename, bytes: pdf.buffer.length },
+    }).catch(() => {});
+    return [{ filename: pdf.filename, content: pdf.buffer }];
+  } catch (err: any) {
+    logger.error({ err, audience, orderId: ctx.order.id }, "PDF generation failed; sending email without attachment");
+    emit("pdf.failed", {
+      partnerId: ctx.partner.id,
+      objectType: "order",
+      objectId: ctx.order.id,
+      meta: { audience, error: err?.message || String(err) },
+    }).catch(() => {});
+    return null;
+  }
+}
+
 export async function sendOrderConfirmation(ctx: OrderEmailContext): Promise<SendResult> {
   const { partner, order } = ctx;
   if (!order.contactEmail) return { ok: false, error: "no_customer_email" };
   const html = renderCustomerConfirmationHtml(ctx);
   const senderLabel = partner.emailSenderLabel || partner.companyName;
+  const attachments = await maybeAttach(ctx, "customer", !!partner.attachPdfCustomer);
   return sendBrandedEmail({
     partner,
     to: order.contactEmail,
@@ -314,6 +355,7 @@ export async function sendOrderConfirmation(ctx: OrderEmailContext): Promise<Sen
     replyTo: partner.replyToEmail || partner.contactEmail || null,
     emailType: "order_confirmation",
     orderId: order.id,
+    attachments,
   });
 }
 
@@ -476,6 +518,7 @@ export async function sendOpsForward(ctx: OrderEmailContext, overrideTo?: string
     : uniq([partner.ccEmail]);
   const bcc = uniq(recipients.bcc || []);
   const html = renderInternalForwardHtml(ctx);
+  const attachments = await maybeAttach(ctx, "internal", !!partner.attachPdfOps);
   return sendBrandedEmail({
     partner,
     to,
@@ -486,6 +529,7 @@ export async function sendOpsForward(ctx: OrderEmailContext, overrideTo?: string
     replyTo: order.contactEmail,
     emailType: "order_ops_forward",
     orderId: order.id,
+    attachments,
   });
 }
 
@@ -496,6 +540,7 @@ export async function sendFinanceNotification(ctx: OrderEmailContext, overrideTo
     ? uniq(overrideTo)
     : resolveFinanceRecipients(partner, recipients.finance);
   if (to.length === 0) return { ok: false, error: "no_finance_recipient" };
+  const attachments = await maybeAttach(ctx, "finance", !!partner.attachPdfFinance);
   return sendBrandedEmail({
     partner,
     to,
@@ -504,6 +549,7 @@ export async function sendFinanceNotification(ctx: OrderEmailContext, overrideTo
     replyTo: partner.billingContactEmail || partner.replyToEmail || order.contactEmail,
     emailType: "order_finance_notification",
     orderId: order.id,
+    attachments,
   });
 }
 
@@ -514,6 +560,9 @@ export async function sendPartnerContactNotification(ctx: OrderEmailContext, ove
     ? uniq(overrideTo)
     : resolvePartnerContactRecipients(partner, recipients.partner_contact);
   if (to.length === 0) return { ok: false, error: "no_partner_contact_recipient" };
+  // Partner contacts get the customer-facing PDF (clean, no internal pricing
+  // or supplier details) when attachments are enabled for that audience.
+  const attachments = await maybeAttach(ctx, "customer", !!partner.attachPdfPartnerContact);
   return sendBrandedEmail({
     partner,
     to,
@@ -522,6 +571,7 @@ export async function sendPartnerContactNotification(ctx: OrderEmailContext, ove
     replyTo: partner.replyToEmail || partner.contactEmail || order.contactEmail,
     emailType: "order_partner_contact_notification",
     orderId: order.id,
+    attachments,
   });
 }
 
