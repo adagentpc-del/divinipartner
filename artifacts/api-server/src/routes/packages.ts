@@ -13,6 +13,7 @@ const PackageBody = z.object({
   price: z.string().regex(/^\d+(\.\d{1,2})?$/).nullable().optional(),
   currency: z.string().optional(),
   imageUrl: z.string().nullable().optional(),
+  imageUrls: z.array(z.string().max(2048)).max(12).nullable().optional(),
   sizeWidth: z.number().nullable().optional(),
   sizeHeight: z.number().nullable().optional(),
   sizeDepth: z.number().nullable().optional(),

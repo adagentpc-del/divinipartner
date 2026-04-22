@@ -19,7 +19,7 @@ type City = { id: number; name: string; state: string | null };
 type Venue = { id: number; cityId: number | null; name: string; venueAddress: string | null; shippingAddress: string | null };
 type Event = { id: number; cityId: number | null; venueId: number | null; name: string; eventStartDate: string | null; eventEndDate: string | null; shippingDeadline: string | null; status: string; availablePackageIdsJson: number[] | null };
 type PkgItem = { id: number; productId: number; productName: string | null; productCategory: string | null; productImageUrl: string | null; quantity: number; isOptional: boolean };
-type Pkg = { id: number; name: string; displayName: string | null; description: string | null; tier: number; price: string | null; imageUrl: string | null; items: PkgItem[] };
+type Pkg = { id: number; name: string; displayName: string | null; description: string | null; tier: number; price: string | null; imageUrl: string | null; imageUrls: string[] | null; items: PkgItem[] };
 type Product = {
   id: number; name: string; category: string; imageUrl: string | null; sku: string | null;
   rentalEligible: boolean | null; printOnlyAvailable: boolean | null;
@@ -349,11 +349,28 @@ export default function OrderingPortal({ slug }: { slug: string }) {
                   const sel = selectedPkgId === p.id;
                   return (
                     <button key={p.id} type="button" onClick={() => setSelectedPkgId(p.id)} className={`text-left p-5 rounded-xl border-2 transition ${sel ? "border-primary bg-primary/5 shadow-md" : "border-border hover:border-primary/40 bg-card"}`}>
-                      {p.imageUrl ? (
-                        <img src={resolveAssetUrl(p.imageUrl)} alt={p.displayName || p.name} className="aspect-video w-full rounded-lg object-cover bg-muted mb-3" />
-                      ) : (
-                        <div className="aspect-video w-full rounded-lg bg-muted/50 mb-3 flex items-center justify-center"><Package className="h-10 w-10 text-muted-foreground/40" /></div>
-                      )}
+                      {(() => {
+                        const gallery = (p.imageUrls && p.imageUrls.length > 0) ? p.imageUrls : (p.imageUrl ? [p.imageUrl] : []);
+                        const cover = gallery[0];
+                        const extra = Math.max(0, gallery.length - 1);
+                        return cover ? (
+                          <div className="relative mb-3">
+                            <img src={resolveAssetUrl(cover)} alt={p.displayName || p.name} className="aspect-video w-full rounded-lg object-cover bg-muted" />
+                            {extra > 0 && (
+                              <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-black/70 text-white text-[11px] font-semibold">+{extra} more</span>
+                            )}
+                            {gallery.length > 1 && (
+                              <div className="mt-2 flex gap-1 overflow-x-auto">
+                                {gallery.slice(1, 5).map((u, i) => (
+                                  <img key={u + i} src={resolveAssetUrl(u)} alt="" className="h-10 w-14 rounded object-cover border bg-muted shrink-0" />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="aspect-video w-full rounded-lg bg-muted/50 mb-3 flex items-center justify-center"><Package className="h-10 w-10 text-muted-foreground/40" /></div>
+                        );
+                      })()}
                       <div className="flex items-center justify-between mb-2"><Badge variant={sel ? "default" : "secondary"}>Tier {p.tier}</Badge>{sel && <Check className="h-4 w-4 text-primary" />}</div>
                       <div className="font-bold text-lg">{p.displayName || p.name}</div>
                       <p className="text-xs text-muted-foreground mt-1 line-clamp-3">{p.description}</p>

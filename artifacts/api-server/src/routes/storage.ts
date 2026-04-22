@@ -24,6 +24,19 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
     return;
   }
 
+  const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+  const ALLOWED_PREFIXES = ["image/", "application/pdf", "application/zip", "application/octet-stream"];
+  const sizeNum = Number(parsed.data.size);
+  if (!Number.isFinite(sizeNum) || sizeNum <= 0 || sizeNum > MAX_UPLOAD_BYTES) {
+    res.status(413).json({ error: `File too large. Max ${MAX_UPLOAD_BYTES} bytes.` });
+    return;
+  }
+  const ct = String(parsed.data.contentType || "").toLowerCase();
+  if (!ALLOWED_PREFIXES.some((p) => ct.startsWith(p))) {
+    res.status(415).json({ error: `Unsupported content type: ${ct}` });
+    return;
+  }
+
   try {
     const { name, size, contentType } = parsed.data;
 

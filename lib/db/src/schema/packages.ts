@@ -16,6 +16,7 @@ export const packagesTable = pgTable("packages", {
   price: numeric("price", { precision: 12, scale: 2 }),
   currency: text("currency").notNull().default("USD"),
   imageUrl: text("image_url"),
+  imageUrls: text("image_urls").array(),
   // Optional package-level dimensions (e.g. printed wall package overall size).
   sizeWidth: doublePrecision("size_width"),
   sizeHeight: doublePrecision("size_height"),

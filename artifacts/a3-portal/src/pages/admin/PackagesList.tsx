@@ -16,7 +16,7 @@ import { Plus, Loader2, Pencil, Trash2, Package, Copy, ChevronLeft, GripVertical
 import { DimensionInput } from "@/components/units/DimensionInput";
 import type { LengthUnit } from "@/lib/units";
 
-type Pkg = { id: number; partnerId: number | null; supplierId: number | null; name: string; displayName: string | null; description: string | null; tier: number; price: string | null; currency: string; isActive: boolean; imageUrl?: string | null; sizeWidth?: number | null; sizeHeight?: number | null; sizeDepth?: number | null; sizeDiameter?: number | null; sizeUnit?: string | null };
+type Pkg = { id: number; partnerId: number | null; supplierId: number | null; name: string; displayName: string | null; description: string | null; tier: number; price: string | null; currency: string; isActive: boolean; imageUrl?: string | null; imageUrls?: string[] | null; sizeWidth?: number | null; sizeHeight?: number | null; sizeDepth?: number | null; sizeDiameter?: number | null; sizeUnit?: string | null };
 type Supplier = { id: number; name: string };
 type Product = { id: number; name: string; category: string };
 type PkgItem = { id: number; productId: number; productName?: string | null; productCategory?: string | null; quantity: number; isOptional: boolean; sortOrder: number };
@@ -29,7 +29,9 @@ function PkgDialog({ partnerId, suppliers, pkg, trigger, onSaved }: { partnerId:
     name: pkg?.name || "", displayName: pkg?.displayName || "", description: pkg?.description || "",
     tier: pkg?.tier?.toString() || "1", price: pkg?.price || "", supplierId: pkg?.supplierId?.toString() || "",
     isActive: pkg?.isActive ?? true,
-    imageUrl: pkg?.imageUrl ?? "",
+    imageUrls: ((pkg?.imageUrls && pkg.imageUrls.length > 0)
+      ? pkg.imageUrls
+      : (pkg?.imageUrl ? [pkg.imageUrl] : [])) as string[],
     sizeWidth: pkg?.sizeWidth ?? null as number | null,
     sizeHeight: pkg?.sizeHeight ?? null as number | null,
     sizeDepth: pkg?.sizeDepth ?? null as number | null,
@@ -37,25 +39,48 @@ function PkgDialog({ partnerId, suppliers, pkg, trigger, onSaved }: { partnerId:
     sizeUnit: (pkg?.sizeUnit as LengthUnit | null) ?? "in" as LengthUnit,
   });
   const [uploadingImg, setUploadingImg] = useState(false);
-  const onPickImage = async (file: File | null | undefined) => {
-    if (!file) return;
-    if (file.size > 10 * 1024 * 1024) { toast({ title: "Image too large", description: "Max 10MB", variant: "destructive" }); return; }
+  const uploadOne = async (file: File): Promise<string> => {
+    const r = await fetch("/api/storage/uploads/request-url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type || "image/jpeg" }),
+    });
+    if (!r.ok) throw new Error("Failed to prepare upload");
+    const { uploadURL, objectPath } = await r.json();
+    const put = await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type || "image/jpeg" } });
+    if (!put.ok) throw new Error("Upload failed");
+    return objectPath as string;
+  };
+  const MAX_IMAGES = 12;
+  const onPickImages = async (files: FileList | null | undefined) => {
+    if (!files || files.length === 0) return;
+    const remaining = MAX_IMAGES - form.imageUrls.length;
+    if (remaining <= 0) { toast({ title: "Image limit reached", description: `Maximum ${MAX_IMAGES} images per package.`, variant: "destructive" }); return; }
+    let list = Array.from(files);
+    if (list.length > remaining) {
+      toast({ title: "Some images skipped", description: `Only ${remaining} more allowed; uploading the first ${remaining}.` });
+      list = list.slice(0, remaining);
+    }
+    for (const f of list) {
+      if (f.size > 10 * 1024 * 1024) { toast({ title: `${f.name} too large`, description: "Max 10MB per image", variant: "destructive" }); return; }
+    }
     setUploadingImg(true);
     try {
-      const r = await fetch("/api/storage/uploads/request-url", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type || "image/jpeg" }),
-      });
-      if (!r.ok) throw new Error("Failed to prepare upload");
-      const { uploadURL, objectPath } = await r.json();
-      const put = await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type || "image/jpeg" } });
-      if (!put.ok) throw new Error("Upload failed");
-      setForm(f => ({ ...f, imageUrl: objectPath }));
+      const uploaded: string[] = [];
+      for (const f of list) uploaded.push(await uploadOne(f));
+      setForm(f => ({ ...f, imageUrls: [...f.imageUrls, ...uploaded] }));
     } catch (e: any) {
       toast({ title: "Upload failed", description: e.message, variant: "destructive" });
     } finally { setUploadingImg(false); }
   };
+  const removeImageAt = (idx: number) => setForm(f => ({ ...f, imageUrls: f.imageUrls.filter((_, i) => i !== idx) }));
+  const moveImage = (idx: number, dir: -1 | 1) => setForm(f => {
+    const next = [...f.imageUrls];
+    const j = idx + dir;
+    if (j < 0 || j >= next.length) return f;
+    [next[idx], next[j]] = [next[j], next[idx]];
+    return { ...f, imageUrls: next };
+  });
   const handleSave = async () => {
     try {
       const body: any = {
@@ -67,7 +92,8 @@ function PkgDialog({ partnerId, suppliers, pkg, trigger, onSaved }: { partnerId:
         sizeWidth: form.sizeWidth, sizeHeight: form.sizeHeight,
         sizeDepth: form.sizeDepth, sizeDiameter: form.sizeDiameter,
         sizeUnit: form.sizeUnit,
-        imageUrl: form.imageUrl || null,
+        imageUrls: form.imageUrls,
+        imageUrl: form.imageUrls[0] || null,
       };
       if (pkg) await apiFetch(`/api/packages/${pkg.id}`, { method: "PATCH", body: JSON.stringify(body) });
       else await apiFetch(`/api/packages`, { method: "POST", body: JSON.stringify(body) });
@@ -85,26 +111,37 @@ function PkgDialog({ partnerId, suppliers, pkg, trigger, onSaved }: { partnerId:
           <div><Label>Display Name</Label><Input value={form.displayName} onChange={e => setForm({ ...form, displayName: e.target.value })} placeholder="Tier 1 - Essentials" /></div>
           <div><Label>Description</Label><Textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={3} /></div>
           <div>
-            <Label>Tier image (shown to customers)</Label>
-            <div className="mt-1.5 flex items-start gap-3">
-              {form.imageUrl ? (
-                <div className="relative">
-                  <img src={resolveAssetUrl(form.imageUrl)} alt="Tier preview" className="h-24 w-32 rounded-md object-cover border" />
-                  <button type="button" onClick={() => setForm({ ...form, imageUrl: "" })} className="absolute -top-2 -right-2 bg-background border rounded-full p-0.5 shadow-sm hover:bg-muted"><XIcon className="h-3.5 w-3.5" /></button>
+            <div className="flex items-center justify-between">
+              <Label>Package images (shown to customers)</Label>
+              <span className="text-xs text-muted-foreground">{form.imageUrls.length} / 12</span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">First image is the cover. Add multiple to showcase every piece included in the package.</p>
+            <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {form.imageUrls.map((url, idx) => (
+                <div key={url + idx} className="relative group aspect-[4/3] rounded-md overflow-hidden border bg-muted">
+                  <img src={resolveAssetUrl(url)} alt={`Image ${idx + 1}`} className="h-full w-full object-cover" />
+                  {idx === 0 && <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-primary text-primary-foreground text-[10px] font-semibold uppercase tracking-wide">Cover</span>}
+                  <button type="button" onClick={() => removeImageAt(idx)} className="absolute top-1 right-1 bg-background/90 border rounded-full p-1 shadow opacity-0 group-hover:opacity-100 transition" aria-label="Remove image">
+                    <XIcon className="h-3 w-3" />
+                  </button>
+                  <div className="absolute bottom-1 left-1 right-1 flex items-center justify-between opacity-0 group-hover:opacity-100 transition">
+                    <button type="button" onClick={() => moveImage(idx, -1)} disabled={idx === 0} className="bg-background/90 border rounded px-1.5 py-0.5 text-[10px] disabled:opacity-30">←</button>
+                    <span className="text-[10px] bg-background/90 border rounded px-1.5 py-0.5">{idx + 1}</span>
+                    <button type="button" onClick={() => moveImage(idx, 1)} disabled={idx === form.imageUrls.length - 1} className="bg-background/90 border rounded px-1.5 py-0.5 text-[10px] disabled:opacity-30">→</button>
+                  </div>
                 </div>
-              ) : (
-                <div className="h-24 w-32 rounded-md bg-muted/50 border-2 border-dashed flex items-center justify-center"><Package className="h-7 w-7 text-muted-foreground/40" /></div>
-              )}
-              <div className="flex-1">
-                <label className="inline-flex">
-                  <input type="file" accept="image/*" className="hidden" onChange={e => onPickImage(e.target.files?.[0])} disabled={uploadingImg} />
-                  <span className="cursor-pointer inline-flex items-center gap-1.5 rounded-md border bg-background hover:bg-muted px-3 py-1.5 text-sm font-medium">
-                    {uploadingImg ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Uploading…</> : <><Upload className="h-3.5 w-3.5" />{form.imageUrl ? "Replace image" : "Upload image"}</>}
+              ))}
+              {form.imageUrls.length < 12 && (
+                <label className="aspect-[4/3] rounded-md border-2 border-dashed bg-muted/40 hover:bg-muted/70 flex flex-col items-center justify-center gap-1 cursor-pointer text-muted-foreground hover:text-foreground transition">
+                  <input type="file" accept="image/*" multiple className="hidden" onChange={e => { onPickImages(e.target.files); e.currentTarget.value = ""; }} disabled={uploadingImg} />
+                  {uploadingImg ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />}
+                  <span className="text-xs font-medium text-center px-2">
+                    {uploadingImg ? "Uploading…" : (form.imageUrls.length === 0 ? "Upload image" : "Add more images")}
                   </span>
                 </label>
-                <p className="text-xs text-muted-foreground mt-1.5">JPG or PNG, up to 10MB. Recommended 16:9.</p>
-              </div>
+              )}
             </div>
+            <p className="text-xs text-muted-foreground mt-2">JPG or PNG, up to 10MB each. You can upload several at once.</p>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div><Label>Tier</Label><Select value={form.tier} onValueChange={v => setForm({ ...form, tier: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{[1,2,3,4,5].map(n => <SelectItem key={n} value={n.toString()}>Tier {n}</SelectItem>)}</SelectContent></Select></div>
