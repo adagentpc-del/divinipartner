@@ -12,8 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, Package, Loader2, Layers } from "lucide-react";
+import { FamilyStatusGrid, type FamilyAvailability } from "@/components/admin/FamilyStatusCard";
 
 type Product = { id: number; name: string; displayName: string | null; sku: string | null };
+type Partner = { id: number; name: string; slug: string };
 type Member = {
   id: number; familyId: number; productId: number; role: "hardware" | "component" | "accessory";
   requiresHardwareUnits: number; isOptional: boolean; sortOrder: number;
@@ -21,7 +23,9 @@ type Member = {
 };
 type Family = {
   id: number; slug: string; name: string; description: string | null;
-  hardwareProductId: number | null; requiresHardwareDefault: boolean; isActive: boolean;
+  hardwareProductId: number | null; requiresHardwareDefault: boolean;
+  lowStockThreshold: number | null;
+  isActive: boolean;
   members: Member[];
 };
 
@@ -30,10 +34,22 @@ export default function ProductFamilies() {
   const qc = useQueryClient();
   const { data: families = [], isLoading } = useQuery<Family[]>({ queryKey: ["/api/product-families"], queryFn: () => apiFetch("/api/product-families") });
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"], queryFn: () => apiFetch("/api/products") });
+  const { data: partners = [] } = useQuery<Partner[]>({ queryKey: ["/api/partners"], queryFn: () => apiFetch("/api/partners") });
+
+  const [previewPartnerId, setPreviewPartnerId] = useState<number | null>(null);
+  const effectivePartnerId = previewPartnerId ?? partners[0]?.id ?? null;
+  const { data: availability = [] } = useQuery<FamilyAvailability[]>({
+    queryKey: ["/api/partners", effectivePartnerId, "family-availability"],
+    queryFn: () => apiFetch(`/api/partners/${effectivePartnerId}/family-availability`),
+    enabled: effectivePartnerId != null,
+  });
 
   const [editing, setEditing] = useState<Family | null>(null);
   const [creating, setCreating] = useState(false);
-  const refetch = () => qc.invalidateQueries({ queryKey: ["/api/product-families"] });
+  const refetch = () => {
+    qc.invalidateQueries({ queryKey: ["/api/product-families"] });
+    qc.invalidateQueries({ queryKey: ["/api/partners", effectivePartnerId, "family-availability"] });
+  };
 
   return (
     <div className="space-y-6 p-6 max-w-6xl mx-auto">
@@ -44,6 +60,26 @@ export default function ProductFamilies() {
         </div>
         <Button onClick={() => setCreating(true)} className="gap-2"><Plus className="h-4 w-4" />New Family</Button>
       </div>
+
+      {/* Live availability snapshot — pick a partner to see their per-family
+          status (claimed vs remaining, current ordering mode). */}
+      {partners.length > 0 && (
+        <Card className="p-4">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="text-sm font-semibold">Live status</div>
+            <div className="text-xs text-muted-foreground">Per-family availability for the selected partner</div>
+            <div className="ml-auto w-64">
+              <Select value={effectivePartnerId?.toString() ?? ""} onValueChange={(v) => setPreviewPartnerId(v ? Number(v) : null)}>
+                <SelectTrigger className="h-8" data-testid="select-preview-partner"><SelectValue placeholder="Pick a partner…" /></SelectTrigger>
+                <SelectContent>
+                  {partners.map(p => <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <FamilyStatusGrid families={availability} partnerId={effectivePartnerId ?? undefined} emptyHint="No active families to report on yet." />
+        </Card>
+      )}
 
       {isLoading ? (
         <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
@@ -103,6 +139,7 @@ function FamilyDialog({ family, products, onClose, onSaved }: { family: Family |
   const [description, setDescription] = useState(family?.description || "");
   const [hardwareProductId, setHardwareProductId] = useState<number | null>(family?.hardwareProductId ?? null);
   const [requiresHardware, setRequiresHardware] = useState(family?.requiresHardwareDefault ?? true);
+  const [lowStockThreshold, setLowStockThreshold] = useState<string>(family?.lowStockThreshold != null ? String(family.lowStockThreshold) : "");
   const [isActive, setIsActive] = useState(family?.isActive ?? true);
   const [saving, setSaving] = useState(false);
 
@@ -117,7 +154,12 @@ function FamilyDialog({ family, products, onClose, onSaved }: { family: Family |
     if (!name || !slug) { toast({ title: "Name and slug required", variant: "destructive" }); return; }
     setSaving(true);
     try {
-      const body = { name, slug, description: description || null, hardwareProductId, requiresHardwareDefault: requiresHardware, isActive };
+      const body = {
+        name, slug, description: description || null, hardwareProductId,
+        requiresHardwareDefault: requiresHardware,
+        lowStockThreshold: lowStockThreshold === "" ? null : Math.max(0, parseInt(lowStockThreshold, 10) || 0),
+        isActive,
+      };
       if (isEdit) await apiFetch(`/api/product-families/${family!.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       else await apiFetch("/api/product-families", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       onSaved();
@@ -184,6 +226,15 @@ function FamilyDialog({ family, products, onClose, onSaved }: { family: Family |
               <div className="text-xs text-muted-foreground">When ON, ordering a component reserves a unit of the hardware (or forces ordering it) once partner stock hits zero.</div>
             </div>
             <Switch checked={requiresHardware} onCheckedChange={setRequiresHardware} />
+          </div>
+          <div className="border rounded-md p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-medium">Low-stock threshold</div>
+                <div className="text-xs text-muted-foreground">Status cards turn amber when remaining hardware ≤ this number. Leave blank for the default (≈15% of total, min 2).</div>
+              </div>
+              <Input type="number" min={0} className="w-24" value={lowStockThreshold} onChange={e => setLowStockThreshold(e.target.value)} placeholder="auto" data-testid="input-low-stock-threshold" />
+            </div>
           </div>
           <div className="flex items-center justify-between border rounded-md p-3">
             <div className="text-sm font-medium">Active</div>

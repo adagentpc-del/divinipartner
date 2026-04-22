@@ -32,6 +32,10 @@ export const productFamiliesTable = pgTable("product_families", {
   // family? Almost always true; set false for families like "swag bags" where
   // components are ordered standalone.
   requiresHardwareDefault: boolean("requires_hardware_default").notNull().default(true),
+  // Visual threshold: when (available / total) drops at-or-below this many
+  // remaining units, the admin status card flips to "low" styling. Null →
+  // fall back to the resolver's sensible default (max(2, 15% of total)).
+  lowStockThreshold: integer("low_stock_threshold"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),

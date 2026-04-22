@@ -24,8 +24,17 @@ export type FamilyAvailability = {
   available: number;
   requiresHardware: boolean;
   mode: "component" | "full_unit_required" | "no_hardware_assigned";
+  // UI threshold. Stored value if set, otherwise max(2, ceil(15% of total)).
+  lowStockThreshold: number;
+  // Convenience for status-card styling.
+  statusLevel: "healthy" | "low" | "exhausted" | "unconfigured";
   inventoryRowIds: number[];
 };
+
+export function resolveLowStockThreshold(stored: number | null, totalOwned: number): number {
+  if (stored != null && stored >= 0) return stored;
+  return Math.max(2, Math.ceil(totalOwned * 0.15));
+}
 
 export async function getPartnerFamilyAvailability(
   partnerId: number,
@@ -82,6 +91,12 @@ export async function getPartnerFamilyAvailability(
     if (!f.hardwareProductId) mode = "no_hardware_assigned";
     else if (f.requiresHardwareDefault && available === 0) mode = "full_unit_required";
     else mode = "component";
+    const lowStockThreshold = resolveLowStockThreshold(f.lowStockThreshold ?? null, totalOwned);
+    let statusLevel: FamilyAvailability["statusLevel"];
+    if (!f.hardwareProductId || totalOwned === 0) statusLevel = "unconfigured";
+    else if (available === 0) statusLevel = "exhausted";
+    else if (available <= lowStockThreshold) statusLevel = "low";
+    else statusLevel = "healthy";
     return {
       familyId: f.id,
       familySlug: f.slug,
@@ -91,6 +106,8 @@ export async function getPartnerFamilyAvailability(
       totalOwned, reserved, inUse, available,
       requiresHardware: f.requiresHardwareDefault,
       mode,
+      lowStockThreshold,
+      statusLevel,
       inventoryRowIds: rows.map(r => r.id),
     };
   });

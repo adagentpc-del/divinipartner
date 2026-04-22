@@ -20,6 +20,9 @@ import { PartnerLogo } from "@/components/branding/PartnerLogo";
 import { resolveBranding } from "@/components/branding/usePartnerBranding";
 import { apiUrl } from "@/lib/api";
 import { RecipientsManager } from "@/components/admin/RecipientsManager";
+import { FamilyStatusGrid, type FamilyAvailability } from "@/components/admin/FamilyStatusCard";
+import { useQuery } from "@tanstack/react-query";
+import { apiFetch } from "@/lib/api";
 
 const formSchema = z.object({
   companyName: z.string().min(1, "Company name is required"),
@@ -592,6 +595,7 @@ export default function PartnerForm() {
             <>
               <CommunicationsCard partnerId={id} form={form} />
               <RecipientsManager partnerId={id} />
+              <ReusableAssetsCard partnerId={id} />
             </>
           )}
 
@@ -844,6 +848,39 @@ function CommunicationsCard({ partnerId, form }: { partnerId: number; form: any 
             <div className="text-[11px] text-muted-foreground">Leave blank to send to the configured internal forwarding address.</div>
           </div>
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ReusableAssetsCard({ partnerId }: { partnerId: number }) {
+  const { data: families = [], isLoading } = useQuery<FamilyAvailability[]>({
+    queryKey: ["/api/partners", partnerId, "family-availability"],
+    queryFn: () => apiFetch(`/api/partners/${partnerId}/family-availability`),
+    enabled: Number.isFinite(partnerId),
+  });
+  // Hide the section entirely if no families exist — keeps the form clean
+  // for partners who haven't been wired up to any reusable hardware.
+  if (!isLoading && families.length === 0) return null;
+  return (
+    <Card id="sec-reusable-assets" className="scroll-mt-20">
+      <CardHeader className="pb-4">
+        <CardTitle className="text-base flex items-center gap-2">
+          Reusable Asset Inventory
+          <span className="text-xs font-normal text-muted-foreground ml-auto">
+            Live from this partner's hardware inventory
+          </span>
+        </CardTitle>
+        <CardDescription className="text-xs">
+          Connected product families backed by partner-owned hardware (e.g. Easy Up tent frames).
+          Component orders reserve from the totals below; when remaining hits zero the ordering flow
+          automatically switches to "full unit required".
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {isLoading
+          ? <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" />Loading…</div>
+          : <FamilyStatusGrid families={families} partnerId={pid} />}
       </CardContent>
     </Card>
   );

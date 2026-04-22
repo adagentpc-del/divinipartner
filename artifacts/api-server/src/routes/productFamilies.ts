@@ -75,6 +75,7 @@ const FamilyBody = z.object({
   description: z.string().nullable().optional(),
   hardwareProductId: z.number().int().nullable().optional(),
   requiresHardwareDefault: z.boolean().optional(),
+  lowStockThreshold: z.number().int().min(0).nullable().optional(),
   isActive: z.boolean().optional(),
 });
 
@@ -252,6 +253,16 @@ router.post("/dev/seed-easy-up-family", async (req, res): Promise<void> => {
   await upsertMember(sideWall.id, "component", 1, 3);
 
   // Seed 60 frames into the partner's first city.
+  // Optional `state` param drives the demo claimed/available split:
+  //   "healthy" (default)  → 60 total, 0 reserved → 60 available
+  //   "claimed"            → 60 total, 42 reserved → 18 available
+  //   "low"                → 60 total, 57 reserved → 3 available
+  //   "exhausted"          → 60 total, 60 reserved → 0 available (full unit required)
+  const stateParam = String(req.body?.state || "healthy").toLowerCase();
+  const claimedByState: Record<string, number> = {
+    healthy: 0, claimed: 42, low: 57, exhausted: 60,
+  };
+  const reservedTarget = claimedByState[stateParam] ?? 0;
   const [city] = await db.select().from(citiesTable).where(eq(citiesTable.partnerId, partnerId)).orderBy(asc(citiesTable.sortOrder));
   let inventoryId: number | null = null;
   if (city) {
@@ -259,10 +270,14 @@ router.post("/dev/seed-easy-up-family", async (req, res): Promise<void> => {
       .where(and(eq(inventoryTable.partnerId, partnerId), eq(inventoryTable.productId, frame.id), eq(inventoryTable.cityId, city.id)));
     if (existingInv[0]) {
       inventoryId = existingInv[0].id;
+      // Make the demo state predictable when the same endpoint is hit again.
+      await db.update(inventoryTable).set({
+        totalQuantity: 60, hardwareOnHand: 60, reserved: reservedTarget,
+      } as any).where(eq(inventoryTable.id, existingInv[0].id));
     } else {
       const [inv] = await db.insert(inventoryTable).values({
         partnerId, productId: frame.id, cityId: city.id, name: "Easy Up Frames (seed)",
-        totalQuantity: 60, hardwareOnHand: 60,
+        totalQuantity: 60, hardwareOnHand: 60, reserved: reservedTarget,
       } as any).returning();
       inventoryId = inv.id;
     }
@@ -273,6 +288,7 @@ router.post("/dev/seed-easy-up-family", async (req, res): Promise<void> => {
     familyId: family.id, slug: family.slug,
     productIds: { frame: frame.id, canopy: canopy.id, backdrop: backdrop.id, sideWall: sideWall.id },
     inventoryId, cityId: city?.id ?? null,
+    state: stateParam, total: 60, reserved: reservedTarget, available: 60 - reservedTarget,
   });
 });
 

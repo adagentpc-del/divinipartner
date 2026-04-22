@@ -398,7 +398,10 @@ Backend:
 - `routes/orders.ts` POST handler: pre-validation walks order items, looks up family context, auto-fills `inventorySourceInventoryId` so the existing atomic `reserveForItem` path (FOR UPDATE) does the actual reservation. If demand exceeds availability AND the hardware product isn't also being purchased in the same order, returns `409 { code: "HARDWARE_REQUIRED", familyId, familyName, hardwareProductId, available, needed }`. Brings-your-own-frame orders short-circuit the check.
 - `routes/publicPortal.ts`: public read-only `GET /public/partners/:slug/products/:productId/family-context` so the unauth ordering portal can render hints.
 
-Admin UI: `pages/admin/ProductFamilies.tsx` (list + dialog with hardware picker, member CRUD, requires-hardware toggle); nav link under `/admin/product-families`.
+Admin UI:
+- `pages/admin/ProductFamilies.tsx` lists every family + members and now opens with a **Live status** card: an admin picks any partner from a dropdown and sees one `<FamilyStatusCard>` per active family. Each card shows total / claimed / remaining, a percentage-claimed progress bar (color-coded healthy / amber / rose), the current ordering mode pill ("Existing hardware available" / "Low remaining" / "Full unit required" / "Manual review"), the low-stock threshold in effect, and quick-action links into the partner's committed-inventory and the inventory dashboard. The family-edit dialog gained a **Low-stock threshold** input — null means "auto" (`max(2, ceil(15% of total))`).
+- `pages/admin/PartnerForm.tsx` adds a **Reusable Asset Inventory** card (only shown if the partner is wired up to ≥1 family) below Communications/Recipients. It calls `/api/partners/:id/family-availability` and renders the same `<FamilyStatusCard>` grid so the partner profile page is the single source of truth for their hardware status.
+- Threshold logic and the four-level status (`healthy` / `low` / `exhausted` / `unconfigured`) are computed server-side in `getPartnerFamilyAvailability()` so admin and ordering UI agree.
 
 Public ordering portal (`OrderingPortal.tsx`):
 - Cart items show a green "Uses your existing X hardware (N of M available)" hint when in component mode, amber "hardware exhausted — a new unit will be added at submit" when not.
