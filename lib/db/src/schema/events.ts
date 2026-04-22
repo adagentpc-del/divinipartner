@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, boolean, timestamp, jsonb, date } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, boolean, timestamp, jsonb, date, numeric } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { partnersTable } from "./partners";
@@ -29,6 +29,12 @@ export const eventsTable = pgTable("events", {
   imageUrl: text("image_url"),
   // Billing override (null = inherit from partner)
   billingExecModelOverride: text("billing_exec_model_override"),
+  // Currency & tax overrides (April 2026). null = inherit from partner default.
+  currency: text("currency"),
+  taxMode: text("tax_mode"), // none | sales_tax | vat | gst | custom
+  taxLabel: text("tax_label"),
+  taxRate: numeric("tax_rate", { precision: 5, scale: 3 }),
+  taxInclusive: boolean("tax_inclusive"),
   // Measurement preference override (imperial | metric). null = inherit from venue/partner.
   unitPreference: text("unit_preference"),
   isActive: boolean("is_active").notNull().default(true),

@@ -154,7 +154,7 @@ export default function Reconciliation() {
                     <TableCell><span className="font-mono text-xs text-primary">{r.orderNumber}</span></TableCell>
                     <TableCell className="text-sm"><div>{r.partnerName || "—"}</div><div className="text-xs text-muted-foreground">{r.eventName || "—"}</div></TableCell>
                     <TableCell><Badge variant="outline" className="text-[10px]">{r.paymentModel.replace(/_/g, " ")}</Badge><div className="text-[10px] text-muted-foreground mt-0.5">{r.billingEntity || "—"}</div></TableCell>
-                    <TableCell className="text-right font-medium">{money(r.totalEstimate)}</TableCell>
+                    <TableCell className="text-right font-medium">{money(r.totalEstimate)} <span className="text-[10px] font-normal text-muted-foreground">{(r as any).currency || ""}</span></TableCell>
                     <TableCell className="text-right text-sm"><span className="text-muted-foreground">{money(r.supplierEstimatedCost)}</span> → <span className={r.supplierCostVariance > 0 ? "text-red-700 font-medium" : r.supplierCostVariance < 0 ? "text-emerald-700 font-medium" : ""}>{r.supplierFinalCost ? money(r.supplierFinalCost) : "—"}</span></TableCell>
                     <TableCell className={`text-right font-medium ${r.grossMargin < 0 ? "text-red-700" : ""}`}>{money(r.grossMargin)}</TableCell>
                     <TableCell className="text-right text-sm">

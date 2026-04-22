@@ -67,6 +67,14 @@ const PartnerBody = z.object({
   attachPdfOps: z.boolean().optional(),
   attachPdfFinance: z.boolean().optional(),
   attachPdfPartnerContact: z.boolean().optional(),
+  // Currency & tax defaults (April 2026 international billing extension)
+  defaultCurrency: z.string().min(3).max(3).optional(),
+  defaultTaxMode: z.enum(["none","sales_tax","vat","gst","custom"]).optional(),
+  defaultTaxLabel: z.string().optional().nullable(),
+  defaultTaxRate: z.union([z.string(), z.number()]).optional().nullable().transform(v => v == null || v === "" ? null : String(v)),
+  taxInclusive: z.boolean().optional(),
+  billingCountry: z.string().optional().nullable(),
+  invoiceDisplayNotes: z.string().optional().nullable(),
 });
 
 const UpdatePartnerBodySchema = PartnerBody.partial();

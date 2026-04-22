@@ -75,3 +75,41 @@ Admin UI:
 Telemetry: `pdf.generated` and `pdf.failed` usage events; `email.sent` meta now carries `attached: boolean` and `attachments: string[]`.
 
 Demo: Move Miami (partner id 1) has all four toggles ON.
+
+## Section 19 — International currency, VAT/tax modes & overseas billing (April 22, 2026)
+
+Adds first-class multi-currency + tax handling to the order → invoice → email/PDF → finance flow. Designed for partners outside the US (e.g. London Pop-ups in EUR with 20% inclusive VAT) without breaking the existing USD/sales-tax-exclusive defaults used by Move Miami and the rest of the catalog.
+
+Schema (`lib/db/src/schema/`):
+- `partners` — `defaultCurrency`, `defaultTaxMode` (`none|sales_tax|vat|gst|custom`), `defaultTaxLabel`, `defaultTaxRate` (numeric 5,3), `taxInclusive`, `billingCountry` (ISO-2), `invoiceDisplayNotes` (free text shown on invoice/email for overseas billing instructions, VAT reg #s, etc).
+- `events` — same currency/tax fields, all nullable so an event can override its partner.
+- `orders` — `currency` (default `USD`), `currencySource` (`partner|event|order`), `taxMode`, `taxModeSource`, `taxLabel`, `taxRate`, `taxInclusive`, plus snapshotted `subtotal` and `taxAmount` so historical totals stay stable.
+- `invoices` — `currency`, `taxMode`, `taxLabel`, `taxRate`, `taxInclusive` carried forward from the source order at creation time.
+- `discrepancies`, `commission_payouts` — `currency` for accurate finance reporting.
+
+Inheritance & math (`artifacts/api-server/src/lib/billing.ts`):
+- `SUPPORTED_CURRENCIES = ['USD','EUR','GBP','AED','CAD','AUD']`, `TAX_MODES`, `defaultTaxLabel(mode, country)`.
+- `resolveOrderBilling(partner, event?, override?)` walks **order override → event → partner default → USD/none** and returns `{ currency, currencySource, taxMode, taxModeSource, taxLabel, taxRate, taxInclusive }`.
+- `computeOrderTotals(items, taxRate, taxInclusive)` returns `{ subtotal, taxAmount, total }`. Inclusive: gross = Σ qty×price, subtotal = total/(1+rate). Exclusive: subtotal = gross, taxAmount = gross×rate.
+- `formatMoney(value, currency)` uses `Intl.NumberFormat` with a graceful fallback. Browser mirror at `artifacts/a3-portal/src/lib/currency.ts`.
+
+Order/invoice routes:
+- `POST /orders` and `PATCH /orders/:id` (`artifacts/api-server/src/routes/orders.ts`) re-resolve billing whenever partner/event or any override field changes, and re-snapshot `subtotal`/`taxAmount`/`totalEstimate`.
+- `GET /orders` exposes the new fields so list/breakdown views render correctly.
+- `POST /invoices/from-order/:orderId` and `/regenerate` (`artifacts/api-server/src/routes/invoices.ts`) copy `currency` + tax fields from the order (with `computeOrderTotals` fallback for legacy rows). PATCH accepts currency/tax edits.
+
+Email + PDF:
+- `artifacts/api-server/src/lib/email.ts` — `formatCurrency(value, currency)`, `renderItemsTable(items, currency)`, `renderTotalsBlock({subtotal, taxAmount, total, taxLabel, taxRate, taxInclusive, currency})`. Finance/customer/internal templates pass through the order currency.
+- `artifacts/api-server/src/lib/pdf.ts` — `fmtCurrency(value, currency)`, "Currency: XXX" subtitle in the header, and the totals block prints `Subtotal / <Label> (<rate>%[, incl.]) / TOTAL <amount> XXX`.
+
+Admin UI (`artifacts/a3-portal/src/pages/admin/`):
+- `PartnerForm.tsx` — new "Currency & Tax Defaults" card (currency, tax mode, tax label, tax rate, inclusive flag, billing country, invoice display notes); zod schema, defaults, and reset all carry these fields so PATCH persists them.
+- `GET /invoices/public/:token` and `src/pages/Invoice.tsx` (customer-facing public invoice) carry currency / taxLabel / taxRate / taxInclusive and format amounts with the correct symbol.
+- `OrderDetail.tsx` — `<CurrencyTaxBreakdown>` panel inside Internal Management showing subtotal/tax/total in the resolved currency, source badges (e.g. `currency: event`, `tax: order`), and an "Override currency / tax" disclosure that PATCHes the order so the server re-resolves and recomputes.
+- `InvoiceDetail.tsx` — totals block uses `formatMoney`, shows tax label + rate + ", incl." when applicable, and stamps the currency code on the Total row.
+- `Billing.tsx`, `Reconciliation.tsx` — money cells show the currency code next to the amount so mixed-currency lists are unambiguous.
+
+Demo data (`scripts/src/seed-currency-demo.ts`, `pnpm --filter @workspace/scripts run seed:currency`):
+- Move Miami (partner #1): USD + `sales_tax` + `FL Sales Tax` 7% exclusive, billingCountry US.
+- London Pop-ups (new partner): EUR + `vat` + `VAT` 20% inclusive, billingCountry GB, with overseas invoice display notes.
+- One demo order on each so the breakdown UI / email / PDF path is exercised end-to-end.

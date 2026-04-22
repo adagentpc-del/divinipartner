@@ -71,6 +71,14 @@ const formSchema = z.object({
   attachPdfOps: z.boolean().default(true),
   attachPdfFinance: z.boolean().default(false),
   attachPdfPartnerContact: z.boolean().default(false),
+  // Currency / tax defaults (Section 19).
+  defaultCurrency: z.string().default("USD"),
+  defaultTaxMode: z.string().default("none"),
+  defaultTaxLabel: z.string().optional(),
+  defaultTaxRate: z.string().optional(),
+  taxInclusive: z.boolean().default(false),
+  billingCountry: z.string().optional(),
+  invoiceDisplayNotes: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -109,6 +117,8 @@ export default function PartnerForm() {
       emailFromName: "", replyToEmail: "", emailSenderLabel: "",
       internalForwardEmail: "", ccEmail: "", emailEnabled: true,
       attachPdfCustomer: false, attachPdfOps: true, attachPdfFinance: false, attachPdfPartnerContact: false,
+      defaultCurrency: "USD", defaultTaxMode: "none", defaultTaxLabel: "", defaultTaxRate: "",
+      taxInclusive: false, billingCountry: "", invoiceDisplayNotes: "",
     }
   });
 
@@ -156,6 +166,13 @@ export default function PartnerForm() {
         attachPdfOps: (partner as any).attachPdfOps ?? true,
         attachPdfFinance: (partner as any).attachPdfFinance ?? false,
         attachPdfPartnerContact: (partner as any).attachPdfPartnerContact ?? false,
+        defaultCurrency: (partner as any).defaultCurrency || "USD",
+        defaultTaxMode: (partner as any).defaultTaxMode || "none",
+        defaultTaxLabel: (partner as any).defaultTaxLabel || "",
+        defaultTaxRate: (partner as any).defaultTaxRate || "",
+        taxInclusive: (partner as any).taxInclusive ?? false,
+        billingCountry: (partner as any).billingCountry || "",
+        invoiceDisplayNotes: (partner as any).invoiceDisplayNotes || "",
       });
     }
   }, [partner, form]);
@@ -520,6 +537,52 @@ export default function PartnerForm() {
                 )} />
                 <FormField control={form.control} name="billingActive" render={({ field }) => (
                   <FormItem className="flex items-center gap-2 space-y-0"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel className="text-xs">Billing active</FormLabel></FormItem>
+                )} />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card id="sec-currency" className="scroll-mt-20">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base">Currency &amp; Tax Defaults</CardTitle>
+              <CardDescription className="text-xs">Sets the partner's billing currency and how tax is calculated &amp; displayed. Events and orders inherit these unless overridden. Order/invoice records snapshot the resolved values so historical totals stay stable.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <FormField control={form.control} name="defaultCurrency" render={({ field }) => (
+                  <FormItem><FormLabel className="text-xs">Default currency</FormLabel>
+                    <Select value={field.value || "USD"} onValueChange={field.onChange}>
+                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                      <SelectContent>{["USD","EUR","GBP","AED","CAD","AUD"].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                    </Select><FormMessage /></FormItem>
+                )} />
+                <FormField control={form.control} name="billingCountry" render={({ field }) => (
+                  <FormItem><FormLabel className="text-xs">Billing country (ISO-2)</FormLabel><FormControl><Input {...field} value={field.value || ""} placeholder="US, GB, AE…" maxLength={2} /></FormControl></FormItem>
+                )} />
+                <FormField control={form.control} name="defaultTaxMode" render={({ field }) => (
+                  <FormItem><FormLabel className="text-xs">Tax mode</FormLabel>
+                    <Select value={field.value || "none"} onValueChange={field.onChange}>
+                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        <SelectItem value="sales_tax">Sales tax (US)</SelectItem>
+                        <SelectItem value="vat">VAT</SelectItem>
+                        <SelectItem value="gst">GST</SelectItem>
+                        <SelectItem value="custom">Custom</SelectItem>
+                      </SelectContent>
+                    </Select></FormItem>
+                )} />
+                <FormField control={form.control} name="defaultTaxLabel" render={({ field }) => (
+                  <FormItem><FormLabel className="text-xs">Tax label override</FormLabel><FormControl><Input {...field} value={field.value || ""} placeholder="e.g. VAT, GST, Sales tax" /></FormControl></FormItem>
+                )} />
+                <FormField control={form.control} name="defaultTaxRate" render={({ field }) => (
+                  <FormItem><FormLabel className="text-xs">Default tax rate (%)</FormLabel><FormControl><Input {...field} value={field.value || ""} placeholder="e.g. 20.000" /></FormControl></FormItem>
+                )} />
+                <FormField control={form.control} name="taxInclusive" render={({ field }) => (
+                  <FormItem className="flex items-end gap-2 space-y-0 pb-2"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel className="text-xs">Prices are tax-inclusive (line totals already contain tax)</FormLabel></FormItem>
+                )} />
+                <FormField control={form.control} name="invoiceDisplayNotes" render={({ field }) => (
+                  <FormItem className="col-span-2"><FormLabel className="text-xs">Invoice display notes (e.g. overseas billing instructions, VAT registration #)</FormLabel><FormControl><Textarea {...field} value={field.value || ""} rows={2} /></FormControl></FormItem>
                 )} />
               </div>
             </CardContent>

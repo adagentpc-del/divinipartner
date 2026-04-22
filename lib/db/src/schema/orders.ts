@@ -29,6 +29,17 @@ export const ordersTable = pgTable("orders", {
   billingAddressJson: jsonb("billing_address_json").$type<{ line1?: string; line2?: string; city?: string; state?: string; postalCode?: string; country?: string }>(),
   artworkFilesJson: jsonb("artwork_files_json").$type<Array<{ url: string; name?: string; size?: number; type?: string }>>(),
   totalEstimate: numeric("total_estimate", { precision: 12, scale: 2 }),
+  // Currency & tax snapshot resolved at order creation (April 2026).
+  // currencySource / taxModeSource explain inheritance: 'partner' | 'event' | 'order'.
+  currency: text("currency").notNull().default("USD"),
+  currencySource: text("currency_source").notNull().default("partner"),
+  taxMode: text("tax_mode").notNull().default("none"),
+  taxLabel: text("tax_label"),
+  taxRate: numeric("tax_rate", { precision: 5, scale: 3 }),
+  taxAmount: numeric("tax_amount", { precision: 12, scale: 2 }),
+  taxInclusive: boolean("tax_inclusive").notNull().default(false),
+  taxModeSource: text("tax_mode_source").notNull().default("partner"),
+  subtotal: numeric("subtotal", { precision: 12, scale: 2 }),
   // Financial / reconciliation
   paymentModel: text("payment_model").notNull().default("partner_billed"), // partner_billed | client_direct | a3_billed | prepaid
   billingEntity: text("billing_entity"), // free-text who is billed

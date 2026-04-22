@@ -77,6 +77,17 @@ export const partnersTable = pgTable("partners", {
   attachPdfOps: boolean("attach_pdf_ops").notNull().default(true),
   attachPdfFinance: boolean("attach_pdf_finance").notNull().default(false),
   attachPdfPartnerContact: boolean("attach_pdf_partner_contact").notNull().default(false),
+  // Currency & tax defaults (April 2026 international billing extension).
+  // Order/event/invoice records snapshot the resolved currency + tax mode at
+  // creation time so historical records remain stable even if partner defaults
+  // change later. taxRate is stored as a decimal % (e.g. 20.000 for 20% VAT).
+  defaultCurrency: text("default_currency").notNull().default("USD"),
+  defaultTaxMode: text("default_tax_mode").notNull().default("none"), // none | sales_tax | vat | gst | custom
+  defaultTaxLabel: text("default_tax_label"),
+  defaultTaxRate: numeric("default_tax_rate", { precision: 5, scale: 3 }),
+  taxInclusive: boolean("tax_inclusive").notNull().default(false),
+  billingCountry: text("billing_country"), // ISO-2 (e.g. US, GB, AE)
+  invoiceDisplayNotes: text("invoice_display_notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

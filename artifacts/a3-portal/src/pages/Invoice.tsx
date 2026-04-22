@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Printer, Download } from "lucide-react";
+import { formatMoney } from "@/lib/currency";
 
 const TONE: Record<string, string> = {
   paid: "bg-emerald-100 text-emerald-800",
@@ -13,10 +14,6 @@ const TONE: Record<string, string> = {
   overdue: "bg-red-100 text-red-800",
   ready: "bg-indigo-100 text-indigo-800",
   draft: "bg-zinc-100 text-zinc-700",
-};
-const money = (v: any) => {
-  const n = parseFloat(v || "0");
-  return isNaN(n) ? "$0.00" : `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
 export default function PublicInvoice() {
@@ -27,6 +24,12 @@ export default function PublicInvoice() {
   if (isLoading) return <div className="p-12 text-center text-muted-foreground">Loading…</div>;
   if (error || !inv) return <div className="p-12 text-center text-muted-foreground">Invoice not found.</div>;
 
+  const cur = inv.currency || "USD";
+  const money = (v: any) => formatMoney(v, cur);
+  const taxLine = inv.taxLabel || "Tax";
+  const taxRateNum = parseFloat(inv.taxRate || "0");
+  const taxLabelDisplay = taxLine + (taxRateNum > 0 ? ` (${taxRateNum}%${inv.taxInclusive ? " incl." : ""})` : "");
+
   return (
     <div className="min-h-screen bg-zinc-100 py-8">
       <div className="max-w-3xl mx-auto bg-white shadow-sm rounded-lg overflow-hidden print:shadow-none print:rounded-none">
@@ -35,7 +38,7 @@ export default function PublicInvoice() {
             {inv.partnerLogoUrl ? <img src={inv.partnerLogoUrl} alt="" className="h-12 w-auto" /> : <div className="h-12 w-12 bg-primary rounded-lg flex items-center justify-center text-primary-foreground font-bold">A3</div>}
             <div>
               <h1 className="text-2xl font-semibold tracking-tight">Invoice</h1>
-              <div className="text-sm text-muted-foreground">{inv.invoiceNumber}</div>
+              <div className="text-sm text-muted-foreground">{inv.invoiceNumber} · {cur}</div>
             </div>
           </div>
           <div className="flex gap-2 print:hidden">
@@ -76,7 +79,7 @@ export default function PublicInvoice() {
         <div className="p-8 flex justify-end">
           <div className="w-72 space-y-1 text-sm">
             <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>{money(inv.subtotal)}</span></div>
-            {parseFloat(inv.tax || "0") > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Tax</span><span>{money(inv.tax)}</span></div>}
+            {parseFloat(inv.tax || "0") > 0 && <div className="flex justify-between"><span className="text-muted-foreground">{taxLabelDisplay}</span><span>{money(inv.tax)}</span></div>}
             <div className="flex justify-between font-semibold text-base border-t pt-1"><span>Total</span><span>{money(inv.totalAmount)}</span></div>
             <div className="flex justify-between text-emerald-700"><span>Amount paid</span><span>{money(inv.amountPaid)}</span></div>
             <div className="flex justify-between font-semibold border-t pt-1"><span>Balance due</span><span className={parseFloat(inv.balanceDue || "0") > 0 ? "text-amber-700" : "text-emerald-700"}>{money(inv.balanceDue)}</span></div>

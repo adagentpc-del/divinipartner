@@ -126,6 +126,14 @@ function resolveDefaultSupplier(item: { productId?: number | null; brandingZoneI
 const toDateOrNull = (v: any) => v ? new Date(v) : null;
 
 const OrderBody = z.object({
+  // Currency/tax overrides — admin may set these on PATCH; on POST they are usually
+  // resolved from partner/event by resolveOrderBilling but are accepted here for
+  // explicit overrides (e.g. import flows or admin one-offs).
+  currency: z.string().optional().nullable(),
+  taxMode: z.string().optional().nullable(),
+  taxLabel: z.string().optional().nullable(),
+  taxRate: z.union([z.string(), z.number()]).optional().nullable().transform(v => v == null || v === "" ? null : String(v)),
+  taxInclusive: z.boolean().optional(),
   partnerId: z.number().int(),
   eventId: z.number().int().nullable().optional(),
   packageId: z.number().int().nullable().optional(),
@@ -331,6 +339,15 @@ router.get("/orders", async (req, res) => {
     contactEmail: ordersTable.contactEmail,
     companyName: ordersTable.companyName,
     totalEstimate: ordersTable.totalEstimate,
+    subtotal: ordersTable.subtotal,
+    taxAmount: ordersTable.taxAmount,
+    currency: ordersTable.currency,
+    currencySource: ordersTable.currencySource,
+    taxMode: ordersTable.taxMode,
+    taxModeSource: ordersTable.taxModeSource,
+    taxLabel: ordersTable.taxLabel,
+    taxRate: ordersTable.taxRate,
+    taxInclusive: ordersTable.taxInclusive,
     createdAt: ordersTable.createdAt,
     totalShortage: sql<number>`COALESCE((SELECT SUM(shortage_quantity) FROM order_items WHERE order_id = ${ordersTable.id}), 0)`,
     totalReserved: sql<number>`COALESCE((SELECT SUM(reserved_quantity) FROM order_items WHERE order_id = ${ordersTable.id}), 0)`,
@@ -444,8 +461,31 @@ router.post("/orders", async (req, res): Promise<void> => {
   const orderNumber = generateOrderNumber();
 
   try {
+    const { resolveOrderBilling, computeOrderTotals } = await import("../lib/billing");
+    // Resolve currency + tax inheritance from partner → event → order override.
+    const [partnerRow] = await db.select().from(partnersTable).where(eq(partnersTable.id, orderData.partnerId));
+    const [eventRow] = orderData.eventId
+      ? await db.select().from(eventsTable).where(eq(eventsTable.id, orderData.eventId))
+      : [null];
+    const billing = resolveOrderBilling(partnerRow as any, eventRow as any, orderData as any);
+    const totals = computeOrderTotals(items || [], billing.taxRate, billing.taxInclusive);
+
     const order = await db.transaction(async (tx) => {
-      const [createdOrder] = await tx.insert(ordersTable).values(normalizeOrderLogistics({ ...orderData, orderNumber })).returning();
+      const [createdOrder] = await tx.insert(ordersTable).values(normalizeOrderLogistics({
+        ...orderData,
+        orderNumber,
+        currency: billing.currency,
+        currencySource: billing.currencySource,
+        taxMode: billing.taxMode,
+        taxModeSource: billing.taxModeSource,
+        taxLabel: billing.taxLabel,
+        taxRate: billing.taxRate,
+        taxInclusive: billing.taxInclusive,
+        subtotal: totals.subtotal,
+        taxAmount: totals.taxAmount,
+        // Persist computed total when caller didn't already supply one.
+        totalEstimate: orderData.totalEstimate ?? totals.total,
+      })).returning();
       if (items && items.length) {
         const productIds = items.map(i => i.productId).filter((x): x is number => !!x);
         const caps = await loadProductCaps(tx as any, productIds);
@@ -535,14 +575,30 @@ router.patch("/orders/:id", async (req, res): Promise<void> => {
   const { items, ...orderData } = parsed.data;
 
   try {
+    const { resolveOrderBilling, computeOrderTotals } = await import("../lib/billing");
     let prevStatus: string | null = null;
     const updated = await db.transaction(async (tx) => {
-      const [prev] = await tx.select({ status: ordersTable.status }).from(ordersTable).where(eq(ordersTable.id, id));
+      const [prev] = await tx.select().from(ordersTable).where(eq(ordersTable.id, id));
       prevStatus = prev?.status ?? null;
-      const [existingOrder] = await tx.select({
-        totalShipmentWeightUnit: ordersTable.totalShipmentWeightUnit,
-      }).from(ordersTable).where(eq(ordersTable.id, id));
-      const [row] = await tx.update(ordersTable).set(normalizeOrderLogistics(orderData, existingOrder)).where(eq(ordersTable.id, id)).returning();
+      const existingOrder = prev ? { totalShipmentWeightUnit: prev.totalShipmentWeightUnit } : undefined;
+
+      // If currency/tax fields were edited or partner/event changed, re-resolve.
+      const hasBillingChange = ["currency","taxMode","taxLabel","taxRate","taxInclusive","partnerId","eventId"].some(k => (orderData as any)[k] !== undefined);
+      const updateValues: any = normalizeOrderLogistics(orderData, existingOrder);
+      if (prev && hasBillingChange) {
+        const partnerId = orderData.partnerId ?? prev.partnerId;
+        const eventId = orderData.eventId !== undefined ? orderData.eventId : prev.eventId;
+        const [partnerRow] = await tx.select().from(partnersTable).where(eq(partnersTable.id, partnerId));
+        const [eventRow] = eventId ? await tx.select().from(eventsTable).where(eq(eventsTable.id, eventId)) : [null];
+        const billing = resolveOrderBilling(partnerRow as any, eventRow as any, orderData as any);
+        Object.assign(updateValues, {
+          currency: billing.currency, currencySource: billing.currencySource,
+          taxMode: billing.taxMode, taxModeSource: billing.taxModeSource,
+          taxLabel: billing.taxLabel, taxRate: billing.taxRate, taxInclusive: billing.taxInclusive,
+        });
+      }
+
+      const [row] = await tx.update(ordersTable).set(updateValues).where(eq(ordersTable.id, id)).returning();
       if (!row) return null;
       if (items) {
         const existing = await tx.select().from(orderItemsTable).where(eq(orderItemsTable.orderId, id));
@@ -594,6 +650,17 @@ router.patch("/orders/:id", async (req, res): Promise<void> => {
           if (supplierId) await tx.insert(supplierAssignmentHistoryTable).values({ orderItemId: created.id, fromSupplierId: null, toSupplierId: supplierId, source });
           await tx.insert(supplierStatusEventsTable).values({ orderItemId: created.id, fromStatus: null, toStatus: supplierStatus, changedByRole: "system" });
         }
+      }
+      // Recompute totals if items changed OR tax config changed.
+      if (items || hasBillingChange) {
+        const finalItems = items ?? await tx.select().from(orderItemsTable).where(eq(orderItemsTable.orderId, id));
+        const totals = computeOrderTotals(finalItems as any, row.taxRate, !!row.taxInclusive);
+        await tx.update(ordersTable).set({
+          subtotal: totals.subtotal, taxAmount: totals.taxAmount,
+          totalEstimate: orderData.totalEstimate ?? totals.total,
+        } as any).where(eq(ordersTable.id, id));
+        const [refreshed] = await tx.select().from(ordersTable).where(eq(ordersTable.id, id));
+        return refreshed;
       }
       return row;
     });

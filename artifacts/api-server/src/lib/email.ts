@@ -54,11 +54,15 @@ function escapeHtml(value: unknown): string {
     .replace(/'/g, "&#39;");
 }
 
-function formatCurrency(value: string | number | null | undefined): string {
+function formatCurrency(value: string | number | null | undefined, currency: string = "USD"): string {
   if (value === null || value === undefined || value === "") return "";
   const n = typeof value === "string" ? Number(value) : value;
   if (!isFinite(n)) return "";
-  return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+  try {
+    return n.toLocaleString("en-US", { style: "currency", currency: (currency || "USD").toUpperCase() });
+  } catch {
+    return `${n.toFixed(2)} ${(currency || "USD").toUpperCase()}`;
+  }
 }
 
 function brandHeader(partner: Partial<Partner>, colors: BrandColors): string {
@@ -95,11 +99,33 @@ function shellClose(): string {
   return `</table></div></body></html>`;
 }
 
-function renderItemsTable(items: OrderItem[], colors: BrandColors, opts: { showPricing: boolean }): string {
+/**
+ * Render subtotal / tax / total breakdown using the order's snapshotted
+ * currency + tax fields. Falls back gracefully when the order pre-dates
+ * currency support (legacy rows without subtotal/taxAmount just show total).
+ */
+function renderTotalsBlock(order: any, colors: BrandColors): string {
+  const cur = order.currency || "USD";
+  const subtotal = order.subtotal;
+  const taxAmt = order.taxAmount;
+  const taxLabel = order.taxLabel || "Tax";
+  const taxRate = Number(order.taxRate ?? 0);
+  const taxInclusive = !!order.taxInclusive;
+  const rateLabel = taxRate > 0 ? `${escapeHtml(taxLabel)} (${taxRate}%${taxInclusive ? ", incl." : ""})` : escapeHtml(taxLabel);
+  return `
+    <table role="presentation" align="right" cellpadding="0" cellspacing="0" style="margin-top:12px;font-size:13px;color:${colors.text};">
+      ${subtotal != null ? `<tr><td style="padding:2px 12px 2px 0;color:${colors.muted};">${taxInclusive ? "Net subtotal" : "Subtotal"}</td><td style="padding:2px 0;text-align:right;">${escapeHtml(formatCurrency(subtotal, cur))}</td></tr>` : ""}
+      ${taxAmt != null && Number(taxAmt) !== 0 ? `<tr><td style="padding:2px 12px 2px 0;color:${colors.muted};">${rateLabel}</td><td style="padding:2px 0;text-align:right;">${escapeHtml(formatCurrency(taxAmt, cur))}</td></tr>` : ""}
+      <tr><td style="padding:6px 12px 2px 0;color:${colors.muted};font-weight:600;text-transform:uppercase;font-size:11px;letter-spacing:0.06em;">Total</td><td style="padding:6px 0 2px 0;text-align:right;font-weight:700;font-size:15px;">${escapeHtml(formatCurrency(order.totalEstimate, cur))} ${escapeHtml(cur)}</td></tr>
+    </table>`;
+}
+
+function renderItemsTable(items: OrderItem[], colors: BrandColors, opts: { showPricing: boolean; currency?: string }): string {
   if (!items.length) return "";
+  const cur = opts.currency || "USD";
   const rows = items.map((it) => {
-    const price = opts.showPricing ? formatCurrency(it.unitPrice) : "";
-    const lineTotal = opts.showPricing && it.unitPrice ? formatCurrency(Number(it.unitPrice) * (it.quantity || 1)) : "";
+    const price = opts.showPricing ? formatCurrency(it.unitPrice, cur) : "";
+    const lineTotal = opts.showPricing && it.unitPrice ? formatCurrency(Number(it.unitPrice) * (it.quantity || 1), cur) : "";
     return `
       <tr>
         <td style="padding:10px 8px;border-bottom:1px solid ${colors.primary}14;font-size:13px;">
@@ -186,8 +212,8 @@ export function renderCustomerConfirmationHtml(ctx: OrderEmailContext): string {
         </table>` : ""}
 
         <h2 style="margin:24px 0 8px 0;font-size:14px;text-transform:uppercase;letter-spacing:0.06em;color:${colors.muted};">Order summary</h2>
-        ${renderItemsTable(items, colors, { showPricing })}
-        ${showPricing && order.totalEstimate ? `<div style="text-align:right;margin-top:12px;font-size:14px;color:${colors.text};"><span style="color:${colors.muted};">Estimated total: </span><strong>${escapeHtml(order.totalEstimate)}</strong></div>` : ""}
+        ${renderItemsTable(items, colors, { showPricing, currency: (order as any).currency || "USD" })}
+        ${showPricing && order.totalEstimate ? renderTotalsBlock(order as any, colors) : ""}
 
         <div style="margin-top:28px;padding:16px;border-radius:10px;background:${colors.accent}14;border-left:3px solid ${colors.accent};">
           <div style="font-weight:600;font-size:13px;color:${colors.text};margin-bottom:4px;">What happens next</div>
@@ -231,8 +257,8 @@ export function renderInternalForwardHtml(ctx: OrderEmailContext): string {
         </table>
 
         <h2 style="margin:24px 0 4px 0;font-size:13px;text-transform:uppercase;letter-spacing:0.06em;color:${colors.muted};">Items (${items.length})</h2>
-        ${renderItemsTable(items, colors, { showPricing: true })}
-        ${order.totalEstimate ? `<div style="text-align:right;margin-top:10px;font-size:14px;color:${colors.text};"><span style="color:${colors.muted};">Estimated total: </span><strong>${escapeHtml(order.totalEstimate)}</strong></div>` : ""}
+        ${renderItemsTable(items, colors, { showPricing: true, currency: (order as any).currency || "USD" })}
+        ${order.totalEstimate ? renderTotalsBlock(order as any, colors) : ""}
 
         ${order.notes ? `<div style="margin-top:20px;padding:14px;border-radius:8px;background:#fffbe6;border-left:3px solid #f59e0b;"><div style="font-size:12px;font-weight:700;color:${colors.text};margin-bottom:4px;text-transform:uppercase;letter-spacing:0.04em;">Customer notes</div><div style="font-size:13px;color:${colors.text};white-space:pre-wrap;">${escapeHtml(order.notes)}</div></div>` : ""}
 
@@ -449,8 +475,8 @@ function renderFinanceHtml(ctx: OrderEmailContext): string {
         </table>
 
         <div style="margin-top:20px;padding:14px 18px;border-radius:10px;background:${colors.primary}0a;border:1px solid ${colors.primary}1a;">
-          <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:${colors.muted};margin-bottom:4px;">Estimated total</div>
-          <div style="font-size:24px;font-weight:700;color:${colors.text};">${escapeHtml(order.totalEstimate || "—")}</div>
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:${colors.muted};margin-bottom:4px;">Estimated total (${escapeHtml((order as any).currency || "USD")})</div>
+          <div style="font-size:24px;font-weight:700;color:${colors.text};">${order.totalEstimate ? escapeHtml(formatCurrency(order.totalEstimate, (order as any).currency || "USD")) : "—"}</div>
         </div>
 
         ${partner.defaultBillingNotes ? `<div style="margin-top:18px;padding:12px;border-radius:8px;background:${colors.accent}10;border-left:3px solid ${colors.accent};font-size:13px;color:${colors.text};white-space:pre-wrap;">${escapeHtml(partner.defaultBillingNotes)}</div>` : ""}
@@ -484,7 +510,7 @@ function renderPartnerContactHtml(ctx: OrderEmailContext): string {
           <tr><td style="padding:6px 0;font-size:13px;color:${colors.muted};">Items</td><td style="padding:6px 0;font-size:13px;color:${colors.text};">${items.length}</td></tr>
         </table>
 
-        ${renderItemsTable(items, colors, { showPricing: !!partner.pricingDisplayEnabled })}
+        ${renderItemsTable(items, colors, { showPricing: !!partner.pricingDisplayEnabled, currency: (order as any).currency || "USD" })}
 
         <div style="margin-top:22px;padding:14px;border-radius:8px;background:${colors.primary}08;font-size:13px;color:${colors.muted};line-height:1.5;">
           The ops team has been notified and will follow up with the customer. No action is required from you unless flagged separately.

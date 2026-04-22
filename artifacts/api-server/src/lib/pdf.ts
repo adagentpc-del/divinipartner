@@ -20,11 +20,15 @@ function safe(s: unknown): string {
   return String(s);
 }
 
-function fmtCurrency(value: string | number | null | undefined): string {
+function fmtCurrency(value: string | number | null | undefined, currency: string = "USD"): string {
   if (value === null || value === undefined || value === "") return "";
   const n = typeof value === "string" ? Number(value) : value;
   if (!Number.isFinite(n)) return safe(value);
-  return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+  try {
+    return n.toLocaleString("en-US", { style: "currency", currency: (currency || "USD").toUpperCase() });
+  } catch {
+    return `${n.toFixed(2)} ${(currency || "USD").toUpperCase()}`;
+  }
 }
 
 function fmtDate(value: string | Date | null | undefined): string {
@@ -81,6 +85,10 @@ export async function generateOrderSummaryPdf(ctx: OrderEmailContext, audience: 
   const accent = hexToRgb(colors.accent || "#f59e0b");
   const showPricing = audience !== "customer" && !!partner.pricingDisplayEnabled
     || audience === "internal" || audience === "finance";
+  const currency = (order as any).currency || (partner as any).defaultCurrency || "USD";
+  const taxRatePct = Number((order as any).taxRate ?? 0);
+  const taxLabel = (order as any).taxLabel || "Tax";
+  const taxInclusive = !!(order as any).taxInclusive;
 
   const logoBuf = await fetchLogoBuffer(partner.logoUrl);
 
@@ -120,6 +128,9 @@ export async function generateOrderSummaryPdf(ctx: OrderEmailContext, audience: 
   doc.fillColor("#ffffff").font("Helvetica").fontSize(10).text(audienceLabel(audience), 0, 38, { align: "right", width: doc.page.width - 48 });
   doc.fillColor("#ffffff").font("Helvetica-Bold").fontSize(14).text(safe(order.orderNumber), 0, 56, { align: "right", width: doc.page.width - 48 });
   doc.fillColor("#ffffff").font("Helvetica").fontSize(9).text(`Submitted ${fmtDate(order.createdAt)}`, 0, 76, { align: "right", width: doc.page.width - 48 });
+  if (showPricing) {
+    doc.fillColor("#ffffff").font("Helvetica").fontSize(9).text(`Currency: ${currency}`, 0, 90, { align: "right", width: doc.page.width - 48 });
+  }
   doc.restore();
 
   // ----- Body --------------------------------------------------------------
@@ -227,8 +238,8 @@ export async function generateOrderSummaryPdf(ctx: OrderEmailContext, audience: 
       // Right-aligned numerics (anchor to row top so they line up with item name)
       doc.fillColor(text).font("Helvetica").fontSize(10).text(safe(it.quantity), colQty, rowTop, { width: 40, align: "right" });
       if (showPricing) {
-        doc.text(fmtCurrency(it.unitPrice) || "—", colPrice, rowTop, { width: 70, align: "right" });
-        const lineTotal = it.unitPrice ? fmtCurrency(Number(it.unitPrice) * (it.quantity || 1)) : "";
+        doc.text(fmtCurrency(it.unitPrice, currency) || "—", colPrice, rowTop, { width: 70, align: "right" });
+        const lineTotal = it.unitPrice ? fmtCurrency(Number(it.unitPrice) * (it.quantity || 1), currency) : "";
         doc.font("Helvetica-Bold").text(lineTotal || "", colTotal, rowTop, { width: 60, align: "right" });
       }
       doc.moveDown(0.5);
@@ -239,9 +250,27 @@ export async function generateOrderSummaryPdf(ctx: OrderEmailContext, audience: 
   }
 
   if (showPricing && order.totalEstimate) {
-    doc.moveDown(0.5);
-    doc.fillColor(muted).font("Helvetica").fontSize(9).text("Estimated total", 48, doc.y, { width: doc.page.width - 96 - 120, continued: false });
-    doc.fillColor(text).font("Helvetica-Bold").fontSize(13).text(safe(order.totalEstimate), doc.page.width - 48 - 120, doc.y - 12, { width: 120, align: "right" });
+    doc.moveDown(0.6);
+    const labelW = doc.page.width - 96 - 140;
+    const valX = doc.page.width - 48 - 140;
+    const subtotal = (order as any).subtotal;
+    const taxAmt = (order as any).taxAmount;
+    if (subtotal != null) {
+      const y0 = doc.y;
+      doc.fillColor(muted).font("Helvetica").fontSize(9.5).text(taxInclusive ? "Net subtotal" : "Subtotal", 48, y0, { width: labelW });
+      doc.fillColor(text).font("Helvetica").fontSize(10).text(fmtCurrency(subtotal, currency), valX, y0, { width: 140, align: "right" });
+      doc.moveDown(0.2);
+    }
+    if (taxAmt != null && Number(taxAmt) !== 0) {
+      const y1 = doc.y;
+      const rateLabel = taxRatePct > 0 ? `${taxLabel} (${taxRatePct}%${taxInclusive ? ", incl." : ""})` : taxLabel;
+      doc.fillColor(muted).font("Helvetica").fontSize(9.5).text(rateLabel, 48, y1, { width: labelW });
+      doc.fillColor(text).font("Helvetica").fontSize(10).text(fmtCurrency(taxAmt, currency), valX, y1, { width: 140, align: "right" });
+      doc.moveDown(0.2);
+    }
+    const yT = doc.y;
+    doc.fillColor(muted).font("Helvetica-Bold").fontSize(10).text("TOTAL", 48, yT, { width: labelW, characterSpacing: 0.6 });
+    doc.fillColor(text).font("Helvetica-Bold").fontSize(13).text(`${fmtCurrency(order.totalEstimate, currency)} ${currency}`, valX, yT - 2, { width: 140, align: "right" });
   }
 
   // Notes (customer notes are okay to show to all audiences)

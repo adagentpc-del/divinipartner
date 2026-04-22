@@ -12,6 +12,7 @@ export const discrepanciesTable = pgTable("discrepancies", {
   expectedAmount: numeric("expected_amount", { precision: 12, scale: 2 }),
   actualAmount: numeric("actual_amount", { precision: 12, scale: 2 }),
   varianceAmount: numeric("variance_amount", { precision: 12, scale: 2 }),
+  currency: text("currency").notNull().default("USD"),
   assignedToUserId: text("assigned_to_user_id"),
   resolutionNotes: text("resolution_notes"),
   autoFlagged: text("auto_flagged"), // null or short tag explaining why auto-detected
@@ -23,6 +24,7 @@ export const commissionPayoutsTable = pgTable("commission_payouts", {
   id: serial("id").primaryKey(),
   orderId: integer("order_id").notNull().references(() => ordersTable.id, { onDelete: "cascade" }),
   amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  currency: text("currency").notNull().default("USD"),
   paidDate: text("paid_date"),
   paidThrough: text("paid_through"),
   reference: text("reference"),

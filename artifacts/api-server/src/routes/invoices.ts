@@ -12,6 +12,7 @@ import {
 import { z } from "zod";
 import crypto from "crypto";
 import { resolveBillingExecModel } from "./billingResolver";
+import { computeOrderTotals } from "../lib/billing";
 import { fire } from "../services/workflowEngine";
 import { emit as usageEmit, emitFirst as usageEmitFirst } from "../services/usageTracking";
 
@@ -130,6 +131,11 @@ router.get("/invoices/public/:token", async (req, res) => {
     subtotal: inv.subtotal,
     tax: inv.tax,
     totalAmount: inv.totalAmount,
+    currency: (inv as any).currency || "USD",
+    taxMode: (inv as any).taxMode || "none",
+    taxLabel: (inv as any).taxLabel || null,
+    taxRate: (inv as any).taxRate ?? null,
+    taxInclusive: !!(inv as any).taxInclusive,
     amountPaid: inv.amountPaid,
     balanceDue: inv.balanceDue,
     depositAmount: inv.depositAmount,
@@ -159,9 +165,14 @@ router.post("/invoices/from-order/:orderId", async (req, res) => {
   const [event] = order.eventId ? await db.select().from(eventsTable).where(eq(eventsTable.id, order.eventId)) : [null];
   const items = await db.select().from(orderItemsTable).where(eq(orderItemsTable.orderId, orderId));
   const resolved = resolveBillingExecModel({ order, event, partner });
-  const subtotal = num(order.totalEstimate);
-  const tax = 0;
-  const total = subtotal + tax;
+  // Carry currency + tax snapshot from order. Recompute tax from the snapshot
+  // rate so invoice shows accurate VAT/sales-tax breakdown even if the order
+  // pre-dates currency support and only has a totalEstimate.
+  const { computeOrderTotals } = await import("../lib/billing");
+  const computed = computeOrderTotals(items as any, (order as any).taxRate, !!(order as any).taxInclusive);
+  const subtotal = (order as any).subtotal != null ? num((order as any).subtotal) : num(computed.subtotal);
+  const tax = (order as any).taxAmount != null ? num((order as any).taxAmount) : num(computed.taxAmount);
+  const total = num(order.totalEstimate) || (subtotal + tax);
   const depositPct = num(partner?.depositPct);
   const depositAmount = partner?.depositRequired && depositPct > 0 ? +(total * depositPct / 100).toFixed(2) : null;
 
@@ -197,6 +208,11 @@ router.post("/invoices/from-order/:orderId", async (req, res) => {
     dueDate,
     subtotal: subtotal.toFixed(2),
     tax: tax.toFixed(2),
+    currency: (order as any).currency || partner?.defaultCurrency || "USD",
+    taxMode: (order as any).taxMode || partner?.defaultTaxMode || "none",
+    taxLabel: (order as any).taxLabel || partner?.defaultTaxLabel || null,
+    taxRate: (order as any).taxRate ?? partner?.defaultTaxRate ?? null,
+    taxInclusive: !!((order as any).taxInclusive ?? partner?.taxInclusive),
     totalAmount: total.toFixed(2),
     amountPaid: "0",
     balanceDue: total.toFixed(2),
@@ -225,6 +241,11 @@ const PatchBody = z.object({
   subtotal: z.string().nullable().optional(),
   tax: z.string().nullable().optional(),
   totalAmount: z.string().nullable().optional(),
+  currency: z.string().min(3).max(3).optional(),
+  taxMode: z.enum(["none","sales_tax","vat","gst","custom"]).optional(),
+  taxLabel: z.string().nullable().optional(),
+  taxRate: z.union([z.string(), z.number()]).nullable().optional().transform(v => v == null || v === "" ? null : String(v)),
+  taxInclusive: z.boolean().optional(),
   depositAmount: z.string().nullable().optional(),
   paymentInstructions: z.string().nullable().optional(),
   externalInvoiceRef: z.string().nullable().optional(),
@@ -283,8 +304,16 @@ router.post("/invoices/:id/regenerate", async (req, res) => {
   const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, inv.orderId));
   if (!order) return res.status(404).json({ error: "Order not found" });
   const items = await db.select().from(orderItemsTable).where(eq(orderItemsTable.orderId, inv.orderId));
-  const subtotal = num(order.totalEstimate);
-  const total = subtotal + num(inv.tax);
+  // Recompute totals from the live order item snapshot using the order's
+  // current currency/tax config. The previous implementation read order.totalEstimate
+  // as a subtotal and re-added inv.tax, which double-counted tax for exclusive
+  // orders and overstated inclusive ones.
+  const orderCurrency = (order as any).currency || (inv as any).currency || "USD";
+  const orderTaxMode = (order as any).taxMode || (inv as any).taxMode || "none";
+  const orderTaxLabel = (order as any).taxLabel ?? (inv as any).taxLabel ?? null;
+  const orderTaxRate = (order as any).taxRate ?? (inv as any).taxRate ?? null;
+  const orderTaxIncl = (order as any).taxInclusive ?? (inv as any).taxInclusive ?? false;
+  const totals = computeOrderTotals(items as any, orderTaxRate, !!orderTaxIncl);
   const lineItems = items.map(it => {
     const qty = it.quantity || 1;
     const up = num(it.unitPrice);
@@ -295,11 +324,18 @@ router.post("/invoices/:id/regenerate", async (req, res) => {
       amount: (qty * up).toFixed(2),
     };
   });
+  const totalNum = Number(totals.total);
   await db.update(invoicesTable).set({
-    subtotal: subtotal.toFixed(2),
-    totalAmount: total.toFixed(2),
-    balanceDue: Math.max(0, total - num(inv.amountPaid)).toFixed(2),
+    subtotal: totals.subtotal,
+    tax: totals.taxAmount,
+    totalAmount: totals.total,
+    balanceDue: Math.max(0, totalNum - num(inv.amountPaid)).toFixed(2),
     lineItemsJson: lineItems,
+    currency: orderCurrency,
+    taxMode: orderTaxMode,
+    taxLabel: orderTaxLabel,
+    taxRate: orderTaxRate,
+    taxInclusive: !!orderTaxIncl,
   } as any).where(eq(invoicesTable.id, id));
   const [fresh] = await db.select().from(invoicesTable).where(eq(invoicesTable.id, id));
   res.json(fresh);

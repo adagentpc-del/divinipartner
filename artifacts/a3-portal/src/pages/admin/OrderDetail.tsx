@@ -13,6 +13,81 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, ChevronLeft, Save, Printer, ShoppingCart, MapPin, Calendar, Truck, User, Building2, FileText, Image as ImageIcon, AlertTriangle, Package, Boxes, Printer as PrintIcon, FolderOpen } from "lucide-react";
 import OrderAssetsPanel from "@/components/admin/OrderAssetsPanel";
 import TaskPanel from "@/components/admin/TaskPanel";
+import { formatMoney, SUPPORTED_CURRENCIES, TAX_MODES, TAX_MODE_LABELS } from "@/lib/currency";
+
+/**
+ * Compact currency + tax breakdown / override block for an order.
+ * Shows the snapshotted subtotal/tax/total in the order's resolved currency,
+ * plus inheritance source badges, and lets admins override the resolved
+ * currency/tax fields. PATCH posts the override fields; the server re-resolves
+ * inheritance, recomputes totals, and updates currencySource/taxModeSource.
+ */
+function CurrencyTaxBreakdown({ order, onSave, saving }: { order: any; onSave: (patch: any) => void; saving?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState<any>({
+    currency: order.currency || "USD",
+    taxMode: order.taxMode || "none",
+    taxLabel: order.taxLabel || "",
+    taxRate: order.taxRate ?? "",
+    taxInclusive: !!order.taxInclusive,
+  });
+  useEffect(() => {
+    setDraft({
+      currency: order.currency || "USD",
+      taxMode: order.taxMode || "none",
+      taxLabel: order.taxLabel || "",
+      taxRate: order.taxRate ?? "",
+      taxInclusive: !!order.taxInclusive,
+    });
+  }, [order.id, order.currency, order.taxMode, order.taxRate, order.taxInclusive, order.taxLabel]);
+  const cur = order.currency || "USD";
+  const subtotal = order.subtotal;
+  const taxAmount = order.taxAmount;
+  const taxRate = Number(order.taxRate ?? 0);
+  return (
+    <div className="rounded-md border bg-muted/30 px-3 py-2 space-y-1.5">
+      <div className="flex items-center justify-between">
+        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pricing breakdown</div>
+        <div className="flex items-center gap-1">
+          <Badge variant="outline" className="text-[10px]">{cur}</Badge>
+          {order.currencySource && order.currencySource !== "partner" && <Badge variant="secondary" className="text-[10px]">currency: {order.currencySource}</Badge>}
+          {order.taxModeSource && order.taxModeSource !== "partner" && <Badge variant="secondary" className="text-[10px]">tax: {order.taxModeSource}</Badge>}
+        </div>
+      </div>
+      <div className="text-xs space-y-0.5">
+        {subtotal != null && (<div className="flex justify-between"><span className="text-muted-foreground">{order.taxInclusive ? "Net subtotal" : "Subtotal"}</span><span>{formatMoney(subtotal, cur)}</span></div>)}
+        {taxAmount != null && Number(taxAmount) !== 0 && (
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">{order.taxLabel || "Tax"}{taxRate > 0 ? ` (${taxRate}%${order.taxInclusive ? ", incl." : ""})` : ""}</span>
+            <span>{formatMoney(taxAmount, cur)}</span>
+          </div>
+        )}
+        <div className="flex justify-between font-semibold border-t pt-1"><span>Total</span><span>{formatMoney(order.totalEstimate ?? 0, cur)} {cur}</span></div>
+      </div>
+      <button type="button" onClick={() => setOpen(o => !o)} className="text-[11px] text-primary hover:underline">{open ? "Hide override" : "Override currency / tax"}</button>
+      {open && (
+        <div className="grid grid-cols-2 gap-2 pt-2 border-t">
+          <div><Label className="text-[10px]">Currency</Label>
+            <Select value={draft.currency} onValueChange={(v) => setDraft({ ...draft, currency: v })}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>{SUPPORTED_CURRENCIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div><Label className="text-[10px]">Tax mode</Label>
+            <Select value={draft.taxMode} onValueChange={(v) => setDraft({ ...draft, taxMode: v })}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>{TAX_MODES.map(m => <SelectItem key={m} value={m}>{TAX_MODE_LABELS[m]}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div><Label className="text-[10px]">Tax label</Label><Input className="h-8 text-xs" value={draft.taxLabel} onChange={e => setDraft({ ...draft, taxLabel: e.target.value })} placeholder="VAT, GST…" /></div>
+          <div><Label className="text-[10px]">Tax rate %</Label><Input className="h-8 text-xs" value={draft.taxRate} onChange={e => setDraft({ ...draft, taxRate: e.target.value })} placeholder="e.g. 20" /></div>
+          <label className="col-span-2 flex items-center gap-2 text-[11px]"><input type="checkbox" checked={!!draft.taxInclusive} onChange={e => setDraft({ ...draft, taxInclusive: e.target.checked })} />Prices are tax-inclusive</label>
+          <Button size="sm" disabled={saving} className="col-span-2 h-7 text-xs" onClick={() => onSave({ currency: draft.currency, taxMode: draft.taxMode, taxLabel: draft.taxLabel || null, taxRate: draft.taxRate === "" ? null : String(draft.taxRate), taxInclusive: !!draft.taxInclusive })}>Apply override &amp; recalc</Button>
+        </div>
+      )}
+    </div>
+  );
+}
 import { formatWxHDual, formatPrimarySecondary, formatWeight, pickDisplayWeightUnit, convertWeight, defaultWeightUnit, type UnitSystem, type WeightUnit, type LengthUnit } from "@/lib/units";
 import { PackingDetailsInput, type PackingDetailsValue, type PackingMode } from "@/components/units/PackingDetailsInput";
 import { WeightInput, type WeightValue } from "@/components/units/WeightInput";
@@ -403,7 +478,8 @@ export default function OrderDetail() {
               <div><Label className="text-xs">Assigned Supplier</Label>
                 <Select value={internal.assignedSupplierId || "0"} onValueChange={v => setInternal({ ...internal, assignedSupplierId: v === "0" ? "" : v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="0">Unassigned</SelectItem>{suppliers.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}</SelectContent></Select>
               </div>
-              <div><Label className="text-xs">Total Estimate</Label><Input value={internal.totalEstimate} onChange={e => setInternal({ ...internal, totalEstimate: e.target.value })} placeholder="0.00" /></div>
+              <div><Label className="text-xs">Total Estimate ({(order as any).currency || "USD"})</Label><Input value={internal.totalEstimate} onChange={e => setInternal({ ...internal, totalEstimate: e.target.value })} placeholder="0.00" /></div>
+              <CurrencyTaxBreakdown order={order as any} onSave={(patch) => update.mutate(patch)} saving={update.isPending} />
               <div><Label className="text-xs">Fulfillment Status</Label><Input value={internal.fulfillmentStatus} onChange={e => setInternal({ ...internal, fulfillmentStatus: e.target.value })} placeholder="In production / Shipped / etc." /></div>
               <div><Label className="text-xs">Internal Notes</Label><Textarea value={internal.internalNotes} onChange={e => setInternal({ ...internal, internalNotes: e.target.value })} rows={3} /></div>
               <div><Label className="text-xs">Vendor Notes (visible to vendor)</Label><Textarea value={internal.vendorNotes} onChange={e => setInternal({ ...internal, vendorNotes: e.target.value })} rows={2} /></div>

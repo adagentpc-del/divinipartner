@@ -20,6 +20,12 @@ export const invoicesTable = pgTable("invoices", {
   dueDate: text("due_date"),
   subtotal: numeric("subtotal", { precision: 12, scale: 2 }).notNull().default("0"),
   tax: numeric("tax", { precision: 12, scale: 2 }),
+  // Currency + tax snapshot carried from the source order (April 2026).
+  currency: text("currency").notNull().default("USD"),
+  taxMode: text("tax_mode").notNull().default("none"),
+  taxLabel: text("tax_label"),
+  taxRate: numeric("tax_rate", { precision: 5, scale: 3 }),
+  taxInclusive: boolean("tax_inclusive").notNull().default(false),
   totalAmount: numeric("total_amount", { precision: 12, scale: 2 }).notNull().default("0"),
   amountPaid: numeric("amount_paid", { precision: 12, scale: 2 }).notNull().default("0"),
   balanceDue: numeric("balance_due", { precision: 12, scale: 2 }).notNull().default("0"),

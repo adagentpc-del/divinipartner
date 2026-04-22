@@ -25,10 +25,8 @@ const TONE: Record<string, string> = {
   cancelled: "bg-zinc-200 text-zinc-600",
 };
 const tone = (s: string) => TONE[s] || "bg-zinc-100 text-zinc-700";
-const money = (v: any) => {
-  const n = typeof v === "number" ? v : parseFloat(v || "0");
-  return isNaN(n) ? "$0.00" : `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-};
+import { formatMoney } from "@/lib/currency";
+const money = (v: any, currency: string = "USD") => formatMoney(v ?? 0, currency) || "—";
 
 export default function InvoiceDetail() {
   const [, params] = useRoute("/admin/invoices/:id");
@@ -105,18 +103,23 @@ export default function InvoiceDetail() {
               <TableHeader><TableRow><TableHead>Description</TableHead><TableHead className="text-right">Qty</TableHead><TableHead className="text-right">Unit</TableHead><TableHead className="text-right">Amount</TableHead></TableRow></TableHeader>
               <TableBody>
                 {(inv.lineItemsJson || []).map((li: any, i: number) => (
-                  <TableRow key={i}><TableCell className="text-sm">{li.description}</TableCell><TableCell className="text-right text-sm">{li.quantity}</TableCell><TableCell className="text-right text-sm">{money(li.unitPrice)}</TableCell><TableCell className="text-right text-sm font-medium">{money(li.amount)}</TableCell></TableRow>
+                  <TableRow key={i}><TableCell className="text-sm">{li.description}</TableCell><TableCell className="text-right text-sm">{li.quantity}</TableCell><TableCell className="text-right text-sm">{money(li.unitPrice, inv.currency)}</TableCell><TableCell className="text-right text-sm font-medium">{money(li.amount, inv.currency)}</TableCell></TableRow>
                 ))}
                 {(!inv.lineItemsJson || inv.lineItemsJson.length === 0) && <TableRow><TableCell colSpan={4} className="text-center text-sm text-muted-foreground">No line items</TableCell></TableRow>}
               </TableBody>
             </Table>
             <div className="mt-4 flex justify-end">
-              <div className="space-y-1 text-right text-sm w-64">
-                <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>{money(inv.subtotal)}</span></div>
-                {parseFloat(inv.tax || "0") > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Tax</span><span>{money(inv.tax)}</span></div>}
-                <div className="flex justify-between font-semibold text-base border-t pt-1"><span>Total</span><span>{money(inv.totalAmount)}</span></div>
-                <div className="flex justify-between text-emerald-700"><span>Paid</span><span>{money(inv.amountPaid)}</span></div>
-                <div className="flex justify-between font-semibold"><span>Balance</span><span className={parseFloat(inv.balanceDue || "0") > 0 ? "text-amber-700" : ""}>{money(inv.balanceDue)}</span></div>
+              <div className="space-y-1 text-right text-sm w-72">
+                <div className="flex justify-between"><span className="text-muted-foreground">{inv.taxInclusive ? "Net subtotal" : "Subtotal"}</span><span>{money(inv.subtotal, inv.currency)}</span></div>
+                {parseFloat(inv.tax || "0") > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{inv.taxLabel || "Tax"}{inv.taxRate ? ` (${Number(inv.taxRate)}%${inv.taxInclusive ? ", incl." : ""})` : ""}</span>
+                    <span>{money(inv.tax, inv.currency)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-semibold text-base border-t pt-1"><span>Total <span className="text-xs font-normal text-muted-foreground ml-1">{inv.currency || "USD"}</span></span><span>{money(inv.totalAmount, inv.currency)}</span></div>
+                <div className="flex justify-between text-emerald-700"><span>Paid</span><span>{money(inv.amountPaid, inv.currency)}</span></div>
+                <div className="flex justify-between font-semibold"><span>Balance</span><span className={parseFloat(inv.balanceDue || "0") > 0 ? "text-amber-700" : ""}>{money(inv.balanceDue, inv.currency)}</span></div>
               </div>
             </div>
           </Card>
@@ -129,7 +132,7 @@ export default function InvoiceDetail() {
                 {(inv.payments || []).map((p: any) => (
                   <TableRow key={p.id}>
                     <TableCell className="text-sm">{p.paidDate || p.createdAt?.slice(0,10)}</TableCell>
-                    <TableCell className="text-sm font-medium">{money(p.amount)}</TableCell>
+                    <TableCell className="text-sm font-medium">{money(p.amount, inv.currency)}</TableCell>
                     <TableCell className="text-sm">{p.method || "—"}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{p.reference || "—"}</TableCell>
                     <TableCell className="text-xs">{p.isDeposit && <Badge variant="outline">deposit</Badge>}</TableCell>

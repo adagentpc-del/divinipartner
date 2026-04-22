@@ -27,6 +27,12 @@ const EventBody = z.object({
   imageUrl: z.string().nullable().optional(),
   isActive: z.boolean().optional(),
   unitPreference: z.enum(["imperial", "metric"]).nullable().optional(),
+  // Currency / tax overrides (nullable = inherit from partner default).
+  currency: z.string().nullable().optional(),
+  taxMode: z.string().nullable().optional(),
+  taxLabel: z.string().nullable().optional(),
+  taxRate: z.union([z.string(), z.number()]).nullable().optional().transform(v => v == null || v === "" ? null : String(v)),
+  taxInclusive: z.boolean().nullable().optional(),
 });
 
 const router: IRouter = Router();

@@ -37,6 +37,9 @@ const money = (v: any) => {
   const n = typeof v === "number" ? v : parseFloat(v || "0");
   return isNaN(n) ? "$0.00" : `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
+import { formatMoney as fmtMoney } from "@/lib/currency";
+const moneyCur = (v: any, currency?: string | null) => formatMoney(v ?? 0, currency || "USD") || "—";
+function formatMoney(v: any, c: string) { return fmtMoney(v, c); }
 const modelLabel = (v: string) => BILLING_MODELS.find(m => m.v === v)?.l || v;
 
 export default function Billing() {
@@ -173,7 +176,7 @@ export default function Billing() {
                         <div className="text-[10px] mt-0.5">{r.invoice.invoiceNumber}</div>
                       </div></Link>
                     ) : <span className="text-xs text-muted-foreground">—</span>}</TableCell>
-                    <TableCell className="text-sm">{money(r.totalEstimate)}</TableCell>
+                    <TableCell className="text-sm">{moneyCur(r.totalEstimate, (r as any).currency)} <span className="text-[10px] text-muted-foreground">{(r as any).currency || ""}</span></TableCell>
                     <TableCell className="text-sm">{r.invoice ? money(r.invoice.amountPaid) : "—"}</TableCell>
                     <TableCell className="text-sm">{r.invoice ? money(r.invoice.balanceDue) : "—"}</TableCell>
                     <TableCell className="text-xs">{r.invoice?.dueDate || "—"}</TableCell>
@@ -228,7 +231,7 @@ export default function Billing() {
                     <TableCell className="text-sm">{inv.partnerName}</TableCell>
                     <TableCell className="text-xs"><Badge variant="outline">{modelLabel(inv.billingExecModel)}</Badge></TableCell>
                     <TableCell><Badge className={tone(inv.isOverdue ? "overdue" : inv.status)}>{inv.isOverdue ? "overdue" : inv.status}</Badge></TableCell>
-                    <TableCell className="text-sm">{money(inv.totalAmount)}</TableCell>
+                    <TableCell className="text-sm">{moneyCur(inv.totalAmount, inv.currency)} <span className="text-[10px] text-muted-foreground">{inv.currency || ""}</span></TableCell>
                     <TableCell className="text-sm">{money(inv.amountPaid)}</TableCell>
                     <TableCell className="text-sm">{money(inv.balanceDue)}</TableCell>
                     <TableCell className="text-xs">{inv.dueDate || "—"}</TableCell>
