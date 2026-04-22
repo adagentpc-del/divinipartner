@@ -194,7 +194,7 @@ function parseDimensions(text: string): { width: number | null; height: number |
 
 // Deterministic boilerplate stripping: drop short header/footer lines that
 // repeat across pages (page numbers, copyright, "confidential", URLs).
-function stripBoilerplate(pages: { page: number; text: string }[]): { page: number; text: string }[] {
+export function stripBoilerplate(pages: { page: number; text: string }[]): { page: number; text: string }[] {
   const lineCounts = new Map<string, number>();
   for (const p of pages) {
     const seen = new Set<string>();
@@ -213,7 +213,7 @@ function stripBoilerplate(pages: { page: number; text: string }[]): { page: numb
 
 // Deterministic chunk identification: keep pages that mention any branding
 // keyword OR contain a dimensions pattern. Falls back to top-N by length.
-function selectRelevantChunks(pages: { page: number; text: string }[]): { page: number; text: string; reason: string }[] {
+export function selectRelevantChunks(pages: { page: number; text: string }[]): { page: number; text: string; reason: string }[] {
   const dimRegex = /(\d+(?:\.\d+)?)\s*['"x×]\s*(\d+(?:\.\d+)?)/i;
   const scored = pages.map(p => {
     const lower = p.text.toLowerCase();

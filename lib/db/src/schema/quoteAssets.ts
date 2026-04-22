@@ -49,6 +49,37 @@ export const quoteAssetsTable = pgTable("quote_assets", {
   missingDataFlagsJson: jsonb("missing_data_flags_json").$type<string[]>(),
   notes: text("notes"),
   uploadedBy: text("uploaded_by"),
+  // Section 21: parsed billing signals (currency / VAT / international cues).
+  // Populated by lib/billingSignals.ts on PDF upload. Always kept SEPARATE
+  // from any approved/applied billing defaults — admin must explicitly approve
+  // before these flow into partner/order/invoice records.
+  fileHash: text("file_hash"),                              // sha256 of source file (dedup + cache key)
+  extractedText: text("extracted_text"),                    // cached pdf-parse output, reused on rerun/UI
+  parsedAt: timestamp("parsed_at", { withTimezone: true }),
+  parsedSource: text("parsed_source"),                      // 'rules' | 'ai' | 'none' | 'failed'
+  parsedReviewStatus: text("parsed_review_status").default("pending"), // pending | approved | dismissed | edited
+  parsedCurrency: text("parsed_currency"),                  // USD | EUR | GBP | AED | CAD | AUD | null
+  parsedCurrencyConfidence: text("parsed_currency_confidence"), // high | low | ambiguous
+  parsedTaxLabel: text("parsed_tax_label"),                 // VAT | Sales Tax | GST | …
+  parsedTaxRate: numeric("parsed_tax_rate", { precision: 5, scale: 3 }),
+  parsedTaxAmount: numeric("parsed_tax_amount", { precision: 12, scale: 2 }),
+  parsedTaxInclusive: boolean("parsed_tax_inclusive"),       // null = unknown
+  parsedSubtotalAmount: numeric("parsed_subtotal_amount", { precision: 12, scale: 2 }),
+  parsedTotalAmount: numeric("parsed_total_amount", { precision: 12, scale: 2 }),
+  parsedQuoteReference: text("parsed_quote_reference"),
+  parsedSupplierName: text("parsed_supplier_name"),
+  parsedPaymentTerms: text("parsed_payment_terms"),
+  parsedDepositAmount: numeric("parsed_deposit_amount", { precision: 12, scale: 2 }),
+  parsedBillingCountry: text("parsed_billing_country"),
+  parsedIncoterm: text("parsed_incoterm"),
+  parsedBillingNotes: text("parsed_billing_notes"),
+  // Compact flag list shown in review UI: e.g.
+  //  ['currency_detected','vat_detected','currency_ambiguous','tax_ambiguous',
+  //   'overseas_cues_detected','total_without_subtotal','manual_review_needed'].
+  parsedBillingFlagsJson: jsonb("parsed_billing_flags_json").$type<string[]>(),
+  parsedMissingFieldsJson: jsonb("parsed_missing_fields_json").$type<string[]>(),
+  parsedAiTokensInput: integer("parsed_ai_tokens_input"),
+  parsedAiTokensOutput: integer("parsed_ai_tokens_output"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

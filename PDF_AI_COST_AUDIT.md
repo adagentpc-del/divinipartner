@@ -149,3 +149,42 @@ After this pass, the only document → AI cost in the system is:
   contain branding keywords or dimensions on at least one page (chunks
   found → AI runs). All other shapes of the workflow now route to either
   the `duplicate_reused` cache or the deterministic `rules` fallback.
+
+## 6. Section 21 follow-up — Billing-signals parsing (April 22, 2026)
+
+The "out of scope" caveat in §4 has been narrowly amended: `quote_assets`
+PDFs now run a **billing-signals** parser on upload to detect currency,
+VAT/tax, totals, payment terms, country and incoterm cues. This is a NEW
+capability (not a cost reduction of an existing one), and reuses the §2
+chunking primitives so it stays cheap by construction.
+
+**Cost shape**:
+
+| Scenario | AI calls | Input chars | Output tokens |
+|---|---|---|---|
+| Regex finds currency + clear tax | **0** | 0 | 0 |
+| Regex finds currency, tax ambiguous | 1 small | ≤ 4,000 (chunked) | ≤ 200 |
+| Regex finds nothing (rare) | 1 small | ≤ 4,000 (chunked) | ≤ 200 |
+| Re-upload of same file (matched by `file_hash`) | **0** | 0 | 0 |
+
+**Hard caps** in `billingSignals.ts`:
+- `AI_MAX_INPUT_CHARS = 4000` — half of deck-extraction's 8k (we only need the
+  totals/header section, not branding pages).
+- `AI_MAX_OUTPUT_TOKENS = 200` — JSON-only response shape `{currency, tax:{label,ratePct,amount,inclusive}}`.
+- Single chunk selection via `selectRelevantChunks` keyed on `total|subtotal|vat|tax|currency` markers.
+- Same `stripBoilerplate` → `selectRelevantChunks` pipeline as deck extractions.
+
+**What is NEVER auto-applied**: parsed values land on `quote_assets.parsed_*`
+columns with `parsed_review_status='pending'`. They are SUGGESTIONS shown to
+the admin in the new Billing tab — they never overwrite partner / event /
+order / invoice billing defaults. The admin Approves / Dismisses / Re-runs.
+
+**Persistence shape**: 19 new `parsed_*` columns + `file_hash` + `extracted_text`
+on `quote_assets` (see `lib/db/src/schema/quoteAssets.ts`). `parsed_source` is
+one of `rules | ai | none | failed`; `parsed_review_status` is one of
+`pending | approved | dismissed | edited`.
+
+**Why AI tokens stay near zero in practice**: 4 of the 5 demo seeds and every
+quote we have observed end up on the `rules`-only path (currency symbol +
+"VAT 20%" / "Sales Tax 7%" patterns are deterministic). The `ai` path only
+fires on multi-currency or tax-ambiguous documents.

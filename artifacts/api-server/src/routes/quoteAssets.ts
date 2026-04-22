@@ -11,6 +11,8 @@ import {
   suppliersTable,
 } from "@workspace/db";
 import { z } from "zod";
+import crypto from "crypto";
+import { parseBillingSignalsFromPdf } from "../lib/billingSignals";
 
 const SOURCE_TYPES = ["quote", "spec_sheet", "screenshot", "website_reference", "erp_export", "manual_note", "prior_job_reference"] as const;
 const PROCESSING_STATUSES = ["new", "needs_review", "needs_clarification", "mapped", "approved", "superseded", "archived"] as const;
@@ -150,7 +152,189 @@ router.post("/quote-assets", async (req, res): Promise<void> => {
     attachableId: parsed.data.attachableId ?? 0,
   };
   const [row] = await db.insert(quoteAssetsTable).values(insertData).returning();
+
+  // Section 21: trigger billing-signals parse for PDF uploads in the background.
+  // Does NOT block the response — admin can refresh the drawer to see results.
+  // Cost-conscious: regex-first; AI fallback only if regex finds nothing.
+  if (row && (/\.pdf(\?|$)/i.test(row.fileUrl) || row.fileType === "application/pdf")) {
+    triggerBillingSignalsParse(row.id, row.fileUrl).catch(e => console.error("billing-signals trigger failed", e));
+  }
+
   res.status(201).json(row);
+});
+
+/**
+ * Background billing-signals parser. Fetches the file via the internal
+ * storage proxy, runs deterministic + (optional) AI parse, and writes the
+ * results onto the quote_asset row. Cached: a re-run that supplies the same
+ * file_hash returns immediately.
+ */
+async function triggerBillingSignalsParse(assetId: number, fileUrl: string, opts: { forceRerun?: boolean } = {}): Promise<void> {
+  // Race/cost guard: atomically claim this row for parsing. If another worker
+  // already holds the claim (parsedSource='in_progress'), we exit. The claim
+  // is released by the final UPDATE that writes the result, or by a TTL guard
+  // (older than 5 minutes) for crash recovery.
+  const STALE_MS = 5 * 60 * 1000;
+  const claimResult = await db.update(quoteAssetsTable)
+    .set({ parsedSource: "in_progress", parsedAt: new Date() })
+    .where(and(
+      eq(quoteAssetsTable.id, assetId),
+      // Only claim if not already in progress, OR if the in-progress claim is stale.
+      // Drizzle: use SQL to express the OR cleanly.
+      sql`(${quoteAssetsTable.parsedSource} IS DISTINCT FROM 'in_progress'
+            OR ${quoteAssetsTable.parsedAt} < ${new Date(Date.now() - STALE_MS)})`
+    ))
+    .returning({ id: quoteAssetsTable.id });
+  if (claimResult.length === 0) {
+    console.log(`[billingSignals] skip ${assetId}: another worker holds the claim`);
+    return;
+  }
+
+  // Strip the leading slash and prepend the storage proxy mount.
+  // fileUrl is stored as `/objects/<key>` (per upload flow); the storage
+  // route is mounted at `/api/storage`, so the final URL is
+  // `http://localhost:8080/api/storage/objects/<key>`.
+  const cleanPath = fileUrl.startsWith("/") ? fileUrl : `/${fileUrl}`;
+  const fetchUrl = `http://localhost:8080/api/storage${cleanPath}`;
+  let buf: Buffer;
+  try {
+    const r = await fetch(fetchUrl);
+    if (!r.ok) {
+      await db.update(quoteAssetsTable).set({
+        parsedSource: "failed", parsedAt: new Date(),
+        parsedBillingFlagsJson: ["fetch_failed", "manual_review_needed"],
+      }).where(eq(quoteAssetsTable.id, assetId));
+      return;
+    }
+    buf = Buffer.from(await r.arrayBuffer());
+  } catch (e) {
+    await db.update(quoteAssetsTable).set({
+      parsedSource: "failed", parsedAt: new Date(),
+      parsedBillingFlagsJson: ["fetch_failed", "manual_review_needed"],
+    }).where(eq(quoteAssetsTable.id, assetId));
+    return;
+  }
+  const fileHash = crypto.createHash("sha256").update(buf).digest("hex");
+
+  // Cross-row file_hash dedup: if ANY other row in quote_assets has a
+  // successful parse for the exact same file (matched by sha256), copy its
+  // parsed_* fields onto this row instead of re-parsing. Zero AI cost on
+  // duplicate uploads. Skipped on forceRerun.
+  if (!opts.forceRerun) {
+    const dups = await db.select().from(quoteAssetsTable).where(and(
+      eq(quoteAssetsTable.fileHash, fileHash),
+      sql`${quoteAssetsTable.id} != ${assetId}`,
+      sql`${quoteAssetsTable.parsedSource} IN ('rules','ai')`,
+    )).limit(1);
+    if (dups[0]) {
+      const d = dups[0];
+      await db.update(quoteAssetsTable).set({
+        fileHash,
+        extractedText: d.extractedText,
+        parsedAt: new Date(),
+        parsedSource: d.parsedSource,
+        parsedReviewStatus: "pending",
+        parsedCurrency: d.parsedCurrency,
+        parsedCurrencyConfidence: d.parsedCurrencyConfidence,
+        parsedTaxLabel: d.parsedTaxLabel,
+        parsedTaxRate: d.parsedTaxRate,
+        parsedTaxAmount: d.parsedTaxAmount,
+        parsedTaxInclusive: d.parsedTaxInclusive,
+        parsedSubtotalAmount: d.parsedSubtotalAmount,
+        parsedTotalAmount: d.parsedTotalAmount,
+        parsedQuoteReference: d.parsedQuoteReference,
+        parsedSupplierName: d.parsedSupplierName,
+        parsedPaymentTerms: d.parsedPaymentTerms,
+        parsedDepositAmount: d.parsedDepositAmount,
+        parsedBillingCountry: d.parsedBillingCountry,
+        parsedIncoterm: d.parsedIncoterm,
+        parsedBillingNotes: d.parsedBillingNotes,
+        parsedBillingFlagsJson: [...(d.parsedBillingFlagsJson || []), "reused_dedup"],
+        parsedMissingFieldsJson: d.parsedMissingFieldsJson,
+        parsedAiTokensInput: 0,
+        parsedAiTokensOutput: 0,
+      } as any).where(eq(quoteAssetsTable.id, assetId));
+      console.log(`[billingSignals] reused parse from row #${d.id} for asset ${assetId}`);
+      return;
+    }
+  }
+
+  // Same-row idempotency: if this row already has a successful parse for the
+  // exact same file_hash (e.g. duplicate trigger for the same upload), skip.
+  if (!opts.forceRerun) {
+    const [existing] = await db.select().from(quoteAssetsTable).where(eq(quoteAssetsTable.id, assetId));
+    if (existing?.fileHash === fileHash && existing?.parsedSource && !["in_progress", "failed"].includes(existing.parsedSource)) {
+      // Restore original parsedAt by leaving as-is; nothing else to do.
+      return;
+    }
+  }
+
+  const result = await parseBillingSignalsFromPdf(buf);
+  if (!result) {
+    await db.update(quoteAssetsTable).set({
+      fileHash, parsedSource: "failed", parsedAt: new Date(),
+      parsedBillingFlagsJson: ["parse_failed", "manual_review_needed"],
+    }).where(eq(quoteAssetsTable.id, assetId));
+    return;
+  }
+  const s = result.signals;
+  await db.update(quoteAssetsTable).set({
+    fileHash,
+    extractedText: result.extractedText,
+    parsedAt: new Date(),
+    parsedSource: s.source,
+    parsedReviewStatus: "pending",
+    parsedCurrency: s.currency,
+    parsedCurrencyConfidence: s.currencyConfidence,
+    parsedTaxLabel: s.taxLabel,
+    parsedTaxRate: s.taxRate != null ? String(s.taxRate) : null,
+    parsedTaxAmount: s.taxAmount != null ? String(s.taxAmount) : null,
+    parsedTaxInclusive: s.taxInclusive,
+    parsedSubtotalAmount: s.subtotalAmount != null ? String(s.subtotalAmount) : null,
+    parsedTotalAmount: s.totalAmount != null ? String(s.totalAmount) : null,
+    parsedQuoteReference: s.quoteReference,
+    parsedSupplierName: s.supplierName,
+    parsedPaymentTerms: s.paymentTerms,
+    parsedDepositAmount: s.depositAmount != null ? String(s.depositAmount) : null,
+    parsedBillingCountry: s.billingCountry,
+    parsedIncoterm: s.incoterm,
+    parsedBillingNotes: s.billingNotes,
+    parsedBillingFlagsJson: s.flags,
+    parsedMissingFieldsJson: s.missingFields,
+    parsedAiTokensInput: s.aiTokensInput ?? null,
+    parsedAiTokensOutput: s.aiTokensOutput ?? null,
+  } as any).where(eq(quoteAssetsTable.id, assetId));
+}
+
+// ===== Billing signals review actions =====
+router.post("/quote-assets/:id/billing-signals/approve", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const [row] = await db.update(quoteAssetsTable)
+    .set({ parsedReviewStatus: "approved" })
+    .where(eq(quoteAssetsTable.id, id)).returning();
+  if (!row) { res.status(404).json({ error: "Not found" }); return; }
+  res.json(row);
+});
+router.post("/quote-assets/:id/billing-signals/dismiss", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const [row] = await db.update(quoteAssetsTable)
+    .set({ parsedReviewStatus: "dismissed" })
+    .where(eq(quoteAssetsTable.id, id)).returning();
+  if (!row) { res.status(404).json({ error: "Not found" }); return; }
+  res.json(row);
+});
+router.post("/quote-assets/:id/billing-signals/rerun", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const [row] = await db.select().from(quoteAssetsTable).where(eq(quoteAssetsTable.id, id));
+  if (!row) { res.status(404).json({ error: "Not found" }); return; }
+  if (!/\.pdf(\?|$)/i.test(row.fileUrl) && row.fileType !== "application/pdf") {
+    res.status(400).json({ error: "Not a PDF" }); return;
+  }
+  triggerBillingSignalsParse(id, row.fileUrl, { forceRerun: true }).catch(e => console.error("rerun failed", e));
+  res.json({ ok: true });
 });
 
 router.patch("/quote-assets/:id", async (req, res): Promise<void> => {

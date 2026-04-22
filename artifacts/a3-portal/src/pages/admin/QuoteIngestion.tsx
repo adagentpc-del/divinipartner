@@ -78,6 +78,29 @@ interface Source {
   mappingCount: number;
   hasMissingData: boolean;
   createdAt: string;
+  // Section 21: parsed billing signals
+  parsedAt: string | null;
+  parsedSource: string | null;            // 'rules' | 'ai' | 'none' | 'failed'
+  parsedReviewStatus: string | null;      // 'pending' | 'approved' | 'dismissed' | 'edited'
+  parsedCurrency: string | null;
+  parsedCurrencyConfidence: string | null;
+  parsedTaxLabel: string | null;
+  parsedTaxRate: string | null;
+  parsedTaxAmount: string | null;
+  parsedTaxInclusive: boolean | null;
+  parsedSubtotalAmount: string | null;
+  parsedTotalAmount: string | null;
+  parsedQuoteReference: string | null;
+  parsedSupplierName: string | null;
+  parsedPaymentTerms: string | null;
+  parsedDepositAmount: string | null;
+  parsedBillingCountry: string | null;
+  parsedIncoterm: string | null;
+  parsedBillingNotes: string | null;
+  parsedBillingFlagsJson: string[] | null;
+  parsedMissingFieldsJson: string[] | null;
+  parsedAiTokensInput: number | null;
+  parsedAiTokensOutput: number | null;
 }
 interface Mapping { id: number; mappingType: string; mappingId: number; note: string | null; label?: string; }
 interface Supplier { id: number; name: string; }
@@ -357,11 +380,18 @@ function EnrichmentDrawer({ source, suppliers, onChange, onClose }: { source: So
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="grid grid-cols-3 w-full">
+        <TabsList className="grid grid-cols-4 w-full">
           <TabsTrigger value="enrich">Enrich</TabsTrigger>
+          <TabsTrigger value="billing">
+            Billing{source.parsedSource && source.parsedReviewStatus === "pending" ? " ●" : ""}
+          </TabsTrigger>
           <TabsTrigger value="mappings">Mappings ({source.mappings.length})</TabsTrigger>
           <TabsTrigger value="review">Review</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="billing" className="mt-4">
+          <BillingSignalsPanel source={source} onChange={onChange} />
+        </TabsContent>
 
         <TabsContent value="enrich" className="space-y-3 mt-4">
           <div className="grid grid-cols-2 gap-3">
@@ -623,4 +653,136 @@ function DField({ label, value, onChange, placeholder, type }: { label: string; 
 }
 function DTextarea({ label, value, onChange }: { label: string; value: any; onChange: (v: string) => void }) {
   return <div><Label className="text-xs">{label}</Label><Textarea value={value || ""} onChange={e => onChange(e.target.value)} className="min-h-[60px] text-sm" /></div>;
+}
+
+// ===========================================================================
+// Section 21: Billing signals review panel.
+// Shows currency / VAT / tax / totals / overseas cues parsed from the PDF.
+// Admin can Approve, Dismiss, Re-run, or apply to billing defaults.
+// Always keeps parsed values SEPARATE from approved billing defaults — never
+// auto-overwrites partner/order/invoice records.
+// ===========================================================================
+function BillingSignalsPanel({ source, onChange }: { source: Source; onChange: () => void }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const refresh = () => { qc.invalidateQueries({ queryKey: ["/api/quote-assets"] }); onChange(); };
+  const approve = useMutation({
+    mutationFn: () => apiFetch(`/api/quote-assets/${source.id}/billing-signals/approve`, { method: "POST" }),
+    onSuccess: () => { toast({ title: "Approved", description: "Parsed billing signals approved" }); refresh(); },
+    onError: (e: any) => toast({ title: "Failed", description: e.message, variant: "destructive" }),
+  });
+  const dismiss = useMutation({
+    mutationFn: () => apiFetch(`/api/quote-assets/${source.id}/billing-signals/dismiss`, { method: "POST" }),
+    onSuccess: () => { toast({ title: "Dismissed" }); refresh(); },
+  });
+  const rerun = useMutation({
+    mutationFn: () => apiFetch(`/api/quote-assets/${source.id}/billing-signals/rerun`, { method: "POST" }),
+    onSuccess: () => { toast({ title: "Re-running", description: "Refresh in a few seconds" }); setTimeout(refresh, 3000); },
+    onError: (e: any) => toast({ title: "Failed", description: e.message, variant: "destructive" }),
+  });
+
+  if (!source.parsedSource) {
+    const isPdf = /\.pdf(\?|$)/i.test(source.fileUrl) || source.fileType === "application/pdf";
+    return (
+      <div className="text-sm text-muted-foreground space-y-3">
+        {isPdf
+          ? <p>No billing signals parsed yet. The parser runs automatically on PDF upload.</p>
+          : <p>Billing-signal parsing is only available for PDF uploads.</p>}
+        {isPdf && <Button size="sm" variant="outline" onClick={() => rerun.mutate()} disabled={rerun.isPending}>{rerun.isPending && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}Run parse now</Button>}
+      </div>
+    );
+  }
+
+  const flags = source.parsedBillingFlagsJson || [];
+  const missing = source.parsedMissingFieldsJson || [];
+  const tokens = (source.parsedAiTokensInput || 0) + (source.parsedAiTokensOutput || 0);
+
+  const reviewBadge = source.parsedReviewStatus === "approved"
+    ? <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300">Approved</Badge>
+    : source.parsedReviewStatus === "dismissed"
+      ? <Badge variant="outline" className="text-muted-foreground">Dismissed</Badge>
+      : <Badge className="bg-amber-100 text-amber-800 border-amber-300">Pending review</Badge>;
+
+  const sourceBadge = source.parsedSource === "rules"
+    ? <Badge variant="outline" className="text-xs">Rules-only · 0 tokens</Badge>
+    : source.parsedSource === "ai"
+      ? <Badge variant="outline" className="text-xs">AI fallback · {tokens} tokens</Badge>
+      : <Badge variant="outline" className="text-xs text-rose-700 border-rose-300">{source.parsedSource}</Badge>;
+
+  const fmtRate = (s: string | null) => s ? `${(parseFloat(s) * 100).toFixed(s.endsWith("0") ? 0 : 1)}%` : "—";
+  const fmtMoney = (s: string | null, ccy: string | null) => s ? `${ccy || ""} ${parseFloat(s).toFixed(2)}`.trim() : "—";
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        {reviewBadge}
+        {sourceBadge}
+        {source.parsedAt && <span className="text-xs text-muted-foreground">Parsed {new Date(source.parsedAt).toLocaleString()}</span>}
+      </div>
+
+      {flags.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {flags.map(f => (
+            <span key={f} className={`text-[11px] px-2 py-0.5 rounded-full border ${
+              f.includes("ambiguous") || f.includes("manual_review") || f.includes("failed")
+                ? "bg-amber-50 border-amber-300 text-amber-800"
+                : "bg-sky-50 border-sky-300 text-sky-800"
+            }`}>{f.replace(/_/g, " ")}</span>
+          ))}
+        </div>
+      )}
+
+      <div className="border rounded-lg divide-y">
+        <SignalRow label="Currency" value={source.parsedCurrency || "—"} hint={source.parsedCurrencyConfidence ? `${source.parsedCurrencyConfidence} confidence` : undefined} />
+        <SignalRow label="Tax label" value={source.parsedTaxLabel || "—"} />
+        <SignalRow label="Tax rate" value={fmtRate(source.parsedTaxRate)} />
+        <SignalRow label="Tax amount" value={fmtMoney(source.parsedTaxAmount, source.parsedCurrency)} />
+        <SignalRow label="Tax inclusive" value={source.parsedTaxInclusive == null ? "—" : source.parsedTaxInclusive ? "Yes (included)" : "No (excluded)"} />
+        <SignalRow label="Subtotal" value={fmtMoney(source.parsedSubtotalAmount, source.parsedCurrency)} />
+        <SignalRow label="Total" value={fmtMoney(source.parsedTotalAmount, source.parsedCurrency)} />
+        <SignalRow label="Quote ref" value={source.parsedQuoteReference || "—"} />
+        <SignalRow label="Payment terms" value={source.parsedPaymentTerms || "—"} />
+        <SignalRow label="Deposit" value={fmtMoney(source.parsedDepositAmount, source.parsedCurrency)} />
+        <SignalRow label="Billing country" value={source.parsedBillingCountry || "—"} />
+        <SignalRow label="Incoterm" value={source.parsedIncoterm || "—"} />
+      </div>
+
+      {source.parsedBillingNotes && (
+        <div className="text-xs bg-amber-50 border border-amber-200 rounded p-2 text-amber-900">
+          {source.parsedBillingNotes}
+        </div>
+      )}
+      {missing.length > 0 && (
+        <div className="text-xs text-muted-foreground">
+          Missing: {missing.join(", ")}
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-2 pt-1">
+        <Button size="sm" onClick={() => approve.mutate()} disabled={approve.isPending || source.parsedReviewStatus === "approved"}>
+          {approve.isPending && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}Approve
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => dismiss.mutate()} disabled={dismiss.isPending || source.parsedReviewStatus === "dismissed"}>Dismiss</Button>
+        <Button size="sm" variant="outline" onClick={() => { if (confirm("Re-run billing-signals parse? Will incur AI cost only if regex finds nothing.")) rerun.mutate(); }} disabled={rerun.isPending}>
+          {rerun.isPending && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}Re-run
+        </Button>
+      </div>
+
+      <p className="text-[11px] text-muted-foreground border-t pt-2">
+        Parsed values are <strong>suggestions</strong>. Approve to mark them as reviewed; they never auto-overwrite partner / order / invoice billing defaults — apply manually where appropriate.
+      </p>
+    </div>
+  );
+}
+
+function SignalRow({ label, value, hint }: { label: string; value: React.ReactNode; hint?: string }) {
+  return (
+    <div className="flex items-center justify-between px-3 py-2 text-sm">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-medium text-right">
+        {value}
+        {hint && <span className="ml-2 text-[11px] text-muted-foreground font-normal">({hint})</span>}
+      </span>
+    </div>
+  );
 }

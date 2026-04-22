@@ -7,6 +7,7 @@
     "hello": "tsx ./src/hello.ts",
     "seed": "tsx ./src/seed.ts",
     "seed:currency": "tsx ./src/seed-currency-demo.ts",
+    "seed:billing-signals": "tsx ./src/seed-billing-signals-demo.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

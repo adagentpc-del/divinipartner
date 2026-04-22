@@ -126,3 +126,70 @@ Demo data (`scripts/src/seed-currency-demo.ts`, `pnpm --filter @workspace/script
 - Move Miami (partner #1): USD + `sales_tax` + `FL Sales Tax` 7% exclusive, billingCountry US.
 - London Pop-ups (new partner): EUR + `vat` + `VAT` 20% inclusive, billingCountry GB, with overseas invoice display notes.
 - One demo order on each so the breakdown UI / email / PDF path is exercised end-to-end.
+
+## Section 21 — Quote/spec billing-signals parsing (April 22, 2026)
+
+Extends `quote_assets` ingestion to detect currency / VAT / tax / international
+billing cues from uploaded PDF quotes & spec sheets. Cost-conscious by design:
+deterministic regex pass first, AI fallback only when regex finds no currency
+or the tax signal is ambiguous, on a single ≤4k-char chunk with ≤200 output
+tokens. Re-uploads of the same file (matched by `file_hash`) skip parsing
+entirely. Parsed values are SUGGESTIONS — they never auto-overwrite partner /
+event / order / invoice billing defaults.
+
+Schema (`lib/db/src/schema/quoteAssets.ts`): 19 new `parsed_*` columns —
+`parsed_currency` + `_confidence`, `parsed_tax_label/_rate/_amount/_inclusive`,
+`parsed_subtotal/total_amount`, `parsed_quote_reference`, `parsed_supplier_name`,
+`parsed_payment_terms`, `parsed_deposit_amount`, `parsed_billing_country`,
+`parsed_incoterm`, `parsed_billing_notes`, `parsed_billing_flags_json`,
+`parsed_missing_fields_json`, `parsed_ai_tokens_input/_output`, `parsed_at`,
+`parsed_source` (`rules|ai|none|failed`), `parsed_review_status`
+(`pending|approved|dismissed|edited`); plus `file_hash` (sha256) and
+`extracted_text`.
+
+Parser (`artifacts/api-server/src/lib/billingSignals.ts`):
+- Currency: weighted scoring across USD/EUR/GBP/AED/CAD/AUD with negative
+  lookaheads to avoid `$` collisions; emits `currency_high_confidence` or
+  `currency_ambiguous` + `manual_review_needed`.
+- Tax: VAT / Sales Tax / GST inclusive vs. exclusive, rate (decimal — `0.20`
+  not `20`), amount; emits `tax_inclusive_detected` or `tax_not_found`.
+- Totals: subtotal / total / deposit money regex with currency-aware parsing.
+- Quote ref, supplier name, payment terms, country (name → ISO-2 map),
+  incoterm (DAP/CIP/DDP/EXW/FOB), overseas cues (metric units, non-US country).
+- AI fallback: short JSON-only prompt, temperature 0,
+  `AI_MAX_INPUT_CHARS=4000`, `AI_MAX_OUTPUT_TOKENS=200`.
+- Reuses `stripBoilerplate` + `selectRelevantChunks` exported from
+  `deckExtraction.ts`.
+
+Routes (`artifacts/api-server/src/routes/quoteAssets.ts`):
+- `POST /quote-assets` — fires `triggerBillingSignalsParse` in the background
+  for any PDF upload (does not block the response).
+- `POST /quote-assets/:id/billing-signals/approve` — marks
+  `parsed_review_status='approved'`.
+- `POST /quote-assets/:id/billing-signals/dismiss` — marks `dismissed`.
+- `POST /quote-assets/:id/billing-signals/rerun` — re-fetches the file and
+  re-parses (forced; bypasses the `file_hash` cache).
+- Cheap reuse: if the freshly hashed file matches the row's existing
+  `file_hash` AND a non-failed `parsed_source` is present, the parse is
+  skipped (no AI call).
+
+UI (`artifacts/a3-portal/src/pages/admin/QuoteIngestion.tsx`):
+- New **Billing** tab in the enrichment drawer with a `BillingSignalsPanel`
+  showing currency + confidence, tax label/rate/amount/inclusive, subtotal,
+  total, quote ref, payment terms, deposit, billing country, incoterm,
+  parsed flags (sky for informational, amber for ambiguous /
+  manual-review), and missing fields.
+- `Approved` / `Pending review` / `Dismissed` review badge + parsed-source
+  badge (`Rules-only · 0 tokens` vs `AI fallback · N tokens`).
+- Approve / Dismiss / Re-run actions; explicit notice that values are
+  suggestions and are not auto-applied to billing defaults.
+
+Demo seed (`scripts/src/seed-billing-signals-demo.ts`,
+`pnpm --filter @workspace/scripts run seed:billing-signals`):
+- 5 idempotent demo `quote_assets` rows: EUR/VAT inclusive, USD/sales-tax
+  exclusive, AED/VAT international (with metric units + DAP incoterm),
+  ambiguous `$`/`£` (AI-fallback path with `manual_review_needed`), and a
+  pre-approved EUR row to exercise the post-review state.
+
+See `PDF_AI_COST_AUDIT.md` §6 for the cost shape and the rationale that this
+is a NEW capability, not a regression of the §2 cost reductions.
