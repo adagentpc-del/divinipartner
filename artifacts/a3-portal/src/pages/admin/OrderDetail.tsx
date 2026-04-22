@@ -13,7 +13,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, ChevronLeft, Save, Printer, ShoppingCart, MapPin, Calendar, Truck, User, Building2, FileText, Image as ImageIcon, AlertTriangle, Package, Boxes, Printer as PrintIcon, FolderOpen } from "lucide-react";
 import OrderAssetsPanel from "@/components/admin/OrderAssetsPanel";
 import TaskPanel from "@/components/admin/TaskPanel";
-import { formatWxHDual, formatPrimarySecondary, type UnitSystem } from "@/lib/units";
+import { formatWxHDual, formatPrimarySecondary, formatWeight, pickDisplayWeightUnit, convertWeight, defaultWeightUnit, type UnitSystem, type WeightUnit, type LengthUnit } from "@/lib/units";
+import { PackingDetailsInput, type PackingDetailsValue, type PackingMode } from "@/components/units/PackingDetailsInput";
+import { WeightInput, type WeightValue } from "@/components/units/WeightInput";
 
 type OrderItem = {
   id: number; itemType: string; productId: number | null; productName?: string | null; productImageUrl?: string | null;
@@ -30,6 +32,13 @@ type OrderItem = {
   supplierAcknowledgedAt: string | null; supplierReference: string | null; supplierNotes: string | null;
   exceptionFlag: boolean; exceptionReason: string | null; exceptionNotes: string | null;
   artworkFileUrl: string | null; notes: string | null;
+  // Per-line packing/shipping (defaults copied from product on create).
+  packedWidth: number | null; packedHeight: number | null; packedDepth: number | null;
+  packedSizeUnit: string | null;
+  shippingWeight: number | null; shippingWeightUnit: string | null;
+  cartonCount: number | null; packingMode: string | null;
+  crateRequired: boolean; palletRequired: boolean; oversizeFlag: boolean;
+  freightClass: string | null; installKitNotes: string | null;
 };
 
 const SUPPLIER_STATUSES = [
@@ -57,7 +66,14 @@ const SOURCE_LABEL: Record<string, string> = {
   zone: "Inherited from zone", order: "Inherited from order",
   manual: "Manually assigned", none: "Unassigned",
 };
-type OrderFull = { id: number; orderNumber: string; partnerId: number; partnerName?: string; eventId: number | null; eventName?: string; status: string; paymentStatus: string; fulfillmentMode: string | null; assignedSupplierId: number | null; supplierName?: string; contactName: string; contactEmail: string; contactPhone: string | null; companyName: string | null; shippingAddressJson: any; billingAddressJson: any; artworkFilesJson: any[] | null; totalEstimate: string | null; notes: string | null; internalNotes: string | null; vendorNotes: string | null; fulfillmentStatus: string | null; createdAt: string; items: OrderItem[]; partner?: any; event?: any; venue?: any; supplier?: any };
+type OrderFull = { id: number; orderNumber: string; partnerId: number; partnerName?: string; eventId: number | null; eventName?: string; status: string; paymentStatus: string; fulfillmentMode: string | null; assignedSupplierId: number | null; supplierName?: string; contactName: string; contactEmail: string; contactPhone: string | null; companyName: string | null; shippingAddressJson: any; billingAddressJson: any; artworkFilesJson: any[] | null; totalEstimate: string | null; notes: string | null; internalNotes: string | null; vendorNotes: string | null; fulfillmentStatus: string | null; createdAt: string; items: OrderItem[]; partner?: any; event?: any; venue?: any; supplier?: any;
+  shipDateTarget: string | null; deliveryByDate: string | null; packageCount: number | null;
+  totalShipmentWeight: number | null; totalShipmentWeightUnit: string | null;
+  measurementSystem: "imperial" | "metric" | null;
+  oversizeFlag: boolean; crateRequired: boolean; palletRequired: boolean;
+  shippingContactJson: any; receivingContactJson: any;
+  customsNotes: string | null; internationalShippingNotes: string | null; logisticsNotes: string | null;
+};
 type Supplier = { id: number; name: string };
 type City = { id: number; name: string };
 
@@ -79,6 +95,24 @@ export default function OrderDetail() {
   const { data: suppliers = [] } = useQuery<Supplier[]>({ queryKey: ["/api/suppliers"], queryFn: () => apiFetch("/api/suppliers") });
   const { data: cities = [] } = useQuery<City[]>({ queryKey: ["/api/cities"], queryFn: () => apiFetch("/api/cities") });
   const [internal, setInternal] = useState({ status: "", paymentStatus: "", assignedSupplierId: "", internalNotes: "", vendorNotes: "", fulfillmentStatus: "", totalEstimate: "" });
+  const [logistics, setLogistics] = useState<{
+    shipDateTarget: string; deliveryByDate: string;
+    packageCount: string;
+    totalShipmentWeight: number | null; totalShipmentWeightUnit: WeightUnit;
+    measurementSystem: "imperial" | "metric";
+    oversizeFlag: boolean; crateRequired: boolean; palletRequired: boolean;
+    customsNotes: string; internationalShippingNotes: string; logisticsNotes: string;
+    shippingContactName: string; shippingContactPhone: string; shippingContactEmail: string;
+    receivingContactName: string; receivingContactPhone: string; receivingContactEmail: string;
+  }>({
+    shipDateTarget: "", deliveryByDate: "", packageCount: "",
+    totalShipmentWeight: null, totalShipmentWeightUnit: "lb",
+    measurementSystem: "imperial",
+    oversizeFlag: false, crateRequired: false, palletRequired: false,
+    customsNotes: "", internationalShippingNotes: "", logisticsNotes: "",
+    shippingContactName: "", shippingContactPhone: "", shippingContactEmail: "",
+    receivingContactName: "", receivingContactPhone: "", receivingContactEmail: "",
+  });
 
   useEffect(() => {
     if (order) {
@@ -87,6 +121,23 @@ export default function OrderDetail() {
         assignedSupplierId: order.assignedSupplierId?.toString() || "",
         internalNotes: order.internalNotes || "", vendorNotes: order.vendorNotes || "",
         fulfillmentStatus: order.fulfillmentStatus || "", totalEstimate: order.totalEstimate || "",
+      });
+      const sys = (order.measurementSystem || "imperial") as "imperial" | "metric";
+      const sc = order.shippingContactJson || {};
+      const rc = order.receivingContactJson || {};
+      setLogistics({
+        shipDateTarget: order.shipDateTarget ? order.shipDateTarget.slice(0, 10) : "",
+        deliveryByDate: order.deliveryByDate ? order.deliveryByDate.slice(0, 10) : "",
+        packageCount: order.packageCount != null ? String(order.packageCount) : "",
+        totalShipmentWeight: order.totalShipmentWeight != null ? Number(order.totalShipmentWeight) : null,
+        totalShipmentWeightUnit: ((order.totalShipmentWeightUnit as WeightUnit) || defaultWeightUnit(sys)),
+        measurementSystem: sys,
+        oversizeFlag: !!order.oversizeFlag, crateRequired: !!order.crateRequired, palletRequired: !!order.palletRequired,
+        customsNotes: order.customsNotes || "",
+        internationalShippingNotes: order.internationalShippingNotes || "",
+        logisticsNotes: order.logisticsNotes || "",
+        shippingContactName: sc.name || "", shippingContactPhone: sc.phone || "", shippingContactEmail: sc.email || "",
+        receivingContactName: rc.name || "", receivingContactPhone: rc.phone || "", receivingContactEmail: rc.email || "",
       });
     }
   }, [order?.id]);
@@ -111,6 +162,54 @@ export default function OrderDetail() {
       totalEstimate: internal.totalEstimate || null,
     });
   };
+
+  const handleSaveLogistics = () => {
+    const sc = {
+      name: logistics.shippingContactName || null,
+      phone: logistics.shippingContactPhone || null,
+      email: logistics.shippingContactEmail || null,
+    };
+    const rc = {
+      name: logistics.receivingContactName || null,
+      phone: logistics.receivingContactPhone || null,
+      email: logistics.receivingContactEmail || null,
+    };
+    update.mutate({
+      shipDateTarget: logistics.shipDateTarget || null,
+      deliveryByDate: logistics.deliveryByDate || null,
+      packageCount: logistics.packageCount ? parseInt(logistics.packageCount) : null,
+      totalShipmentWeight: logistics.totalShipmentWeight,
+      totalShipmentWeightUnit: logistics.totalShipmentWeightUnit,
+      measurementSystem: logistics.measurementSystem,
+      oversizeFlag: logistics.oversizeFlag,
+      crateRequired: logistics.crateRequired,
+      palletRequired: logistics.palletRequired,
+      customsNotes: logistics.customsNotes || null,
+      internationalShippingNotes: logistics.internationalShippingNotes || null,
+      logisticsNotes: logistics.logisticsNotes || null,
+      shippingContactJson: (sc.name || sc.phone || sc.email) ? sc : null,
+      receivingContactJson: (rc.name || rc.phone || rc.email) ? rc : null,
+    });
+  };
+
+  const itemsRollup = (() => {
+    if (!order) return null;
+    let totalG = 0; let knownWeight = 0;
+    let crate = false, pallet = false, oversize = false;
+    let cartonTotal = 0;
+    for (const it of order.items) {
+      if (it.crateRequired) crate = true;
+      if (it.palletRequired) pallet = true;
+      if (it.oversizeFlag) oversize = true;
+      cartonTotal += (it.cartonCount ?? 0) * (it.quantity ?? 1);
+      if (it.shippingWeight != null && it.shippingWeightUnit) {
+        const grams = convertWeight(it.shippingWeight, it.shippingWeightUnit as WeightUnit, "g");
+        totalG += grams * (it.cartonCount ?? 1) * (it.quantity ?? 1);
+        knownWeight += 1;
+      }
+    }
+    return { totalG, knownWeight, crate, pallet, oversize, cartonTotal };
+  })();
 
   const cityName = (cid: number | null) => cities.find(c => c.id === cid)?.name || `City #${cid}`;
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -294,6 +393,75 @@ export default function OrderDetail() {
               <div><Label className="text-xs">Vendor Notes (visible to vendor)</Label><Textarea value={internal.vendorNotes} onChange={e => setInternal({ ...internal, vendorNotes: e.target.value })} rows={2} /></div>
               <Button onClick={handleSave} disabled={update.isPending} className="w-full gap-2">{update.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}Save</Button>
             </div>
+          </Card>
+
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-semibold text-base flex items-center gap-2"><Truck className="h-4 w-4 text-muted-foreground" />Shipping & Logistics</h2>
+              <Select value={logistics.measurementSystem} onValueChange={(v: any) => {
+                const sys = v as "imperial" | "metric";
+                setLogistics(p => ({ ...p, measurementSystem: sys, totalShipmentWeightUnit: defaultWeightUnit(sys) }));
+              }}>
+                <SelectTrigger className="h-7 w-28 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="imperial">Imperial</SelectItem><SelectItem value="metric">Metric</SelectItem></SelectContent>
+              </Select>
+            </div>
+            {itemsRollup && (
+              <div className="rounded-md bg-muted/40 border text-xs p-2.5 mb-3 space-y-1">
+                <div className="font-medium text-foreground/80">Computed from line items</div>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-muted-foreground">
+                  <div>Cartons (qty × ct):</div><div className="text-foreground tabular-nums">{itemsRollup.cartonTotal || "—"}</div>
+                  <div>Total weight ({itemsRollup.knownWeight}/{order.items.length} known):</div>
+                  <div className="text-foreground tabular-nums">
+                    {itemsRollup.totalG > 0
+                      ? formatWeight(convertWeight(itemsRollup.totalG, "g", pickDisplayWeightUnit(itemsRollup.totalG, logistics.measurementSystem)), pickDisplayWeightUnit(itemsRollup.totalG, logistics.measurementSystem))
+                      : "—"}
+                  </div>
+                  <div>Item flags:</div>
+                  <div className="text-foreground">
+                    {[itemsRollup.crate && "crate", itemsRollup.pallet && "pallet", itemsRollup.oversize && "oversize"].filter(Boolean).join(", ") || "—"}
+                  </div>
+                </div>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label className="text-xs">Ship date target</Label><Input type="date" value={logistics.shipDateTarget} onChange={e => setLogistics(p => ({ ...p, shipDateTarget: e.target.value }))} /></div>
+              <div><Label className="text-xs">Delivery by</Label><Input type="date" value={logistics.deliveryByDate} onChange={e => setLogistics(p => ({ ...p, deliveryByDate: e.target.value }))} /></div>
+              <div><Label className="text-xs">Package count</Label><Input type="number" min={0} value={logistics.packageCount} onChange={e => setLogistics(p => ({ ...p, packageCount: e.target.value }))} /></div>
+              <WeightInput
+                label="Total shipment weight"
+                preferredSystem={logistics.measurementSystem}
+                value={{ value: logistics.totalShipmentWeight, unit: logistics.totalShipmentWeightUnit }}
+                onChange={(w: WeightValue) => setLogistics(p => ({ ...p, totalShipmentWeight: w.value, totalShipmentWeightUnit: w.unit }))}
+              />
+            </div>
+            <div className="flex flex-wrap gap-4 mt-3">
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={logistics.oversizeFlag} onChange={e => setLogistics(p => ({ ...p, oversizeFlag: e.target.checked }))} />Oversize</label>
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={logistics.crateRequired} onChange={e => setLogistics(p => ({ ...p, crateRequired: e.target.checked }))} />Crate required</label>
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={logistics.palletRequired} onChange={e => setLogistics(p => ({ ...p, palletRequired: e.target.checked }))} />Pallet required</label>
+            </div>
+            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <div className="text-xs font-semibold text-muted-foreground">Shipping (sender) contact</div>
+                <Input placeholder="Name" value={logistics.shippingContactName} onChange={e => setLogistics(p => ({ ...p, shippingContactName: e.target.value }))} />
+                <Input placeholder="Phone" value={logistics.shippingContactPhone} onChange={e => setLogistics(p => ({ ...p, shippingContactPhone: e.target.value }))} />
+                <Input placeholder="Email" value={logistics.shippingContactEmail} onChange={e => setLogistics(p => ({ ...p, shippingContactEmail: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <div className="text-xs font-semibold text-muted-foreground">Receiving (onsite) contact</div>
+                <Input placeholder="Name" value={logistics.receivingContactName} onChange={e => setLogistics(p => ({ ...p, receivingContactName: e.target.value }))} />
+                <Input placeholder="Phone" value={logistics.receivingContactPhone} onChange={e => setLogistics(p => ({ ...p, receivingContactPhone: e.target.value }))} />
+                <Input placeholder="Email" value={logistics.receivingContactEmail} onChange={e => setLogistics(p => ({ ...p, receivingContactEmail: e.target.value }))} />
+              </div>
+            </div>
+            <div className="mt-3 space-y-2">
+              <div><Label className="text-xs">Logistics notes</Label><Textarea rows={2} value={logistics.logisticsNotes} onChange={e => setLogistics(p => ({ ...p, logisticsNotes: e.target.value }))} placeholder="Carrier preferences, dock access, lift gate, etc." /></div>
+              <div><Label className="text-xs">International shipping notes</Label><Textarea rows={2} value={logistics.internationalShippingNotes} onChange={e => setLogistics(p => ({ ...p, internationalShippingNotes: e.target.value }))} placeholder="Incoterms, broker, declared values, etc." /></div>
+              <div><Label className="text-xs">Customs notes</Label><Textarea rows={2} value={logistics.customsNotes} onChange={e => setLogistics(p => ({ ...p, customsNotes: e.target.value }))} placeholder="HS codes, country of origin, duty handling…" /></div>
+            </div>
+            <Button onClick={handleSaveLogistics} disabled={update.isPending} className="w-full mt-3 gap-2">
+              {update.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}Save logistics
+            </Button>
           </Card>
 
           <BillingCard orderId={id} />

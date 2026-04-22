@@ -203,6 +203,13 @@ const ENTERED_DIMS: DimMap = [
   ["enteredHeight", "enteredHeightMm"],
 ];
 
+// Packed shipping dimensions — uses `packedSizeUnit`.
+const PACKED_DIMS: DimMap = [
+  ["packedWidth", "packedWidthMm"],
+  ["packedHeight", "packedHeightMm"],
+  ["packedDepth", "packedDepthMm"],
+];
+
 const ARTWORK_DIMS: DimMap = [
   ["artworkWidth", "artworkWidthMm"],
   ["artworkHeight", "artworkHeightMm"],
@@ -273,6 +280,139 @@ export function withMmColumns<T extends Record<string, any>>(
   // Order-line measurement snapshot (entered_*) keys off enteredSizeUnit.
   const existingEntered = typeof existing === "object" && existing != null ? (existing as any).enteredSizeUnit : null;
   applyMmGroup(input as any, out, "enteredSizeUnit", existingEntered, ENTERED_DIMS);
+  // Packed shipping dimensions key off packedSizeUnit.
+  const existingPacked = typeof existing === "object" && existing != null ? (existing as any).packedSizeUnit : null;
+  applyMmGroup(input as any, out, "packedSizeUnit", existingPacked, PACKED_DIMS);
+  return out;
+}
+
+// ===========================================================================
+// Weight units (April 2026 logistics extension).
+// ===========================================================================
+
+export type WeightUnit = "lb" | "oz" | "kg" | "g";
+
+export const WEIGHT_UNIT_LABELS: Record<WeightUnit, string> = {
+  lb: "pounds",
+  oz: "ounces",
+  kg: "kilograms",
+  g: "grams",
+};
+
+export const WEIGHT_UNIT_SHORT: Record<WeightUnit, string> = {
+  lb: "lb",
+  oz: "oz",
+  kg: "kg",
+  g: "g",
+};
+
+export const ALL_WEIGHT_UNITS: WeightUnit[] = ["lb", "oz", "kg", "g"];
+export const IMPERIAL_WEIGHT_UNITS: WeightUnit[] = ["lb", "oz"];
+export const METRIC_WEIGHT_UNITS: WeightUnit[] = ["kg", "g"];
+
+const TO_G: Record<WeightUnit, number> = {
+  g: 1,
+  kg: 1000,
+  oz: 28.349523125,
+  lb: 453.59237,
+};
+
+export function weightSystemOf(u: WeightUnit | string | null | undefined): UnitSystem {
+  if (!u) return "imperial";
+  return METRIC_WEIGHT_UNITS.includes(u as WeightUnit) ? "metric" : "imperial";
+}
+
+export function normalizeWeightUnit(u: string | null | undefined): WeightUnit | null {
+  if (!u) return null;
+  const k = u.toLowerCase().trim();
+  if (k === "lb" || k === "lbs" || k === "pound" || k === "pounds") return "lb";
+  if (k === "oz" || k === "ounce" || k === "ounces") return "oz";
+  if (k === "kg" || k === "kgs" || k === "kilogram" || k === "kilograms") return "kg";
+  if (k === "g" || k === "gram" || k === "grams") return "g";
+  return null;
+}
+
+export function convertWeight(value: number | null | undefined, from: WeightUnit | string, to: WeightUnit | string): number {
+  if (value == null || isNaN(Number(value))) return NaN;
+  const f = normalizeWeightUnit(from as string);
+  const t = normalizeWeightUnit(to as string);
+  if (!f || !t) return NaN;
+  if (f === t) return Number(value);
+  const g = Number(value) * TO_G[f];
+  return g / TO_G[t];
+}
+
+export function defaultWeightUnit(system: UnitSystem): WeightUnit {
+  return system === "metric" ? "kg" : "lb";
+}
+
+export function pickDisplayWeightUnit(grams: number, system: UnitSystem): WeightUnit {
+  if (system === "metric") return grams >= 1000 ? "kg" : "g";
+  return grams >= TO_G.lb ? "lb" : "oz";
+}
+
+export function formatWeight(
+  value: number | null | undefined,
+  unit: WeightUnit | string | null | undefined,
+  opts?: { short?: boolean }
+): string {
+  if (value == null || isNaN(Number(value)) || !unit) return "";
+  const u = normalizeWeightUnit(unit as string);
+  if (!u) return `${value} ${unit}`;
+  const decimals = u === "g" ? 0 : u === "oz" ? 1 : 2;
+  const f = Math.pow(10, decimals);
+  const v = Math.round(Number(value) * f) / f;
+  const label = opts?.short === false ? WEIGHT_UNIT_LABELS[u] : WEIGHT_UNIT_SHORT[u];
+  return `${v} ${label}`;
+}
+
+// Pairs of (weightField, normalizedGramsField) keyed by their unit field.
+type WeightGroup = { unitKey: string; pairs: Array<[string, string]> };
+
+const WEIGHT_GROUPS: WeightGroup[] = [
+  { unitKey: "shippingWeightUnit", pairs: [["shippingWeight", "shippingWeightG"]] },
+  { unitKey: "totalShipmentWeightUnit", pairs: [["totalShipmentWeight", "totalShipmentWeightG"]] },
+];
+
+function applyWeightGroup(
+  input: Record<string, any>,
+  out: Record<string, any>,
+  unitKey: string,
+  existingUnit: string | null | undefined,
+  pairs: Array<[string, string]>,
+) {
+  const unitInPayload = unitKey in input;
+  const u = normalizeWeightUnit((unitInPayload ? input[unitKey] : existingUnit) ?? null);
+  if (unitInPayload && !u) {
+    for (const [, gKey] of pairs) out[gKey] = null;
+    return;
+  }
+  if (!u) {
+    for (const [valueKey, gKey] of pairs) {
+      if (valueKey in input) out[gKey] = null;
+    }
+    return;
+  }
+  const toG = (v: any) => v == null || isNaN(Number(v)) ? null : Number(v) * TO_G[u];
+  for (const [valueKey, gKey] of pairs) {
+    if (valueKey in input) out[gKey] = toG(input[valueKey]);
+  }
+}
+
+/**
+ * Compute normalized grams columns for any payload carrying weight fields.
+ * Mirror of withMmColumns. Pass the persisted unit via `existing` for PATCH
+ * calls that update only a numeric weight field without re-sending the unit.
+ */
+export function withWeightColumns<T extends Record<string, any>>(
+  input: T,
+  existing?: Record<string, any> | null,
+): T & Record<string, any> {
+  const out: any = { ...input };
+  for (const group of WEIGHT_GROUPS) {
+    const existingUnit = existing && typeof existing === "object" ? existing[group.unitKey] : null;
+    applyWeightGroup(input as any, out, group.unitKey, existingUnit, group.pairs);
+  }
   return out;
 }
 

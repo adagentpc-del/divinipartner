@@ -14,6 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus, Pencil, Trash2, Package, Search, FileText, CheckCircle2, AlertCircle, Star, Upload, Download, X } from "lucide-react";
 import { DimensionInput } from "@/components/units/DimensionInput";
+import { PackingDetailsInput, type PackingDetailsValue, type PackingMode } from "@/components/units/PackingDetailsInput";
+import type { WeightUnit } from "@/lib/units";
 import { ArtworkSpecInput } from "@/components/units/ArtworkSpecInput";
 import { PricingModelInput } from "@/components/units/PricingModelInput";
 import { convert, type LengthUnit, type PricingModel, type PricingUnit } from "@/lib/units";
@@ -73,6 +75,20 @@ interface Product {
   minBillableSize: number | null;
   minCharge: number | string | null;
   allowsCustomSize: boolean;
+  // Shipping & packing defaults (April 2026 logistics extension).
+  packedWidth: number | null;
+  packedHeight: number | null;
+  packedDepth: number | null;
+  packedSizeUnit: string | null;
+  shippingWeight: number | null;
+  shippingWeightUnit: string | null;
+  cartonCount: number | null;
+  packingMode: string | null;
+  crateRequired: boolean;
+  palletRequired: boolean;
+  oversizeFlag: boolean;
+  freightClass: string | null;
+  installKitNotes: string | null;
 }
 
 interface SpecStandard {
@@ -236,10 +252,11 @@ export default function ProductCatalog() {
           </DialogHeader>
           {editing && (
             <Tabs defaultValue="customer" className="mt-2">
-              <TabsList className="grid grid-cols-6 w-full">
+              <TabsList className="grid grid-cols-7 w-full">
                 <TabsTrigger value="customer">Customer-facing</TabsTrigger>
                 <TabsTrigger value="caps">Capabilities</TabsTrigger>
                 <TabsTrigger value="pricing">Pricing</TabsTrigger>
+                <TabsTrigger value="shipping">Shipping</TabsTrigger>
                 <TabsTrigger value="ops">Backend Ops</TabsTrigger>
                 <TabsTrigger value="standards" disabled={isNew}>Spec Standards</TabsTrigger>
                 <TabsTrigger value="quotes" disabled={isNew}>Sources ({editing.id ? <QuoteCount productId={editing.id} /> : 0})</TabsTrigger>
@@ -331,6 +348,41 @@ export default function ProductCatalog() {
                   onChange={patch => setEditing(p => ({ ...p!, ...patch }))}
                   nativeWidthMm={(editing as any).sizeWidthMm ?? null}
                   nativeHeightMm={(editing as any).sizeHeightMm ?? null}
+                />
+              </TabsContent>
+
+              <TabsContent value="shipping" className="space-y-3 mt-4">
+                <p className="text-xs text-muted-foreground">
+                  These are the default packed dimensions, weight, and handling flags for this product.
+                  When an order line is created, these defaults are copied onto the order item — admins
+                  can still override them per shipment.
+                </p>
+                <PackingDetailsInput
+                  title="Shipping & packing defaults"
+                  value={{
+                    packedWidth: editing.packedWidth ?? null,
+                    packedHeight: editing.packedHeight ?? null,
+                    packedDepth: editing.packedDepth ?? null,
+                    packedSizeUnit: ((editing.packedSizeUnit as LengthUnit | null) || (editing.sizeUnit as LengthUnit | null)),
+                    shippingWeight: editing.shippingWeight ?? null,
+                    shippingWeightUnit: (editing.shippingWeightUnit as WeightUnit | null),
+                    cartonCount: editing.cartonCount ?? null,
+                    packingMode: (editing.packingMode as PackingMode | null) ?? null,
+                    crateRequired: !!editing.crateRequired,
+                    palletRequired: !!editing.palletRequired,
+                    oversizeFlag: !!editing.oversizeFlag,
+                    freightClass: editing.freightClass ?? null,
+                    installKitNotes: editing.installKitNotes ?? null,
+                  }}
+                  onChange={(v: PackingDetailsValue) => setEditing(p => ({
+                    ...p!,
+                    packedWidth: v.packedWidth, packedHeight: v.packedHeight, packedDepth: v.packedDepth,
+                    packedSizeUnit: v.packedSizeUnit,
+                    shippingWeight: v.shippingWeight, shippingWeightUnit: v.shippingWeightUnit,
+                    cartonCount: v.cartonCount, packingMode: v.packingMode,
+                    crateRequired: v.crateRequired, palletRequired: v.palletRequired, oversizeFlag: v.oversizeFlag,
+                    freightClass: v.freightClass, installKitNotes: v.installKitNotes,
+                  }))}
                 />
               </TabsContent>
 

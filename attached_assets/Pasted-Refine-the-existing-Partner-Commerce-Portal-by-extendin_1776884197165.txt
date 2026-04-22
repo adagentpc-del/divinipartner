@@ -1,0 +1,169 @@
+Refine the existing Partner Commerce Portal by extending the email system to support branded PDF order summaries and optional email attachments.
+
+Goal:
+When an order is submitted, the system should generate a clean branded PDF order summary and include it in the appropriate forwarded emails so ops, finance, and partner contacts receive something polished, readable, and easy to act on.
+
+Scope:
+Keep this pass tightly focused on:
+1. branded PDF order summary generation
+2. email attachment support
+3. routing attached summaries to the appropriate recipients
+4. keeping customer-facing vs internal attachments distinct
+
+Do not rebuild unrelated workflows.
+
+Requirements:
+
+1. Branded PDF order summary
+Generate a polished branded PDF summary for submitted orders.
+
+The PDF should support:
+- partner logo
+- partner colors/branding
+- order reference number
+- order date
+- client/customer contact info
+- event name
+- city and venue
+- shipping or onsite contact if relevant
+- selected package, zones, products, quantities
+- custom measurements if applicable
+- notes submitted by the client
+- uploaded asset summary or filenames if feasible
+- next steps or status summary where appropriate
+
+Requirements:
+- keep it clean, premium, and easy to scan
+- preserve logo aspect ratio
+- use partner branding without breaking readability
+- add clean fallback styles when branding/logo is missing
+- create both screen-friendly and print-friendly layout if feasible
+
+2. Distinct PDF versions by audience
+Support at minimum:
+- customer-facing order summary PDF
+- internal ops order summary PDF
+
+Customer-facing PDF should be:
+- branded
+- concise
+- reassuring
+- clean
+- free of internal-only notes, internal pricing logic, supplier assignment details, or sensitive admin info
+
+Internal ops PDF should be:
+- more detailed
+- operationally useful
+- include customer/contact/event/order details
+- include items, quantities, notes, measurement details, and asset summary
+- include internal routing-relevant details where appropriate
+
+If finance attachment is useful, allow:
+- finance-oriented PDF or reuse internal PDF with billing-focused sections
+
+3. Email attachment support
+Extend the email sending flow so emails can include generated attachments.
+
+Support:
+- attaching the customer-facing PDF to customer confirmation emails if enabled
+- attaching the internal ops PDF to internal forwarding emails
+- attaching finance-friendly summary to finance recipients if enabled
+- attaching partner-facing copy to partner contact recipients if enabled
+
+Requirements:
+- attachment generation should happen after successful order creation
+- email sending should not fail the order if attachment generation fails
+- if attachment generation fails, log it and still send email where possible
+- keep attachment names clean and readable, such as:
+  - PartnerName_Order_1234.pdf
+  - PartnerName_Internal_Order_1234.pdf
+
+4. Partner email settings for attachments
+Extend partner email settings so internal admin can control attachment behavior.
+
+Support toggles such as:
+- attach PDF to customer confirmation yes/no
+- attach PDF to internal ops email yes/no
+- attach PDF to finance email yes/no
+- attach PDF to partner contact email yes/no
+
+If useful, allow selecting:
+- customer PDF template
+- internal PDF template
+
+Keep configuration simple and editable from the software.
+
+5. Internal order email enhancements
+Improve the internal forwarded order email so it includes:
+- a polished summary in the email body
+- attached internal PDF summary
+- asset filenames or links if feasible
+- order reference number
+- event and venue context
+- customer contact details
+- operational notes needed for follow-up
+
+The email should feel action-oriented and easy for ops to process quickly.
+
+6. Customer confirmation enhancements
+Improve the customer confirmation email so it includes:
+- branded header/logo
+- confirmation that the order was received
+- event/order summary
+- next-step messaging
+- reply-to/contact info
+- optional attached customer-facing PDF if enabled
+
+This should feel polished, confidence-building, and not overly technical.
+
+7. PDF generation and storage behavior
+Implement PDF generation cleanly within the app architecture.
+
+Requirements:
+- generate the PDF from stored structured order data, not AI-generated prose
+- support storing or regenerating the PDF if useful
+- if storing, keep visibility rules safe
+- make PDFs accessible from order detail or communications history if feasible
+- avoid duplicate unnecessary regeneration
+
+8. Activity and communications logging
+If the app already has activity or communication logs:
+- log when a PDF summary was generated
+- log which email recipients received attachments
+- log send status
+- log attachment generation failure if any
+
+9. Admin and order detail UX
+Add a polished order summary document section in internal admin/order detail if feasible.
+
+Support:
+- preview order summary PDF
+- regenerate PDF
+- download PDF
+- see which version is customer-facing vs internal
+- see whether PDF was attached to sent emails
+
+Keep this clean and useful, not cluttered.
+
+10. Seed/demo updates
+Update demo data to show:
+- branded partner with logo and colors
+- customer confirmation with branded PDF enabled
+- internal ops email with attached internal PDF enabled
+- finance or partner contact attachment example if routing is enabled
+- one sample generated order summary document
+
+11. Documentation
+Update replit.md with:
+- how branded PDF order summaries are generated
+- what fields are included in customer vs internal versions
+- how attachment routing is configured
+- how attachment failures are handled
+- where PDFs can be previewed/downloaded in admin
+- whether PDFs are stored or regenerated
+
+Important:
+Do not rebuild the app.
+Do not change unrelated workflows.
+Extend the current branding, order submission, communications, and email routing system cleanly.
+Actually implement the branded PDF summary and email attachment behavior, not placeholders only.

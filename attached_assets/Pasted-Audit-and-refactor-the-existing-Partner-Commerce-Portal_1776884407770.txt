@@ -1,0 +1,212 @@
+Audit and refactor the existing Partner Commerce Portal to reduce AI/token cost specifically for PDF uploads, quote parsing, and spec ingestion workflows.
+
+Goal:
+Substantially reduce token usage and repeated AI cost when users upload PDF quotes, spec sheets, screenshots, or related documents for quote/spec parsing.
+
+Scope:
+Keep this pass tightly focused on:
+1. PDF upload flows
+2. quote/spec parsing
+3. repeated document processing
+4. AI context reduction in document-related workflows
+
+Do not rebuild unrelated workflows.
+
+Requirements:
+
+1. Audit current PDF and quote parsing flow
+Identify every route, component, or backend job where:
+- PDFs are uploaded
+- quote/spec files are parsed
+- file text is extracted
+- AI is called using uploaded document content
+- parsed results are summarized, normalized, or enriched
+
+For each flow, determine:
+- what file content is being sent to AI
+- whether entire documents are being resent unnecessarily
+- whether repeated uploads of the same file cause repeated processing
+- whether extracted results are stored and reused
+- whether long prompts or repeated instructions are inflating token use
+
+Create or update a focused audit summary such as:
+- PDF_AI_COST_AUDIT.md
+or add a dedicated section to replit.md
+
+2. Stop resending full PDF content
+Refactor PDF/quote parsing so the app does not keep sending full document text repeatedly.
+
+Requirements:
+- process a PDF once
+- store extracted structured results
+- reuse stored parse results on later screens/actions
+- if AI is needed again, send only the relevant excerpt/chunk, not the full file
+- avoid reparsing on page load or simple record view
+
+3. Add document fingerprinting / deduping
+Reduce repeated cost from duplicate files.
+
+Requirements:
+- create a fingerprint or hash for uploaded PDFs/files if feasible
+- detect when the same file is uploaded again
+- reuse prior extracted results where appropriate
+- warn or note when a duplicate document is being reprocessed
+- prevent unnecessary repeated AI runs on the same source file
+
+4. Add staged parsing pipeline
+Refactor parsing into smaller, cheaper stages.
+
+Suggested flow:
+- stage 1: file metadata extraction and basic validation in code
+- stage 2: text extraction in code/tooling
+- stage 3: identify only relevant sections/chunks
+- stage 4: AI used only for the ambiguous normalization/extraction step
+- stage 5: store structured output for reuse
+
+Do not use AI for work that can be done deterministically.
+
+5. Use structured extraction targets
+When AI is used, constrain it to return only needed structured fields.
+
+Examples of fields:
+- supplier name
+- quote title
+- dimensions
+- units
+- material
+- finishing
+- attachment method
+- hardware included
+- price if present
+- tax/VAT mention if present
+- lead time
+- missing fields
+
+Requirements:
+- use compact structured prompts
+- require short structured outputs
+- avoid narrative summaries unless explicitly needed
+- reduce output length aggressively
+
+6. Chunk intelligently
+For long PDFs/spec files:
+- chunk the file
+- identify relevant sections first
+- only send likely useful sections to AI
+
+Examples:
+- dimensions table
+- pricing lines
+- materials/finishing section
+- hardware/spec notes
+- attachment/install notes
+
+Do not send irrelevant pages like cover sheets, long boilerplate legal text, or repeated footer/header text unless needed.
+
+7. Cache parsed summaries and normalized records
+Once a quote/spec file has been parsed:
+- store extracted raw text summary
+- store structured parse result
+- store normalized product/spec mapping result if applicable
+- reuse this data in:
+  - product detail
+  - quote ingestion workspace
+  - supplier packet prep
+  - catalog enrichment views
+
+Do not make the app re-ask the model for the same extraction every time someone opens a record.
+
+8. Replace deterministic parsing with code where possible
+Move non-AI document logic into code.
+
+Examples:
+- identifying page count
+- file type checks
+- repeated headers/footers stripping
+- basic table row cleanup
+- unit detection when obvious
+- date extraction when clean
+- currency symbol extraction
+- VAT/tax label detection when obvious
+- duplicate line removal
+
+Use AI only where ambiguity or normalization is actually needed.
+
+9. Add parsing status model
+Track document processing states clearly.
+
+Support statuses such as:
+- uploaded
+- text extracted
+- awaiting AI parse
+- parsed
+- mapped
+- needs review
+- duplicate reused
+- archived
+- parse failed
+
+This helps avoid accidental repeat processing.
+
+10. Add parse result preview and reuse UX
+In the quote ingestion workspace or related admin screens:
+- show whether a file has already been parsed
+- show if a duplicate match was found
+- allow viewing stored parse results
+- allow rerun only when explicitly requested
+- allow “reuse previous extraction” where applicable
+
+Keep this easy for admins and avoid hidden repeated cost.
+
+11. Reduce prompt overhead
+Refactor document parsing prompts so they:
+- do not include giant repeated platform instructions
+- do not include unrelated product/system context
+- only include the extraction task and relevant chunk text
+- use short, repeatable templates
+- support easier caching/reuse patterns
+
+12. Add cost-aware safeguards
+Add practical guardrails such as:
+- max file size before AI parse
+- max extracted text size sent in one request
+- chunk limit
+- rerun confirmation for large files
+- safe fallback when extraction is too large
+- graceful parse failure handling
+
+13. Observability
+Add lightweight internal tracking for this workflow:
+- file uploaded
+- parse attempted
+- parse reused
+- duplicate detected
+- rerun requested
+- parse failed
+- approximate context size or chunk count if available
+- top most expensive document-processing paths by design
+
+Keep this internal and practical.
+
+14. Seed/demo updates
+Add examples showing:
+- one parsed PDF quote reused successfully
+- one duplicate PDF reusing existing parsed data
+- one long spec file chunked and parsed in stages
+- one parse result stored and reused in product mapping
+
+15. Documentation
+Update replit.md and/or create PDF_AI_COST_AUDIT.md with:
+- where PDF/quote parsing currently uses AI
+- what was changed to reduce cost
+- dedupe/fingerprinting logic
+- chunking and reuse strategy
+- parsing status model
+- when reruns should happen
+- remaining highest-cost document workflows if any
+
+Important:
+Do not rebuild the app.
+Do not change unrelated workflows.
+Focus specifically on reducing token use and repeated cost in PDF upload and quote/spec parsing flows.
+Actually implement the refactors and safeguards, not placeholders only.

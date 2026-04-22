@@ -4,8 +4,9 @@ import { apiFetch } from "@/lib/api";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Printer, ChevronLeft, FileText, Image as ImageIcon, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Printer, ChevronLeft, FileText, Image as ImageIcon, AlertTriangle, CheckCircle2, Truck } from "lucide-react";
 import { Link } from "wouter";
+import { formatWeight, convertWeight, pickDisplayWeightUnit, type WeightUnit, type UnitSystem } from "@/lib/units";
 
 type PacketAsset = { linkId: number; role: string; asset: any };
 
@@ -47,6 +48,82 @@ function DualSpec({ label, v }: { label: string; v: DualValue | null }) {
       <span className="font-medium">{v.primary}</span>
       {v.secondary && <span className="text-muted-foreground">(≈ {v.secondary})</span>}
     </span>
+  );
+}
+
+function formatWeightForOrder(value: number | null, unit: string | null, system: UnitSystem): string | null {
+  if (value == null) return null;
+  const u = (unit as WeightUnit) || (system === "metric" ? "kg" : "lb");
+  // If the unit's system already matches the preferred system, render as-is.
+  // Otherwise convert to the system's most readable unit so packets shipping
+  // overseas show kg/g first by default.
+  const isMetric = u === "kg" || u === "g";
+  const matches = (system === "metric" && isMetric) || (system === "imperial" && !isMetric);
+  if (matches) return formatWeight(value, u);
+  const grams = convertWeight(value, u, "g");
+  const tgt = pickDisplayWeightUnit(grams, system);
+  return formatWeight(convertWeight(value, u, tgt), tgt);
+}
+
+function LogisticsBlock({ order }: { order: any }) {
+  const system: UnitSystem = (order.measurementSystem === "metric" ? "metric" : "imperial");
+  const sc = order.shippingContactJson || null;
+  const rc = order.receivingContactJson || null;
+  const flags = [
+    order.oversizeFlag && "Oversize",
+    order.crateRequired && "Crate required",
+    order.palletRequired && "Pallet required",
+  ].filter(Boolean) as string[];
+  const totalWt = formatWeightForOrder(order.totalShipmentWeight != null ? Number(order.totalShipmentWeight) : null, order.totalShipmentWeightUnit, system);
+  const hasAny = order.shipDateTarget || order.deliveryByDate || order.packageCount != null
+    || totalWt || flags.length > 0 || sc || rc
+    || order.customsNotes || order.internationalShippingNotes || order.logisticsNotes;
+  if (!hasAny) return null;
+  return (
+    <Card className="p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="font-semibold flex items-center gap-2"><Truck className="h-4 w-4" /> Logistics</h2>
+        <Badge variant="outline" className="text-[10px]">{system === "metric" ? "Metric" : "Imperial"}</Badge>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1.5 text-sm">
+        {order.shipDateTarget && <div><div className="text-[11px] text-muted-foreground">Ship by</div><div className="font-medium">{new Date(order.shipDateTarget).toLocaleDateString()}</div></div>}
+        {order.deliveryByDate && <div><div className="text-[11px] text-muted-foreground">Deliver by</div><div className="font-medium">{new Date(order.deliveryByDate).toLocaleDateString()}</div></div>}
+        {order.packageCount != null && <div><div className="text-[11px] text-muted-foreground">Packages</div><div className="font-medium tabular-nums">{order.packageCount}</div></div>}
+        {totalWt && <div><div className="text-[11px] text-muted-foreground">Total weight</div><div className="font-medium tabular-nums">{totalWt}</div></div>}
+      </div>
+      {flags.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {flags.map(f => <Badge key={f} className="bg-amber-100 text-amber-900">{f}</Badge>)}
+        </div>
+      )}
+      {(sc || rc) && (
+        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+          {sc && (
+            <div className="rounded border p-2">
+              <div className="text-[11px] uppercase text-muted-foreground mb-0.5">Shipping (sender) contact</div>
+              <div className="font-medium">{sc.name || "—"}</div>
+              {sc.phone && <div className="text-xs">{sc.phone}</div>}
+              {sc.email && <div className="text-xs">{sc.email}</div>}
+            </div>
+          )}
+          {rc && (
+            <div className="rounded border p-2">
+              <div className="text-[11px] uppercase text-muted-foreground mb-0.5">Receiving (onsite) contact</div>
+              <div className="font-medium">{rc.name || "—"}</div>
+              {rc.phone && <div className="text-xs">{rc.phone}</div>}
+              {rc.email && <div className="text-xs">{rc.email}</div>}
+            </div>
+          )}
+        </div>
+      )}
+      {(order.logisticsNotes || order.internationalShippingNotes || order.customsNotes) && (
+        <div className="mt-3 space-y-2 text-sm">
+          {order.logisticsNotes && <div className="p-2 rounded bg-muted/40"><strong className="text-xs">Logistics:</strong> {order.logisticsNotes}</div>}
+          {order.internationalShippingNotes && <div className="p-2 rounded bg-blue-50 border border-blue-200"><strong className="text-xs">International shipping:</strong> {order.internationalShippingNotes}</div>}
+          {order.customsNotes && <div className="p-2 rounded bg-amber-50 border border-amber-200"><strong className="text-xs">Customs:</strong> {order.customsNotes}</div>}
+        </div>
+      )}
+    </Card>
   );
 }
 
@@ -98,6 +175,8 @@ export default function SupplierPacket() {
                 </div>
               )}
             </Card>
+
+            <LogisticsBlock order={data.order} />
 
             {data.orderLevelAssets.length > 0 && (
               <Card className="p-4">

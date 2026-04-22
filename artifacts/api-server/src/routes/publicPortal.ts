@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, inArray } from "drizzle-orm";
-import { db, partnersTable, requestsTable, requestItemsTable, requestUploadsTable, pricingRulesTable, partnerThemesTable, partnerSectionsTable, partnerBrandingLocationsTable, productCatalogTable, partnerProductOverridesTable, citiesTable, venuesTable, eventsTable, packagesTable, packageItemsTable, ordersTable, orderItemsTable, suppliersTable, computePrice, convert, type LengthUnit, type PricingModel, type PricingUnit } from "@workspace/db";
+import { db, partnersTable, requestsTable, requestItemsTable, requestUploadsTable, pricingRulesTable, partnerThemesTable, partnerSectionsTable, partnerBrandingLocationsTable, productCatalogTable, partnerProductOverridesTable, citiesTable, venuesTable, eventsTable, packagesTable, packageItemsTable, ordersTable, orderItemsTable, suppliersTable, computePrice, convert, resolvePreference, withMmColumns, withWeightColumns, type LengthUnit, type PricingModel, type PricingUnit } from "@workspace/db";
 const _inArray = inArray;
 
 // Public visibility gate: a partner is reachable from the public portal only when active and
@@ -505,6 +505,22 @@ router.post("/public/partners/:slug/orders", async (req, res): Promise<void> => 
     return { result, widthMm, heightMm, enteredW, enteredH, enteredU };
   }
 
+  // Resolve measurement system: event → venue → partner → default.
+  let _event: any = null, _venue: any = null;
+  if (data.eventId) {
+    const [ev] = await db.select().from(eventsTable).where(eq(eventsTable.id, data.eventId));
+    _event = ev ?? null;
+  }
+  if (data.shippingVenueId) {
+    const [vn] = await db.select().from(venuesTable).where(eq(venuesTable.id, data.shippingVenueId));
+    _venue = vn ?? null;
+  } else if (_event?.venueId) {
+    const [vn] = await db.select().from(venuesTable).where(eq(venuesTable.id, _event.venueId));
+    _venue = vn ?? null;
+  }
+  const _resolved = resolvePreference({ event: _event, venue: _venue, partner });
+  const measurementSystem = _resolved.system;
+
   try {
     const result = await db.transaction(async (tx) => {
       const [order] = await tx.insert(ordersTable).values({
@@ -527,13 +543,24 @@ router.post("/public/partners/:slug/orders", async (req, res): Promise<void> => 
         notes: data.notes ?? null,
         artworkFilesJson: data.artworkFiles ?? [],
         totalEstimate: data.totalEstimate ?? null,
+        measurementSystem,
       }).returning();
 
       if (data.items.length) {
         await tx.insert(orderItemsTable).values(data.items.map((it, idx) => {
           const priced = priceForLine(it);
           const r = priced?.result ?? null;
+          // Copy packed/shipping defaults from product → order item snapshot.
+          const prod: any = it.productId ? productById.get(it.productId) : null;
+          const packed = prod ? withWeightColumns(withMmColumns({
+            packedWidth: prod.packedWidth, packedHeight: prod.packedHeight, packedDepth: prod.packedDepth, packedSizeUnit: prod.packedSizeUnit,
+            shippingWeight: prod.shippingWeight, shippingWeightUnit: prod.shippingWeightUnit,
+            cartonCount: prod.cartonCount, packingMode: prod.packingMode,
+            crateRequired: !!prod.crateRequired, palletRequired: !!prod.palletRequired, oversizeFlag: !!prod.oversizeFlag,
+            freightClass: prod.freightClass, installKitNotes: prod.installKitNotes,
+          })) : {};
           return {
+            ...packed,
             orderId: order.id,
             itemType: it.itemType,
             productId: it.productId ?? null,

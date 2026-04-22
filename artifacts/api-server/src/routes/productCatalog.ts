@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
-import { db, productCatalogTable, withMmColumns } from "@workspace/db";
+import { db, productCatalogTable, withMmColumns, withWeightColumns } from "@workspace/db";
 import { z } from "zod";
 
 const router: IRouter = Router();
@@ -58,6 +58,20 @@ const ProductBody = z.object({
   customerFacingSummary: z.string().nullable().optional(),
   reviewStatus: z.enum(["new", "in_review", "needs_clarification", "approved", "archived"]).optional(),
   missingDataFlagsJson: z.array(z.string()).nullable().optional(),
+  // Shipping & packing defaults (April 2026 logistics extension).
+  packedWidth: z.number().nullable().optional(),
+  packedHeight: z.number().nullable().optional(),
+  packedDepth: z.number().nullable().optional(),
+  packedSizeUnit: z.string().nullable().optional(),
+  shippingWeight: z.number().nullable().optional(),
+  shippingWeightUnit: z.string().nullable().optional(),
+  cartonCount: z.number().int().nullable().optional(),
+  packingMode: z.enum(["rolled", "flat", "boxed", "crated"]).nullable().optional(),
+  crateRequired: z.boolean().optional(),
+  palletRequired: z.boolean().optional(),
+  oversizeFlag: z.boolean().optional(),
+  freightClass: z.string().nullable().optional(),
+  installKitNotes: z.string().nullable().optional(),
 });
 
 const UpdateProductBody = ProductBody.partial();
@@ -71,7 +85,7 @@ router.post("/products", async (req, res): Promise<void> => {
   const parsed = ProductBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
 
-  const [product] = await db.insert(productCatalogTable).values(withMmColumns(parsed.data)).returning();
+  const [product] = await db.insert(productCatalogTable).values(withWeightColumns(withMmColumns(parsed.data))).returning();
   res.status(201).json(product);
 });
 
@@ -93,7 +107,7 @@ router.patch("/products/:id", async (req, res): Promise<void> => {
 
   const [existing] = await db.select().from(productCatalogTable).where(eq(productCatalogTable.id, id));
   if (!existing) { res.status(404).json({ error: "Product not found" }); return; }
-  const [product] = await db.update(productCatalogTable).set(withMmColumns(parsed.data, { sizeUnit: existing.sizeUnit, artworkUnit: (existing as any).artworkUnit })).where(eq(productCatalogTable.id, id)).returning();
+  const [product] = await db.update(productCatalogTable).set(withWeightColumns(withMmColumns(parsed.data, { sizeUnit: existing.sizeUnit, artworkUnit: (existing as any).artworkUnit, packedSizeUnit: (existing as any).packedSizeUnit }), { shippingWeightUnit: (existing as any).shippingWeightUnit })).where(eq(productCatalogTable.id, id)).returning();
   if (!product) { res.status(404).json({ error: "Product not found" }); return; }
   res.json(product);
 });

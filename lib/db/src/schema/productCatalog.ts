@@ -67,6 +67,25 @@ export const productCatalogTable = pgTable("product_catalog", {
   isOrderable: boolean("is_orderable").notNull().default(true),
   allowsDesignRequest: boolean("allows_design_request").notNull().default(true),
   sizeOptionsJson: jsonb("size_options_json").$type<string[]>(),
+  // Shipping & packing defaults (April 2026 logistics extension).
+  // Used as default values copied to order_items at order creation time.
+  packedWidth: doublePrecision("packed_width"),
+  packedHeight: doublePrecision("packed_height"),
+  packedDepth: doublePrecision("packed_depth"),
+  packedSizeUnit: text("packed_size_unit"), // in | ft | mm | cm | m
+  packedWidthMm: doublePrecision("packed_width_mm"),
+  packedHeightMm: doublePrecision("packed_height_mm"),
+  packedDepthMm: doublePrecision("packed_depth_mm"),
+  shippingWeight: doublePrecision("shipping_weight"),
+  shippingWeightUnit: text("shipping_weight_unit"), // lb | oz | kg | g
+  shippingWeightG: doublePrecision("shipping_weight_g"),
+  cartonCount: integer("carton_count"),
+  packingMode: text("packing_mode"), // rolled | flat | boxed | crated
+  crateRequired: boolean("crate_required").notNull().default(false),
+  palletRequired: boolean("pallet_required").notNull().default(false),
+  oversizeFlag: boolean("oversize_flag").notNull().default(false),
+  freightClass: text("freight_class"),
+  installKitNotes: text("install_kit_notes"),
   isActive: boolean("is_active").notNull().default(true),
   sortOrder: text("sort_order"),
   customerFacingSummary: text("customer_facing_summary"),

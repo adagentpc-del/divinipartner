@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, sql, desc, inArray } from "drizzle-orm";
-import { db, ordersTable, orderItemsTable, partnersTable, eventsTable, packagesTable, suppliersTable, venuesTable, productCatalogTable, partnerBrandingLocationsTable, citiesTable, inventoryTable, inventoryReservationsTable, supplierAssignmentHistoryTable, supplierStatusEventsTable, quoteAssetsTable } from "@workspace/db";
+import { db, ordersTable, orderItemsTable, partnersTable, eventsTable, packagesTable, suppliersTable, venuesTable, productCatalogTable, partnerBrandingLocationsTable, citiesTable, inventoryTable, inventoryReservationsTable, supplierAssignmentHistoryTable, supplierStatusEventsTable, quoteAssetsTable, withMmColumns, withWeightColumns } from "@workspace/db";
 import { z } from "zod";
 
 const FULFILLMENT_MODES = [
@@ -72,6 +72,20 @@ const OrderItemBody = z.object({
   artworkFileUrl: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
   sortOrder: z.number().int().optional(),
+  // Per-line packed/shipping (April 2026 logistics extension).
+  packedWidth: z.number().nullable().optional(),
+  packedHeight: z.number().nullable().optional(),
+  packedDepth: z.number().nullable().optional(),
+  packedSizeUnit: z.string().nullable().optional(),
+  shippingWeight: z.number().nullable().optional(),
+  shippingWeightUnit: z.string().nullable().optional(),
+  cartonCount: z.number().int().nullable().optional(),
+  packingMode: z.enum(["rolled", "flat", "boxed", "crated"]).nullable().optional(),
+  crateRequired: z.boolean().optional(),
+  palletRequired: z.boolean().optional(),
+  oversizeFlag: z.boolean().optional(),
+  freightClass: z.string().nullable().optional(),
+  installKitNotes: z.string().nullable().optional(),
 });
 
 type ResolveCtx = {
@@ -133,9 +147,36 @@ const OrderBody = z.object({
   internalNotes: z.string().nullable().optional(),
   vendorNotes: z.string().nullable().optional(),
   fulfillmentStatus: z.string().nullable().optional(),
+  // Logistics summary (April 2026 logistics extension).
+  shipDateTarget: z.string().nullable().optional(),
+  deliveryByDate: z.string().nullable().optional(),
+  packageCount: z.number().int().nullable().optional(),
+  totalShipmentWeight: z.number().nullable().optional(),
+  totalShipmentWeightUnit: z.string().nullable().optional(),
+  measurementSystem: z.enum(["imperial", "metric"]).nullable().optional(),
+  oversizeFlag: z.boolean().optional(),
+  crateRequired: z.boolean().optional(),
+  palletRequired: z.boolean().optional(),
+  shippingContactJson: z.object({ name: z.string().optional(), email: z.string().optional(), phone: z.string().optional() }).nullable().optional(),
+  receivingContactJson: z.object({ name: z.string().optional(), email: z.string().optional(), phone: z.string().optional() }).nullable().optional(),
+  customsNotes: z.string().nullable().optional(),
+  internationalShippingNotes: z.string().nullable().optional(),
+  logisticsNotes: z.string().nullable().optional(),
   createdByUserId: z.string().nullable().optional(),
   items: z.array(OrderItemBody).optional(),
 });
+
+// Helpers for shipping date columns (timestamps).
+const _toShipDateOrNull = (v: any) => (v == null || v === "" ? null : new Date(v));
+function normalizeOrderLogistics<T extends Record<string, any>>(data: T, existing?: Partial<{ totalShipmentWeightUnit: string | null }>): T {
+  const out: any = { ...data };
+  if ("shipDateTarget" in out) out.shipDateTarget = _toShipDateOrNull(out.shipDateTarget);
+  if ("deliveryByDate" in out) out.deliveryByDate = _toShipDateOrNull(out.deliveryByDate);
+  return withWeightColumns(out as any, existing as any) as T;
+}
+function normalizeItemLogistics<T extends Record<string, any>>(data: T, existing?: Partial<{ packedSizeUnit: string | null; shippingWeightUnit: string | null }>): T {
+  return withWeightColumns(withMmColumns(data as any, existing as any), existing as any) as T;
+}
 
 function generateOrderNumber() {
   const ts = Date.now().toString(36).toUpperCase();
@@ -181,6 +222,40 @@ async function loadProductCaps(tx: typeof db, productIds: number[]): Promise<Map
   }).from(productCatalogTable).where(inArray(productCatalogTable.id, productIds));
   for (const r of rows) m.set(r.id, r as any);
   return m;
+}
+
+type ProductPackingDefaults = {
+  packedWidth: number | null; packedHeight: number | null; packedDepth: number | null; packedSizeUnit: string | null;
+  shippingWeight: number | null; shippingWeightUnit: string | null; cartonCount: number | null;
+  packingMode: string | null; crateRequired: boolean; palletRequired: boolean; oversizeFlag: boolean;
+  freightClass: string | null; installKitNotes: string | null;
+};
+async function loadProductPackingDefaults(tx: any, productIds: number[]): Promise<Map<number, ProductPackingDefaults>> {
+  const m = new Map<number, ProductPackingDefaults>();
+  if (!productIds.length) return m;
+  const rows = await tx.select({
+    id: productCatalogTable.id,
+    packedWidth: productCatalogTable.packedWidth, packedHeight: productCatalogTable.packedHeight, packedDepth: productCatalogTable.packedDepth, packedSizeUnit: productCatalogTable.packedSizeUnit,
+    shippingWeight: productCatalogTable.shippingWeight, shippingWeightUnit: productCatalogTable.shippingWeightUnit, cartonCount: productCatalogTable.cartonCount,
+    packingMode: productCatalogTable.packingMode, crateRequired: productCatalogTable.crateRequired, palletRequired: productCatalogTable.palletRequired, oversizeFlag: productCatalogTable.oversizeFlag,
+    freightClass: productCatalogTable.freightClass, installKitNotes: productCatalogTable.installKitNotes,
+  }).from(productCatalogTable).where(inArray(productCatalogTable.id, productIds));
+  for (const r of rows) m.set(r.id, r as any);
+  return m;
+}
+
+// Merge per-line override (from request) on top of product defaults, then normalize to mm/g.
+function buildItemLogisticsValues(it: z.infer<typeof OrderItemBody>, def: ProductPackingDefaults | null) {
+  const pick = <K extends keyof ProductPackingDefaults>(k: K) => (it as any)[k] !== undefined ? (it as any)[k] : (def ? def[k] : null);
+  const raw = {
+    packedWidth: pick("packedWidth"), packedHeight: pick("packedHeight"), packedDepth: pick("packedDepth"),
+    packedSizeUnit: pick("packedSizeUnit"),
+    shippingWeight: pick("shippingWeight"), shippingWeightUnit: pick("shippingWeightUnit"),
+    cartonCount: pick("cartonCount"), packingMode: pick("packingMode"),
+    crateRequired: pick("crateRequired") ?? false, palletRequired: pick("palletRequired") ?? false, oversizeFlag: pick("oversizeFlag") ?? false,
+    freightClass: pick("freightClass"), installKitNotes: pick("installKitNotes"),
+  };
+  return normalizeItemLogistics(raw);
 }
 
 // Reserve inventory for an item. Locks inventory row, creates reservation, returns ids+shortage.
@@ -370,10 +445,11 @@ router.post("/orders", async (req, res): Promise<void> => {
 
   try {
     const order = await db.transaction(async (tx) => {
-      const [createdOrder] = await tx.insert(ordersTable).values({ ...orderData, orderNumber }).returning();
+      const [createdOrder] = await tx.insert(ordersTable).values(normalizeOrderLogistics({ ...orderData, orderNumber })).returning();
       if (items && items.length) {
         const productIds = items.map(i => i.productId).filter((x): x is number => !!x);
         const caps = await loadProductCaps(tx as any, productIds);
+        const packDefaults = await loadProductPackingDefaults(tx, productIds);
         const ctx = await loadResolveContext(tx, items, createdOrder.assignedSupplierId ?? null);
         for (let idx = 0; idx < items.length; idx++) {
           const it = items[idx];
@@ -396,7 +472,9 @@ router.post("/orders", async (req, res): Promise<void> => {
             supplierId = r.supplierId; source = r.source;
           }
           const supplierStatus = it.supplierStatus ?? (supplierId ? "assigned" : "unassigned");
+          const logistics = buildItemLogisticsValues(it, it.productId ? (packDefaults.get(it.productId) ?? null) : null);
           const [created] = await tx.insert(orderItemsTable).values({
+            ...logistics,
             orderId: createdOrder.id,
             itemType: it.itemType,
             productId: it.productId ?? null,
@@ -461,7 +539,10 @@ router.patch("/orders/:id", async (req, res): Promise<void> => {
     const updated = await db.transaction(async (tx) => {
       const [prev] = await tx.select({ status: ordersTable.status }).from(ordersTable).where(eq(ordersTable.id, id));
       prevStatus = prev?.status ?? null;
-      const [row] = await tx.update(ordersTable).set(orderData).where(eq(ordersTable.id, id)).returning();
+      const [existingOrder] = await tx.select({
+        totalShipmentWeightUnit: ordersTable.totalShipmentWeightUnit,
+      }).from(ordersTable).where(eq(ordersTable.id, id));
+      const [row] = await tx.update(ordersTable).set(normalizeOrderLogistics(orderData, existingOrder)).where(eq(ordersTable.id, id)).returning();
       if (!row) return null;
       if (items) {
         const existing = await tx.select().from(orderItemsTable).where(eq(orderItemsTable.orderId, id));
@@ -471,6 +552,7 @@ router.patch("/orders/:id", async (req, res): Promise<void> => {
         await tx.delete(orderItemsTable).where(eq(orderItemsTable.orderId, id));
         const productIds = items.map(i => i.productId).filter((x): x is number => !!x);
         const caps = await loadProductCaps(tx as any, productIds);
+        const packDefaults = await loadProductPackingDefaults(tx, productIds);
         const ctx = await loadResolveContext(tx, items, row.assignedSupplierId ?? null);
         for (let idx = 0; idx < items.length; idx++) {
           const it = items[idx];
@@ -493,7 +575,9 @@ router.patch("/orders/:id", async (req, res): Promise<void> => {
             supplierId = r.supplierId; source = r.source;
           }
           const supplierStatus = it.supplierStatus ?? (supplierId ? "assigned" : "unassigned");
+          const logistics = buildItemLogisticsValues(it, it.productId ? (packDefaults.get(it.productId) ?? null) : null);
           const [created] = await tx.insert(orderItemsTable).values({
+            ...logistics,
             orderId: id, itemType: it.itemType, productId: it.productId ?? null, packageId: it.packageId ?? null, brandingZoneId: it.brandingZoneId ?? null,
             name: it.name, quantity: qty, unitPrice: it.unitPrice ?? null, fulfillmentMode: it.fulfillmentMode ?? null,
             hardwareRequired: math.hardwareRequired, printDemandQuantity: math.printDemand, hardwareDemandQuantity: math.hardwareDemand,

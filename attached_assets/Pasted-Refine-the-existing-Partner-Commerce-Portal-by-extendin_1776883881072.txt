@@ -1,0 +1,139 @@
+Refine the existing Partner Commerce Portal by extending international measurement support into shipping, packaging, and logistics calculations.
+
+Goal:
+Now that the platform supports metric and imperial measurements, and pricing/quantity logic can handle custom sizes, make sure shipping, packaging, and logistics workflows also work cleanly for overseas and metric-first events.
+
+Scope:
+Keep this pass narrowly focused on logistics, packaging, and shipment-related measurement behavior.
+Do not rebuild unrelated workflows.
+
+Requirements:
+
+1. Logistics measurement support
+- extend shipping and logistics logic to support both imperial and metric units
+- support:
+  - inches
+  - feet
+  - millimeters
+  - centimeters
+  - meters
+  - pounds
+  - ounces
+  - kilograms
+  - grams where useful
+- preserve original entered values and units
+- store normalized values internally for consistent calculations
+
+2. Package and shipment dimensions
+Support shipping/package dimension fields for:
+- package width
+- package height
+- package depth
+- package weight
+- number of packages
+- pallet or crate dimensions where relevant
+
+Requirements:
+- add unit selectors next to dimension and weight fields
+- allow metric-first shipping entries such as:
+  - 2 m x 1.2 m x 0.3 m
+  - 18 kg
+- do not force overseas users into imperial units
+
+3. Product and line-item logistics data
+Extend products, line items, and supplier packet data so they can store or display logistics-related information such as:
+- packed dimensions
+- shipping weight
+- freight class placeholder if useful
+- number of cartons
+- rolled vs flat packed indicator
+- crate required yes/no
+- pallet required yes/no
+- oversize flag
+- install kit or hardware shipment notes
+
+Keep these fields practical and operational.
+Do not overbuild freight software.
+
+4. Order-level shipping summary
+Extend order detail and supplier packet views to show a shipping/logistics summary including:
+- event shipping destination
+- onsite delivery address
+- shipping contact
+- receiving contact
+- ship date target
+- delivery by date
+- package count
+- total estimated shipment size/weight
+- measurement system used
+- logistics notes
+
+If the event is metric-first, keep metric primary throughout these views.
+
+5. Overseas and international workflows
+Support overseas event logistics by allowing:
+- metric-first shipping dimensions
+- metric-first weight display
+- international address formatting support where practical
+- customs/document note placeholder fields
+- international shipping notes
+- port/airport/freight note placeholders if useful
+
+Do not try to build a full customs platform.
+Just make the portal ready for international logistics details.
+
+6. Shipping calculation clarity
+Where logistics calculations are shown, support:
+- total packed volume if useful
+- total shipment weight
+- estimated package count
+- oversize or special handling indicator
+- clear labels showing original vs normalized values internally when needed
+
+Examples:
+- Packed size: 2 m x 1.2 m x 0.3 m
+- Weight: 18 kg
+- Total shipment: 3 packages
+- Handling: Oversize / crate required
+
+Avoid confusing rounding and mixed-unit displays.
+
+7. Supplier packet and ops impact
+Update supplier packets and internal ops views so logistics details are clear and production-safe.
+
+Requirements:
+- show shipping dimensions in the relevant unit system
+- keep metric primary for overseas events
+- show package count and packed dimensions where available
+- show shipment notes, install timing, and special handling clearly
+- support both internal ops clarity and supplier execution clarity
+
+8. Packaging logic for custom-sized items
+For custom-size products or zone items:
+- allow internal admin to store default packing assumptions if useful
+- support manual override of shipping dimensions and weight
+- preserve the originally requested custom size and the resulting packed size separately
+- keep this clear in internal order and logistics views
+
+9. Seed/demo updates
+- add at least one overseas event using metric shipping defaults
+- add one sample order with:
+  - custom metric product size
+  - packed dimensions in metric
+  - shipment weight in kg
+  - multi-package shipment example
+- add one supplier packet example showing metric logistics output
+
+10. Documentation
+- update replit.md with:
+  - logistics measurement model
+  - supported dimensional and weight units
+  - how original vs normalized logistics values are stored
+  - how metric-first overseas shipping flows behave
+  - how supplier packets display logistics units
+
+Important:
+Do not rebuild the app.
+Do not change unrelated workflows.
+Extend the current product, order, supplier packet, event, venue, and shipping/logistics flows cleanly.
+Actually implement the logistics measurement logic and UI, not placeholders only.

@@ -1,0 +1,176 @@
+Refine the existing Partner Commerce Portal by extending the quote/spec parsing workflow so it detects and maps currency, VAT/tax, and international billing indicators from uploaded PDFs and related documents.
+
+Goal:
+When users upload quotes, spec sheets, or overseas billing documents, the system should detect pricing currency, VAT/tax references, and relevant billing cues so parsed records map more cleanly into the order, invoice, and billing model.
+
+Scope:
+Keep this pass tightly focused on:
+1. quote/spec parsing for currency and tax signals
+2. mapping parsed billing signals into structured records
+3. reducing manual cleanup for overseas/international quote ingestion
+4. keeping token usage low in document parsing flows
+
+Do not rebuild unrelated workflows.
+
+Requirements:
+
+1. Currency detection in parsed documents
+Extend the existing quote/spec parsing workflow so it detects currency indicators from uploaded files.
+
+At minimum detect:
+- USD / $
+- EUR / €
+- GBP / £
+- AED
+- CAD
+- AUD
+
+Requirements:
+- detect currency from symbols, codes, and obvious text mentions
+- distinguish likely source currency from ambiguous text where possible
+- store parsed source currency separately from any later display/default currency
+- if ambiguous, flag for review rather than guessing silently
+
+2. VAT/tax detection in parsed documents
+Extend parsing so it detects tax-related billing cues.
+
+At minimum detect:
+- VAT
+- sales tax
+- GST placeholder if mentioned
+- tax included / inclusive wording
+- tax excluded / added wording
+- tax percentage when clearly present
+- tax amount when clearly present
+
+Examples:
+- VAT 20%
+- Total includes VAT
+- Excluding VAT
+- Sales tax not included
+- Tax: €400
+
+Requirements:
+- store parsed tax label
+- store parsed tax rate if clearly present
+- store parsed tax amount if clearly present
+- store tax inclusive yes/no if clearly indicated
+- if unclear, flag for review
+
+3. International billing cues
+Detect other billing-related context that may matter for overseas use.
+
+Examples:
+- quote/invoice number
+- billing country or region mention
+- overseas shipping or export wording
+- customs or duties mention
+- incoterm placeholder if clearly present
+- payment terms if clearly present
+- deposit wording if clearly present
+
+Do not overbuild a full finance parser.
+Focus on practical signals that help map quote PDFs into the portal’s billing model.
+
+4. Structured parse output
+When the parser handles a billing-related quote/spec file, require compact structured extraction.
+
+Support structured fields such as:
+- supplier_name
+- document_type
+- quote_reference
+- source_currency
+- subtotal_amount
+- tax_label
+- tax_rate
+- tax_amount
+- tax_inclusive
+- total_amount
+- payment_terms
+- deposit_amount
+- billing_notes
+- missing_fields
+- confidence_flags
+
+Keep output concise and structured.
+Do not return long narrative summaries unless explicitly needed.
+
+5. Mapping to billing model
+Extend the quote ingestion/catalog enrichment workflow so parsed currency/tax results can map into:
+- quote/spec reference records
+- order defaults if appropriate
+- invoice defaults if appropriate
+- partner billing review workflow
+- finance/reconciliation review where useful
+
+Requirements:
+- do not auto-overwrite trusted partner defaults blindly
+- show parsed billing signals as suggested values where appropriate
+- allow internal admin review/approve mapping
+- clearly distinguish:
+  - parsed source data
+  - current billing defaults
+  - approved mapped value
+
+6. Review and exception handling
+Add clean review states for parsed billing signals.
+
+Examples:
+- currency detected
+- VAT detected
+- tax ambiguous
+- total detected but subtotal missing
+- currency ambiguous
+- overseas billing cues detected
+- manual review needed
+
+Requirements:
+- make these visible in the quote ingestion workspace
+- allow internal admin to approve, edit, or dismiss parsed billing suggestions
+- show missing or ambiguous items clearly
+
+7. Keep token usage low
+This pass must respect the earlier PDF cost-reduction work.
+
+Requirements:
+- do not resend entire PDFs if not needed
+- only send relevant billing-related excerpts/chunks to AI
+- reuse stored extracted text and prior parse results
+- strip irrelevant pages or boilerplate when possible
+- use short, structured prompts for billing extraction
+- avoid long narrative outputs
+
+8. UI updates
+In the quote/spec ingestion or source record detail UI, add a billing signals section showing:
+- detected currency
+- detected VAT/tax label
+- detected tax rate
+- detected subtotal/total if present
+- detected inclusive/exclusive tax wording
+- approval/review status
+- apply-to-billing-defaults action if appropriate
+
+Keep this section clean and operational.
+
+9. Seed/demo updates
+Add examples showing:
+- one EUR quote with VAT
+- one USD quote with sales tax wording
+- one international quote with metric sizes and VAT mention
+- one ambiguous quote flagged for manual review
+- one parsed document where billing signals map cleanly into structured records
+
+10. Documentation
+Update replit.md and/or the parsing audit doc with:
+- how currency is detected
+- how VAT/tax wording is detected
+- how parsed billing signals are stored
+- how approved mapping works
+- how ambiguous billing signals are flagged
+- how token-efficient parsing is preserved in this workflow
+
+Important:
+Do not rebuild the app.
+Do not change unrelated workflows.
+Extend the current quote ingestion, PDF parsing, billing model, and review flows cleanly.
+Actually implement the billing-aware parsing logic and UI, not placeholders only.

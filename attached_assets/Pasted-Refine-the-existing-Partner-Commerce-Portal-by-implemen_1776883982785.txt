@@ -1,0 +1,186 @@
+Refine the existing Partner Commerce Portal by implementing partner branding display and production ready email delivery.
+
+Goal:
+Make the portal show the partner color selections and partner logo throughout the partner facing experience, and set up email confirmations so orders send correctly to the customer and also forward to an internal email entered in the software.
+
+Scope:
+Keep this pass tightly focused on:
+1. partner branding display
+2. partner logo display
+3. confirmation email setup
+4. order forwarding email setup
+
+Do not rebuild unrelated workflows.
+
+Requirements:
+
+1. Partner branding display
+Extend the existing partner settings so the portal visibly uses the branding choices already selected in the partner section.
+
+Support at minimum:
+- primary brand color
+- secondary brand color if already stored
+- button color
+- accent color
+- text color where appropriate
+- background treatment where appropriate
+
+Apply branding consistently to:
+- partner portal landing page
+- event selection page
+- package selection page
+- branding zone selection page
+- order summary page
+- order confirmation page
+- partner dashboard header where appropriate
+- emails generated for that partner if possible
+
+Requirements:
+- use the saved partner color selections dynamically
+- create a clean fallback if colors are missing
+- keep contrast readable and accessible
+- do not let branding break layout or usability
+- add a live preview in partner/admin settings if feasible
+
+2. Partner logo display
+Use the uploaded partner logo throughout the portal experience.
+
+Display the partner logo in appropriate places such as:
+- portal header
+- partner landing page
+- order confirmation page
+- client facing email confirmation
+- internal forwarded order email if appropriate
+- printable order summary or packet header where relevant
+
+Requirements:
+- support proper sizing and containment
+- preserve aspect ratio
+- show a clean fallback if logo is missing
+- do not distort or crop badly
+- keep visual presentation premium and polished
+
+3. Partner email settings
+Add or refine partner email configuration settings.
+
+Support fields such as:
+- from name
+- reply to email
+- confirmation email sender label
+- internal forwarding email
+- optional cc email if useful
+- active email toggle
+- test email action if feasible
+
+Requirements:
+- these settings should live in a clean partner admin area
+- validate email format
+- show whether required email settings are complete
+- make internal forwarding email editable from the software without code changes
+
+4. Customer order confirmation emails
+Set up confirmation emails so when an order is submitted, the customer receives a clear confirmation email.
+
+Email should include:
+- partner branding and logo if available
+- event name
+- city and venue if relevant
+- selected package or zones
+- selected items
+- order reference number
+- basic submitted details
+- next steps
+- contact/reply information
+
+Requirements:
+- use a proper email template
+- keep design simple, polished, and readable
+- log email send status if feasible
+- show confirmation email record in activity or communications history if already supported
+- do not expose internal only notes or sensitive financial info
+
+5. Internal order forwarding
+When an order is submitted, automatically forward or send the order details to the internal email entered in partner settings.
+
+Requirements:
+- use the configured internal forwarding email from the software
+- include key order details in the forwarded email
+- include customer contact info
+- include event and venue info
+- include selected package, products, zones, quantities, and notes
+- include uploaded asset summary or links if feasible
+- include order reference number
+- make this email more operationally useful than the customer confirmation
+
+If useful, support:
+- one primary forwarding email
+- optional cc field
+- optional separate finance or ops email later, but keep this pass simple
+
+6. Email template quality
+Create or refine two distinct templates:
+- customer confirmation email
+- internal forwarded order email
+
+Customer confirmation should feel:
+- clean
+- branded
+- reassuring
+- concise
+
+Internal forwarded order email should feel:
+- operational
+- easy to scan
+- action oriented
+- complete enough for follow up
+
+7. Delivery and configuration
+Use the app’s current email sending setup if already configured.
+If email infrastructure is not fully configured yet, wire the system cleanly so it is ready for the configured provider and fails gracefully.
+
+Requirements:
+- handle missing email config safely
+- show send failure state if email cannot send
+- do not block order submission if email fails unless absolutely necessary
+- log email errors internally if feasible
+
+8. Order submission behavior
+After order submission:
+- save the order as usual
+- send customer confirmation email
+- send or forward internal order email to configured address
+- show success message in UI
+- if email fails, show a safe partial success state such as order submitted but email needs attention
+
+9. Admin and partner UX
+In partner settings or email settings area, add:
+- branding preview
+- logo preview
+- internal forwarding email field
+- test confirmation email action if feasible
+- test internal forward email action if feasible
+- email status/help text if configuration is incomplete
+
+10. Seed/demo updates
+Add or refine demo data to show:
+- partner with logo
+- partner with custom colors
+- internal forwarding email set
+- branded confirmation email example
+- branded internal order forward example
+
+11. Documentation
+Update replit.md with:
+- where partner branding settings are stored
+- how portal branding is applied
+- how logo display works
+- how order confirmation emails work
+- how internal forwarding email is configured
+- what email provider/config is required
+- how failure states are handled
+
+Important:
+Do not rebuild the app.
+Do not change unrelated workflows.
+Extend the current partner settings, portal branding, order submission, communications, and email delivery flows cleanly.
+Actually implement the branding display and email delivery behavior, not placeholders only.

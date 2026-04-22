@@ -1,0 +1,174 @@
+Refine the existing Partner Commerce Portal by extending billing and invoice workflows to support currency selection, VAT/tax display, and overseas billing presentation.
+
+Goal:
+Make the portal clean for international and overseas events by supporting multiple currencies, VAT/tax style billing display, and region-appropriate invoice/order summaries.
+
+Scope:
+Keep this pass tightly focused on:
+1. currency handling
+2. VAT/tax display
+3. overseas billing and invoice presentation
+4. billing summaries in customer, partner, finance, and admin views
+
+Do not rebuild unrelated workflows.
+
+Requirements:
+
+1. Currency support
+Add currency support across billing-related flows.
+
+Support at minimum:
+- USD
+- EUR
+- GBP
+- AED
+- CAD
+- AUD
+
+Requirements:
+- allow default currency at:
+  - partner/account level
+  - event level
+  - order level if needed by internal admin
+- event level can inherit from partner default
+- order level can override if necessary
+- store currency code with each order, invoice, quote, and billing record
+- display the correct currency symbol and code clearly
+- preserve currency consistency across order, invoice, reconciliation, and email summaries
+
+2. Currency display logic
+Use clean, region-appropriate currency formatting.
+
+Requirements:
+- display currency consistently in:
+  - order summary
+  - invoice detail
+  - customer confirmation
+  - finance views
+  - admin order detail
+  - reconciliation views
+- show currency code where ambiguity could exist
+- do not mix currencies on a single order without explicit internal handling
+- if internal views need normalization later, preserve the source currency cleanly now
+
+3. VAT/tax model support
+Add tax display options suitable for international billing.
+
+Support at minimum:
+- no tax
+- sales tax
+- VAT
+- GST placeholder if useful
+- custom/manual tax label
+
+Requirements:
+- allow partner/account level billing tax mode
+- allow invoice/order-level override by internal admin if needed
+- support storing:
+  - tax mode
+  - tax label
+  - tax percentage
+  - tax amount
+  - tax inclusive yes/no
+- support both:
+  - tax added on top
+  - tax included in displayed total
+
+4. Invoice and billing summary display
+Update invoice and billing summaries so they can present:
+- subtotal
+- tax/VAT amount
+- total
+- currency
+- tax label
+- tax rate
+
+Examples:
+- Subtotal: €2,000
+- VAT 20%: €400
+- Total: €2,400
+
+or
+
+- Total includes VAT
+
+Requirements:
+- keep display polished and easy to understand
+- support customer-facing and finance-facing clarity
+- avoid U.S.-only wording when partner/event is international
+
+5. Overseas billing presentation
+Make overseas billing views feel intentional.
+
+Requirements:
+- support billing addresses outside the U.S.
+- avoid hardcoded U.S.-only billing assumptions
+- allow international address formatting flexibility
+- show metric-friendly event context alongside billing where relevant
+- allow finance/internal users to see the billing currency and tax mode clearly
+- keep overseas invoices and summaries polished and confidence-building
+
+6. Partner billing settings
+Extend partner financial/billing settings with:
+- default currency
+- default tax mode
+- default tax label
+- default tax rate
+- tax inclusive yes/no
+- billing country/region placeholder if useful
+- invoice display notes if useful
+
+Keep this editable from software, not code.
+
+7. Order and invoice inheritance logic
+Implement clean inheritance:
+- partner default currency/tax settings flow into events and new orders
+- event can override where needed
+- order/invoice can override by internal admin
+- clearly show where the setting came from:
+  - partner default
+  - event override
+  - order override
+
+8. Customer and internal email impact
+Update customer confirmations and internal billing/order emails so they show:
+- billing currency
+- tax/VAT display when relevant
+- total amount clearly
+- no confusing or missing currency context
+
+Do not expose internal margin or commission logic.
+
+9. Reconciliation and finance impact
+Extend reconciliation and finance views so they store and display:
+- source currency
+- tax mode
+- tax amount
+- billed total
+- paid total
+- outstanding amount
+
+Do not build full FX conversion yet.
+Just preserve source currency cleanly and display it correctly.
+
+10. Seed/demo updates
+Add demo examples for:
+- U.S. order with sales tax
+- overseas order using EUR + VAT
+- overseas invoice showing tax-inclusive or tax-exclusive display
+- partner with international billing defaults
+
+11. Documentation
+Update replit.md with:
+- currency model
+- supported currencies
+- tax/VAT model
+- inheritance logic
+- customer vs internal billing display rules
+- overseas billing behavior
+
+Important:
+Do not rebuild the app.
+Do not change unrelated workflows.
+Extend the current billing, invoice, order summary, email, and finance/reconciliation flows cleanly.
+Actually implement currency and VAT/tax display behavior, not placeholders only.

@@ -141,6 +141,92 @@ export function formatWxHDual(
 }
 
 // ===========================================================================
+// Weight units (April 2026 logistics extension). Mirror of lib/db/src/units.ts.
+// ===========================================================================
+
+export type WeightUnit = "lb" | "oz" | "kg" | "g";
+
+export const WEIGHT_UNIT_LABELS: Record<WeightUnit, string> = {
+  lb: "pounds", oz: "ounces", kg: "kilograms", g: "grams",
+};
+export const WEIGHT_UNIT_SHORT: Record<WeightUnit, string> = {
+  lb: "lb", oz: "oz", kg: "kg", g: "g",
+};
+export const ALL_WEIGHT_UNITS: WeightUnit[] = ["lb", "oz", "kg", "g"];
+export const IMPERIAL_WEIGHT_UNITS: WeightUnit[] = ["lb", "oz"];
+export const METRIC_WEIGHT_UNITS: WeightUnit[] = ["kg", "g"];
+
+const TO_G: Record<WeightUnit, number> = {
+  g: 1, kg: 1000, oz: 28.349523125, lb: 453.59237,
+};
+
+export function weightSystemOf(u: WeightUnit | string | null | undefined): UnitSystem {
+  if (!u) return "imperial";
+  return METRIC_WEIGHT_UNITS.includes(u as WeightUnit) ? "metric" : "imperial";
+}
+
+export function normalizeWeightUnit(u: string | null | undefined): WeightUnit | null {
+  if (!u) return null;
+  const k = String(u).toLowerCase().trim();
+  if (k === "lb" || k === "lbs" || k === "pound" || k === "pounds") return "lb";
+  if (k === "oz" || k === "ounce" || k === "ounces") return "oz";
+  if (k === "kg" || k === "kilogram" || k === "kilograms") return "kg";
+  if (k === "g" || k === "gram" || k === "grams") return "g";
+  return null;
+}
+
+export function convertWeight(value: number | null | undefined, from: WeightUnit | string, to: WeightUnit | string): number {
+  if (value == null || isNaN(Number(value))) return NaN;
+  const f = normalizeWeightUnit(from as string);
+  const t = normalizeWeightUnit(to as string);
+  if (!f || !t) return NaN;
+  if (f === t) return Number(value);
+  return (Number(value) * TO_G[f]) / TO_G[t];
+}
+
+export function defaultWeightUnit(system: UnitSystem): WeightUnit {
+  return system === "metric" ? "kg" : "lb";
+}
+
+export function pickDisplayWeightUnit(grams: number, system: UnitSystem): WeightUnit {
+  if (system === "metric") return grams >= TO_G.kg ? "kg" : "g";
+  return grams >= TO_G.lb ? "lb" : "oz";
+}
+
+export function formatWeight(
+  value: number | null | undefined,
+  unit: WeightUnit | string | null | undefined,
+  opts?: { short?: boolean }
+): string {
+  if (value == null || isNaN(Number(value)) || !unit) return "";
+  const u = normalizeWeightUnit(unit as string);
+  if (!u) return `${value} ${unit}`;
+  const decimals = u === "g" || u === "oz" ? 1 : 2;
+  const f = Math.pow(10, decimals);
+  const v = Math.round(Number(value) * f) / f;
+  const label = opts?.short === false ? WEIGHT_UNIT_LABELS[u] : WEIGHT_UNIT_SHORT[u];
+  return `${v} ${label}`;
+}
+
+export function formatWeightDual(
+  value: number | null | undefined,
+  unit: WeightUnit | string | null | undefined,
+  preferredSystem?: UnitSystem,
+): { primary: string; secondary: string | null; converted: boolean } {
+  if (value == null || isNaN(Number(value)) || !unit) return { primary: "", secondary: null, converted: false };
+  const u = normalizeWeightUnit(unit as string);
+  if (!u) return { primary: `${value} ${unit}`, secondary: null, converted: false };
+  const primary = formatWeight(value, u);
+  if (!preferredSystem || weightSystemOf(u) === preferredSystem) {
+    return { primary, secondary: null, converted: false };
+  }
+  const grams = Number(value) * TO_G[u];
+  const target = pickDisplayWeightUnit(grams, preferredSystem);
+  const cv = grams / TO_G[target];
+  return { primary, secondary: formatWeight(cv, target), converted: true };
+}
+
+// ===========================================================================
 // Measurement-aware pricing helpers (April 2026 extension).
 // Mirror of helpers in @workspace/db; kept inline so the client doesn't have
 // to import server packages. Keep API in sync with lib/db/src/units.ts.

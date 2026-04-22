@@ -1,0 +1,152 @@
+Refine the existing Partner Commerce Portal by extending the email delivery system to support multiple forwarding emails by role.
+
+Goal:
+When an order is submitted, allow the software to send confirmation emails to the customer and route internal order emails to one or more configured recipients by role, such as ops, finance, partner contact, or project manager.
+
+Scope:
+Keep this pass tightly focused on email routing and forwarding logic only.
+Do not rebuild unrelated workflows.
+
+Requirements:
+
+1. Multi-recipient partner email settings
+Extend the partner email settings area so internal admin can configure multiple recipient emails by role.
+
+Support at minimum:
+- primary internal forwarding email
+- ops email
+- finance email
+- partner contact email
+- project manager email
+- optional cc emails
+- optional bcc emails if useful
+- active/inactive toggle per recipient if feasible
+
+Requirements:
+- all emails should be editable from the software
+- validate email format
+- make the UI clean and easy to scan
+- keep it obvious which recipient gets what type of message
+
+2. Recipient role model
+Add a structured recipient model such as:
+- customer confirmation recipient
+- internal ops recipient
+- finance recipient
+- partner contact recipient
+- vendor notification recipient placeholder if useful later
+
+Requirements:
+- each recipient role should be stored cleanly
+- allow one or more emails per role if useful
+- support active/inactive state
+- support optional notes per recipient
+
+3. Email routing rules
+When an order is submitted, the system should route emails like this:
+
+Customer confirmation email:
+- send to the customer email entered on the order
+
+Internal order email:
+- send to the configured internal forwarding recipients based on active settings
+
+At minimum support:
+- ops gets operational order summary
+- finance can get billing/order summary if enabled
+- partner contact can get a partner-facing copy if enabled
+- primary forwarding email receives the full internal order message
+
+Requirements:
+- allow internal admin to decide which roles are active for that partner
+- do not force every role to receive every order
+- keep rules simple and configurable
+
+4. Distinct email templates by audience
+Support separate email templates or variants for:
+- customer confirmation
+- internal ops order email
+- finance notification
+- partner contact notification
+
+Customer confirmation should feel:
+- branded
+- reassuring
+- concise
+
+Ops email should feel:
+- operational
+- detailed
+- easy to scan
+
+Finance email should feel:
+- focused on billing/contact/payment relevant details
+- not overloaded with unnecessary production detail unless useful
+
+Partner contact email should feel:
+- polished
+- informative
+- appropriate for external/internal partner coordination
+
+5. Routing configuration in software
+In the partner email settings UI, add controls such as:
+- toggles for which recipient roles receive order emails
+- editable emails for each role
+- default subject label if useful
+- test send action if feasible
+- clear status showing whether routing is fully configured
+
+6. Order submission behavior
+After order submission:
+- save the order normally
+- send customer confirmation
+- send internal ops/order forward email to configured recipients
+- send finance email if enabled
+- send partner contact email if enabled
+- log what was attempted and to whom if feasible
+
+Requirements:
+- if one recipient fails, do not fail the entire order
+- handle partial email failure safely
+- show a safe success or partial-success state
+- log send errors internally where possible
+
+7. Activity and communications logging
+If the system already has communications or activity history:
+- log each email sent or attempted
+- show recipient role
+- show destination email
+- show send status
+- tie logs to the order and partner where appropriate
+
+8. UI and usability
+In the partner settings/email area, make this feel polished and easy to manage.
+
+Add:
+- clear section grouping by audience
+- logo/branding preview if already supported
+- helper text explaining who receives what
+- test email buttons if feasible
+- warning state if no internal recipients are configured
+
+9. Seed/demo updates
+Update demo data to show:
+- one partner with ops email
+- one finance email
+- one partner contact email
+- routing enabled for multiple roles
+- example customer confirmation and internal routing behavior
+
+10. Documentation
+Update replit.md with:
+- how multi-recipient email routing works
+- what recipient roles exist
+- how routing is configured in partner settings
+- how partial failures are handled
+- how customer vs internal email templates differ
+
+Important:
+Do not rebuild the app.
+Do not change unrelated workflows.
+Extend the current partner settings, communications, and order submission email flow cleanly.
+Actually implement the multi-recipient routing behavior, not placeholders only.
