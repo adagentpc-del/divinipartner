@@ -7,16 +7,30 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, Download, Loader2, CheckCircle2, AlertTriangle, ArrowRight, ArrowLeft, FileSpreadsheet } from "lucide-react";
 
-type Resource = "suppliers" | "products" | "specs";
+type Resource = "suppliers" | "products" | "specs" | "venues" | "branding-locations" | "zone-measurements";
 type Field = { key: string; label: string; required?: boolean; type: string; description?: string };
 type ParseResp = { headers: string[]; rows: Record<string, unknown>[]; rowCount: number; suggestedMap: Record<string, string>; sample: Record<string, unknown>[] };
 type CommitResp = { created: number; updated: number; skipped: number; failed: number; errors: { row: number; error: string }[]; createdIds: number[]; updatedIds: number[] };
 
-const TITLES: Record<Resource, string> = { suppliers: "Import Suppliers", products: "Import Products", specs: "Import Product Specs" };
+const TITLES: Record<Resource, string> = {
+  suppliers: "Import Suppliers",
+  products: "Import Products",
+  specs: "Import Product Specs",
+  venues: "Import Venues",
+  "branding-locations": "Import Branding Zones",
+  "zone-measurements": "Import Zone Measurements",
+};
 
 export function ImportDialog({
-  resource, open, onOpenChange, onComplete,
-}: { resource: Resource; open: boolean; onOpenChange: (o: boolean) => void; onComplete?: () => void }) {
+  resource, open, onOpenChange, onComplete, context, contextLabel,
+}: {
+  resource: Resource;
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  onComplete?: () => void;
+  context?: { partnerId?: number; venueId?: number };
+  contextLabel?: string;
+}) {
   const { toast } = useToast();
   const [step, setStep] = useState<0 | 1 | 2 | 3>(0);
   const [fields, setFields] = useState<Field[]>([]);
@@ -75,7 +89,7 @@ export function ImportDialog({
     try {
       const r = await apiFetch(`/api/imports/commit`, {
         method: "POST",
-        body: JSON.stringify({ resource, mode, rows: mappedRows }),
+        body: JSON.stringify({ resource, mode, rows: mappedRows, context }),
         headers: { "Content-Type": "application/json" },
       });
       setResult(r);
@@ -101,7 +115,7 @@ export function ImportDialog({
     <Dialog open={open} onOpenChange={close}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><FileSpreadsheet className="h-5 w-5" />{TITLES[resource]}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2"><FileSpreadsheet className="h-5 w-5" />{TITLES[resource]}{contextLabel && <span className="text-xs font-normal text-muted-foreground ml-2">→ {contextLabel}</span>}</DialogTitle>
         </DialogHeader>
 
         <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4">

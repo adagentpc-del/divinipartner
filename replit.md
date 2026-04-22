@@ -317,3 +317,15 @@ Field schemas + coercion: `artifacts/api-server/src/lib/importSchemas.ts` (typed
 Suppliers schema extended with `companyName`, `website`, `addressLine`, `city`, `state`, `postalCode`, `country`, `defaultLeadTimeDays`, `notes` (`lib/db/src/schema/suppliers.ts`); SupplierBody zod updated; `pnpm --filter @workspace/db run push-force` applied.
 
 Dedupe: suppliers by `name` OR `contactEmail`; products by `sku` OR `name`; specs by `sku` then `name` (specs in `update` mode skip non-matching rows). New supplier/product rows auto-generate slug from name.
+
+### Section 25 extension — Venue branding bulk import (April 22, 2026)
+
+Three additional resources were added to the same wizard:
+
+- **Venues** — `CitiesAndVenues` (per-partner page) "Import Venues" button. Resolves `City` by name (partner-scoped) and validates `Unit Preference` ∈ `imperial|metric`. Dedupe by `(partnerId, name)`. Country accepts ISO codes.
+- **Branding zones** — `BrandingLocations` (per-partner page) "Import Zones" button. Maps to `partnerBrandingLocationsTable`. Required to create: `name`, `category`. Optional `Zone Code` is the preferred dedupe key (falls back to `name`). Pricing fields (`pricingModel`, `unitRate`, `pricingUnit`, `minBillableSize`, `minCharge`, `allowsCustomSize`) and dimension fields (size + artwork in any unit, with bleed/safe-zone/visible) are normalized via `withMmColumns`. `Recommended Supplier` resolved by name. `Review Status` ∈ `approved|needs_review|rejected`.
+- **Zone measurements** — `BrandingLocations` "Import Measurements" button. Update-only: matches existing zones by `(partnerId, internalCode)` then `(partnerId, name)`. Used to refresh dimensions across a venue rollout without recreating zones; non-matching rows are flagged for review.
+
+Frontend `ImportDialog` now accepts `context: { partnerId?, venueId? }` plus `contextLabel` for display. Backend `CommitBody` accepts the same context object — when `partnerId` is provided by the calling page, the `Partner (by name)` column becomes optional and the import is automatically scoped to that partner. Branding-zone and zone-measurement imports require a partner (either via context or the column); rows that cannot be resolved are returned in the per-row error report rather than silently dropped.
+
+Commit handlers for all three new resources are wrapped in `db.transaction` so a failed batch leaves no partial writes. CSV templates include US imperial + EU metric sample rows that mirror the live admin UI conventions.

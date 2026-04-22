@@ -1,0 +1,134 @@
+Refine the existing Partner Commerce Portal by cleaning up the main menu/navigation so it no longer stretches across the full screen and forces horizontal scrolling.
+
+Goal:
+I need the menu cleaned up so it does not span the entire width of the screen and force me to scroll to the right to see all menu items. Instead, overflow items should continue inside a cleaner dropdown or grouped menu structure.
+
+Scope:
+Keep this pass tightly focused on:
+1. main navigation cleanup
+2. removing horizontal overflow
+3. dropdown/grouped menu behavior
+4. preserving easy access to important sections
+
+Do not rebuild unrelated workflows.
+
+Requirements:
+
+1. Remove horizontal menu overflow
+The main menu should no longer stretch so wide that the user has to scroll horizontally to see all items.
+
+Requirements:
+- prevent menu items from running off the visible screen width
+- no horizontal page scrolling caused by navigation
+- keep the layout responsive and clean on desktop and laptop screens
+- preserve usability on smaller screens as well
+
+2. Primary vs overflow navigation structure
+Reorganize the menu so the most important/high-frequency items stay visible, and lower-priority or overflow items move into a dropdown menu.
+
+Examples of visible top-level items may include:
+- Dashboard
+- Partners
+- Orders
+- Events
+- Products
+- Suppliers
+
+Then put the rest into a clear grouped dropdown such as:
+- More
+- Admin
+- Operations
+- Settings
+
+Requirements:
+- visible top-level items should stay concise
+- extra items should go into a dropdown or grouped menu
+- keep the dropdown easy to scan
+- do not hide important actions in a confusing way
+
+3. Dropdown / grouped menu behavior
+Add a cleaner overflow menu experience.
+
+Requirements:
+- use a dropdown, popover, or grouped menu for extra items
+- items inside the dropdown should be clearly labeled
+- if useful, group related items under headings such as:
+  - Operations
+  - Catalog
+  - Billing
+  - Analytics
+  - Settings
+- support hover or click behavior that feels polished and stable
+- do not create awkward nested menus unless truly needed
+
+4. Responsive behavior
+Make the navigation responsive across screen sizes.
+
+Requirements:
+- on wider screens, show the primary items plus overflow dropdown
+- on medium/smaller screens, collapse more intelligently
+- if a hamburger/menu drawer already exists, improve it instead of duplicating systems
+- no broken wrapping, clipping, or horizontal overflow
+
+5. Keep frequent actions easy to access
+Do not solve this by hiding everything.
+
+Requirements:
+- keep the highest-value screens easy to access
+- reduce clutter without making navigation slower
+- prioritize what internal admins actually use most often
+- if feasible, preserve quick access to current/active section context
+
+6. Current page visibility
+Make it clear which menu item or section the user is currently in.
+
+Requirements:
+- active nav item styling
+- active dropdown group highlight if applicable
+- consistent selected state treatment
+- avoid confusion when a page lives under the overflow menu
+
+7. Navigation cleanup and IA polish
+Improve the information architecture of the menu if needed.
+
+Requirements:
+- reduce duplicate or overly granular top-level nav items
+- group related modules logically
+- keep naming concise and clear
+- if multiple admin-only tools clutter the main bar, move them into a cleaner grouped admin menu
+
+8. Visual polish
+Keep the navigation premium and clean.
+
+Improve:
+- spacing
+- alignment
+- item grouping
+- dropdown styling
+- hover states
+- active states
+- menu width
+- icon alignment if icons are used
+
+Avoid:
+- horizontal overflow
+- cramped top nav
+- tiny hard-to-scan dropdown items
+- wrapping that looks broken
+- too many top-level items fighting for space
+
+9. Seed/demo verification
+Update demo/seed usage if needed so the cleaned navigation can be tested with the current full app menu structure.
+
+10. Documentation
+Update replit.md with:
+- the new navigation structure
+- how overflow items are handled
+- how responsive nav behavior works
+- which menu groups were introduced if any
+
+Important:
+Do not rebuild the app.
+Do not change unrelated workflows.
+Refactor the current navigation/menu system cleanly.
+Actually implement a responsive overflow/dropdown menu structure so the app no longer requires horizontal scrolling to see navigation items.

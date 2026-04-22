@@ -14,6 +14,7 @@ import { normalizeUnit, convert, type LengthUnit, type PricingModel, type Pricin
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Loader2, Plus, Pencil, Trash2, MapPin, Eye, EyeOff, Check, AlertTriangle, Upload, FileText } from "lucide-react";
+import { ImportDialog } from "@/components/imports/ImportDialog";
 import { Link, useLocation } from "wouter";
 
 interface BrandingLocation {
@@ -69,6 +70,8 @@ export default function BrandingLocations() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [extractions, setExtractions] = useState<any[]>([]);
+  const [importZonesOpen, setImportZonesOpen] = useState(false);
+  const [importMeasurementsOpen, setImportMeasurementsOpen] = useState(false);
 
   const loadLocations = () => {
     fetch(`/api/partners/${id}/branding-locations`)
@@ -225,11 +228,32 @@ export default function BrandingLocations() {
               <Check className="h-3.5 w-3.5" /> Approve All ({reviewCount})
             </Button>
           )}
+          <Button size="sm" variant="outline" onClick={() => setImportZonesOpen(true)} className="gap-1.5">
+            <Upload className="h-3.5 w-3.5" /> Import Zones
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setImportMeasurementsOpen(true)} className="gap-1.5">
+            <Upload className="h-3.5 w-3.5" /> Import Measurements
+          </Button>
           <Button size="sm" onClick={openNew} className="gap-1.5">
             <Plus className="h-3.5 w-3.5" /> Add Location
           </Button>
         </div>
       </div>
+
+      <ImportDialog
+        resource="branding-locations"
+        open={importZonesOpen}
+        onOpenChange={setImportZonesOpen}
+        context={{ partnerId: id }}
+        onComplete={loadLocations}
+      />
+      <ImportDialog
+        resource="zone-measurements"
+        open={importMeasurementsOpen}
+        onOpenChange={setImportMeasurementsOpen}
+        context={{ partnerId: id }}
+        onComplete={loadLocations}
+      />
 
       {extractions.length > 0 && (
         <Card>

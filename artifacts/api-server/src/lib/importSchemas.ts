@@ -11,7 +11,7 @@ export interface ImportField {
   description?: string;
 }
 
-export type Resource = "suppliers" | "products" | "specs";
+export type Resource = "suppliers" | "products" | "specs" | "venues" | "branding-locations" | "zone-measurements";
 
 export const SUPPLIER_FIELDS: ImportField[] = [
   { key: "name", label: "Supplier Name", required: true, type: "string", aliases: ["supplier", "vendor", "vendor name"] },
@@ -81,10 +81,83 @@ export const SPEC_FIELDS: ImportField[] = [
   { key: "shippingWeightUnit", label: "Weight Unit", type: "string", aliases: ["weight unit"], description: "kg, g, lb, oz" },
 ];
 
+export const VENUE_FIELDS: ImportField[] = [
+  { key: "name", label: "Venue Name", required: true, type: "string", aliases: ["venue", "venue name", "site"] },
+  { key: "partnerName", label: "Partner (by name)", type: "string", aliases: ["partner", "partner name", "client"], description: "Existing partner name to link" },
+  { key: "cityName", label: "City", type: "string", aliases: ["city", "town"] },
+  { key: "venueAddress", label: "Venue Address", type: "string", aliases: ["address"] },
+  { key: "shippingAddress", label: "Shipping Address", type: "string", aliases: ["ship address"] },
+  { key: "country", label: "Country (ISO)", type: "string", aliases: ["country", "country code"], description: "ISO code (US, GB, FR, …)" },
+  { key: "unitPreference", label: "Unit Preference", type: "string", aliases: ["units", "measurement system"], description: "imperial or metric" },
+  { key: "onsiteContactName", label: "Onsite Contact", type: "string", aliases: ["contact", "site contact"] },
+  { key: "onsiteContactPhone", label: "Onsite Phone", type: "string", aliases: ["contact phone"] },
+  { key: "onsiteContactEmail", label: "Onsite Email", type: "email", aliases: ["contact email"] },
+  { key: "installNotes", label: "Install Notes", type: "string", aliases: ["installation"] },
+  { key: "shippingInstructions", label: "Shipping Instructions", type: "string", aliases: ["shipping notes"] },
+  { key: "deadlineNotes", label: "Deadline Notes", type: "string" },
+  { key: "imageUrl", label: "Image URL", type: "url", aliases: ["image", "photo"] },
+  { key: "isActive", label: "Active", type: "boolean", aliases: ["active", "enabled"] },
+  { key: "sortOrder", label: "Display Order", type: "integer", aliases: ["order", "sort"] },
+];
+
+export const BRANDING_LOCATION_FIELDS: ImportField[] = [
+  { key: "name", label: "Zone Name", required: true, type: "string", aliases: ["zone", "location", "branding zone", "name"] },
+  { key: "partnerName", label: "Partner (by name)", type: "string", aliases: ["partner", "client"], description: "Required unless importing into a partner context" },
+  { key: "internalCode", label: "Zone Code", type: "string", aliases: ["code", "internal code", "ref", "reference"] },
+  { key: "category", label: "Category", required: true, type: "string", aliases: ["type", "zone category"] },
+  { key: "description", label: "Description", type: "string", aliases: ["short description", "desc"] },
+  { key: "sizeWidth", label: "Width", type: "number", aliases: ["w", "width"] },
+  { key: "sizeHeight", label: "Height", type: "number", aliases: ["h", "height"] },
+  { key: "sizeDepth", label: "Depth", type: "number", aliases: ["d", "depth"] },
+  { key: "sizeDiameter", label: "Diameter", type: "number", aliases: ["dia", "diameter"] },
+  { key: "sizeUnit", label: "Size Unit", type: "unit", aliases: ["unit", "units"], description: "in, ft, mm, cm, m" },
+  { key: "artworkWidth", label: "Artwork Width", type: "number", aliases: ["art w"] },
+  { key: "artworkHeight", label: "Artwork Height", type: "number", aliases: ["art h"] },
+  { key: "artworkUnit", label: "Artwork Unit", type: "unit" },
+  { key: "bleed", label: "Bleed", type: "number" },
+  { key: "safeArea", label: "Safe Zone", type: "number", aliases: ["safe zone", "safe area"] },
+  { key: "visibleWidth", label: "Visible Width", type: "number" },
+  { key: "visibleHeight", label: "Visible Height", type: "number" },
+  { key: "pricingModel", label: "Pricing Model", type: "string", aliases: ["pricing"], description: "fixed, per_sqft, per_sqm, custom" },
+  { key: "unitRate", label: "Unit Rate / Price", type: "number", aliases: ["price", "base price", "rate"] },
+  { key: "pricingUnit", label: "Pricing Unit", type: "string" },
+  { key: "minBillableSize", label: "Min Billable Size", type: "number" },
+  { key: "minCharge", label: "Min Charge", type: "number" },
+  { key: "allowsCustomSize", label: "Allows Custom Size", type: "boolean", aliases: ["custom size", "custom quote"] },
+  { key: "defaultSupplierName", label: "Recommended Supplier", type: "string", aliases: ["supplier", "recommended product supplier"] },
+  { key: "productionNotesInternal", label: "Production Notes", type: "string", aliases: ["material", "finishing", "attachment", "install method"] },
+  { key: "installNotesInternal", label: "Install Notes", type: "string", aliases: ["install"] },
+  { key: "artworkGuidelines", label: "Artwork Guidelines", type: "string" },
+  { key: "reviewStatus", label: "Review Status", type: "string", description: "needs_review, approved, rejected" },
+  { key: "isActive", label: "Active", type: "boolean", aliases: ["active", "enabled"] },
+  { key: "sortOrder", label: "Display Order", type: "integer", aliases: ["order", "sort"] },
+];
+
+export const ZONE_MEASUREMENT_FIELDS: ImportField[] = [
+  { key: "name", label: "Zone Name (match)", type: "string", aliases: ["zone", "location"], description: "Match existing zone by name when no code" },
+  { key: "internalCode", label: "Zone Code (match)", type: "string", aliases: ["code", "ref"], description: "Preferred match key" },
+  { key: "partnerName", label: "Partner (by name)", type: "string", aliases: ["partner"], description: "Required unless importing into a partner context" },
+  { key: "sizeWidth", label: "Width", type: "number", aliases: ["w"] },
+  { key: "sizeHeight", label: "Height", type: "number", aliases: ["h"] },
+  { key: "sizeDepth", label: "Depth", type: "number" },
+  { key: "sizeDiameter", label: "Diameter", type: "number" },
+  { key: "sizeUnit", label: "Size Unit", type: "unit", description: "in, ft, mm, cm, m" },
+  { key: "artworkWidth", label: "Artwork Width", type: "number" },
+  { key: "artworkHeight", label: "Artwork Height", type: "number" },
+  { key: "artworkUnit", label: "Artwork Unit", type: "unit" },
+  { key: "bleed", label: "Bleed", type: "number" },
+  { key: "safeArea", label: "Safe Zone", type: "number" },
+  { key: "visibleWidth", label: "Visible Width", type: "number" },
+  { key: "visibleHeight", label: "Visible Height", type: "number" },
+];
+
 export const FIELDS_BY_RESOURCE: Record<Resource, ImportField[]> = {
   suppliers: SUPPLIER_FIELDS,
   products: PRODUCT_FIELDS,
   specs: SPEC_FIELDS,
+  venues: VENUE_FIELDS,
+  "branding-locations": BRANDING_LOCATION_FIELDS,
+  "zone-measurements": ZONE_MEASUREMENT_FIELDS,
 };
 
 const VALID_LENGTH_UNITS = new Set(["in", "ft", "mm", "cm", "m"]);

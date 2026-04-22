@@ -12,7 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Loader2, Pencil, Trash2, MapPin, Building2, Copy, ChevronLeft } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2, MapPin, Building2, Copy, ChevronLeft, Upload } from "lucide-react";
+import { ImportDialog } from "@/components/imports/ImportDialog";
 import { UnitPreferenceSelect } from "@/components/units/DimensionInput";
 
 type City = { id: number; partnerId: number | null; name: string; state: string | null; country: string | null; notes: string | null; isActive: boolean; sortOrder: number };
@@ -134,6 +135,7 @@ export default function CitiesAndVenues() {
   const { data: venues = [], isLoading: loadingVenues } = useQuery<Venue[]>({ queryKey: [`/api/venues`, { partnerId }], queryFn: () => apiFetch(`/api/venues?partnerId=${partnerId}`) });
 
   const refetchAll = () => { qc.invalidateQueries({ queryKey: [`/api/cities`, { partnerId }] }); qc.invalidateQueries({ queryKey: [`/api/venues`, { partnerId }] }); };
+  const [importVenuesOpen, setImportVenuesOpen] = useState(false);
   const delCity = useMutation({ mutationFn: (id: number) => apiFetch(`/api/cities/${id}`, { method: "DELETE" }), onSuccess: () => { refetchAll(); toast({ title: "City deleted" }); } });
   const delVenue = useMutation({ mutationFn: (id: number) => apiFetch(`/api/venues/${id}`, { method: "DELETE" }), onSuccess: () => { refetchAll(); toast({ title: "Venue deleted" }); } });
   const dupVenue = useMutation({ mutationFn: (id: number) => apiFetch(`/api/venues/${id}/duplicate`, { method: "POST" }), onSuccess: () => { refetchAll(); toast({ title: "Venue duplicated" }); } });
@@ -176,7 +178,18 @@ export default function CitiesAndVenues() {
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold flex items-center gap-2"><Building2 className="h-5 w-5 text-muted-foreground" />Venues</h2>
-          <VenueDialog partnerId={partnerId} cities={cities} trigger={<Button size="sm" className="gap-2" disabled={cities.length === 0}><Plus className="h-4 w-4" />Add Venue</Button>} onSaved={refetchAll} />
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" className="gap-2" onClick={() => setImportVenuesOpen(true)} disabled={cities.length === 0}><Upload className="h-4 w-4" />Import Venues</Button>
+            <VenueDialog partnerId={partnerId} cities={cities} trigger={<Button size="sm" className="gap-2" disabled={cities.length === 0}><Plus className="h-4 w-4" />Add Venue</Button>} onSaved={refetchAll} />
+          </div>
+          <ImportDialog
+            resource="venues"
+            open={importVenuesOpen}
+            onOpenChange={setImportVenuesOpen}
+            context={{ partnerId }}
+            contextLabel={partner?.companyName}
+            onComplete={refetchAll}
+          />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {venues.map(v => (

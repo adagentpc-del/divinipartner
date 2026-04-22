@@ -1,0 +1,142 @@
+Refine the existing Partner Commerce Portal by adding visual admin status cards for connected reusable/rentable asset families, so I can instantly see total owned, claimed, remaining, and whether the ordering flow has switched to full-unit-required mode.
+
+Goal:
+On the partner page and relevant admin/product-family views, I need a clean visual summary for connected reusable assets such as Easy Up tent frames.
+
+Example:
+- Total frames owned: 60
+- Claimed / reserved: 42
+- Remaining: 18
+- Ordering mode: Use existing frames while available
+- When remaining hits 0: Automatically switch to frame-required / full-unit mode
+
+Scope:
+Keep this pass tightly focused on:
+1. asset family status cards
+2. claimed vs remaining visibility
+3. current ordering mode visibility
+4. zero-remaining warning and full-unit-required state display
+
+Do not rebuild unrelated workflows.
+
+Requirements:
+
+1. Partner asset status cards
+On the partner profile page, add a clean visual section for reusable/rentable asset families.
+
+For each connected family, show at minimum:
+- asset family name
+- base hardware name
+- total quantity owned
+- claimed / reserved quantity
+- available quantity remaining
+- current ordering mode
+- status badge
+
+Example card:
+- Easy Up Tent Family
+- Frame Hardware
+- 60 total
+- 42 claimed
+- 18 remaining
+- Mode: Existing Frame Available
+
+2. Ordering mode display
+Show the current behavior state clearly.
+
+Support states such as:
+- Existing hardware available
+- Low remaining inventory
+- Fully claimed
+- Full unit required
+- Manual review if needed
+
+Requirements:
+- when available quantity > 0, show that component-only / existing-hardware ordering is available
+- when available quantity = 0, show that ordering has switched to full-unit-required mode
+- make the status visually obvious
+
+3. Low inventory / zero inventory thresholds
+Add threshold-aware styling.
+
+Examples:
+- healthy inventory
+- low remaining
+- exhausted / zero remaining
+
+Requirements:
+- visually distinguish these states with clear cards, badges, or color-coded indicators
+- if feasible, allow internal admin to define a low-stock threshold per asset family
+- if no custom threshold exists, use a sensible default
+
+4. Claim and availability math
+Use the real partner-owned inventory logic already in the system.
+
+Requirements:
+- total owned should reflect the stored partner-owned hardware quantity
+- claimed / reserved should reflect real order/event allocations
+- available should be calculated correctly
+- if orders are cancelled/released, available count should update accordingly
+- never show misleading static numbers
+
+5. Full-unit-required state visibility
+When the asset family is exhausted:
+- show a very clear visual state such as:
+  - 0 remaining
+  - Full unit required
+  - Existing hardware no longer available
+- if feasible, add a short explanation under the card
+- make this visible not only on the partner page, but also where relevant in product family/admin views
+
+6. Product family/admin detail visibility
+In the connected product family or relevant admin area, show the same summary:
+- family name
+- total base hardware
+- claimed
+- remaining
+- current ordering mode
+- component ordering allowed yes/no
+
+This helps internal admin quickly understand why the order flow has changed.
+
+7. Optional quick actions
+If feasible, add quick admin actions from the card such as:
+- view claims/reservations
+- edit total owned quantity
+- view related orders
+- adjust threshold
+- go to connected product family
+
+Keep this clean and useful, not cluttered.
+
+8. Client/order flow awareness
+If useful, reflect a simplified version of the state in relevant ordering/admin previews.
+
+Examples:
+- Existing frame inventory available
+- Limited frame inventory remaining
+- New frame required
+
+Do not overwhelm the client-facing UI with internal inventory math.
+Keep the detailed counts primarily for admin/internal visibility.
+
+9. Seed/demo updates
+Add demo examples showing:
+- Easy Up family with 60 total frames
+- example state with 42 claimed / 18 left
+- example low inventory state
+- example zero remaining / full-unit-required state
+
+10. Documentation
+Update replit.md with:
+- where asset family status cards appear
+- what numbers are shown
+- how remaining quantity is calculated
+- what ordering mode states exist
+- how zero remaining triggers full-unit-required mode display
+
+Important:
+Do not rebuild the app.
+Do not change unrelated workflows.
+Extend the current partner profile, connected product family, and asset inventory/admin views cleanly.
+Actually implement the visual status cards and ordering mode visibility, not placeholders only.
