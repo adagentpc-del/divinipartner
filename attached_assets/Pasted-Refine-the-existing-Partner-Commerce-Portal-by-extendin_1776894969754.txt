@@ -1,0 +1,193 @@
+Refine the existing Partner Commerce Portal by extending the rentable/reusable asset logic so product families like Easy Up tents can track partner-owned hardware inventory and automatically switch ordering behavior once that inventory is fully claimed.
+
+Goal:
+I need connected product-family logic where a partner can have existing reusable/rentable hardware inventory, such as 60 Easy Up tent frames, and the ordering flow should:
+1. allow print/components-only ordering while frames are still available
+2. track how many frames are already claimed/reserved
+3. once all 60 frames are claimed, automatically change the order structure so new orders require the frame hardware too
+
+Example:
+Partner owns:
+- 60 Easy Up tent frames
+
+Orderable connected components:
+- printed fabric canopy top
+- printed backdrop / back wall
+- printed side walls
+- other compatible graphic/fabric pieces
+
+Behavior needed:
+- while frames are still available, clients can order components tied to existing frames
+- once 60 frames are fully allocated/claimed, the next order should automatically shift to ordering a full unit or include frame hardware requirement
+
+Scope:
+Keep this pass tightly focused on:
+1. connected product-family logic
+2. partner-owned hardware quantity tracking
+3. automatic availability/claim behavior
+4. ordering logic shift once reusable hardware is exhausted
+
+Do not rebuild unrelated workflows.
+
+Requirements:
+
+1. Connected product family model
+Add support for connected product families where one hardware base item can have multiple dependent graphic/components.
+
+Example family:
+Easy Up Tent Family
+- frame hardware
+- printed canopy top
+- printed backdrop / back wall
+- printed side wall left
+- printed side wall right
+- optional accessories if relevant
+
+Requirements:
+- allow internal admin to define a product family
+- allow assigning a hardware/base item
+- allow assigning dependent components
+- clearly mark which components require the hardware/base item to exist
+- keep this understandable in admin/product setup
+
+2. Partner-owned hardware inventory tracking
+For each partner, allow tracking owned hardware inventory tied to a product family.
+
+Example:
+- Product family: Easy Up Tent
+- Asset: Easy Up frame hardware
+- Quantity owned: 60
+- Quantity available: derived
+- Quantity reserved/claimed: derived
+- Quantity in use if relevant
+- Quantity remaining: derived
+
+Requirements:
+- tie partner-owned assets to the connected product family
+- preserve existing city/location logic if already supported
+- allow internal admin to edit starting quantity
+- keep claimed/reserved logic visible in the partner profile and inventory/admin views
+
+3. Claim/reservation logic
+When an order uses partner-owned reusable hardware:
+- reserve/claim the needed hardware quantity from the partner asset pool
+- reduce available count
+- track claim at the order/event level
+- make the claimed quantity visible in inventory and order detail
+
+Example:
+Partner has 60 frames.
+If 20 event orders claim a total of 60 frames, available quantity becomes 0.
+
+Requirements:
+- support reservation/claiming based on order quantity
+- if quantity is released/cancelled, return assets back to available inventory
+- integrate with existing reservation logic if already built
+- do not allow invisible over-allocation
+
+4. Automatic ordering logic switch
+Once the partner-owned hardware for that family is fully claimed/exhausted:
+- automatically change the ordering behavior for future orders
+
+Behavior needed:
+- while reusable hardware is available:
+  - allow “use existing partner-owned frame”
+  - allow print-only/components ordering
+- when reusable hardware is no longer available:
+  - remove or disable the “use existing partner-owned frame” option
+  - automatically require the frame hardware/new full unit ordering path
+  - update add-on/full-unit logic accordingly
+
+Example:
+Frames available > 0:
+- canopy top only allowed
+- backdrop allowed
+- side walls allowed
+- use existing frame option visible
+
+Frames available = 0:
+- use existing frame option hidden/disabled
+- ordering flow now requires frame hardware/new full unit path
+
+5. Order flow behavior
+In the client-facing ordering flow:
+- make the available path depend on current asset availability
+- if reusable hardware exists, allow component-only ordering
+- if reusable hardware is exhausted, show the correct full-unit or hardware-required option
+- do not confuse the client with internal jargon
+
+Client-facing language should be simple and clean, such as:
+- Use existing tent frame
+- Order replacement canopy top only
+- Add side walls to existing tent setup
+- New tent frame required
+
+Internal admin views can be more specific.
+
+6. Product capability rules
+Extend product-family and product capability rules so internal admin can configure:
+- requires existing hardware
+- compatible with partner-owned reusable hardware
+- can be ordered as component only
+- can be ordered as full unit
+- auto-switch to full unit when reusable hardware unavailable
+- default quantity-per-hardware relationship if useful
+
+Example:
+- canopy top requires 1 frame
+- side wall may require existing tent frame
+- backdrop may require existing tent frame
+- frame hardware can be ordered as full unit base
+
+7. Add-On behavior for connected families
+In the partner builder and portal:
+- allow connected family components to be selected as add-ons
+- if reusable hardware exists, show those components as valid add-ons tied to that partner’s assets
+- once reusable hardware runs out, adjust the add-on behavior accordingly
+
+Requirements:
+- keep add-ons easy to manage in the partner builder
+- show which add-ons depend on reusable hardware
+- show when those add-ons are still valid because hardware exists
+- show when the hardware requirement changes
+
+8. Availability display and admin clarity
+In admin and partner setup views, clearly show:
+- total partner-owned hardware
+- currently claimed/reserved
+- currently available
+- threshold reached / exhausted
+- whether ordering is currently in:
+  - reusable-hardware mode
+  - full-unit-required mode
+
+If feasible, show this in the product family or partner asset section as a clean status card.
+
+9. Over-allocation safeguards
+If a client attempts to order using reusable hardware when the quantity is exhausted:
+- block or warn clearly
+- route the order into the correct full-unit/new hardware path
+- do not silently accept an invalid print-only order dependent on unavailable hardware
+
+10. Seed/demo updates
+Add demo examples showing:
+- partner with 60 Easy Up frames
+- connected Easy Up family with canopy top, backdrop, and side walls
+- several claims/reservations consuming those 60 frames
+- one order while frames are still available
+- one order after frames are exhausted, automatically shifting to frame-required ordering
+
+11. Documentation
+Update replit.md with:
+- connected product-family model
+- partner-owned reusable hardware logic
+- claim/reservation behavior
+- automatic switch to full-unit ordering when hardware is exhausted
+- how add-ons behave within connected product families
+- how cancellation/release restores inventory if applicable
+
+Important:
+Do not rebuild the app.
+Do not change unrelated workflows.
+Extend the current product family, partner asset inventory, add-on, and ordering logic cleanly.
+Actually implement connected family tracking and automatic ordering-mode switching, not placeholders only.

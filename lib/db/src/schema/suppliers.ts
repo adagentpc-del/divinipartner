@@ -1,4 +1,4 @@
-import { pgTable, serial, text, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, boolean, timestamp, jsonb, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -16,6 +16,15 @@ export const suppliersTable = pgTable("suppliers", {
   contactName: text("contact_name"),
   contactEmail: text("contact_email"),
   contactPhone: text("contact_phone"),
+  companyName: text("company_name"),
+  website: text("website"),
+  addressLine: text("address_line"),
+  city: text("city"),
+  state: text("state"),
+  postalCode: text("postal_code"),
+  country: text("country"),
+  defaultLeadTimeDays: integer("default_lead_time_days"),
+  notes: text("notes"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),

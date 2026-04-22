@@ -16,6 +16,15 @@ const SupplierBody = z.object({
   contactName: z.string().nullable().optional(),
   contactEmail: z.string().nullable().optional(),
   contactPhone: z.string().nullable().optional(),
+  companyName: z.string().nullable().optional(),
+  website: z.string().nullable().optional(),
+  addressLine: z.string().nullable().optional(),
+  city: z.string().nullable().optional(),
+  state: z.string().nullable().optional(),
+  postalCode: z.string().nullable().optional(),
+  country: z.string().nullable().optional(),
+  defaultLeadTimeDays: z.number().int().nullable().optional(),
+  notes: z.string().nullable().optional(),
   isActive: z.boolean().optional(),
 });
 

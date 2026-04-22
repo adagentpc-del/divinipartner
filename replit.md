@@ -295,3 +295,25 @@ Operator action to enable the custom domain:
 2. Restart the API server workflow.
 3. Visit `/admin/settings` to confirm the source badge reads
    `PUBLIC_APP_URL` and the green "Custom domain" pill appears.
+
+## Section 25 — Bulk Import (CSV / XLSX)
+
+Admin staff can bulk-import three resources via a unified wizard:
+
+- **Suppliers** — `SuppliersList` "Import Suppliers" button.
+- **Products** — `ProductCatalog` "Import Products" button.
+- **Product specs** — `ProductCatalog` "Import Specs" button (matches existing products by SKU first, then name; can update length/weight dimensions across unit systems via `withMmColumns` / `withWeightColumns`).
+
+Frontend wizard: `artifacts/a3-portal/src/components/imports/ImportDialog.tsx` — 4 steps (Upload → Map columns → Preview → Results) with downloadable CSV template, auto-mapping based on header aliases, required-field validation, mode selector (create / update / upsert), per-row error report download.
+
+Backend (`artifacts/api-server/src/routes/imports.ts`):
+- `GET /api/imports/fields/:resource` — list of importable fields and types.
+- `GET /api/imports/template/:resource` — CSV template download with two sample rows (US imperial + EU metric).
+- `POST /api/imports/parse` (multipart, multer memory storage, 10 MB cap) — accepts CSV/TSV/XLSX, returns headers, sample rows, and suggested column→field mapping.
+- `POST /api/imports/commit` — applies up to 5,000 mapped rows; returns counts + per-row errors.
+
+Field schemas + coercion: `artifacts/api-server/src/lib/importSchemas.ts` (typed coercion for string/email/url/number/integer/boolean/csvList/unit). Length unit allowlist: `in, ft, mm, cm, m`; weight units handled by existing `withWeightColumns`. Booleans accept yes/no/true/false/1/0/active/inactive.
+
+Suppliers schema extended with `companyName`, `website`, `addressLine`, `city`, `state`, `postalCode`, `country`, `defaultLeadTimeDays`, `notes` (`lib/db/src/schema/suppliers.ts`); SupplierBody zod updated; `pnpm --filter @workspace/db run push-force` applied.
+
+Dedupe: suppliers by `name` OR `contactEmail`; products by `sku` OR `name`; specs by `sku` then `name` (specs in `update` mode skip non-matching rows). New supplier/product rows auto-generate slug from name.

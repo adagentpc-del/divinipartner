@@ -1,0 +1,223 @@
+Refine the existing Partner Commerce Portal by adding a PDF package intake workflow that converts uploaded client vendor package PDFs into structured package rows for review before import.
+
+Goal:
+I need the ability to upload a client’s vendor package PDF and have the system convert it into structured package rows that I can review, edit, validate, and then import into that client’s profile.
+
+Scope:
+Keep this pass tightly focused on:
+1. PDF upload for client vendor packages
+2. extracting package data into structured rows
+3. review/edit before import
+4. mapping the extracted package data into the correct client profile
+
+Do not rebuild unrelated workflows.
+
+Requirements:
+
+1. PDF upload entry point
+Add a clear upload action directly inside the client/partner profile page.
+
+Examples:
+- Upload Vendor Package PDF
+- Convert Package PDF to Import Rows
+- Parse Client Package PDF
+
+Requirements:
+- this action must be available from inside a specific client profile
+- the extracted package rows should default to that client profile
+- make the entry point obvious and easy to use
+
+2. Supported source files
+Support:
+- PDF first
+- scanned or image-heavy PDFs only if already feasible in the stack
+- leave non-PDF document types for later unless already supported
+
+If the PDF is too poor to parse well:
+- allow manual review
+- flag low confidence
+- do not silently import bad data
+
+3. Output target
+The PDF parser should convert the PDF into structured reviewable package rows before anything is imported.
+
+The extracted rows should support data such as:
+- package name
+- package tier
+- package code or reference
+- package description
+- included item name
+- quantity
+- product category
+- width
+- height
+- depth
+- diameter if relevant
+- unit
+- material
+- finishing
+- hardware included yes/no
+- print only yes/no
+- rental eligible yes/no
+- package price if present
+- city or venue applicability if present
+- notes
+- vendor/source name
+- source page reference if useful
+
+Requirements:
+- do not import directly from PDF into live records without review
+- first convert to structured extracted rows
+- allow the admin to review/edit/approve before final import
+
+4. Grouping behavior
+Real package PDFs may list:
+- one package with multiple included items
+- repeated package names across multiple rows/pages
+- grouped tiers with itemized inclusions
+- package descriptions in headings rather than tables
+
+Requirements:
+- group repeated package items under the same package where possible
+- preserve package tier structure where possible
+- do not create a separate package record for every extracted row if the data clearly belongs together
+- show package grouping clearly in the review UI
+
+5. Review and edit screen
+Create a clean review screen after PDF parsing.
+
+Requirements:
+- show extracted package groups
+- show included item rows underneath each package
+- allow inline editing before import
+- allow fixing package names, quantities, units, and descriptions
+- allow deleting bad rows
+- allow merging/splitting package groups if feasible
+- show confidence or uncertainty indicators where parsing was unclear
+- show original PDF page reference if useful
+
+This screen should feel like a staging area before import.
+
+6. Client profile assignment
+When the PDF is uploaded from a specific client profile:
+- the structured rows should automatically assign to that client profile
+- show that clearly in the UI
+- allow internal admin override only if needed
+- if the PDF text references a different client name than the current profile, flag it clearly for review
+
+7. Measurement and unit handling
+Support extracted measurement/spec values such as:
+- width
+- height
+- depth
+- diameter
+- unit
+- finished size
+- artwork size
+- visible area
+- bleed
+- safe zone
+
+Requirements:
+- support both metric and imperial values
+- support inches, feet, mm, cm, meters at minimum
+- preserve original extracted unit
+- validate and normalize values only after review
+- do not silently convert uncertain measurements
+
+8. Product linking suggestions
+If extracted package items appear to match existing products:
+- suggest likely product matches
+- allow linking to existing products
+- allow leaving items unmapped for later cleanup
+- allow creating placeholder product records later if needed
+
+Requirements:
+- do not silently auto-link uncertain matches
+- show suggested matches clearly
+- keep product linking optional at this stage if confidence is low
+
+9. Parsing confidence and exception handling
+Add structured status handling for parsed PDF package extraction.
+
+Support statuses such as:
+- uploaded
+- text extracted
+- package rows parsed
+- grouped for review
+- needs manual cleanup
+- ready to import
+- imported
+- parse failed
+
+Also support warnings like:
+- package grouping uncertain
+- quantity unclear
+- unit ambiguous
+- pricing unclear
+- unmatched product name
+- possible duplicate package
+
+10. Final import action
+After review/edit, allow importing the staged rows into the client profile.
+
+Requirements:
+- convert approved staged rows into actual package records and included package items
+- preserve grouping
+- preserve measurements/specs
+- map into that client’s profile
+- support create/update behavior safely
+- show import results summary afterward
+
+11. PDF cost and efficiency
+Keep token/cost usage low for this workflow.
+
+Requirements:
+- do not repeatedly reprocess the same PDF unnecessarily
+- store extracted text and structured parse results for reuse
+- reuse parse results if the same PDF is reopened in the staging area
+- use chunking and structured extraction if AI is involved
+- do not send the full PDF repeatedly if only part is relevant
+- support duplicate/fingerprint detection if feasible
+
+12. Admin UX
+Keep the full flow polished and easy:
+- upload PDF
+- parse into staged rows
+- review grouped packages
+- edit/fix rows
+- approve and import
+- show results
+
+Avoid:
+- raw technical parsing screens
+- silent parsing mistakes
+- importing directly into live data without review
+- losing grouping across pages
+- unclear client assignment
+
+13. Seed/demo updates
+Add demo examples showing:
+- one uploaded client package PDF
+- one parsed grouped package result
+- one package review/edit screen
+- one imported package set attached to the correct client profile
+- one example with metric measurements
+- one example with repeated package rows grouped correctly
+
+14. Documentation
+Update replit.md with:
+- how PDF package intake works
+- where parsed rows are staged before import
+- how package grouping works
+- how client profile assignment works
+- how measurements/specs are preserved
+- how product linking suggestions work
+- how parsing confidence and manual review are handled
+- how repeated PDF processing is reduced
+
+Important:
+Do not rebuild the app.
+Do not change unrelated workflows.
+Extend the current client/partner profile, package import, measurement/spec, and admin review flows cleanly.
+Actually implement PDF upload to structured package-row staging with review and import, not placeholders only.

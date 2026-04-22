@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Loader2, Pencil, Trash2, Truck } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2, Truck, Upload } from "lucide-react";
+import { ImportDialog } from "@/components/imports/ImportDialog";
 import { EmptyStateCard } from "@/components/admin/EmptyStateCard";
 
 type Supplier = {
@@ -92,6 +93,7 @@ function SupplierDialog({ supplier, trigger, onSaved }: { supplier?: Supplier | 
 
 export default function SuppliersList() {
   const qc = useQueryClient();
+  const [importOpen, setImportOpen] = useState(false);
   const { data: suppliers, isLoading } = useQuery<Supplier[]>({ queryKey: ["/api/suppliers"], queryFn: () => apiFetch("/api/suppliers") });
   const { toast } = useToast();
   const del = useMutation({
@@ -109,7 +111,11 @@ export default function SuppliersList() {
           <h1 className="text-2xl font-bold tracking-tight">Suppliers</h1>
           <p className="text-muted-foreground mt-1">{suppliers?.length || 0} supplier{suppliers?.length !== 1 ? "s" : ""}</p>
         </div>
-        <SupplierDialog trigger={<Button className="gap-2"><Plus className="h-4 w-4" />Add Supplier</Button>} onSaved={() => qc.invalidateQueries({ queryKey: ["/api/suppliers"] })} />
+        <div className="flex gap-2">
+          <Button variant="outline" className="gap-2" onClick={() => setImportOpen(true)}><Upload className="h-4 w-4" />Import Suppliers</Button>
+          <SupplierDialog trigger={<Button className="gap-2"><Plus className="h-4 w-4" />Add Supplier</Button>} onSaved={() => qc.invalidateQueries({ queryKey: ["/api/suppliers"] })} />
+        </div>
+        <ImportDialog resource="suppliers" open={importOpen} onOpenChange={setImportOpen} onComplete={() => qc.invalidateQueries({ queryKey: ["/api/suppliers"] })} />
       </div>
 
       {suppliers && suppliers.length > 0 ? (

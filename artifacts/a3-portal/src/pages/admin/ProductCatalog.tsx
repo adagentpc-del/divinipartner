@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus, Pencil, Trash2, Package, Search, FileText, CheckCircle2, AlertCircle, Star, Upload, Download, X } from "lucide-react";
+import { ImportDialog } from "@/components/imports/ImportDialog";
 import { DimensionInput } from "@/components/units/DimensionInput";
 import { PackingDetailsInput, type PackingDetailsValue, type PackingMode } from "@/components/units/PackingDetailsInput";
 import type { WeightUnit } from "@/lib/units";
@@ -155,6 +156,8 @@ export default function ProductCatalog() {
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<Partial<Product> | null>(null);
   const [isNew, setIsNew] = useState(false);
+  const [importProductsOpen, setImportProductsOpen] = useState(false);
+  const [importSpecsOpen, setImportSpecsOpen] = useState(false);
 
   const save = useMutation({
     mutationFn: async (body: Partial<Product>) => {
@@ -194,8 +197,14 @@ export default function ProductCatalog() {
           <h1 className="text-2xl font-bold flex items-center gap-2"><Package className="h-6 w-6" /> Product Catalog</h1>
           <p className="text-sm text-muted-foreground mt-1">{products.length} products across {categories.length} categories</p>
         </div>
-        <Button size="sm" onClick={openNew} className="gap-1.5"><Plus className="h-3.5 w-3.5" /> Add Product</Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => setImportProductsOpen(true)} className="gap-1.5"><Upload className="h-3.5 w-3.5" /> Import Products</Button>
+          <Button size="sm" variant="outline" onClick={() => setImportSpecsOpen(true)} className="gap-1.5"><Upload className="h-3.5 w-3.5" /> Import Specs</Button>
+          <Button size="sm" onClick={openNew} className="gap-1.5"><Plus className="h-3.5 w-3.5" /> Add Product</Button>
+        </div>
       </div>
+      <ImportDialog resource="products" open={importProductsOpen} onOpenChange={setImportProductsOpen} onComplete={() => qc.invalidateQueries({ queryKey: ["/api/products"] })} />
+      <ImportDialog resource="specs" open={importSpecsOpen} onOpenChange={setImportSpecsOpen} onComplete={() => qc.invalidateQueries({ queryKey: ["/api/products"] })} />
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

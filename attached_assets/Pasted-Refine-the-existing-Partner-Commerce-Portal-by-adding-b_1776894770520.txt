@@ -1,0 +1,191 @@
+Refine the existing Partner Commerce Portal by adding better add-on selection controls and rentable-item logic based on a partner’s existing assets.
+
+Goal:
+When building a partner portal, I need the ability under Add-Ons to click/select products and have those products show up as add-ons in that partner’s portal. I also need the ability to define rentable or reusable items based on the partner’s existing assets, so the system can understand that some hardware already exists and only replacement graphics or related printed components need to be ordered.
+
+Example:
+A current client has 60 easy up tent frames already. The rentable/reusable asset is the frame hardware. What still needs to be ordered may be:
+- fabric top
+- backdrop
+- side walls
+- replacement printed graphics
+
+Scope:
+Keep this pass tightly focused on:
+1. add-on product selection in partner setup
+2. rentable/reusable item logic
+3. existing partner asset inventory linkage
+4. order behavior when hardware already exists but graphics/components still need to be ordered
+
+Do not rebuild unrelated workflows.
+
+Requirements:
+
+1. Add-On product selector in partner builder
+In the partner build/setup area, under Add-Ons, add a clear selection interface so I can choose products that should appear as add-ons for that specific partner.
+
+Requirements:
+- show available products in a selectable list, card grid, or checkbox-based selector
+- allow selecting one or more products
+- selected products should then appear as add-ons in that partner’s portal
+- clearly show which products are already selected as add-ons
+- allow removing/unselecting products
+- keep this easy and visual, not buried in a raw form
+
+Examples of add-ons:
+- extra banners
+- extra tablecloths
+- extra signs
+- side walls
+- backdrops
+- fabric replacement pieces
+- decals
+- additional branded assets
+
+2. Add-On display behavior
+Once products are selected as add-ons for a partner:
+- they should appear in the partner/client ordering flow as add-ons
+- they should be visually distinct from core packages
+- they should be easy to select with quantity controls where relevant
+- add-ons should inherit that partner’s portal branding and ordering logic
+
+If feasible:
+- allow sorting or reordering add-ons
+- allow showing active vs hidden add-ons
+- allow marking some add-ons as featured or recommended
+
+3. Rentable / reusable item model
+Add support for rentable or reusable items tied to the partner’s existing assets.
+
+Support concepts such as:
+- existing hardware owned by partner
+- reusable frames
+- rentable hardware inventory
+- print-only compatible items
+- replacement graphics for existing assets
+
+At minimum, allow a product or asset to be marked as:
+- reusable hardware
+- rentable item
+- partner-owned asset
+- print-only compatible
+- graphic replacement compatible
+
+4. Partner asset inventory linkage
+On the partner profile or inventory section, allow storing existing partner-owned assets such as:
+- easy up tent frames
+- retractable banner hardware
+- step and repeat frames
+- tables
+- display hardware
+- other reusable event assets
+
+For each asset, support fields such as:
+- asset name
+- product type or linked product
+- quantity owned
+- quantity available
+- reusable/rentable yes/no
+- print-only compatible yes/no
+- city/location if applicable
+- notes
+
+Example:
+- Easy Up Tent Frame 10x10
+- Quantity owned: 60
+- Reusable hardware: yes
+- Print-only compatible: yes
+- Partner-owned asset: yes
+
+5. Order logic when partner already owns hardware
+If a partner already owns the reusable/rentable hardware:
+- the ordering flow should allow selecting only the needed printed components
+- the system should distinguish between:
+  - full unit
+  - hardware already exists
+  - print-only replacement
+  - use partner-owned asset
+  - new hardware required
+
+Examples:
+If the partner has 60 easy up frames:
+- customer can order fabric tops only
+- customer can order side walls only
+- customer can order backdrop only
+- customer can order full graphic refresh tied to existing hardware
+
+6. Product structure for component-based rentable items
+Support products or product groups that can behave like:
+- hardware base item
+- graphic/fabric component
+- side component
+- backdrop component
+- optional accessories
+
+For example:
+Easy Up Tent product family may include:
+- frame hardware
+- printed canopy top
+- printed back wall
+- printed side wall left
+- printed side wall right
+
+Requirements:
+- allow internal admin to mark which components require existing hardware
+- allow these components to be offered as add-ons when partner-owned hardware exists
+- keep product relationships understandable
+
+7. Partner builder UX
+In the partner build/setup UI, make this clear and easy to manage.
+
+Recommended sections:
+- Core Packages
+- Add-Ons
+- Existing Partner Assets / Rentable Items
+- Reusable Hardware Inventory
+
+Requirements:
+- clear labels
+- visible selected add-ons
+- visible existing assets
+- ability to connect partner-owned assets to relevant products/components
+- keep this polished and admin-friendly
+
+8. Client-facing ordering UX
+In the ordering experience:
+- if the partner has reusable assets configured, show the appropriate add-ons and print-only options
+- make it obvious when the customer is ordering:
+  - just graphics/fabric
+  - components for existing hardware
+  - a full new unit
+- do not confuse customers with internal hardware/inventory jargon
+- keep client-facing language simple and clear
+
+9. Inventory and reservation impact
+If the system already has inventory/reservation logic:
+- allow partner-owned rentable/reusable assets to feed into that logic
+- show available quantity of reusable hardware where relevant
+- if quantity is limited, prevent or flag over-allocation
+- preserve event/city/location logic where already supported
+
+10. Seed/demo updates
+Add demo examples showing:
+- a partner with 60 easy up tent frames
+- add-ons for canopy top, backdrop, and side walls
+- one reusable/rentable item setup
+- one partner ordering flow where only graphics/components are ordered because hardware already exists
+
+11. Documentation
+Update replit.md with:
+- add-on product selection behavior
+- rentable/reusable item model
+- partner-owned asset logic
+- how print-only compatible items work
+- how existing hardware affects ordering and add-ons
+- how this connects to inventory if applicable
+
+Important:
+Do not rebuild the app.
+Do not change unrelated workflows.
+Extend the current partner builder, product/add-on setup, inventory, and ordering flows cleanly.
+Actually implement add-on product selection and rentable/reusable asset logic, not placeholders only.
