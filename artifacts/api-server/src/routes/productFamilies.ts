@@ -7,6 +7,7 @@ import {
   productFamiliesTable, productFamilyMembersTable, productCatalogTable,
   inventoryTable, citiesTable,
   inventoryBlackoutsTable, inventoryReservationsTable, eventsTable,
+  partnerEmailRecipientsTable, ordersTable, usageEvents,
 } from "@workspace/db";
 import {
   getPartnerFamilyAvailability,
@@ -351,6 +352,72 @@ router.post("/dev/seed-easy-up-family", async (req, res): Promise<void> => {
     }
   }
 
+  // ----- Section 28 demo: routing recipients + sample email log entries -----
+  // Seeds the partner's email address book with two operational recipients
+  // ("me" and "Sean / program manager") plus one CC, and writes two sample
+  // usage_events so the OrderEmailDeliveryPanel on the partner's most recent
+  // order has visible rows out of the box: one successful confirmation and
+  // one bounced ops forward.
+  let routingRecipientsCreated = 0;
+  const routingSeeds: Array<{ role: "ops" | "cc"; email: string; label: string }> = [
+    { role: "ops", email: "owner@a3-demo.test",         label: "A3 owner" },
+    { role: "ops", email: "sean@a3-demo.test",          label: "Sean — program manager" },
+    { role: "cc",  email: "ops-archive@a3-demo.test",   label: "Ops archive" },
+  ];
+  for (const r of routingSeeds) {
+    const existing = await db.select().from(partnerEmailRecipientsTable).where(and(
+      eq(partnerEmailRecipientsTable.partnerId, partnerId),
+      eq(partnerEmailRecipientsTable.email, r.email),
+    ));
+    if (existing[0]) continue;
+    await db.insert(partnerEmailRecipientsTable).values({
+      partnerId, role: r.role, email: r.email, label: r.label, isActive: true,
+    } as any);
+    routingRecipientsCreated++;
+  }
+
+  // Sample email events on the partner's most recent order (if any) so the
+  // delivery timeline shows realistic activity. Only inserted if no email
+  // events already exist for that order — keeps re-runs idempotent.
+  const [latestOrder] = await db.select({ id: ordersTable.id, partnerId: ordersTable.partnerId, orderNumber: ordersTable.orderNumber })
+    .from(ordersTable).where(eq(ordersTable.partnerId, partnerId)).orderBy(desc(ordersTable.createdAt)).limit(1);
+  let sampleEmailEvents = 0;
+  if (latestOrder) {
+    const existingEvents = await db.select({ id: usageEvents.id }).from(usageEvents).where(and(
+      eq(usageEvents.objectType, "order"),
+      eq(usageEvents.objectId, latestOrder.id),
+      eq(usageEvents.eventType, "email.sent"),
+    )).limit(1);
+    if (!existingEvents[0]) {
+      await db.insert(usageEvents).values({
+        eventType: "email.sent", partnerId, objectType: "order", objectId: latestOrder.id,
+        meta: {
+          type: "order_confirmation", to: "customer@example.com",
+          subject: `A3 — order received (${latestOrder.orderNumber})`,
+          providerId: "demo_seed_success", attached: true, attachments: [`order_${latestOrder.orderNumber}.pdf`],
+        },
+      } as any);
+      await db.insert(usageEvents).values({
+        eventType: "email.sent", partnerId, objectType: "order", objectId: latestOrder.id,
+        meta: {
+          type: "order_ops_forward", to: ["owner@a3-demo.test", "sean@a3-demo.test"],
+          subject: `[New order] A3 · ${latestOrder.orderNumber}`,
+          providerId: "demo_seed_success_ops", attached: true, attachments: [`order_${latestOrder.orderNumber}.pdf`],
+        },
+      } as any);
+      // Partial-failure example: one of the partner-contact addresses bounced.
+      await db.insert(usageEvents).values({
+        eventType: "email.failed", partnerId, objectType: "order", objectId: latestOrder.id,
+        meta: {
+          type: "order_partner_contact_notification", to: "stale-contact@a3-demo.test",
+          subject: `New order received · ${latestOrder.orderNumber}`,
+          error: "Resend 422: Invalid recipient address",
+        },
+      } as any);
+      sampleEmailEvents = 3;
+    }
+  }
+
   res.json({
     ok: true,
     familyId: family.id, slug: family.slug,
@@ -358,6 +425,8 @@ router.post("/dev/seed-easy-up-family", async (req, res): Promise<void> => {
     inventoryId, cityId: city?.id ?? null,
     state: stateParam, total: 60, reserved: reservedTarget, available: 60 - reservedTarget,
     rentableInventoryIds,
+    routingRecipientsCreated,
+    sampleEmailEvents,
   });
 });
 

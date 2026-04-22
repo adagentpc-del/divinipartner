@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, sql, desc, inArray } from "drizzle-orm";
-import { db, ordersTable, orderItemsTable, partnersTable, eventsTable, packagesTable, suppliersTable, venuesTable, productCatalogTable, partnerBrandingLocationsTable, citiesTable, inventoryTable, inventoryReservationsTable, supplierAssignmentHistoryTable, supplierStatusEventsTable, quoteAssetsTable, withMmColumns, withWeightColumns } from "@workspace/db";
+import { db, ordersTable, orderItemsTable, partnersTable, eventsTable, packagesTable, suppliersTable, venuesTable, productCatalogTable, partnerBrandingLocationsTable, citiesTable, inventoryTable, inventoryReservationsTable, supplierAssignmentHistoryTable, supplierStatusEventsTable, quoteAssetsTable, usageEvents, withMmColumns, withWeightColumns } from "@workspace/db";
 import { z } from "zod";
 
 const FULFILLMENT_MODES = [
@@ -1115,6 +1115,34 @@ router.get("/vendor/orders/:orderId/packet", async (req, res): Promise<void> => 
   const quoteAssets = productIds.length ? await db.select().from(quoteAssetsTable).where(and(eq(quoteAssetsTable.attachableType, "product"), inArray(quoteAssetsTable.attachableId, productIds), eq(quoteAssetsTable.vendorVisible, true))) : [];
   const supplier = (await db.select().from(suppliersTable).where(eq(suppliersTable.id, supplierId)))[0];
   res.json({ order, supplier, items, products, quoteAssets });
+});
+
+// ---------------------------------------------------------------------------
+// Per-order email delivery log.
+// ---------------------------------------------------------------------------
+// Reads `usage_events` rows where objectType='order' + objectId=orderId and
+// the eventType is one of email.sent / email.failed. The email pipeline emits
+// these for every confirmation / ops / finance / partner_contact / vendor send
+// (and for failures), so this single read gives admins a complete delivery
+// timeline without a dedicated table. Auth-gated because recipient emails are
+// internal data.
+router.get("/orders/:id/email-events", async (req, res): Promise<void> => {
+  const { getAuth } = await import("@clerk/express");
+  const auth = getAuth(req as any);
+  if (!auth?.userId) { res.status(401).json({ error: "Authentication required" }); return; }
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid order id" }); return; }
+  const [order] = await db.select({ id: ordersTable.id }).from(ordersTable).where(eq(ordersTable.id, id));
+  if (!order) { res.status(404).json({ error: "Order not found" }); return; }
+  const rows = await db.select().from(usageEvents)
+    .where(and(
+      eq(usageEvents.objectType, "order"),
+      eq(usageEvents.objectId, id),
+      inArray(usageEvents.eventType, ["email.sent", "email.failed", "pdf.generated", "pdf.failed"]),
+    ))
+    .orderBy(desc(usageEvents.occurredAt))
+    .limit(200);
+  res.json({ events: rows });
 });
 
 // Branded order summary PDF download/preview. Audience flag picks which

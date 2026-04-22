@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, ChevronLeft, Save, Printer, ShoppingCart, MapPin, Calendar, Truck, User, Building2, FileText, Image as ImageIcon, AlertTriangle, Package, Boxes, Printer as PrintIcon, FolderOpen } from "lucide-react";
 import OrderAssetsPanel from "@/components/admin/OrderAssetsPanel";
 import TaskPanel from "@/components/admin/TaskPanel";
+import OrderEmailDeliveryPanel from "@/components/admin/OrderEmailDeliveryPanel";
 import { formatMoney, SUPPORTED_CURRENCIES, TAX_MODES, TAX_MODE_LABELS } from "@/lib/currency";
 
 /**
@@ -433,6 +434,9 @@ export default function OrderDetail() {
           </Card>
 
           {order.notes && <Card className="p-5"><h2 className="font-semibold text-lg mb-2">Client Notes</h2><p className="text-sm whitespace-pre-wrap">{order.notes}</p></Card>}
+
+          {/* Section 28 — per-order email delivery timeline. Reads usage_events. */}
+          <OrderEmailDeliveryPanel orderId={order.id} />
         </div>
 
         <div className="space-y-4">

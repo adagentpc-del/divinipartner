@@ -457,3 +457,51 @@ Connected-family interaction:
 Known limitations (explicit):
 - Eligibility allowlist is stored as plain `integer[]` of event IDs — there's no "event type" column on `events` yet, so type-level rules would need that to be added first.
 - Bulk CSV upload of rentable assets isn't wired in this pass; the model and routes are shaped so an importer can target them next.
+
+## Section 28 — Operational email delivery & routing (April 22, 2026)
+Tightens the order intake → email pipeline that's been built up across earlier sections so it's actually operational for the current "collect orders, email me + Sean" model. No schema changes — the tables already exist. This section is about wiring the **multi-recipient routing**, the **per-order delivery visibility**, and a **demo seed** so the workflow is provable end-to-end.
+
+### Operating model
+- The portal's job today is: **collect the order cleanly + email it to the right people.**
+- Every submitted order triggers a parallel fan-out via `sendOrderEmails(orderId)` in `artifacts/api-server/src/lib/email.ts`:
+  - **Customer confirmation** — branded with the partner theme + logo, sent to `order.contactEmail`. Subject uses the partner's `emailSenderLabel` or `companyName`.
+  - **Internal / ops forward** — full operational detail (customer, event, venue, items, quantities, units, notes, artwork file links). Sent to all `partner_email_recipients` rows with `role='ops'` + `isActive=true`. Falls back to legacy `partner.internalForwardEmail`/`partner.routingEmail` when no rows are configured.
+  - **Finance notification** — billing-focused header for `role='finance'` recipients (or legacy `partner.billingContactEmail`).
+  - **Partner contact notification** — clean partner-facing summary for `role='partner_contact'` recipients (or legacy `partner.contactEmail`).
+  - **Vendor notification** — operational view for `role='vendor'` recipients (no legacy fallback — must be explicitly configured).
+- `cc` and `bcc` recipients are folded into the ops send only.
+
+### Where routing is configured
+- Per partner, in **Admin → Partners → [partner] → Communications & Email**:
+  - Top of card: legacy single-field settings (`From Name`, `Reply-To`, `Internal Forwarding Email`, `CC Email`, `Send order emails` toggle).
+  - Below that: **`RecipientsManager`** — full multi-recipient routing UI backed by `partner_email_recipients`. Add any number of routing recipients per role, mark them active/inactive, and remove without affecting orders that already shipped.
+  - Then: **PDF attachment toggles** — choose which audiences (customer / ops / finance / partner-contact) get the branded one-page order summary PDF attached.
+  - Bottom: **Branding preview** + **two test-send actions** (test confirmation, test internal forward).
+
+### Failure handling
+- `sendOrderEmails` runs all five sends in `Promise.all` wrapped in `safe()` — any failure (Resend error, missing recipient, disabled partner) returns `{ ok: false, error }` instead of throwing. **Order submission never fails because of email.**
+- Each role independently resolves its recipient list. A role with no configured recipients (and no legacy fallback) returns `{ ok: false, error: 'no_<role>_recipient' }` and is silently skipped.
+- Every send (success or failure) emits a `usage_events` row (`event_type='email.sent'` or `'email.failed'`) with `objectType='order'`, `objectId=orderId`, and a `meta` object containing `{ type, to, subject, providerId | error, attached, attachments }`.
+
+### Admin visibility (per-order)
+- **Order Detail → Email delivery** (`OrderEmailDeliveryPanel.tsx`) reads `GET /api/orders/:id/email-events` and renders:
+  - **Per-audience status pills** (latest result per type — customer / ops / finance / partner contact / vendor).
+  - **Detailed timeline** with timestamps, recipient lists, subjects, attachments, and Resend error strings.
+  - PDF render counter (sent/failed) at the bottom.
+- The endpoint is the existing `usage_events` table filtered to email + pdf events for that order — no new schema.
+
+### Demo seed
+- `POST /api/dev/seed-easy-up-family` (Section 26 one-shot, Clerk-gated) now also seeds:
+  - 3 routing recipients (ops: `owner@a3-demo.test`, ops: `sean@a3-demo.test` labeled "Sean — program manager", cc: `ops-archive@a3-demo.test`).
+  - Sample email events on the partner's most recent order: one successful customer confirmation, one successful ops forward to both routing recipients (with PDF attachment), and one bounced partner-contact email — so the new delivery panel has visible activity immediately.
+- Idempotent: existing recipients/events are skipped on re-runs.
+
+### Files touched
+- `artifacts/api-server/src/routes/orders.ts` — adds `GET /orders/:id/email-events`.
+- `artifacts/api-server/src/routes/productFamilies.ts` — extends seed with recipients + sample events.
+- `artifacts/a3-portal/src/components/admin/OrderEmailDeliveryPanel.tsx` — new.
+- `artifacts/a3-portal/src/pages/admin/OrderDetail.tsx` — mounts the panel under Client Notes.
+
+### Known limitations
+- Email events are read from `usage_events`, which is best-effort logging and not transactionally tied to the Resend call itself. A double-failure (Resend ok, log insert fails) is possible but vanishingly rare; the order itself is unaffected either way.
+- The `RecipientsManager` UI only edits `partner_email_recipients`; partners using the legacy single-field settings will continue to work but won't see those addresses in the routing UI until they're migrated.
