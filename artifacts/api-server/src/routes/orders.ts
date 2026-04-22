@@ -379,6 +379,9 @@ router.get("/orders", async (req, res) => {
     status: ordersTable.status,
     paymentStatus: ordersTable.paymentStatus,
     fulfillmentStatus: ordersTable.fulfillmentStatus,
+    exceptionState: ordersTable.exceptionState,
+    exceptionType: ordersTable.exceptionType,
+    artworkNeededFlag: ordersTable.artworkNeededFlag,
     contactName: ordersTable.contactName,
     contactEmail: ordersTable.contactEmail,
     companyName: ordersTable.companyName,
@@ -1143,6 +1146,90 @@ router.get("/orders/:id/email-events", async (req, res): Promise<void> => {
     .orderBy(desc(usageEvents.occurredAt))
     .limit(200);
   res.json({ events: rows });
+});
+
+// ----- Section 29: order-level exception + artwork-needed workflow -----
+const EXCEPTION_STATES = ["none", "warning", "exception", "waiting_client", "waiting_internal", "resolved"] as const;
+const EXCEPTION_TYPES = [
+  "missing_artwork",
+  "artwork_creation_needed",
+  "wrong_file_or_spec_format",
+  "missing_dimensions",
+  "missing_contact_info",
+  "unclear_order_notes",
+  "custom_review_needed",
+  "rush_request",
+  "incomplete_package_selection",
+  "asset_mismatch",
+  "manual_follow_up_required",
+] as const;
+export const SECTION_29_EXCEPTION_STATES = EXCEPTION_STATES;
+export const SECTION_29_EXCEPTION_TYPES = EXCEPTION_TYPES;
+
+const ExceptionPatch = z.object({
+  state: z.enum(EXCEPTION_STATES),
+  type: z.enum(EXCEPTION_TYPES).nullable().optional(),
+  message: z.string().max(2000).nullable().optional(),
+});
+
+router.post("/orders/:id/exception", async (req, res): Promise<void> => {
+  const { getAuth } = await import("@clerk/express");
+  const auth = getAuth(req as any);
+  if (!auth?.userId) { res.status(401).json({ error: "Authentication required" }); return; }
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid order id" }); return; }
+  const parsed = ExceptionPatch.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid body", details: parsed.error.format() }); return; }
+  const { state, type, message } = parsed.data;
+  // When clearing, also wipe type/message so the UI is clean.
+  const clearing = state === "none";
+  const [updated] = await db.update(ordersTable).set({
+    exceptionState: state,
+    exceptionType: clearing ? null : (type ?? null),
+    exceptionMessage: clearing ? null : (message ?? null),
+    exceptionUpdatedAt: new Date(),
+    exceptionUpdatedBy: auth.userId,
+  }).where(eq(ordersTable.id, id)).returning();
+  if (!updated) { res.status(404).json({ error: "Order not found" }); return; }
+  res.json({ ok: true, order: updated });
+});
+
+const ArtworkNeededPatch = z.object({
+  flag: z.boolean(),
+  brief: z.string().max(2000).nullable().optional(),
+  contactName: z.string().max(200).nullable().optional(),
+  contactEmail: z.string().email().nullable().optional().or(z.literal("")),
+});
+
+router.post("/orders/:id/artwork-needed", async (req, res): Promise<void> => {
+  const { getAuth } = await import("@clerk/express");
+  const auth = getAuth(req as any);
+  if (!auth?.userId) { res.status(401).json({ error: "Authentication required" }); return; }
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid order id" }); return; }
+  const parsed = ArtworkNeededPatch.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid body", details: parsed.error.format() }); return; }
+  const { flag, brief, contactName, contactEmail } = parsed.data;
+  const patch: any = {
+    artworkNeededFlag: flag,
+    artworkBrief: flag ? (brief ?? null) : null,
+    artworkContactName: flag ? (contactName ?? null) : null,
+    artworkContactEmail: flag ? (contactEmail || null) : null,
+  };
+  // Bumping the artwork-needed flag also nudges the exception state if the
+  // order has nothing else flagged — surfaces it on the dashboard immediately.
+  if (flag) {
+    const [cur] = await db.select({ exceptionState: ordersTable.exceptionState }).from(ordersTable).where(eq(ordersTable.id, id));
+    if (cur && cur.exceptionState === "none") {
+      patch.exceptionState = "warning";
+      patch.exceptionType = "artwork_creation_needed";
+      patch.exceptionUpdatedAt = new Date();
+      patch.exceptionUpdatedBy = auth.userId;
+    }
+  }
+  const [updated] = await db.update(ordersTable).set(patch).where(eq(ordersTable.id, id)).returning();
+  if (!updated) { res.status(404).json({ error: "Order not found" }); return; }
+  res.json({ ok: true, order: updated });
 });
 
 // Branded order summary PDF download/preview. Audience flag picks which

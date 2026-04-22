@@ -14,6 +14,7 @@ import { Loader2, ChevronLeft, Save, Printer, ShoppingCart, MapPin, Calendar, Tr
 import OrderAssetsPanel from "@/components/admin/OrderAssetsPanel";
 import TaskPanel from "@/components/admin/TaskPanel";
 import OrderEmailDeliveryPanel from "@/components/admin/OrderEmailDeliveryPanel";
+import OrderExceptionPanel from "@/components/admin/OrderExceptionPanel";
 import { formatMoney, SUPPORTED_CURRENCIES, TAX_MODES, TAX_MODE_LABELS } from "@/lib/currency";
 
 /**
@@ -142,7 +143,7 @@ const SOURCE_LABEL: Record<string, string> = {
   zone: "Inherited from zone", order: "Inherited from order",
   manual: "Manually assigned", none: "Unassigned",
 };
-type OrderFull = { id: number; orderNumber: string; partnerId: number; partnerName?: string; eventId: number | null; eventName?: string; status: string; paymentStatus: string; fulfillmentMode: string | null; assignedSupplierId: number | null; supplierName?: string; contactName: string; contactEmail: string; contactPhone: string | null; companyName: string | null; shippingAddressJson: any; billingAddressJson: any; artworkFilesJson: any[] | null; totalEstimate: string | null; notes: string | null; internalNotes: string | null; vendorNotes: string | null; fulfillmentStatus: string | null; createdAt: string; items: OrderItem[]; partner?: any; event?: any; venue?: any; supplier?: any;
+type OrderFull = { id: number; orderNumber: string; partnerId: number; partnerName?: string; eventId: number | null; eventName?: string; status: string; paymentStatus: string; fulfillmentMode: string | null; assignedSupplierId: number | null; supplierName?: string; contactName: string; contactEmail: string; contactPhone: string | null; companyName: string | null; shippingAddressJson: any; billingAddressJson: any; artworkFilesJson: any[] | null; totalEstimate: string | null; notes: string | null; internalNotes: string | null; vendorNotes: string | null; fulfillmentStatus: string | null; createdAt: string; items: OrderItem[]; partner?: any; event?: any; venue?: any; supplier?: any; exceptionState: string | null; exceptionType: string | null; exceptionMessage: string | null; exceptionUpdatedAt: string | null; artworkNeededFlag: boolean; artworkBrief: string | null; artworkContactName: string | null; artworkContactEmail: string | null;
   shipDateTarget: string | null; deliveryByDate: string | null; packageCount: number | null;
   totalShipmentWeight: number | null; totalShipmentWeightUnit: string | null;
   measurementSystem: "imperial" | "metric" | null;
@@ -434,6 +435,25 @@ export default function OrderDetail() {
           </Card>
 
           {order.notes && <Card className="p-5"><h2 className="font-semibold text-lg mb-2">Client Notes</h2><p className="text-sm whitespace-pre-wrap">{order.notes}</p></Card>}
+
+          <OrderExceptionPanel
+            order={{
+              id: order.id,
+              orderNumber: order.orderNumber,
+              contactEmail: order.contactEmail,
+              contactName: order.contactName,
+              exceptionState: order.exceptionState,
+              exceptionType: order.exceptionType,
+              exceptionMessage: order.exceptionMessage,
+              exceptionUpdatedAt: order.exceptionUpdatedAt,
+              artworkNeededFlag: order.artworkNeededFlag,
+              artworkBrief: order.artworkBrief,
+              artworkContactName: order.artworkContactName,
+              artworkContactEmail: order.artworkContactEmail,
+            }}
+            partnerDesignContactName={order.partner?.designContactName}
+            partnerDesignContactEmail={order.partner?.designContactEmail}
+          />
 
           {/* Section 28 — per-order email delivery timeline. Reads usage_events. */}
           <OrderEmailDeliveryPanel orderId={order.id} />

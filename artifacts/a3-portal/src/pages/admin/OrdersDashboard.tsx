@@ -10,7 +10,15 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, ShoppingCart, Search, FileSpreadsheet } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
-type Order = { id: number; orderNumber: string; partnerId: number; partnerName?: string; eventId: number | null; eventName?: string | null; portalType: string; status: string; paymentStatus: string; fulfillmentMode: string | null; assignedSupplierId: number | null; supplierName?: string | null; venueName?: string | null; contactName: string; companyName: string | null; totalEstimate: string | null; createdAt: string; totalShortage?: number; totalReserved?: number; itemFulfillmentModes?: string[] };
+type Order = { id: number; orderNumber: string; partnerId: number; partnerName?: string; eventId: number | null; eventName?: string | null; portalType: string; status: string; paymentStatus: string; fulfillmentMode: string | null; assignedSupplierId: number | null; supplierName?: string | null; venueName?: string | null; contactName: string; companyName: string | null; totalEstimate: string | null; createdAt: string; totalShortage?: number; totalReserved?: number; itemFulfillmentModes?: string[]; exceptionState?: string | null; exceptionType?: string | null; artworkNeededFlag?: boolean };
+
+const EXCEPTION_BADGE: Record<string, { label: string; className: string }> = {
+  warning:          { label: "Warning",            className: "border-amber-300 text-amber-700 bg-amber-50" },
+  exception:        { label: "Exception",          className: "border-red-300 text-red-700 bg-red-50" },
+  waiting_client:   { label: "Waiting client",     className: "border-blue-300 text-blue-700 bg-blue-50" },
+  waiting_internal: { label: "Waiting internal",   className: "border-violet-300 text-violet-700 bg-violet-50" },
+  resolved:         { label: "Resolved",           className: "border-emerald-300 text-emerald-700 bg-emerald-50" },
+};
 type Partner = { id: number; companyName: string };
 type Supplier = { id: number; name: string };
 type City = { id: number; name: string };
@@ -104,7 +112,17 @@ export default function OrdersDashboard() {
                     {(o.totalReserved || 0) > 0 && <Badge variant="outline" className="text-[10px] border-emerald-300 text-emerald-700">✓ {o.totalReserved} reserved</Badge>}
                   </div>
                 </TableCell>
-                <TableCell><span className={`text-xs px-2 py-0.5 rounded ${STATUS_COLORS[o.status] || "bg-gray-100"}`}>{o.status}</span></TableCell>
+                <TableCell>
+                  <div className="flex flex-col gap-1 items-start">
+                    <span className={`text-xs px-2 py-0.5 rounded ${STATUS_COLORS[o.status] || "bg-gray-100"}`}>{o.status}</span>
+                    {o.exceptionState && o.exceptionState !== "none" && EXCEPTION_BADGE[o.exceptionState] && (
+                      <Badge variant="outline" className={`text-[10px] ${EXCEPTION_BADGE[o.exceptionState].className}`}>⚠ {EXCEPTION_BADGE[o.exceptionState].label}</Badge>
+                    )}
+                    {o.artworkNeededFlag && (
+                      <Badge variant="outline" className="text-[10px] border-fuchsia-300 text-fuchsia-700 bg-fuchsia-50">🎨 Artwork needed</Badge>
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell className="text-xs text-muted-foreground">{o.supplierName || "—"}</TableCell>
                 <TableCell className="text-right font-medium">{o.totalEstimate ? `$${o.totalEstimate}` : "—"}</TableCell>
               </TableRow>

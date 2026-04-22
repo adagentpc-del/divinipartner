@@ -69,6 +69,20 @@ export const ordersTable = pgTable("orders", {
   internalNotes: text("internal_notes"),
   vendorNotes: text("vendor_notes"),
   fulfillmentStatus: text("fulfillment_status"),
+  // Section 29 — order-level exception workflow.
+  // exceptionState drives the at-a-glance pill in the admin UI; exceptionType is
+  // a structured category from EXCEPTION_TYPES below; exceptionMessage is the
+  // free-text "what's wrong" string admins type. Artwork-needed flow is its own
+  // boolean+brief pair so it can co-exist with other exception types.
+  exceptionState: text("exception_state").notNull().default("none"),
+  exceptionType: text("exception_type"),
+  exceptionMessage: text("exception_message"),
+  exceptionUpdatedAt: timestamp("exception_updated_at", { withTimezone: true }),
+  exceptionUpdatedBy: text("exception_updated_by"),
+  artworkNeededFlag: boolean("artwork_needed_flag").notNull().default(false),
+  artworkBrief: text("artwork_brief"),
+  artworkContactName: text("artwork_contact_name"),
+  artworkContactEmail: text("artwork_contact_email"),
   // Shipping & logistics summary (April 2026 logistics extension).
   shipDateTarget: timestamp("ship_date_target", { withTimezone: true }),
   deliveryByDate: timestamp("delivery_by_date", { withTimezone: true }),

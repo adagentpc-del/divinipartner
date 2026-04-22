@@ -505,3 +505,71 @@ Tightens the order intake → email pipeline that's been built up across earlier
 ### Known limitations
 - Email events are read from `usage_events`, which is best-effort logging and not transactionally tied to the Resend call itself. A double-failure (Resend ok, log insert fails) is possible but vanishingly rare; the order itself is unaffected either way.
 - The `RecipientsManager` UI only edits `partner_email_recipients`; partners using the legacy single-field settings will continue to work but won't see those addresses in the routing UI until they're migrated.
+
+## Section 29 — Order exceptions & artwork-needed workflow (April 22, 2026)
+Adds a real exception-handling workflow on top of the existing order pipeline. Item-level `exception_flag/reason/notes` already existed (and stays untouched); this section adds an **order-level** state machine + an **artwork-needed** flow so admins can triage messy real-world situations without having to dig into individual line items.
+
+### The exception model
+Per order, one row in `orders`:
+- `exception_state` — one of:
+  - `none` (default, hidden everywhere)
+  - `warning` (something to watch but not blocking)
+  - `exception` (active blocker; production should not proceed)
+  - `waiting_client` (we've reached out, waiting on the client to respond)
+  - `waiting_internal` (parked for internal review)
+  - `resolved` (was flagged, now sorted — kept around so the audit trail survives)
+- `exception_type` — structured category from a fixed list:
+  `missing_artwork · artwork_creation_needed · wrong_file_or_spec_format · missing_dimensions · missing_contact_info · unclear_order_notes · custom_review_needed · rush_request · incomplete_package_selection · asset_mismatch · manual_follow_up_required`
+- `exception_message` — free-text "what's wrong / what we need" string (max 2000 chars).
+- `exception_updated_at` / `exception_updated_by` — audit columns set automatically on every state change.
+
+### Artwork-needed workflow (separate, can stack with any exception)
+- `artwork_needed_flag` — boolean. When true, the customer needs us to **design** something (vs. just supply existing files).
+- `artwork_brief` — free text describing what to design.
+- `artwork_contact_name` / `artwork_contact_email` — who to route the design request to. Defaults to the **partner's design contact** if one is configured (`partners.design_contact_name` / `design_contact_email`, new in this section), otherwise blank.
+- Toggling artwork-needed ON when the order has `exception_state='none'` automatically bumps it to `warning · artwork_creation_needed` so the dashboard surfaces it without an extra step.
+- The new partner-level design contact lives on the partners table and acts as the default for every order belonging to that partner.
+
+### Missing/incomplete asset handling
+- The new exception types `missing_artwork` and `wrong_file_or_spec_format` map directly to common asset failures.
+- The order detail page already shows the asset list; the new exception panel sits right beside it so admin sees both at the same time.
+- The internal forward email now renders an **exception banner block** at the top whenever `exception_state != 'none'` (or artwork-needed is on), with the state, category label, the admin's free-text message, and (for artwork) the design contact + brief. Outlook/Gmail-safe inline styles, colored left border keyed off the state.
+
+### Visibility
+- **Orders dashboard list** — each row shows the regular status badge + (when set) an exception badge stacked underneath using the same color key as the panel (warning=amber, exception=red, waiting_client=blue, waiting_internal=violet, resolved=emerald), plus a `🎨 Artwork needed` badge when applicable. The list endpoint exposes `exceptionState`, `exceptionType`, `artworkNeededFlag`.
+- **Order detail page** — new `OrderExceptionPanel` card mounted under Client Notes. Shows the current state pill in the header, lets admin pick state + category + edit the message, and exposes one-click action buttons (Save / Waiting on client / Waiting internal / Mark resolved / Clear). The artwork-needed sub-card carries its own brief + design contact fields, with a one-click "use partner default" link if the partner has a design contact configured.
+- **Internal forward email** — banner described above, top of the message before customer/event details.
+
+### Internal actions (admin)
+- `POST /api/orders/:id/exception { state, type?, message? }` — single endpoint covers flag/transition/clear. Clearing (`state='none'`) wipes type/message so the audit row is clean. Auth-gated; sets `exception_updated_at/by`.
+- `POST /api/orders/:id/artwork-needed { flag, brief?, contactName?, contactEmail? }` — toggles the artwork flag and (when enabling) optionally bumps `exception_state` from `none → warning · artwork_creation_needed` so it shows up immediately.
+
+### Communications drafts
+The exception panel includes three "send a follow-up" buttons that open the admin's mail client with a pre-filled draft using the order's existing contact info — no new email pipeline:
+- **Request missing assets** → to the customer.
+- **Request artwork creation** → to the design contact (artwork-specific or partner-default), with the saved brief inlined into the body.
+- **Ask for clarification** → to the customer.
+These are intentionally `mailto:` drafts rather than auto-sends because the wording always benefits from a human pass before it goes out.
+
+### Demo seed
+The existing `/api/dev/seed-easy-up-family` one-shot now also patches up to four of the partner's most recent orders into representative states (idempotent — only touches orders currently `none/no-artwork`):
+- one **missing artwork** exception (`exception` state)
+- one **artwork creation needed** request with a sample brief + design contact (`warning` state, artwork flag ON)
+- one **missing dimensions** order in `waiting_client`
+- one already-**resolved** "wrong file format" exception
+And it ensures the partner has a default design contact (`Riley — partner design / design@a3-demo.test`) set if one wasn't already.
+
+### Files touched
+- `lib/db/src/schema/orders.ts` — adds the eight exception/artwork columns.
+- `lib/db/src/schema/partners.ts` — adds `design_contact_name` / `design_contact_email`.
+- `artifacts/api-server/src/routes/orders.ts` — new `/orders/:id/exception` + `/orders/:id/artwork-needed` routes; lists endpoint surfaces the new fields.
+- `artifacts/api-server/src/lib/email.ts` — new `renderExceptionBanner` injected at the top of the internal forward template, with state/type label maps.
+- `artifacts/api-server/src/routes/productFamilies.ts` — seed extension.
+- `artifacts/a3-portal/src/components/admin/OrderExceptionPanel.tsx` — new.
+- `artifacts/a3-portal/src/pages/admin/OrderDetail.tsx` — mounts the panel, extends `OrderFull` type.
+- `artifacts/a3-portal/src/pages/admin/OrdersDashboard.tsx` — exception + artwork badges in the status column.
+
+### Known limitations
+- Exception state is a single value per order; there's no "multiple concurrent issues" stack. The free-text message is the escape hatch when more than one thing is wrong.
+- The follow-up communications are `mailto:` drafts only — they don't touch Resend or log to `usage_events`. If we want them centrally tracked later, we can wire them to `sendBrandedEmail` the same way the customer/ops flows are.
+- The new `exception_state` is independent from the existing **item-level** `exception_flag`; they can drift. Item-level issues continue to drive supplier/vendor flows; the order-level state is the admin-and-customer-facing summary. A future pass could automatically roll up item issues into a default `warning` on the order, but for now it's intentional that the human decides.

@@ -229,6 +229,53 @@ export function renderCustomerConfirmationHtml(ctx: OrderEmailContext): string {
   ${shellClose()}`;
 }
 
+// Section 29: surface order-level exceptions and "artwork needed" requests
+// at the top of the internal forward email so whoever's triaging knows what's
+// blocking before they read the line items. Uses inline styles + a colored
+// left border so it survives Outlook/Gmail rendering without classes.
+const EXCEPTION_STATE_LABELS: Record<string, { label: string; bg: string; border: string; text: string }> = {
+  warning:          { label: "Warning",            bg: "#fffbeb", border: "#f59e0b", text: "#92400e" },
+  exception:        { label: "Exception flagged",  bg: "#fef2f2", border: "#dc2626", text: "#991b1b" },
+  waiting_client:   { label: "Waiting on client",  bg: "#eff6ff", border: "#2563eb", text: "#1e40af" },
+  waiting_internal: { label: "Waiting internal",   bg: "#f5f3ff", border: "#7c3aed", text: "#5b21b6" },
+  resolved:         { label: "Resolved",           bg: "#ecfdf5", border: "#059669", text: "#065f46" },
+};
+const EXCEPTION_TYPE_LABELS: Record<string, string> = {
+  missing_artwork: "Missing artwork",
+  artwork_creation_needed: "Artwork creation needed",
+  wrong_file_or_spec_format: "Wrong file or spec format",
+  missing_dimensions: "Missing dimensions",
+  missing_contact_info: "Missing contact info",
+  unclear_order_notes: "Unclear order notes",
+  custom_review_needed: "Custom review needed",
+  rush_request: "Rush request",
+  incomplete_package_selection: "Incomplete package selection",
+  asset_mismatch: "Asset mismatch",
+  manual_follow_up_required: "Manual follow-up required",
+};
+
+function renderExceptionBanner(order: any): string {
+  const blocks: string[] = [];
+  const state = order?.exceptionState && order.exceptionState !== "none" ? String(order.exceptionState) : null;
+  const meta = state ? EXCEPTION_STATE_LABELS[state] : null;
+  if (state && meta) {
+    const typeLabel = order.exceptionType ? (EXCEPTION_TYPE_LABELS[order.exceptionType] || order.exceptionType) : null;
+    blocks.push(`<div style="margin-top:14px;padding:12px 14px;border-radius:8px;background:${meta.bg};border-left:4px solid ${meta.border};color:${meta.text};">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">${escapeHtml(meta.label)}${typeLabel ? ` · ${escapeHtml(typeLabel)}` : ""}</div>
+      ${order.exceptionMessage ? `<div style="margin-top:4px;font-size:13px;white-space:pre-wrap;">${escapeHtml(order.exceptionMessage)}</div>` : ""}
+    </div>`);
+  }
+  if (order?.artworkNeededFlag) {
+    const contact = [order.artworkContactName, order.artworkContactEmail].filter(Boolean).join(" · ");
+    blocks.push(`<div style="margin-top:10px;padding:12px 14px;border-radius:8px;background:#fdf4ff;border-left:4px solid #a21caf;color:#701a75;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">Artwork creation requested</div>
+      ${order.artworkBrief ? `<div style="margin-top:4px;font-size:13px;white-space:pre-wrap;">${escapeHtml(order.artworkBrief)}</div>` : ""}
+      ${contact ? `<div style="margin-top:6px;font-size:12px;color:#86198f;">Design contact: ${escapeHtml(contact)}</div>` : ""}
+    </div>`);
+  }
+  return blocks.join("");
+}
+
 export function renderInternalForwardHtml(ctx: OrderEmailContext): string {
   const { partner, theme, order, items, event, venue } = ctx;
   const colors = resolveBrandColors(theme);
@@ -244,6 +291,7 @@ export function renderInternalForwardHtml(ctx: OrderEmailContext): string {
         <div style="display:inline-block;padding:4px 10px;border-radius:999px;background:${colors.accent}26;color:${colors.text};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">New order · action required</div>
         <h1 style="margin:0 0 4px 0;font-size:20px;color:${colors.text};">${escapeHtml(order.orderNumber)}</h1>
         <div style="font-size:13px;color:${colors.muted};">Submitted ${escapeHtml(new Date(order.createdAt).toLocaleString())}</div>
+        ${renderExceptionBanner(order as any)}
 
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:18px;border-collapse:collapse;background:${colors.background};border-radius:10px;overflow:hidden;">
           <tr><td style="padding:8px 12px;font-size:12px;color:${colors.muted};width:120px;">Customer</td><td style="padding:8px 12px;font-size:13px;color:${colors.text};font-weight:600;">${escapeHtml(order.contactName)}${order.companyName ? ` · ${escapeHtml(order.companyName)}` : ""}</td></tr>

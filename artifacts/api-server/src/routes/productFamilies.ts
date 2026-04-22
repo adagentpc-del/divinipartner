@@ -7,7 +7,7 @@ import {
   productFamiliesTable, productFamilyMembersTable, productCatalogTable,
   inventoryTable, citiesTable,
   inventoryBlackoutsTable, inventoryReservationsTable, eventsTable,
-  partnerEmailRecipientsTable, ordersTable, usageEvents,
+  partnerEmailRecipientsTable, ordersTable, usageEvents, partnersTable,
 } from "@workspace/db";
 import {
   getPartnerFamilyAvailability,
@@ -418,7 +418,51 @@ router.post("/dev/seed-easy-up-family", async (req, res): Promise<void> => {
     }
   }
 
+  // ----- Section 29 demo: order exceptions + artwork-needed states -----
+  // Patches up to four of the partner's most recent orders into representative
+  // exception states so the dashboard + order detail page show the workflow
+  // visibly without needing to author them by hand. Idempotent: only applies
+  // to orders that currently have exceptionState='none' AND no artworkNeededFlag.
+  let exceptionDemosApplied = 0;
+  const demoOrders = await db.select({
+    id: ordersTable.id, exceptionState: ordersTable.exceptionState, artworkNeededFlag: ordersTable.artworkNeededFlag,
+  }).from(ordersTable).where(eq(ordersTable.partnerId, partnerId)).orderBy(desc(ordersTable.createdAt)).limit(8);
+  const eligible = demoOrders.filter(o => (o.exceptionState ?? "none") === "none" && !o.artworkNeededFlag);
+  type Demo = { state: string; type: string; message: string; artwork?: { brief: string; name: string; email: string } };
+  const demos: Demo[] = [
+    { state: "exception", type: "missing_artwork", message: "Customer hasn't sent the back-wall artwork yet — production blocked." },
+    { state: "warning", type: "artwork_creation_needed", message: "Customer asked us to design a new lockup for the side panels.", artwork: { brief: "8' backdrop with spring conference logo + 4 sponsor lockups across the bottom band.", name: "Riley — partner design", email: "design@a3-demo.test" } },
+    { state: "waiting_client", type: "missing_dimensions", message: "Customer didn't specify finished size for the table runner — pinged them yesterday." },
+    { state: "resolved", type: "wrong_file_or_spec_format", message: "Client sent a low-res JPG; replaced with a vector PDF on 4/22." },
+  ];
+  for (let i = 0; i < Math.min(eligible.length, demos.length); i++) {
+    const o = eligible[i]; const d = demos[i];
+    const patch: any = {
+      exceptionState: d.state,
+      exceptionType: d.type,
+      exceptionMessage: d.message,
+      exceptionUpdatedAt: new Date(),
+      exceptionUpdatedBy: "seed_demo",
+    };
+    if (d.artwork) {
+      patch.artworkNeededFlag = true;
+      patch.artworkBrief = d.artwork.brief;
+      patch.artworkContactName = d.artwork.name;
+      patch.artworkContactEmail = d.artwork.email;
+    }
+    await db.update(ordersTable).set(patch).where(eq(ordersTable.id, o.id));
+    exceptionDemosApplied++;
+  }
+
+  // Make sure the partner has a default design contact wired up so the
+  // ArtworkNeededPanel pre-fills it when admins flip the toggle on a fresh order.
+  await db.update(partnersTable).set({
+    designContactName: sql`COALESCE(${partnersTable.designContactName}, 'Riley — partner design')`,
+    designContactEmail: sql`COALESCE(${partnersTable.designContactEmail}, 'design@a3-demo.test')`,
+  } as any).where(eq(partnersTable.id, partnerId));
+
   res.json({
+    exceptionDemosApplied,
     ok: true,
     familyId: family.id, slug: family.slug,
     productIds: { frame: frame.id, canopy: canopy.id, backdrop: backdrop.id, sideWall: sideWall.id },

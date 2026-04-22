@@ -67,6 +67,11 @@ export const partnersTable = pgTable("partners", {
   emailSenderLabel: text("email_sender_label"),
   internalForwardEmail: text("internal_forward_email"),
   ccEmail: text("cc_email"),
+  // Section 29 — partner-specific design contact used as the default routing
+  // target for "artwork needed" requests. Optional; falls back to the partner's
+  // primary contact when unset.
+  designContactName: text("design_contact_name"),
+  designContactEmail: text("design_contact_email"),
   emailEnabled: boolean("email_enabled").notNull().default(true),
   // PDF attachment toggles (April 2026 attachments extension). When true, the
   // matching audience email gets the generated branded order summary attached.
