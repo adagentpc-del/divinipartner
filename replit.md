@@ -109,6 +109,19 @@ Admin UI (`artifacts/a3-portal/src/pages/admin/`):
 - `InvoiceDetail.tsx` — totals block uses `formatMoney`, shows tax label + rate + ", incl." when applicable, and stamps the currency code on the Total row.
 - `Billing.tsx`, `Reconciliation.tsx` — money cells show the currency code next to the amount so mixed-currency lists are unambiguous.
 
+## Section 20 — PDF / quote / spec AI cost reduction (April 2026)
+
+See `PDF_AI_COST_AUDIT.md` for the full audit, before/after numbers, and rationale.
+
+Key changes (all in deck extraction — the only document-text → AI flow):
+- `deck_extractions` gained `file_hash` (sha256), `file_size`, `extracted_text` (cached pdf-parse output), `relevant_chunks` (jsonb of pages sent to AI), `chunk_count`, `parse_source` (`ai|rules|reused_dedup`), `deduped_from_id`, `ai_tokens_input/output`, `ai_model`. Status enum widened: `uploaded|text_extracted|chunked|awaiting_ai|parsed|duplicate_reused|parse_failed|archived`.
+- `lib/deckExtraction.ts` is staged: hash → dedup lookup → pdf-parse once → boilerplate strip → keyword/dimension chunk selection → AI on chunks only → store. Duplicate uploads of the same file (same `partnerId + fileHash`) copy items from the prior parsed row and never call AI.
+- Hard caps in `PDF_LIMITS`: 25 MB file, 60k cached text chars, 8k AI input chars, 8 chunks, 1500 max output tokens. Tight ~80-word system prompt; `max_tokens` on the request; `extractedTextSnippet` server-trimmed to 200 chars.
+- New routes: `GET /partners/:id/deck-extractions/check-duplicate?hash=…` (pre-flight) and `POST /deck-extractions/:id/rerun` (explicit, confirm-gated).
+- Usage events emitted: `deck.parse.ai`, `deck.parse.rules`, `deck.parse.reused`, `deck.parse.failed` (each with meta including tokens, chunk count, fingerprint).
+- `DeckExtractionReview.tsx` shows status, `♻ Reused (dedup #N)` badge when cached, `AI · N chunks · M tok` when AI ran, `Rules-only` when deterministic fallback ran, and a confirm-gated `Re-run parse` button.
+- Quote-ingestion (`quote_assets`) is intentionally untouched — it is currently manual (no AI) and adding AI would be a new feature, not a cost reduction.
+
 Demo data (`scripts/src/seed-currency-demo.ts`, `pnpm --filter @workspace/scripts run seed:currency`):
 - Move Miami (partner #1): USD + `sales_tax` + `FL Sales Tax` 7% exclusive, billingCountry US.
 - London Pop-ups (new partner): EUR + `vat` + `VAT` 20% inclusive, billingCountry GB, with overseas invoice display notes.

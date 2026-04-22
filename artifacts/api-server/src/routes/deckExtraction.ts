@@ -1,11 +1,11 @@
 import { Router, type IRouter } from "express";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, inArray } from "drizzle-orm";
 import {
   db, deckExtractionsTable, deckExtractionItemsTable,
   partnerBrandingLocationsTable, partnersTable, withMmColumns
 } from "@workspace/db";
 import { z } from "zod";
-import { processDeckExtraction } from "../lib/deckExtraction";
+import { processDeckExtraction, findPriorParsedExtraction, fingerprintBuffer, PDF_LIMITS } from "../lib/deckExtraction";
 
 const router: IRouter = Router();
 
@@ -141,6 +141,67 @@ router.post("/deck-extraction-items/:id/duplicate", async (req, res): Promise<vo
   }).returning();
 
   res.status(201).json(dup);
+});
+
+// ===== Section 20: cost-reduction endpoints =====
+
+// Pre-flight duplicate check. Frontend computes sha256 of the file and asks
+// before uploading; if a prior parsed extraction exists, the UI offers to
+// reuse it instead of triggering a fresh AI run.
+router.get("/partners/:partnerId/deck-extractions/check-duplicate", async (req, res): Promise<void> => {
+  const partnerId = parseInt(req.params.partnerId);
+  const hash = String(req.query.hash || "");
+  if (isNaN(partnerId) || !hash) { res.status(400).json({ error: "partnerId and hash required" }); return; }
+  const prior = await findPriorParsedExtraction(partnerId, hash);
+  res.json({
+    duplicate: !!prior,
+    extractionId: prior?.id || null,
+    sourceFileName: prior?.sourceFileName || null,
+    processedAt: prior?.processedAt || null,
+    parseSource: prior?.parseSource || null,
+    totalPages: prior?.totalPages || null,
+  });
+});
+
+// Explicit re-run: bypass dedup cache and re-extract. Required when admin
+// suspects the original parse was wrong; otherwise the system always reuses.
+router.post("/deck-extractions/:id/rerun", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const [extraction] = await db.select().from(deckExtractionsTable).where(eq(deckExtractionsTable.id, id));
+  if (!extraction) { res.status(404).json({ error: "Extraction not found" }); return; }
+  // Atomic claim: a single conditional UPDATE flips status from any terminal
+  // state to `processing`. Two concurrent rerun requests race on this UPDATE
+  // and only the one that observes a terminal status row wins; the loser sees
+  // 0 rows updated and gets 409. Prevents duplicate AI runs on simultaneous starts.
+  const TERMINAL = ["parsed", "duplicate_reused", "parse_failed", "completed", "failed", "archived"];
+  const claimed = await db.update(deckExtractionsTable)
+    .set({ status: "processing", errorMessage: null, parseSource: null, dedupedFromId: null })
+    .where(and(
+      eq(deckExtractionsTable.id, id),
+      inArray(deckExtractionsTable.status, TERMINAL),
+    ))
+    .returning({ id: deckExtractionsTable.id });
+  if (claimed.length === 0) {
+    res.status(409).json({ error: `Cannot rerun while status is "${extraction.status}"` });
+    return;
+  }
+  // Refetch the file and re-process with forceRerun
+  const fileUrl = extraction.sourceFileUrl;
+  let fileBuffer: Buffer;
+  const internalRes = await fetch(`http://localhost:8080/api/storage/objects/${fileUrl.replace(/^\/+/, "")}`);
+  if (!internalRes.ok) {
+    // Roll back our claim so admin can retry once storage is reachable.
+    await db.update(deckExtractionsTable).set({ status: "parse_failed", errorMessage: "Storage fetch failed" }).where(eq(deckExtractionsTable.id, id));
+    res.status(502).json({ error: "Failed to fetch source file" });
+    return;
+  }
+  fileBuffer = Buffer.from(await internalRes.arrayBuffer());
+  // Wipe prior items to avoid duplicates on rerun
+  await db.delete(deckExtractionItemsTable).where(eq(deckExtractionItemsTable.extractionId, id));
+  processDeckExtraction(id, extraction.partnerId, fileBuffer, extraction.sourceFileName, { forceRerun: true })
+    .catch(e => console.error("Background rerun failed:", e));
+  res.json({ ok: true, id, status: "processing" });
 });
 
 router.post("/deck-extraction-items/approve", async (req, res): Promise<void> => {

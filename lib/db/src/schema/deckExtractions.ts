@@ -8,10 +8,23 @@ export const deckExtractionsTable = pgTable("deck_extractions", {
   partnerId: integer("partner_id").notNull().references(() => partnersTable.id, { onDelete: "cascade" }),
   sourceFileUrl: text("source_file_url").notNull(),
   sourceFileName: text("source_file_name").notNull(),
+  // Status (Section 20): uploaded | text_extracted | chunked | awaiting_ai | parsed
+  //                    | duplicate_reused | parse_failed | archived
   status: text("status").notNull().default("processing"),
   totalPages: integer("total_pages"),
   processedAt: timestamp("processed_at", { withTimezone: true }),
   errorMessage: text("error_message"),
+  // Cost-reduction fields (Section 20 — PDF AI cost audit)
+  fileHash: text("file_hash"),                       // sha256 hex of file bytes (dedup key)
+  fileSize: integer("file_size"),                    // bytes
+  extractedText: text("extracted_text"),             // cached pdf-parse output (avoid re-parse)
+  relevantChunks: jsonb("relevant_chunks"),          // [{page, text, reason}] sent to AI
+  chunkCount: integer("chunk_count"),                // # chunks sent
+  parseSource: text("parse_source"),                 // "ai" | "rules" | "reused_dedup"
+  dedupedFromId: integer("deduped_from_id"),         // self-ref to a prior parsed extraction
+  aiTokensInput: integer("ai_tokens_input"),         // from openai usage.prompt_tokens
+  aiTokensOutput: integer("ai_tokens_output"),       // from openai usage.completion_tokens
+  aiModel: text("ai_model"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
@@ -36,6 +49,16 @@ export const deckExtractionItemsTable = pgTable("deck_extraction_items", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
+
+// Section 20: durable in-flight claim. Only one parse can hold a claim per
+// (partner_id, file_hash); concurrent uploads of the same file see an existing
+// claim and wait/dedup instead of double-billing AI.
+export const deckExtractionClaimsTable = pgTable("deck_extraction_claims", {
+  partnerId: integer("partner_id").notNull().references(() => partnersTable.id, { onDelete: "cascade" }),
+  fileHash: text("file_hash").notNull(),
+  extractionId: integer("extraction_id").notNull().references(() => deckExtractionsTable.id, { onDelete: "cascade" }),
+  startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({ pk: { name: "deck_extraction_claims_pkey", columns: [t.partnerId, t.fileHash] } as any }));
 
 export const insertDeckExtractionSchema = createInsertSchema(deckExtractionsTable).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertDeckExtraction = z.infer<typeof insertDeckExtractionSchema>;

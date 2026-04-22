@@ -40,6 +40,13 @@ interface Extraction {
   totalPages: number | null;
   processedAt: string | null;
   errorMessage: string | null;
+  parseSource?: "ai" | "rules" | "reused_dedup" | null;
+  dedupedFromId?: number | null;
+  chunkCount?: number | null;
+  aiTokensInput?: number | null;
+  aiTokensOutput?: number | null;
+  aiModel?: string | null;
+  fileHash?: string | null;
   items: ExtractionItem[];
 }
 
@@ -242,14 +249,37 @@ export default function DeckExtractionReview() {
             {extraction.sourceFileName} · {extraction.totalPages || "?"} pages · {extraction.items.length} candidates
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant={extraction.status === "completed" ? "default" : extraction.status === "failed" ? "destructive" : "secondary"}>
-            {extraction.status}
-          </Badge>
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          <Badge variant={
+            extraction.status === "parsed" || extraction.status === "completed" ? "default" :
+            extraction.status === "parse_failed" || extraction.status === "failed" ? "destructive" :
+            "secondary"
+          }>{extraction.status}</Badge>
+          {extraction.parseSource === "reused_dedup" && (
+            <Badge variant="outline" className="border-emerald-300 text-emerald-700 bg-emerald-50">
+              ♻ Reused (dedup #{extraction.dedupedFromId})
+            </Badge>
+          )}
+          {extraction.parseSource === "ai" && (
+            <Badge variant="outline" className="text-violet-700 border-violet-300 bg-violet-50" title="AI tokens used">
+              AI · {extraction.chunkCount ?? "?"} chunks · {(extraction.aiTokensInput || 0) + (extraction.aiTokensOutput || 0)} tok
+            </Badge>
+          )}
+          {extraction.parseSource === "rules" && (
+            <Badge variant="outline" className="text-zinc-600 border-zinc-300">Rules-only (no AI)</Badge>
+          )}
+          {(extraction.status === "parsed" || extraction.status === "duplicate_reused") && (
+            <Button variant="outline" size="sm"
+              onClick={async () => {
+                if (!confirm("Re-run parse? This will re-extract from the original PDF and incur AI cost.")) return;
+                await fetch(`/api/deck-extractions/${extraction.id}/rerun`, { method: "POST" });
+                loadExtraction();
+              }}>Re-run parse</Button>
+          )}
         </div>
       </div>
 
-      {extraction.status === "processing" && (
+      {(extraction.status === "processing" || extraction.status === "uploaded" || extraction.status === "text_extracted" || extraction.status === "chunked" || extraction.status === "awaiting_ai") && (
         <Card className="border-amber-200 bg-amber-50/30">
           <CardContent className="py-4 flex items-center gap-3">
             <Loader2 className="h-5 w-5 animate-spin text-amber-600" />
