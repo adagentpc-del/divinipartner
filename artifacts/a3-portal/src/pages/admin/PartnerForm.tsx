@@ -184,25 +184,21 @@ export default function PartnerForm() {
                 </Button>
               </Link>
             )}
-            {form.watch("partnerType") === "ordering" && (
-              <>
-                <Link href={`/admin/partners/${id}/cities-venues`}>
-                  <Button variant="outline" size="sm" className="gap-1.5">
-                    <Building2 className="h-3.5 w-3.5" /> Cities & Venues
-                  </Button>
-                </Link>
-                <Link href={`/admin/partners/${id}/events`}>
-                  <Button variant="outline" size="sm" className="gap-1.5">
-                    <Settings className="h-3.5 w-3.5" /> Events
-                  </Button>
-                </Link>
-                <Link href={`/admin/partners/${id}/packages`}>
-                  <Button variant="outline" size="sm" className="gap-1.5">
-                    <Settings className="h-3.5 w-3.5" /> Packages
-                  </Button>
-                </Link>
-              </>
-            )}
+            <Link href={`/admin/partners/${id}/cities-venues`}>
+              <Button variant="outline" size="sm" className="gap-1.5">
+                <Building2 className="h-3.5 w-3.5" /> Cities &amp; Venues
+              </Button>
+            </Link>
+            <Link href={`/admin/partners/${id}/events`}>
+              <Button variant="outline" size="sm" className="gap-1.5">
+                <Settings className="h-3.5 w-3.5" /> Events
+              </Button>
+            </Link>
+            <Link href={`/admin/partners/${id}/packages`}>
+              <Button variant="outline" size="sm" className="gap-1.5">
+                <Settings className="h-3.5 w-3.5" /> Packages
+              </Button>
+            </Link>
             <a href={`/partner/${form.getValues("slug")}`} target="_blank" rel="noopener noreferrer">
               <Button variant="outline" size="sm" className="gap-1.5">
                 <ExternalLink className="h-3.5 w-3.5" /> Preview

@@ -41,7 +41,10 @@ const PartnerBody = z.object({
   billingEntityName: z.string().optional().nullable(),
   paymentTerms: z.string().optional().nullable(),
   depositRequired: z.boolean().optional(),
-  depositPct: z.union([z.string(), z.number()]).optional().nullable(),
+  depositPct: z.union([z.string(), z.number()]).optional().nullable().transform((v) => {
+    if (v === "" || v === undefined || v === null) return null;
+    return v;
+  }),
   allowPartialPayment: z.boolean().optional(),
   allowOrderOverride: z.boolean().optional(),
   defaultBillingNotes: z.string().optional().nullable(),
@@ -152,15 +155,12 @@ router.post("/partners/:id/duplicate", async (req, res): Promise<void> => {
 });
 
 router.delete("/partners/:id", async (req, res): Promise<void> => {
-  const params = DeletePartnerParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const [partner] = await db
     .delete(partnersTable)
-    .where(eq(partnersTable.id, params.data.id))
+    .where(eq(partnersTable.id, id))
     .returning();
 
   if (!partner) {
