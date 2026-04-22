@@ -32,10 +32,12 @@ import {
   Layers,
   Wrench,
   Megaphone,
+  Mail,
   Settings as SettingsIcon,
 } from "lucide-react";
 import { FeedbackButton } from "@/components/admin/FeedbackButton";
 import { DemoModeBanner, DemoModeToggle } from "@/components/admin/DemoModeBanner";
+import EmailReadinessBanner from "@/components/admin/EmailReadinessBanner";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
@@ -94,6 +96,7 @@ const NAV_GROUPS: NavGroup[] = [
     { name: "Deployment",  href: "/admin/deployment",   icon: Cloud },
     { name: "Users",       href: "/admin/users",        icon: UserCog },
     { name: "Settings",    href: "/admin/settings",     icon: SettingsIcon },
+    { name: "Email Readiness", href: "/admin/email-readiness", icon: Mail },
     { name: "Help",        href: "/admin/help",         icon: HelpCircle },
     { name: "Runbook",     href: "/admin/help/runbook", icon: BookOpen },
   ] },
@@ -206,6 +209,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="min-h-screen bg-muted/40">
       <DemoModeBanner />
+      <EmailReadinessBanner />
       <header className="sticky top-0 z-30 bg-card/80 backdrop-blur-lg border-b">
         <div className="flex h-16 items-center gap-4 px-4 md:px-6 max-w-screen-2xl mx-auto">
           <Sheet>

@@ -55,3 +55,47 @@ The A3 Partner Commerce Portal is built as a `pnpm workspace monorepo` using Typ
 -   **Resend**: Email delivery service.
 -   **OpenAI**: AI integration for tasks like request summaries and PDF parsing.
 -   **Replit Object Storage**: Cloud storage for file uploads.
+## Section 31 — Email readiness, branded sending visibility & test sends (April 22, 2026)
+
+### What we built
+- **Backend** — `artifacts/api-server/src/routes/emailReadiness.ts`:
+  - `GET /api/admin/email-readiness` returns a single snapshot:
+    - `system`: `{ resendKeyConfigured, resendError, defaultFromAddress, publicUrl: { value, source, isCustomDomain } }`
+    - `summary`: counts of `ready` / `warning` / `incomplete` partners
+    - `partners[]`: per-partner `fromName`, `replyToEmail`, `internalForwardEmail`, `routingEmail`, `recipientCount`, `missing[]`, `warnings[]`, status pill
+    - `recentFailures[]`: last 25 `email.failed` rows from `usage_events` (carries partnerId + objectId so you can jump straight to the order)
+  - `POST /api/admin/email-readiness/test/customer-confirmation` and `/test/internal-routing` reuse the **real** `sendOrderConfirmation` / `sendInternalOrderForward` paths against the partner's most recent order, but override the recipient (and for the internal test, the routing addresses) so a real customer is never contacted.
+- **Frontend** — `artifacts/a3-portal/src/pages/admin/EmailReadiness.tsx`:
+  - System card with green/amber/red rows for Resend key, canonical domain source, custom-domain status, and "from address on a verified domain" check.
+  - Summary tiles (Ready / Warning / Incomplete).
+  - Per-partner list with status pills, inline detail (from / reply-to / internal forward / recipient count), missing/warnings explanation, and "Test customer email" / "Test internal routing" actions opening a single dialog.
+  - Recent failures list deep-linking to the offending order.
+- **Banner** — `EmailReadinessBanner` mounted at the top of `AdminLayout`. Hidden when system + all partners are clean; otherwise non-blocking amber/red strip with a one-click link into the readiness page. Cached with a 5-minute `staleTime` so it doesn't re-poll on every nav.
+- **Nav** — added `/admin/email-readiness` to the Platform group with a `Mail` icon.
+- **Route** — registered in `App.tsx`.
+
+### Branded email consistency reused (not reinvented)
+Branded sending was already correct — Section 31 only surfaces it. The send path (`lib/email.ts → sendBrandedEmail`) already:
+- uses the partner's `emailFromName` (or `companyName`) as the visible sender,
+- uses Resend's verified `fromEmail` (or falls back to `noreply@resend.dev` with a visible warning in the readiness page),
+- sets `reply_to` to `partner.replyToEmail` → `contactEmail` → order/role-specific fallback,
+- pulls `partner_themes` colours and renders the `brandHeader`/`brandFooter` with logo and partner colours,
+- emits `email.sent` / `email.failed` to `usage_events` with `partnerId` and `objectId=order.id` so failures show up in the readiness page immediately.
+
+### Failure visibility
+`emit("email.failed", { partnerId, objectType:"order", objectId, meta:{ type, to, subject, error } })` was already in place from Section 28; Section 31 just teaches the admin where to find it. Fresh failures appear at the top of the readiness page within one query refetch.
+
+### Readiness rules — what counts as incomplete vs. warning
+- **Incomplete (red):** `emailConfigStatus.missing` is non-empty, OR partner has no `internalForwardEmail`, no legacy `routingEmail`, AND zero rows in `partner_email_recipients` (nobody on the partner side will hear about new orders).
+- **Warning (amber):** non-blocking issues from `emailConfigStatus.warnings` (e.g. email disabled, missing from-name, no reply-to).
+- **Ready (green):** neither.
+
+### Fallback behaviour when config is incomplete
+- The banner is non-blocking — admins can still use the rest of the app.
+- `sendBrandedEmail` itself short-circuits with `email_disabled_for_partner` if `emailEnabled === false` (existing behaviour) and falls back to the default Resend sender when the partner has no per-partner sender configured.
+- Test sends do not require the partner to be "ready" — admins can use them to *verify* a fresh config without first having to trigger a real order.
+
+### Why this design
+- Built entirely on the **existing** email + tracking pipeline. No new schema, no new tables, no migration. Reuses `usage_events`, `emailConfigStatus`, the `sendOrderConfirmation` / `sendInternalOrderForward` paths, and `getPublicUrlInfo`.
+- Readiness state is **derived**, not stored. Recomputed on each page load so it always reflects current config without a sync job.
+- Test sends pivot off the partner's most recent order so the test message is realistic (proper template, real branding, real items) — the only thing that's faked is the recipient address. Returns 409 if the partner has zero orders, with a helpful message rather than a confusing 500.
