@@ -92,7 +92,53 @@ export default function OrderingPortal({ slug }: { slug: string }) {
   const submit = useMutation({
     mutationFn: (body: any) => apiFetch(`/api/public/partners/${slug}/orders`, { method: "POST", body: JSON.stringify(body) }),
     onSuccess: (res: any) => { setSubmitted({ orderNumber: res.orderNumber, email: res.email }); window.scrollTo(0, 0); },
-    onError: (e: any) => toast({ title: "Submission failed", description: e.message, variant: "destructive" }),
+    onError: (e: any) => {
+      // Section 26: server returns 409 HARDWARE_REQUIRED when partner-owned
+      // hardware (tent frames, etc.) is exhausted. Auto-add the hardware
+      // product to the cart so the partner can re-submit immediately.
+      if (e?.status === 409 && e?.body?.code === "HARDWARE_REQUIRED" && data) {
+        const hwId = e.body.hardwareProductId as number | undefined;
+        const hwProduct = hwId ? data.products.find(p => p.id === hwId) : null;
+        // Only auto-add if we actually changed the cart — otherwise the partner
+        // already has the hardware in cart yet supply is still short, which
+        // means a real shortage they need to know about.
+        if (hwProduct && !cart.find(c => c.productId === hwProduct.id)) {
+          setCart(prev => [...prev, {
+            key: `hw-${hwProduct.id}-${Date.now()}`, itemType: "product",
+            productId: hwProduct.id, name: hwProduct.name, quantity: e.body.needed || 1,
+            productImageUrl: hwProduct.imageUrl, customSizeUnit: null,
+          } as CartItem]);
+          toast({
+            title: "New hardware added to your order",
+            description: `${e.body.familyName ?? "Hardware"} stock is exhausted — added ${hwProduct.name} so the order can ship complete. Tap Submit again.`,
+          });
+          return;
+        }
+        toast({
+          title: "Hardware shortage",
+          description: e.body.error || "Not enough partner-owned hardware for this order.",
+          variant: "destructive",
+        });
+        return;
+      }
+      toast({ title: "Submission failed", description: e.message, variant: "destructive" });
+    },
+  });
+
+  // Section 26: family context for products in the cart so we can show inline
+  // "uses your existing tent frame (X of Y left)" or "new frame required" hints.
+  const cartProductIds = useMemo(() => Array.from(new Set(cart.map(c => c.productId).filter((x): x is number => !!x))), [cart]);
+  const partnerIdForFamily = data?.partner?.id;
+  const familyContextQueries = useQuery<Record<number, any>>({
+    queryKey: ["family-context", partnerIdForFamily, cartProductIds.join(",")],
+    enabled: !!partnerIdForFamily && cartProductIds.length > 0,
+    queryFn: async () => {
+      const out: Record<number, any> = {};
+      await Promise.all(cartProductIds.map(async pid => {
+        try { out[pid] = await apiFetch(`/api/public/partners/${slug}/products/${pid}/family-context`); } catch { /* noop */ }
+      }));
+      return out;
+    },
   });
 
   const selectedEvent = useMemo(() => data?.events.find(e => e.id === eventId), [data, eventId]);
@@ -389,12 +435,20 @@ export default function OrderingPortal({ slug }: { slug: string }) {
                     const p = data.products.find(pp => pp.id === c.productId);
                     const isCustom = !!p?.allowsCustomSize && p.pricingModel !== "fixed" && p.pricingModel !== "quantity";
                     const isQuote = p?.pricingModel === "custom_quote";
+                    const fam = c.productId ? familyContextQueries.data?.[c.productId] : null;
                     return (
                       <div key={c.key} className="bg-card p-2 rounded space-y-2">
                         <div className="flex items-center gap-2">
                           {c.productImageUrl && <img src={c.productImageUrl} className="h-10 w-10 rounded object-cover" alt="" />}
                           <div className="flex-1 text-sm">
                             <div>{c.name}</div>
+                            {fam?.inFamily && fam.role !== "hardware" && fam.requiresHardwareDefault && (
+                              <div className={`mt-0.5 text-[11px] ${fam.availability && fam.availability.available >= (c.quantity * (fam.requiresHardwareUnits || 1)) ? "text-emerald-700" : "text-amber-700"}`}>
+                                {fam.availability && fam.availability.available >= (c.quantity * (fam.requiresHardwareUnits || 1))
+                                  ? `Uses your existing ${fam.familyName} hardware (${fam.availability.available} of ${fam.availability.totalOwned ?? fam.availability.available} available)`
+                                  : `${fam.familyName} hardware exhausted — a new unit will be added at submit`}
+                              </div>
+                            )}
                             {p?.pricingModel && p.pricingModel !== "fixed" && p.pricingModel !== "quantity" && (
                               <div className="text-[11px] text-muted-foreground">
                                 {p.pricingModel === "custom_quote"

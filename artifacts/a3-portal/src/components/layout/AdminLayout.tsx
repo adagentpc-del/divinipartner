@@ -58,6 +58,7 @@ const navigation = [
   { name: "Reconciliation", href: "/admin/reconciliation", icon: Calculator },
   { name: "Suppliers", href: "/admin/suppliers", icon: Truck },
   { name: "Inventory", href: "/admin/inventory", icon: Boxes },
+  { name: "Product Families", href: "/admin/product-families", icon: Boxes },
   { name: "Products", href: "/admin/products", icon: Package },
   { name: "Ingestion", href: "/admin/quote-ingestion", icon: Sparkles },
   { name: "Requests", href: "/admin/requests", icon: FileText },

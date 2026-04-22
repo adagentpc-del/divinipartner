@@ -470,6 +470,18 @@ router.post("/orders", async (req, res): Promise<void> => {
     const billing = resolveOrderBilling(partnerRow as any, eventRow as any, orderData as any);
     const totals = computeOrderTotals(items || [], billing.taxRate, billing.taxInclusive);
 
+    // ---- Section 26: Connected product family enforcement -----------------
+    // Shared helper used by admin POST /orders and the public ordering route
+    // so both paths apply the same family rules. Pre-check is non-locking; the
+    // real race protection comes from `reserveForItem`'s `FOR UPDATE` below.
+    if (items && items.length && orderData.partnerId) {
+      const { planFamilyReservations } = await import("../lib/familyAvailability");
+      const plan = await planFamilyReservations(orderData.partnerId, items as any, eventRow?.cityId ?? null);
+      if (!plan.ok) { res.status(plan.status).json(plan.body); return; }
+    }
+    // -----------------------------------------------------------------------
+
+
     const order = await db.transaction(async (tx) => {
       const [createdOrder] = await tx.insert(ordersTable).values(normalizeOrderLogistics({
         ...orderData,

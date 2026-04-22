@@ -20,11 +20,15 @@ export async function apiFetch<T = any>(path: string, init?: RequestInit): Promi
   });
   if (!res.ok) {
     let message = res.statusText;
+    let body: any = null;
     try {
-      const body = await res.json();
-      message = body.error || message;
+      body = await res.json();
+      message = body?.error || message;
     } catch { /* noop */ }
-    throw new Error(message);
+    const err = new Error(message) as Error & { status?: number; body?: any };
+    err.status = res.status;
+    err.body = body;
+    throw err;
   }
   return res.json();
 }

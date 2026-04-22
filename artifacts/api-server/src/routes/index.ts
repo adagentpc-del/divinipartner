@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
+import productFamiliesRouter from "./productFamilies";
 import partnersRouter from "./partners";
 import partnerEmailRecipientsRouter from "./partnerEmailRecipients";
 import publicPortalRouter from "./publicPortal";
@@ -62,6 +63,7 @@ router.use(brandingLocationsRouter);
 router.use(portalRequestsRouter);
 router.use(deckExtractionRouter);
 router.use(packageExtractionRouter);
+router.use(productFamiliesRouter);
 router.use(suppliersRouter);
 router.use(citiesRouter);
 router.use(venuesRouter);

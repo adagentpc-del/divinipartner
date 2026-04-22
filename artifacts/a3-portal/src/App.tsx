@@ -25,6 +25,7 @@ import CitiesAndVenues from "@/pages/admin/CitiesAndVenues";
 import EventsList from "@/pages/admin/EventsList";
 import PackagesList from "@/pages/admin/PackagesList";
 import InventoryDashboard from "@/pages/admin/InventoryDashboard";
+import ProductFamilies from "@/pages/admin/ProductFamilies";
 import OrdersDashboard from "@/pages/admin/OrdersDashboard";
 import OrderDetail from "@/pages/admin/OrderDetail";
 import UserRoles from "@/pages/admin/UserRoles";
@@ -219,6 +220,9 @@ function ClerkProviderWithRoutes() {
             </Route>
             <Route path="/admin/inventory">
               {() => <AdminRoute component={InventoryDashboard} />}
+            </Route>
+            <Route path="/admin/product-families">
+              {() => <AdminRoute component={ProductFamilies} />}
             </Route>
             <Route path="/admin/orders">
               {() => <AdminRoute component={OrdersDashboard} />}

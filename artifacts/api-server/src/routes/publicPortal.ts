@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, and, inArray } from "drizzle-orm";
-import { db, partnersTable, requestsTable, requestItemsTable, requestUploadsTable, pricingRulesTable, partnerThemesTable, partnerSectionsTable, partnerBrandingLocationsTable, productCatalogTable, partnerProductOverridesTable, citiesTable, venuesTable, eventsTable, packagesTable, packageItemsTable, ordersTable, orderItemsTable, suppliersTable, computePrice, convert, resolvePreference, withMmColumns, withWeightColumns, type LengthUnit, type PricingModel, type PricingUnit } from "@workspace/db";
+import { eq, and, inArray, sql } from "drizzle-orm";
+import { db, partnersTable, requestsTable, requestItemsTable, requestUploadsTable, pricingRulesTable, partnerThemesTable, partnerSectionsTable, partnerBrandingLocationsTable, productCatalogTable, partnerProductOverridesTable, citiesTable, venuesTable, eventsTable, packagesTable, packageItemsTable, ordersTable, orderItemsTable, suppliersTable, inventoryTable, inventoryReservationsTable, computePrice, convert, resolvePreference, withMmColumns, withWeightColumns, type LengthUnit, type PricingModel, type PricingUnit } from "@workspace/db";
 const _inArray = inArray;
 
 // Public visibility gate: a partner is reachable from the public portal only when active and
@@ -451,6 +451,32 @@ const PublicOrderSchema = z.object({
   items: z.array(PublicOrderItemSchema).max(200).default([]),
 }).strict();
 
+// Section 26: public family-context lookup so the OrderingPortal can show
+// "uses your existing tent frame (X of Y)" or "new frame required" hints
+// without exposing the authenticated admin endpoint.
+router.get("/public/partners/:slug/products/:productId/family-context", async (req, res): Promise<void> => {
+  const { slug } = req.params;
+  const productId = Number(req.params.productId);
+  if (!Number.isFinite(productId)) { res.status(400).json({ error: "bad productId" }); return; }
+  const [partner] = await db.select().from(partnersTable)
+    .where(and(eq(partnersTable.slug, slug), eq(partnersTable.isActive, true), inArray(partnersTable.launchStatus, [...PUBLIC_LAUNCH_STATES])));
+  if (!partner) { res.status(404).json({ error: "Partner not found" }); return; }
+  const { getFamilyContextForProduct, getPartnerFamilyAvailability } = await import("../lib/familyAvailability");
+  const ctx = await getFamilyContextForProduct(productId);
+  if (!ctx) { res.json({ inFamily: false }); return; }
+  const avail = await getPartnerFamilyAvailability(partner.id, ctx.family.id);
+  res.json({
+    inFamily: true,
+    familyId: ctx.family.id,
+    familyName: ctx.family.name,
+    role: ctx.member.role,
+    requiresHardwareUnits: ctx.member.requiresHardwareUnits,
+    hardwareProductId: ctx.family.hardwareProductId,
+    requiresHardwareDefault: ctx.family.requiresHardwareDefault,
+    availability: avail[0] ?? null,
+  });
+});
+
 router.post("/public/partners/:slug/orders", async (req, res): Promise<void> => {
   const { slug } = req.params;
   const [partner] = await db.select().from(partnersTable)
@@ -524,6 +550,43 @@ router.post("/public/partners/:slug/orders", async (req, res): Promise<void> => 
   const _resolved = resolvePreference({ event: _event, venue: _venue, partner });
   const measurementSystem = _resolved.system;
 
+  // ---- Section 26: family-aware enforcement ---------------------------------
+  // Mutates `data.items` in place to set fulfillmentMode / inventory source for
+  // family components, or returns 409 when partner-owned hardware is exhausted.
+  // Re-uses the same helper as the admin POST /orders so behavior is uniform.
+  type ItemPlan = { inventoryId?: number | null; cityId?: number | null; fulfillmentMode?: string | null };
+  const itemPlans: ItemPlan[] = data.items.map(() => ({}));
+  if (data.items.length) {
+    const { planFamilyReservations } = await import("../lib/familyAvailability");
+    const scratch = data.items.map(it => ({
+      productId: it.productId ?? null,
+      quantity: it.quantity,
+      inventorySourceInventoryId: null as number | null,
+      inventorySourceCityId: null as number | null,
+      fulfillmentMode: it.fulfillmentMode ?? null,
+    }));
+    const plan = await planFamilyReservations(partner.id, scratch, _event?.cityId ?? null);
+    if (!plan.ok) { res.status(plan.status).json(plan.body); return; }
+    scratch.forEach((s, i) => {
+      itemPlans[i] = {
+        inventoryId: s.inventorySourceInventoryId,
+        cityId: s.inventorySourceCityId,
+        fulfillmentMode: s.fulfillmentMode,
+      };
+    });
+    // The reservation step inside the txn requires an eventId. If a family
+    // component was planned but the order has no event, fail loudly rather
+    // than silently dropping the reservation and leaking hardware.
+    const hasPlannedReservation = itemPlans.some(p => p.inventoryId);
+    if (hasPlannedReservation && !data.eventId) {
+      res.status(400).json({
+        code: "EVENT_REQUIRED",
+        error: "An event must be selected before ordering hardware-dependent items so the reservation can be tied to it.",
+      });
+      return;
+    }
+  }
+
   try {
     const result = await db.transaction(async (tx) => {
       const [order] = await tx.insert(ordersTable).values({
@@ -550,10 +613,14 @@ router.post("/public/partners/:slug/orders", async (req, res): Promise<void> => 
       }).returning();
 
       if (data.items.length) {
-        await tx.insert(orderItemsTable).values(data.items.map((it, idx) => {
+        // Section 26: when a family-component item has a planned inventory
+        // source, atomically reserve the hardware unit before inserting the
+        // item row so any race against a concurrent order is caught here.
+        const insertedRows: Array<any> = [];
+        for (let idx = 0; idx < data.items.length; idx++) {
+          const it = data.items[idx];
           const priced = priceForLine(it);
           const r = priced?.result ?? null;
-          // Copy packed/shipping defaults from product → order item snapshot.
           const prod: any = it.productId ? productById.get(it.productId) : null;
           const packed = prod ? withWeightColumns(withMmColumns({
             packedWidth: prod.packedWidth, packedHeight: prod.packedHeight, packedDepth: prod.packedDepth, packedSizeUnit: prod.packedSizeUnit,
@@ -562,7 +629,38 @@ router.post("/public/partners/:slug/orders", async (req, res): Promise<void> => 
             crateRequired: !!prod.crateRequired, palletRequired: !!prod.palletRequired, oversizeFlag: !!prod.oversizeFlag,
             freightClass: prod.freightClass, installKitNotes: prod.installKitNotes,
           })) : {};
-          return {
+
+          // Reserve hardware atomically when family planning assigned a row.
+          let inventoryReservationId: number | null = null;
+          let reservedQuantity = 0;
+          let shortageQuantity = 0;
+          const planned = itemPlans[idx];
+          if (planned?.inventoryId && data.eventId) {
+            const lockRows: any = await tx.execute(sql`SELECT id, total_quantity, reserved, in_use, damaged, retired, partner_id FROM inventory WHERE id = ${planned.inventoryId} FOR UPDATE`);
+            const inv = lockRows.rows?.[0];
+            if (inv && Number(inv.partner_id) === partner.id) {
+              const total = Number(inv.total_quantity) || 0;
+              const used = (Number(inv.reserved) || 0) + (Number(inv.in_use) || 0) + (Number(inv.damaged) || 0) + (Number(inv.retired) || 0);
+              const available = Math.max(0, total - used);
+              const reserveNow = Math.min(available, it.quantity);
+              if (reserveNow < it.quantity) {
+                // Race lost — same family helper would now return 409.
+                throw Object.assign(new Error("Hardware exhausted between validation and reservation"), {
+                  __familyConflict: true,
+                  body: { code: "HARDWARE_REQUIRED", error: "Hardware was just claimed by another order — please retry.", available, needed: it.quantity },
+                });
+              }
+              const [resv] = await tx.insert(inventoryReservationsTable).values({
+                inventoryId: planned.inventoryId, eventId: data.eventId, quantity: reserveNow,
+                status: "active", notes: `Auto-reserved by public order ${orderNumber}`,
+              }).returning();
+              await tx.update(inventoryTable).set({ reserved: sql`${inventoryTable.reserved} + ${reserveNow}` }).where(eq(inventoryTable.id, planned.inventoryId));
+              inventoryReservationId = resv.id;
+              reservedQuantity = reserveNow;
+            }
+          }
+
+          insertedRows.push({
             ...packed,
             orderId: order.id,
             itemType: it.itemType,
@@ -574,7 +672,7 @@ router.post("/public/partners/:slug/orders", async (req, res): Promise<void> => 
             unitPrice: r?.requiresQuote
               ? null
               : (r?.unitPrice != null ? String(r.unitPrice) : (it.unitPrice ?? null)),
-            fulfillmentMode: it.fulfillmentMode ?? null,
+            fulfillmentMode: planned?.fulfillmentMode ?? it.fulfillmentMode ?? null,
             artworkFileUrl: it.artworkFileUrl ?? null,
             notes: it.notes ?? null,
             sortOrder: idx,
@@ -588,8 +686,13 @@ router.post("/public/partners/:slug/orders", async (req, res): Promise<void> => 
             pricingModel: r?.pricingModel ?? null,
             pricingUnit: r?.pricingUnit ?? null,
             calculationBasis: r?.basis ?? null,
-          };
-        }));
+            inventorySourceInventoryId: planned?.inventoryId ?? null,
+            inventoryReservationId,
+            reservedQuantity,
+            shortageQuantity,
+          });
+        }
+        await tx.insert(orderItemsTable).values(insertedRows);
       }
       return order;
     });
@@ -645,6 +748,7 @@ router.post("/public/partners/:slug/orders", async (req, res): Promise<void> => 
       email: emailStatus,
     });
   } catch (e: any) {
+    if (e?.__familyConflict && e.body) { res.status(409).json(e.body); return; }
     res.status(400).json({ error: "Could not create order", details: e?.message });
   }
 });

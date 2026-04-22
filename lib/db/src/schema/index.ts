@@ -6,6 +6,7 @@ export * from "./partnerSections";
 export * from "./partnerBrandingLocations";
 export * from "./partnerProductOverrides";
 export * from "./productCatalog";
+export * from "./productFamilies";
 export * from "./requests";
 export * from "./requestItems";
 export * from "./requestUploads";

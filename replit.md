@@ -382,3 +382,27 @@ Routes (`routes/packageExtraction.ts`):
 - `DELETE /api/package-extractions/:id`
 
 `commitPackages` was promoted from a private function to an export of `routes/imports.ts`, so the PDF commit endpoint shares the exact same validation, contiguous-block grouping, savepoint-per-group rollback, and placeholder-product behavior as the CSV/XLSX commit — no parallel write path to maintain.
+
+## Section 26 — Connected product families & reusable hardware auto-switch (April 22, 2026)
+A "product family" connects a hardware base item (e.g. an Easy Up tent frame) with its dependent components (canopy, backdrop, side walls). Per-partner availability is derived live from the existing `inventory` table — no new state machine — and the public ordering portal automatically shifts between two modes:
+- **component**: partner has enough hardware on hand → component is reserved against an existing inventory row
+- **full_unit_required**: hardware exhausted → server returns HTTP 409 `HARDWARE_REQUIRED` and the portal auto-adds the hardware product to the cart
+
+Schema (`lib/db/src/schema/productFamilies.ts`):
+- `product_families` (slug UNIQUE, hardwareProductId, requiresHardwareDefault, isActive)
+- `product_family_members` (familyId, productId, role enum `hardware|component|accessory`, requiresHardwareUnits, sortOrder; UNIQUE on familyId+productId)
+
+Backend:
+- `lib/familyAvailability.ts`: `getPartnerFamilyAvailability(partnerId, familyId?)` sums `hardwareOnHand - reserved - inUse - damaged - retired` across every inventory row the partner has for the family's hardware product (across all cities). `pickInventoryRowForFamily()` prefers the row with the most spare units, optionally biased to an event city.
+- `routes/productFamilies.ts`: full CRUD + member management, `GET /api/partners/:partnerId/family-availability`, `GET /api/products/:productId/family-context?partnerId=…`, idempotent dev seed `POST /api/dev/seed-easy-up-family { partnerId }`. All Clerk-auth gated.
+- `routes/orders.ts` POST handler: pre-validation walks order items, looks up family context, auto-fills `inventorySourceInventoryId` so the existing atomic `reserveForItem` path (FOR UPDATE) does the actual reservation. If demand exceeds availability AND the hardware product isn't also being purchased in the same order, returns `409 { code: "HARDWARE_REQUIRED", familyId, familyName, hardwareProductId, available, needed }`. Brings-your-own-frame orders short-circuit the check.
+- `routes/publicPortal.ts`: public read-only `GET /public/partners/:slug/products/:productId/family-context` so the unauth ordering portal can render hints.
+
+Admin UI: `pages/admin/ProductFamilies.tsx` (list + dialog with hardware picker, member CRUD, requires-hardware toggle); nav link under `/admin/product-families`.
+
+Public ordering portal (`OrderingPortal.tsx`):
+- Cart items show a green "Uses your existing X hardware (N of M available)" hint when in component mode, amber "hardware exhausted — a new unit will be added at submit" when not.
+- `apiFetch` was extended to surface `{ status, body }` on errors so the submit `onError` can detect 409 `HARDWARE_REQUIRED` and auto-insert the hardware product into the cart with the needed quantity, prompting the partner to re-submit.
+
+Reuses (no parallel state machines):
+- `inventory` (hardwareOnHand/reserved/inUse/damaged/retired), `inventory_reservations`, `order_items.inventorySourceInventoryId/inventoryReservationId/reservedQuantity/shortageQuantity/fulfillmentMode`, `productCatalog.reusableHardwareCompatible/inventoryTracked`. Section 26 only adds the **family relationship layer** + the auto-switch policy on top.
