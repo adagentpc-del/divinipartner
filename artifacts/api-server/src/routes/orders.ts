@@ -267,6 +267,11 @@ function buildItemLogisticsValues(it: z.infer<typeof OrderItemBody>, def: Produc
 }
 
 // Reserve inventory for an item. Locks inventory row, creates reservation, returns ids+shortage.
+//
+// Section 27: now date-aware. If we have an event date window we ONLY count
+// reservations and blackouts whose [startDate,endDate] overlaps that window
+// against the row's capacity. Reservations with NULL dates are still counted
+// (legacy / non-date-aware path) via the rolling inventory.reserved counter.
 async function reserveForItem(tx: any, inventoryId: number, eventId: number | null, requestedQty: number, expectedPartnerId?: number | null) {
   const lockRows: any = await tx.execute(sql`SELECT id, total_quantity, reserved, in_use, damaged, retired, partner_id FROM inventory WHERE id = ${inventoryId} FOR UPDATE`);
   if (expectedPartnerId != null && lockRows.rows?.[0] && lockRows.rows[0].partner_id != null && Number(lockRows.rows[0].partner_id) !== expectedPartnerId) {
@@ -274,19 +279,58 @@ async function reserveForItem(tx: any, inventoryId: number, eventId: number | nu
   }
   const inv = lockRows.rows?.[0];
   if (!inv) return { reservationId: null, reservedQty: 0, shortageQty: requestedQty, error: "inventory_not_found" as const };
+  if (!eventId) return { reservationId: null, reservedQty: 0, shortageQty: requestedQty, error: "no_event" as const };
+
+  // Look up the event window so we can both stamp the reservation and scope
+  // the conflict check.
+  const evRows: any = await tx.execute(sql`SELECT install_date, teardown_date, event_date FROM events WHERE id = ${eventId}`);
+  const ev = evRows.rows?.[0];
+  const startDate: string | null = ev?.install_date ?? ev?.event_date ?? null;
+  const endDate: string | null = ev?.teardown_date ?? ev?.event_date ?? startDate;
+
   const total = Number(inv.total_quantity) || 0;
-  const used = (Number(inv.reserved) || 0) + (Number(inv.in_use) || 0) + (Number(inv.damaged) || 0) + (Number(inv.retired) || 0);
+  const inUse = Number(inv.in_use) || 0;
+  const damaged = Number(inv.damaged) || 0;
+  const retired = Number(inv.retired) || 0;
+
+  let reservedInWindow = 0;
+  let blackedOutInWindow = 0;
+  if (startDate && endDate) {
+    const r1: any = await tx.execute(sql`
+      SELECT COALESCE(SUM(quantity),0)::int AS qty FROM inventory_reservations
+      WHERE inventory_id = ${inventoryId} AND status = 'active'
+        AND start_date IS NOT NULL AND end_date IS NOT NULL
+        AND start_date <= ${endDate}::date AND end_date >= ${startDate}::date`);
+    reservedInWindow = Number(r1.rows?.[0]?.qty) || 0;
+    const r2: any = await tx.execute(sql`
+      SELECT COALESCE(SUM(quantity),0)::int AS qty FROM inventory_blackouts
+      WHERE inventory_id = ${inventoryId}
+        AND start_date <= ${endDate}::date AND end_date >= ${startDate}::date`);
+    blackedOutInWindow = Number(r2.rows?.[0]?.qty) || 0;
+  }
+  // Legacy NULL-date reservations are computed strictly from rows so that two
+  // non-overlapping date windows see independent capacity. The rolling
+  // inventory.reserved counter is kept up-to-date for backward-compat with
+  // older code paths but is intentionally NOT used here.
+  const legacyRows: any = await tx.execute(sql`
+    SELECT COALESCE(SUM(quantity),0)::int AS qty FROM inventory_reservations
+    WHERE inventory_id = ${inventoryId} AND status = 'active'
+      AND start_date IS NULL AND end_date IS NULL`);
+  const legacyReserved = Number(legacyRows.rows?.[0]?.qty) || 0;
+  const used = inUse + damaged + retired + reservedInWindow + blackedOutInWindow + legacyReserved;
   const available = Math.max(0, total - used);
   const reserveNow = Math.min(available, requestedQty);
   const shortage = Math.max(0, requestedQty - reserveNow);
   let reservationId: number | null = null;
-  if (reserveNow > 0 && eventId) {
-    const [r] = await tx.insert(inventoryReservationsTable).values({ inventoryId, eventId, quantity: reserveNow, status: "active", notes: "Auto-reserved by order item" }).returning();
+  if (reserveNow > 0) {
+    const [r] = await tx.insert(inventoryReservationsTable).values({
+      inventoryId, eventId, quantity: reserveNow, status: "active",
+      startDate: startDate || undefined, endDate: endDate || undefined,
+      holdReason: "event",
+      notes: "Auto-reserved by order item",
+    }).returning();
     await tx.update(inventoryTable).set({ reserved: sql`${inventoryTable.reserved} + ${reserveNow}` }).where(eq(inventoryTable.id, inventoryId));
     reservationId = r.id;
-  } else if (reserveNow > 0 && !eventId) {
-    // No event — store as standalone reservation isn't possible (event required). Treat all as shortage.
-    return { reservationId: null, reservedQty: 0, shortageQty: requestedQty, error: "no_event" as const };
   }
   return { reservationId, reservedQty: reserveNow, shortageQty: shortage, error: null as null };
 }

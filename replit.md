@@ -422,3 +422,38 @@ Reuses (no parallel state machines):
 - The desktop nav row uses `flex-1 min-w-0 overflow-hidden` so it can never push the page wider than the viewport. Each dropdown trigger highlights when any descendant route is active (`groupActive`), and the active item inside the menu is tinted.
 - The `<lg` breakpoint switches to the existing left-side `Sheet` drawer, but the drawer is now itself grouped using the same `NAV_GROUPS` definition and gets `overflow-y-auto` so all items remain reachable on mobile.
 - Single source of truth: `PRIMARY_NAV` and `NAV_GROUPS` arrays at the top of `AdminLayout.tsx`. Adding a new admin page only requires appending to one array; the dropdown, mobile drawer, and active-state logic update automatically.
+
+## Section 27 — Rentable assets + date-based blackouts (April 22, 2026)
+Builds on Section 26's connected-family system. Where Section 26 was about reusable hardware that gates print components, Section 27 covers the broader rentable inventory: chairs, tables, frames, banner stands, etc. — partner-owned items with rental pricing and event-eligibility rules — and adds **date-windowed availability** so the same units can't be promised twice.
+
+Schema additions (single push):
+- `inventory` columns: `rentable boolean`, `rental_price numeric(10,2)`, `price_basis text` (`per_event`|`per_day`), `eligibility_mode text` (`all`|`allowlist`), `eligible_event_ids integer[]`, `eligible_city_ids integer[]`, `archived_at timestamp`.
+- `inventory_reservations` columns: `start_date date`, `end_date date`, `hold_reason text` (`event`|`manual`).
+- New `inventory_blackouts` table: `inventory_id`, `start_date`, `end_date`, `quantity`, `reason` (`manual`|`maintenance`|`damage`|`internal`|`venue`|`pending_event`), `reason_note`, `event_id`, `created_by`. Indexed on `(inventoryId, startDate, endDate)`.
+
+Backend:
+- `lib/rentalAvailability.ts`: `getInventoryAvailabilityForRange(inventoryId, start?, end?)` returns `{ totalQuantity, inUse, damaged, retired, reservedInWindow, blackedOutInWindow, available, status, conflicts[] }`. Status is one of `available` / `partial` / `fully_booked` / `blacked_out`. Overlap test is the standard `start <= end_window AND end >= start_window`. Reservations with NULL dates fall back to the legacy `inventory.reserved` rolling counter so older code paths still subtract correctly.
+- `getEventDateWindow(eventId)` resolves an event's active window (prefers `installDate → teardownDate`, else `eventDate`), used to stamp new reservations.
+- `isEligibleForEvent(row, eventId, eventCityId)` — partner-set allowlist gate.
+- `routes/rentableAssets.ts`: `GET /api/partners/:id/rentable-assets?start=&end=` (per-row availability for the chosen window), `PATCH /api/inventory/:id/rental` (rentable/price/eligibility/archive), full `GET/POST/PATCH/DELETE /api/inventory/:id/blackouts`, `GET /api/inventory/:id/bookings` (combined reservations + blackouts joined with event metadata), `GET /api/inventory/:id/availability?start=&end=&eventId=&eventCityId=` (single-row check used by ordering UIs).
+- `routes/orders.ts` `reserveForItem` is now date-aware: it locks the inventory row, looks up the event's install/teardown window, sums overlapping date-bound reservations and blackouts, and only counts the legacy NULL-date `inventory.reserved` counter on top. New reservations are always stamped with `startDate`/`endDate`/`holdReason='event'`. This means two events on the same dates compete for the same units, but two events in different weeks see independent capacity — the silent double-booking risk is gone.
+
+Admin UI:
+- New `<RentableAssetsCard>` rendered in `PartnerForm.tsx` directly under `<ReusableAssetsCard>`. Provides:
+  - A date-window picker (defaults to today) so admins can ask "what's free for these dates?"
+  - A table of rentable rows showing total / available-in-window / rental price / eligibility, with an inline status badge (`Available` / `Partially booked` / `Fully booked` / `Blacked out`).
+  - **Edit dialog** per row: toggle rentable, set price + basis (`per_event`/`per_day`), pick eligibility mode (all / allowlist of event IDs), archive.
+  - **Bookings & blackouts dialog**: add/delete manual blackouts with reason + note, see all active reservations from real orders alongside manual holds.
+  - A collapsed "other inventory rows" section so any existing non-rentable inventory can be flipped to rentable in one click.
+
+Demo seed (idempotent, extends `POST /api/dev/seed-easy-up-family`):
+- 120 folding chairs ($5/event), 20 cocktail tables ($25), 15 banquet tables ($40), 8 step-and-repeat frames ($150), 40 retractable banner stands ($30), all marked rentable with `eligibilityMode='all'`.
+- Manual blackout: 8 banquet tables flagged `maintenance` for next week (`+7 → +10 days`).
+- Auto-reservation: 60 of the 120 chairs reserved for the partner's next upcoming event (using its install/teardown window) — the rentable card immediately shows `60 available` plus `Reserved 60` and a `Partially booked` badge.
+
+Connected-family interaction:
+- The Section 26 frame-availability check still runs **before** date-aware reservation, so the existing `409 HARDWARE_REQUIRED` swap continues to work. Once frame reservations are date-windowed, the same family can be in `component` mode for one event window and `full_unit_required` for an overlapping one — exactly the behavior asked for.
+
+Known limitations (explicit):
+- Eligibility allowlist is stored as plain `integer[]` of event IDs — there's no "event type" column on `events` yet, so type-level rules would need that to be added first.
+- Bulk CSV upload of rentable assets isn't wired in this pass; the model and routes are shaped so an importer can target them next.

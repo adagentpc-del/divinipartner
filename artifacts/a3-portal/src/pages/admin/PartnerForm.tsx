@@ -21,6 +21,7 @@ import { resolveBranding } from "@/components/branding/usePartnerBranding";
 import { apiUrl } from "@/lib/api";
 import { RecipientsManager } from "@/components/admin/RecipientsManager";
 import { FamilyStatusGrid, type FamilyAvailability } from "@/components/admin/FamilyStatusCard";
+import { RentableAssetsCard } from "@/components/admin/RentableAssetsCard";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 
@@ -596,6 +597,7 @@ export default function PartnerForm() {
               <CommunicationsCard partnerId={id} form={form} />
               <RecipientsManager partnerId={id} />
               <ReusableAssetsCard partnerId={id} />
+              <RentableAssetsCard partnerId={id} />
             </>
           )}
 

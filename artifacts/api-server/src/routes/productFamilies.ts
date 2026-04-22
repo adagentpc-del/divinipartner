@@ -1,11 +1,12 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
-import { eq, and, asc, desc, inArray } from "drizzle-orm";
+import { eq, and, asc, desc, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getAuth } from "@clerk/express";
 import {
   db,
   productFamiliesTable, productFamilyMembersTable, productCatalogTable,
   inventoryTable, citiesTable,
+  inventoryBlackoutsTable, inventoryReservationsTable, eventsTable,
 } from "@workspace/db";
 import {
   getPartnerFamilyAvailability,
@@ -283,12 +284,80 @@ router.post("/dev/seed-easy-up-family", async (req, res): Promise<void> => {
     }
   }
 
+  // ----- Section 27 demo: rentable assets + blackouts + sample reservation -----
+  // Idempotent: only inserts rows when missing. Adds chairs, cocktail tables,
+  // banquet tables, banner stands, all marked rentable with prices, and a
+  // demonstration manual blackout + reservation if events exist for the partner.
+  const rentableSeeds: Array<{ key: string; name: string; category: string; total: number; price: string; basis: "per_event" | "per_day"; }> = [
+    { key: "chairs",         name: "Folding Chairs",       category: "seating",  total: 120, price: "5.00",   basis: "per_event" },
+    { key: "cocktail_tables",name: "Cocktail Tables",      category: "tables",   total:  20, price: "25.00",  basis: "per_event" },
+    { key: "banquet_tables", name: "Banquet Tables",       category: "tables",   total:  15, price: "40.00",  basis: "per_event" },
+    { key: "step_repeat",    name: "Step & Repeat Frames", category: "display",  total:   8, price: "150.00", basis: "per_event" },
+    { key: "banner_stands",  name: "Retractable Banner Stands", category: "display", total: 40, price: "30.00", basis: "per_event" },
+  ];
+  const rentableInventoryIds: Record<string, number> = {};
+  if (city) {
+    for (const s of rentableSeeds) {
+      const exists = await db.select().from(inventoryTable)
+        .where(and(eq(inventoryTable.partnerId, partnerId), eq(inventoryTable.cityId, city.id), eq(inventoryTable.name, s.name)));
+      if (exists[0]) {
+        rentableInventoryIds[s.key] = exists[0].id;
+        continue;
+      }
+      const [inv] = await db.insert(inventoryTable).values({
+        partnerId, cityId: city.id, name: s.name, category: s.category,
+        assetType: "rentable", rentable: true,
+        totalQuantity: s.total, hardwareOnHand: s.total, reserved: 0,
+        rentalPrice: s.price, priceBasis: s.basis,
+        eligibilityMode: "all", eligibleEventIds: [], eligibleCityIds: [],
+        notes: "Section 27 demo seed",
+      } as any).returning();
+      rentableInventoryIds[s.key] = inv.id;
+    }
+
+    // Demo manual blackout: 8 banquet tables out for maintenance next week.
+    const inOneWeek = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+    const inTenDays = new Date(Date.now() + 10 * 86400000).toISOString().slice(0, 10);
+    const banquetInvId = rentableInventoryIds["banquet_tables"];
+    if (banquetInvId) {
+      const existingBlk = await db.select().from(inventoryBlackoutsTable)
+        .where(and(eq(inventoryBlackoutsTable.inventoryId, banquetInvId), eq(inventoryBlackoutsTable.reasonNote, "Section 27 demo seed")));
+      if (!existingBlk[0]) {
+        await db.insert(inventoryBlackoutsTable).values({
+          inventoryId: banquetInvId, startDate: inOneWeek, endDate: inTenDays,
+          quantity: 8, reason: "maintenance", reasonNote: "Section 27 demo seed",
+        } as any);
+      }
+    }
+    // Demo event reservation: half the chairs booked for the partner's next
+    // upcoming event so the rentable card immediately shows partial booking.
+    const upcomingEvent = await db.select({ id: eventsTable.id, eventDate: eventsTable.eventDate, installDate: eventsTable.installDate, teardownDate: eventsTable.teardownDate })
+      .from(eventsTable).where(and(eq(eventsTable.partnerId, partnerId))).orderBy(asc(eventsTable.eventDate)).limit(1);
+    const ev = upcomingEvent[0];
+    const chairsInvId = rentableInventoryIds["chairs"];
+    if (ev && chairsInvId) {
+      const evStart: any = ev.installDate ?? ev.eventDate;
+      const evEnd: any = ev.teardownDate ?? ev.eventDate;
+      const existingRes = await db.select().from(inventoryReservationsTable)
+        .where(and(eq(inventoryReservationsTable.inventoryId, chairsInvId), eq(inventoryReservationsTable.eventId, ev.id)));
+      if (!existingRes[0]) {
+        await db.insert(inventoryReservationsTable).values({
+          inventoryId: chairsInvId, eventId: ev.id, quantity: 60, status: "active",
+          startDate: evStart || undefined, endDate: evEnd || evStart || undefined,
+          holdReason: "event", notes: "Section 27 demo seed",
+        } as any);
+        await db.update(inventoryTable).set({ reserved: sql`${inventoryTable.reserved} + 60` }).where(eq(inventoryTable.id, chairsInvId));
+      }
+    }
+  }
+
   res.json({
     ok: true,
     familyId: family.id, slug: family.slug,
     productIds: { frame: frame.id, canopy: canopy.id, backdrop: backdrop.id, sideWall: sideWall.id },
     inventoryId, cityId: city?.id ?? null,
     state: stateParam, total: 60, reserved: reservedTarget, available: 60 - reservedTarget,
+    rentableInventoryIds,
   });
 });
 
