@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Loader2, Pencil, Trash2, Truck } from "lucide-react";
+import { EmptyStateCard } from "@/components/admin/EmptyStateCard";
 
 type Supplier = {
   id: number; name: string; slug: string; description?: string | null;
@@ -134,7 +135,17 @@ export default function SuppliersList() {
             </TableBody>
           </Table>
         </div>
-      ) : <div className="border rounded-xl bg-card p-16 text-center text-muted-foreground"><Truck className="h-10 w-10 mx-auto mb-3 opacity-40" />No suppliers yet</div>}
+      ) : (
+        <EmptyStateCard
+          icon={Truck}
+          title="No suppliers configured"
+          description="Add suppliers so partners can route fulfillment, manage capacity, and ship branded inventory."
+          tips={[
+            "Tag suppliers with categories and territories so the right one is offered for each event.",
+            "Suppliers can be linked to specific partners from the partner detail page.",
+          ]}
+        />
+      )}
     </div>
   );
 }

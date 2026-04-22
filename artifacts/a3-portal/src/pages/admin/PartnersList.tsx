@@ -5,7 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Loader2, Users, ExternalLink, Copy, Eye, Boxes } from "lucide-react";
+import { Plus, Loader2, Users, ExternalLink, Copy, Eye, Boxes, Rocket } from "lucide-react";
+import { EmptyStateCard } from "@/components/admin/EmptyStateCard";
+
+const LAUNCH_BADGE: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; className?: string }> = {
+  live:          { label: "Live",          variant: "default" },
+  preview:       { label: "Preview",       variant: "outline",     className: "border-blue-300 text-blue-700" },
+  internal_only: { label: "Internal only", variant: "outline",     className: "border-violet-300 text-violet-700" },
+  draft:         { label: "Draft",         variant: "secondary" },
+  paused:        { label: "Paused",        variant: "destructive" },
+};
 
 export default function PartnersList() {
   const { data: partners, isLoading, refetch } = useListPartners();
@@ -92,9 +101,16 @@ export default function PartnersList() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={partner.isActive ? "default" : "secondary"} className="text-xs">
-                      {partner.isActive ? "Active" : "Inactive"}
-                    </Badge>
+                    {(() => {
+                      const ls = (partner as any).launchStatus || "draft";
+                      const cfg = LAUNCH_BADGE[ls] || LAUNCH_BADGE.draft;
+                      return (
+                        <div className="flex flex-col gap-1">
+                          <Badge variant={cfg.variant} className={`text-xs ${cfg.className ?? ""}`}>{cfg.label}</Badge>
+                          {!partner.isActive && <Badge variant="outline" className="text-[10px] text-muted-foreground">Inactive</Badge>}
+                        </div>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
@@ -129,16 +145,19 @@ export default function PartnersList() {
           </Table>
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center py-16 border-2 border-dashed rounded-xl bg-card">
-          <div className="h-12 w-12 rounded-xl bg-muted flex items-center justify-center mb-4">
-            <Users className="h-6 w-6 text-muted-foreground" />
-          </div>
-          <p className="font-medium text-foreground">No partners yet</p>
-          <p className="text-sm text-muted-foreground mt-1 mb-4">Create your first partner to get started.</p>
-          <Link href="/admin/partners/new">
-            <Button className="gap-2"><Plus className="h-4 w-4" /> Add Partner</Button>
-          </Link>
-        </div>
+        <EmptyStateCard
+          icon={Users}
+          title="No partners yet"
+          description="Create your first partner to start configuring portals, branding, and rollout readiness."
+          actions={[
+            { label: "Add Partner", href: "/admin/partners/new" },
+            { label: "Open Launch Wizard", href: "/admin/launch", variant: "outline" },
+          ]}
+          tips={[
+            "Each partner gets their own portal URL, branding, and product overrides.",
+            "New partners start in Draft — promote to Preview or Live from the Rollout tab.",
+          ]}
+        />
       )}
     </div>
   );

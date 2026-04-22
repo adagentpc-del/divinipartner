@@ -1,7 +1,12 @@
 import { Router, type IRouter } from "express";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { db, partnersTable, requestsTable, requestItemsTable, requestUploadsTable, pricingRulesTable, partnerThemesTable, partnerSectionsTable, partnerBrandingLocationsTable, productCatalogTable, partnerProductOverridesTable, citiesTable, venuesTable, eventsTable, packagesTable, packageItemsTable, ordersTable, orderItemsTable, suppliersTable, computePrice, convert, type LengthUnit, type PricingModel, type PricingUnit } from "@workspace/db";
-import { inArray as _inArray } from "drizzle-orm";
+const _inArray = inArray;
+
+// Public visibility gate: a partner is reachable from the public portal only when active and
+// in a publicly-shown launch state. "preview" is shown but flagged so the UI can render a banner.
+const PUBLIC_LAUNCH_STATES = ["live", "preview"] as const;
+const ORDERABLE_LAUNCH_STATES = ["live"] as const;
 import {
   GetPublicPartnerParams,
   SubmitPublicRequestParams,
@@ -24,7 +29,7 @@ router.get("/public/partners/:slug", async (req, res): Promise<void> => {
   const [partner] = await db
     .select()
     .from(partnersTable)
-    .where(and(eq(partnersTable.slug, params.data.slug), eq(partnersTable.isActive, true)));
+    .where(and(eq(partnersTable.slug, params.data.slug), eq(partnersTable.isActive, true), inArray(partnersTable.launchStatus, [...PUBLIC_LAUNCH_STATES])));
 
   if (!partner) {
     res.status(404).json({ error: "Partner not found" });
@@ -48,13 +53,13 @@ router.get("/public/partners/:slug", async (req, res): Promise<void> => {
     }));
   }
 
-  res.json({ ...partner, pricingRules });
+  res.json({ ...partner, pricingRules, previewMode: partner.launchStatus === "preview" });
 });
 
 router.get("/public/partners/:slug/portal", async (req, res): Promise<void> => {
   const { slug } = req.params;
   const [partner] = await db.select().from(partnersTable)
-    .where(and(eq(partnersTable.slug, slug), eq(partnersTable.isActive, true)));
+    .where(and(eq(partnersTable.slug, slug), eq(partnersTable.isActive, true), inArray(partnersTable.launchStatus, [...PUBLIC_LAUNCH_STATES])));
 
   if (!partner) { res.status(404).json({ error: "Partner not found" }); return; }
 
@@ -175,10 +180,17 @@ router.post("/public/partners/:slug/requests", async (req, res): Promise<void> =
   const [partner] = await db
     .select()
     .from(partnersTable)
-    .where(and(eq(partnersTable.slug, params.data.slug), eq(partnersTable.isActive, true)));
+    .where(and(eq(partnersTable.slug, params.data.slug), eq(partnersTable.isActive, true), inArray(partnersTable.launchStatus, [...PUBLIC_LAUNCH_STATES])));
 
   if (!partner) {
     res.status(404).json({ error: "Partner not found" });
+    return;
+  }
+  if (!ORDERABLE_LAUNCH_STATES.includes(partner.launchStatus as any)) {
+    res.status(409).json({
+      error: "Portal is in preview mode — submissions are disabled until it goes live.",
+      launchStatus: partner.launchStatus,
+    });
     return;
   }
 
@@ -359,7 +371,7 @@ router.post("/public/partners/:slug/requests", async (req, res): Promise<void> =
 router.get("/public/partners/:slug/ordering", async (req, res): Promise<void> => {
   const { slug } = req.params;
   const [partner] = await db.select().from(partnersTable)
-    .where(and(eq(partnersTable.slug, slug), eq(partnersTable.isActive, true)));
+    .where(and(eq(partnersTable.slug, slug), eq(partnersTable.isActive, true), inArray(partnersTable.launchStatus, [...PUBLIC_LAUNCH_STATES])));
   if (!partner) { res.status(404).json({ error: "Partner not found" }); return; }
 
   const cities = await db.select().from(citiesTable)
@@ -433,8 +445,15 @@ const PublicOrderSchema = z.object({
 router.post("/public/partners/:slug/orders", async (req, res): Promise<void> => {
   const { slug } = req.params;
   const [partner] = await db.select().from(partnersTable)
-    .where(and(eq(partnersTable.slug, slug), eq(partnersTable.isActive, true)));
+    .where(and(eq(partnersTable.slug, slug), eq(partnersTable.isActive, true), inArray(partnersTable.launchStatus, [...PUBLIC_LAUNCH_STATES])));
   if (!partner) { res.status(404).json({ error: "Partner not found" }); return; }
+  if (!ORDERABLE_LAUNCH_STATES.includes(partner.launchStatus as any)) {
+    res.status(409).json({
+      error: "Portal is in preview mode — orders cannot be submitted yet.",
+      launchStatus: partner.launchStatus,
+    });
+    return;
+  }
 
   const parsed = PublicOrderSchema.safeParse(req.body);
   if (!parsed.success) {

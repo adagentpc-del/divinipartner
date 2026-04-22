@@ -296,6 +296,11 @@ export default function FullPortal({ slug }: { slug: string }) {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: bgColor, fontFamily: bodyFont }}>
+      {(partner as any)?.previewMode && (
+        <div className="bg-blue-600 text-white text-xs sm:text-sm px-4 py-2 text-center font-medium">
+          Preview mode — this portal is visible for review only. Submissions are disabled until it goes live.
+        </div>
+      )}
       <header className="sticky top-0 z-30 border-b backdrop-blur-lg" style={{ backgroundColor: `${primaryColor}f0` }}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-4">

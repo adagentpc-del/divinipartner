@@ -950,3 +950,12 @@ For the seeded London event: cascade resolves to `metric` via the event's own pr
 - Helpers in `lib/db/src/units.ts` (mirrored at `artifacts/a3-portal/src/lib/units.ts`): `areaSqm/areaSqft/linearM/linearFt/computePrice` plus `PRICING_UNIT_LABELS`.
 - API: public order POST normalizes any `customWidth/Height/Unit` and persists computed billable + price; supplier packet emits a `pricingBasis` block per line; admin order detail and supplier packet UIs render the formula.
 - Demo seed: Pop-Up Banner 200cm (fixed @ $120), Wall Wrap (per_sqm @ $45), Edge Trim (per_linear_m @ $18), Custom Stage Set (custom_quote).
+
+### Launch & onboarding polish (April 2026 extension)
+- `partners.launchStatus` (`draft|preview|internal_only|live|paused`) gates public portal visibility.
+- Public portal middleware (`publicPortal.ts`) restricts slug lookups to `live` or `preview`; `draft|paused|internal_only` return 404 to non-admin traffic.
+- `preview` portals load fully but are flagged with `previewMode: true` on `/api/public/partners/:slug`; the portal renders a blue banner and the order POST returns 409 "preview mode" instead of accepting submissions.
+- `PartnersList` shows a launch-state badge (Live / Preview / Internal only / Draft / Paused) plus a secondary Inactive chip when `isActive=false`.
+- Reusable `EmptyStateCard` is wired into `PartnersList` and `SuppliersList` (and is also used by the launch wizard / rollout checklist surfaces).
+- Existing `LaunchWizard.tsx`, `RolloutChecklist.tsx`, `/api/onboarding/*`, and `/api/launch/*` endpoints already cover platform-wide onboarding and per-partner rollout — this pass added the activation gate, badges, banner, and empty-state polish without schema changes.
+- Deferred to a future pass: full partner self-serve `/partner/setup` wizard, in-app product tour, and the rollout-override "mark as satisfied with note" UI (API path exists; UI not yet built).

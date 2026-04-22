@@ -206,6 +206,11 @@ function IntakePortal({ slug, partner }: { slug: string; partner: any }) {
 
   return (
     <div className="min-h-screen flex flex-col bg-muted/30">
+      {(partner as any)?.previewMode && (
+        <div className="bg-blue-600 text-white text-xs sm:text-sm px-4 py-2 text-center font-medium">
+          Preview mode — this portal is visible for review only. Submissions are disabled until it goes live.
+        </div>
+      )}
       <header className="bg-card border-b sticky top-0 z-20">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">

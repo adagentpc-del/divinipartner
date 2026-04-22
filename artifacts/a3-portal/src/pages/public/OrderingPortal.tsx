@@ -186,6 +186,11 @@ export default function OrderingPortal({ slug }: { slug: string }) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
+      {(data as any)?.previewMode && (
+        <div className="bg-blue-600 text-white text-xs sm:text-sm px-4 py-2 text-center font-medium">
+          Preview mode — this portal is visible for review only. Submissions are disabled until it goes live.
+        </div>
+      )}
       <div className="max-w-7xl mx-auto px-4 py-8 md:py-12">
         <div className="text-center mb-8">
           <Badge className="mb-3" variant="secondary"><Sparkles className="h-3 w-3 mr-1" />Order Portal</Badge>
