@@ -1,0 +1,222 @@
+Refine the existing Partner Commerce Portal by extending the rentable/reusable asset workflow so partners can upload and manage rentable assets such as tables, chairs, tent frames, and similar inventory, including pricing, available quantity, and which events those assets can be used for.
+
+Goal:
+I need the same connected rentable-asset capability not just for Easy Up frames, but also for tables, chairs, and other partner-owned rentable assets. On the partner side, there should be a place to upload or enter what rentable assets they have, what the price is, how much inventory is available, and which events those assets are allowed to be used for.
+
+Examples:
+- 60 Easy Up tent frames
+- 120 folding chairs
+- 20 cocktail tables
+- 15 banquet tables
+- 8 step and repeat frames
+- 40 retractable banner hardware units
+
+Scope:
+Keep this pass tightly focused on:
+1. partner rentable asset catalog
+2. rentable asset upload/entry on the partner side
+3. inventory quantity and pricing
+4. event eligibility / event assignment rules
+5. order behavior using those rentable assets
+
+Do not rebuild unrelated workflows.
+
+Requirements:
+
+1. Rentable asset model
+Create or extend a partner-owned rentable asset model that supports items such as:
+- tables
+- chairs
+- tent frames
+- display hardware
+- backdrop frames
+- signage hardware
+- other reusable event assets
+
+For each rentable asset, support fields such as:
+- asset name
+- asset category
+- linked product family or linked product if applicable
+- asset type
+  - reusable hardware
+  - rentable item
+  - partner-owned asset
+- quantity owned
+- quantity available
+- quantity reserved/claimed
+- quantity in use if useful
+- quantity remaining
+- rental price
+- optional daily/event price basis
+- active/inactive
+- notes
+
+2. Partner-side asset entry and upload
+On the partner page or partner setup area, add a clean section where rentable assets can be added and managed.
+
+Requirements:
+- allow manual add/edit of rentable assets
+- allow bulk upload/import if already supported or easy to extend
+- make the section visible and easy to use
+- show current asset list with quantity, price, and status
+- support edit/remove/archive actions
+
+This should feel like:
+- Partner Assets
+- Rentable Inventory
+- Reusable Event Assets
+
+3. Pricing for rentable assets
+Each rentable asset should support pricing.
+
+At minimum support:
+- flat rental price per event
+- optional daily price placeholder
+- optional custom/manual price override
+- internal notes if needed
+
+Requirements:
+- show pricing clearly in admin
+- allow pricing to flow into the ordering logic if the asset is directly rentable
+- if pricing is not needed for a specific asset family, allow leaving it blank
+
+4. Event eligibility / allowed events
+Add the ability to define what events a rentable asset can be used for.
+
+Support at minimum:
+- available for all events
+- available only for selected events
+- available only for selected event types if event types already exist
+- available only in selected cities/venues if relevant
+- unavailable / reserved / blocked
+
+Requirements:
+- make this manageable from the partner side/admin side
+- allow event-specific assignment or restriction
+- clearly show where an asset is usable
+- if an asset is tied to a city or venue, reflect that in availability logic
+
+Examples:
+- chairs can be used for Miami events only
+- tables are reserved for one recurring venue
+- Easy Up frames are available for all outdoor festival events
+- some hardware is blocked for a specific date range or event
+
+5. Order and reservation behavior
+When a rentable asset is eligible and available:
+- allow it to be selected in the appropriate ordering flow
+- reduce available quantity when reserved/claimed
+- tie the claim to the event/order
+- show claimed/reserved quantity in internal/admin views
+
+When a rentable asset is no longer available:
+- prevent over-allocation
+- show low stock / exhausted state
+- if relevant, route to alternate order behavior such as:
+  - require new hardware purchase
+  - require manual review
+  - hide the rentable option
+
+6. Connected family logic for rentable assets
+Support connected or related behavior where useful.
+
+Examples:
+- Easy Up frame hardware can enable print-only canopy/top/wall ordering
+- chair rental may be a direct rentable item with no extra dependency
+- table rental may allow branded tablecloth add-ons
+- backdrop frame rental may enable graphic-only backdrop ordering
+
+Requirements:
+- keep the rentable asset logic flexible enough to support:
+  - direct rentable item
+  - reusable hardware tied to print components
+  - rentable base asset with optional add-ons
+
+7. Add-On and rentable integration
+In partner builder and ordering flows:
+- allow certain rentable assets to appear as selectable add-ons
+- allow connected products to appear only when compatible rentable assets exist
+- allow things like:
+  - table rental + branded tablecloth
+  - chair rental
+  - frame rental + backdrop graphic
+  - tent frame rental + canopy top + side walls
+
+Requirements:
+- keep client-facing options clean and easy to understand
+- do not expose confusing internal asset logic
+- let internal admin define what should appear as rentable vs add-on vs full item
+
+8. Visual admin cards / status visibility
+Add visual internal/admin visibility for rentable assets.
+
+For each asset or asset family, show:
+- total owned
+- reserved/claimed
+- remaining
+- rental price
+- event eligibility status
+- current availability state
+
+Examples of status:
+- Available
+- Low inventory
+- Fully reserved
+- Event-restricted
+- Manual review required
+
+If feasible, show these on:
+- partner profile page
+- rentable asset section
+- product family/admin detail
+- event detail where reservations matter
+
+9. Event-specific asset visibility
+On event detail pages or event setup, show rentable assets that are:
+- available for that event
+- already reserved for that event
+- not eligible for that event
+- exhausted/unavailable
+
+This helps internal admin and partner users understand what is possible for each event.
+
+10. Bulk upload / import support if feasible
+If practical within the current architecture, extend the import functionality so rentable assets can also be uploaded via CSV/Excel.
+
+Useful fields could include:
+- asset name
+- category
+- quantity owned
+- price
+- city
+- venue
+- allowed event
+- active status
+- notes
+
+If this is too much for this pass, structure the model/UI cleanly so import can be added next.
+
+11. Seed/demo updates
+Add demo examples showing:
+- partner-owned chairs with quantity and price
+- partner-owned tables with quantity and price
+- event-specific restrictions
+- Easy Up frames tied to print-only ordering
+- one asset exhausted and no longer available
+- one asset still rentable and selectable
+
+12. Documentation
+Update replit.md with:
+- rentable asset model
+- partner-side rentable asset management
+- price handling
+- event eligibility logic
+- reservation/claim logic
+- direct rentable vs connected hardware behavior
+- how exhausted inventory affects ordering
+
+Important:
+Do not rebuild the app.
+Do not change unrelated workflows.
+Extend the current partner page, asset inventory, add-on logic, and order/reservation flows cleanly.
+Actually implement rentable asset upload/entry, pricing, inventory, and event-eligibility behavior, not placeholders only.

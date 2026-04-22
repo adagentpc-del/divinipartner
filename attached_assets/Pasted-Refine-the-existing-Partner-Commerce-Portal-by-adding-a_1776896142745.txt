@@ -1,0 +1,94 @@
+Refine the existing Partner Commerce Portal by adding a practical exception handling workflow for real-world order issues.
+
+Goal:
+The portal needs to handle messy real-world situations cleanly, especially because final fulfillment and billing happen outside this system after the order reaches me and Sean.
+
+Scope:
+Keep this pass tightly focused on:
+1. order exceptions
+2. missing assets
+3. wrong or incomplete specs
+4. artwork-needed flow
+5. exception alerts and visibility
+
+Do not rebuild unrelated workflows.
+
+Requirements:
+
+1. Exception categories
+Support structured exception types such as:
+- missing artwork
+- artwork creation needed
+- wrong file/spec format
+- missing dimensions
+- missing contact info
+- unclear order notes
+- custom review needed
+- rush request
+- incomplete package selection
+- asset mismatch
+- manual follow-up required
+
+2. Exception state on orders
+Each order should support:
+- no exception
+- warning
+- exception flagged
+- waiting on client
+- waiting on internal review
+- resolved
+
+3. Artwork-needed workflow
+If the customer needs artwork created, allow the order to capture:
+- artwork needed yes/no
+- designated design contact
+- notes about what needs to be created
+- if partner-specific graphic designer exists, tie that contact to the partner profile
+
+4. Missing/incomplete asset logic
+If assets are missing or incomplete:
+- flag the order
+- show it clearly in admin
+- include the missing state in the internal email if feasible
+- prevent the order from appearing fully ready
+
+5. Exception visibility
+Show exceptions clearly on:
+- order detail page
+- order list
+- partner view if useful
+- internal dashboard/alerts
+
+6. Internal actions
+Allow internal admin to:
+- flag exception
+- mark waiting on customer
+- mark resolved
+- add notes
+- route issue to the correct contact if configured
+
+7. Communications support
+If communications already exist, support drafting or sending:
+- missing asset request
+- artwork needed request
+- clarification needed request
+
+8. Seed/demo updates
+Add:
+- one order missing artwork
+- one order requiring artwork creation
+- one order with unresolved dimensions
+- one resolved exception example
+
+9. Documentation
+Update replit.md with:
+- exception model
+- artwork-needed workflow
+- missing asset handling
+- exception visibility and statuses
+
+Important:
+Do not rebuild the app.
+Do not change unrelated workflows.
+Extend the current order, asset, and communications logic cleanly.
+Actually implement a real exception handling workflow, not placeholders only.

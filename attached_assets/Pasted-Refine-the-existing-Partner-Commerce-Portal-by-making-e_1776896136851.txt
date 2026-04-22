@@ -1,0 +1,136 @@
+Refine the existing Partner Commerce Portal by making email delivery and routing fully operational for the current business model.
+
+Goal:
+The portal’s primary operational job right now is to collect orders cleanly and send them to the correct people by email in a polished, usable format.
+
+Current operating model:
+- the portal collects the order
+- the order must be emailed to me
+- the order must also be emailed to my program manager Sean
+- the order package must include the key order details and asset information needed for entry into the A3 backend system
+- billing and fulfillment routing remain outside this portal for now
+
+Scope:
+Keep this pass tightly focused on:
+1. branded customer confirmation emails
+2. internal order forwarding emails
+3. multiple recipient routing
+4. asset/file inclusion in the internal order email
+5. email configuration and failure handling
+
+Do not rebuild unrelated workflows.
+
+Requirements:
+
+1. Customer confirmation emails
+When an order is submitted, send a branded customer confirmation email that includes:
+- partner branding colors if available
+- partner logo if available
+- order reference number
+- customer contact summary
+- event name
+- city and venue if relevant
+- package / items / add-ons selected
+- simple next step message
+- reply-to/contact information
+
+This email should feel polished, reassuring, and simple.
+
+2. Internal operational order email
+When an order is submitted, send a more detailed internal operational email to configured recipients.
+
+At minimum support sending to:
+- me
+- Sean / program manager
+- optional additional internal contacts if configured
+
+This internal email should include:
+- order reference number
+- customer name and email
+- event name
+- city and venue
+- package / items / add-ons selected
+- quantities
+- measurement details if provided
+- notes
+- asset summary
+- uploaded file names and links if feasible
+- partner name
+- ordering timestamp
+- any missing or flagged items if already available in the workflow
+
+This email should feel clean, detailed, and operationally useful.
+
+3. Partner email settings
+On each partner page, create or refine an Email Settings section with:
+- primary internal order routing email
+- secondary internal order routing email
+- optional cc email
+- reply-to email
+- branded sender name
+- active/inactive email sending toggle
+- test email action if feasible
+
+Make these editable from the software.
+
+4. Multiple recipient support
+The portal should support sending the internal order email to more than one recipient without breaking if one recipient fails.
+
+Requirements:
+- send to all active configured internal recipients
+- log which sends succeeded or failed if feasible
+- do not fail the order submission just because one email fails
+
+5. Asset inclusion
+The internal order email must include the asset context needed for ops.
+
+At minimum support:
+- file names
+- file links if safely available
+- indication of missing assets if none uploaded
+- note if artwork creation is needed
+
+6. Email failure handling
+If email fails:
+- do not lose the order
+- save the order normally
+- show partial success in the UI
+- log the failure internally
+- make the failure visible in admin if feasible
+
+7. Communications/activity logging
+If communications history already exists:
+- log customer confirmation email
+- log internal routing email
+- log recipient addresses
+- log send status
+- log failure status if applicable
+
+8. Admin visibility
+On the order detail page, show:
+- whether customer email was sent
+- whether internal email was sent
+- which recipients received it
+- failed email state if relevant
+
+9. Seed/demo updates
+Add demo examples for:
+- branded confirmation email
+- internal order email to me and Sean
+- partner email settings configured
+- one success example
+- one partial failure example
+
+10. Documentation
+Update replit.md with:
+- email operating model
+- where routing emails are configured
+- what customer vs internal emails contain
+- how failures are handled
+- how order submission behaves if email partially fails
+
+Important:
+Do not rebuild the app.
+Do not change unrelated workflows.
+Extend the current branding, order submission, communications, and partner settings cleanly.
+Actually implement operational email delivery and routing for the current intake-to-email workflow, not placeholders only.

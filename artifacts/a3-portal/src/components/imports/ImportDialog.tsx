@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, Download, Loader2, CheckCircle2, AlertTriangle, ArrowRight, ArrowLeft, FileSpreadsheet } from "lucide-react";
 
-type Resource = "suppliers" | "products" | "specs" | "venues" | "branding-locations" | "zone-measurements";
+type Resource = "suppliers" | "products" | "specs" | "venues" | "branding-locations" | "zone-measurements" | "packages";
 type Field = { key: string; label: string; required?: boolean; type: string; description?: string };
 type ParseResp = { headers: string[]; rows: Record<string, unknown>[]; rowCount: number; suggestedMap: Record<string, string>; sample: Record<string, unknown>[] };
 type CommitResp = { created: number; updated: number; skipped: number; failed: number; errors: { row: number; error: string }[]; createdIds: number[]; updatedIds: number[] };
@@ -19,6 +19,7 @@ const TITLES: Record<Resource, string> = {
   venues: "Import Venues",
   "branding-locations": "Import Branding Zones",
   "zone-measurements": "Import Zone Measurements",
+  packages: "Import Vendor Packages",
 };
 
 export function ImportDialog({

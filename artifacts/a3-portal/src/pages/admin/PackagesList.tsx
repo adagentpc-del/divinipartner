@@ -13,6 +13,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Loader2, Pencil, Trash2, Package, Copy, ChevronLeft, GripVertical, Upload, X as XIcon, ArrowUp, ArrowDown } from "lucide-react";
+import { ImportDialog } from "@/components/imports/ImportDialog";
 import { DimensionInput } from "@/components/units/DimensionInput";
 import type { LengthUnit } from "@/lib/units";
 
@@ -233,6 +234,7 @@ export default function PackagesList() {
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"], queryFn: () => apiFetch("/api/products") });
 
   const refetch = () => qc.invalidateQueries({ queryKey: [`/api/packages`, { partnerId }] });
+  const [importOpen, setImportOpen] = useState(false);
   const del = useMutation({ mutationFn: (id: number) => apiFetch(`/api/packages/${id}`, { method: "DELETE" }), onSuccess: () => { refetch(); toast({ title: "Package deleted" }); } });
   const dup = useMutation({ mutationFn: (id: number) => apiFetch(`/api/packages/${id}/duplicate`, { method: "POST" }), onSuccess: () => { refetch(); toast({ title: "Package duplicated" }); } });
   const queryKey = [`/api/packages`, { partnerId }];
@@ -280,9 +282,21 @@ export default function PackagesList() {
             <h1 className="text-2xl font-bold tracking-tight">Packages</h1>
             <p className="text-muted-foreground mt-1">{partner?.companyName} · {packages.length} package{packages.length !== 1 ? "s" : ""}</p>
           </div>
-          <PkgDialog partnerId={partnerId} suppliers={suppliers} trigger={<Button className="gap-2"><Plus className="h-4 w-4" />Create Package</Button>} onSaved={refetch} />
+          <div className="flex gap-2">
+            <Button variant="outline" className="gap-2" onClick={() => setImportOpen(true)}><Upload className="h-4 w-4" />Import Vendor Packages</Button>
+            <PkgDialog partnerId={partnerId} suppliers={suppliers} trigger={<Button className="gap-2"><Plus className="h-4 w-4" />Create Package</Button>} onSaved={refetch} />
+          </div>
         </div>
       </div>
+
+      <ImportDialog
+        resource="packages"
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        context={{ partnerId }}
+        contextLabel={partner?.companyName}
+        onComplete={refetch}
+      />
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {packages.map((p, i) => (
           <Card key={p.id} className="p-5 hover:shadow-md transition flex flex-col">

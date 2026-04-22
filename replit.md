@@ -329,3 +329,30 @@ Three additional resources were added to the same wizard:
 Frontend `ImportDialog` now accepts `context: { partnerId?, venueId? }` plus `contextLabel` for display. Backend `CommitBody` accepts the same context object — when `partnerId` is provided by the calling page, the `Partner (by name)` column becomes optional and the import is automatically scoped to that partner. Branding-zone and zone-measurement imports require a partner (either via context or the column); rows that cannot be resolved are returned in the per-row error report rather than silently dropped.
 
 Commit handlers for all three new resources are wrapped in `db.transaction` so a failed batch leaves no partial writes. CSV templates include US imperial + EU metric sample rows that mirror the live admin UI conventions.
+
+### Section 25 extension #2 — Vendor packages bulk import (April 22, 2026)
+
+A fourth import resource was added so admins can bring in client-supplied vendor package spreadsheets directly into a partner profile.
+
+- **Vendor Packages** — `PackagesList` (per-partner page) "Import Vendor Packages" button. Maps to `packagesTable` + `packageItemsTable` together. Partner is auto-applied from the page context; if the spreadsheet also has a `Partner / Client` column, the value must resolve to the same partner or the row is rejected with a per-row error.
+
+Row-grouping (`commitPackages`):
+- Rows are grouped by Package Name (case-insensitive, trimmed). Carry-forward: when a row has only item-level fields and no name, it inherits the most recent group — this matches real-world spreadsheets where the package name appears once and items fill the rows below.
+- The first row in a group sets the package metadata (tier, price, currency, dimensions, image, description, category, city/venue/notes, vendor, active flag).
+- Every row in the group with item-level fields (`Item Name`, `Item SKU`, `Quantity`, item dims, material, finishing) becomes one entry in `packageItemsTable`.
+
+Existing-package matching:
+- Prefer `(partnerId, Package Code)` (code is stored in the package description prefix `Code: <value>` since `packagesTable` has no dedicated code column).
+- Fall back to `(partnerId, Package Name)` (case-insensitive).
+- Mode `create` skips matched rows, `update` skips unmatched rows, `upsert` does both.
+
+Item / product handling:
+- For each item row: try existing product by SKU (case-insensitive), then by Name. If neither matches, create a placeholder product (`isActive=false`, `reviewStatus="needs_review"`) so the spreadsheet's data is never silently dropped — admins can review and finalize them later.
+- Items are appended to the package on update (existing items are preserved); operators who want to fully replace items can delete the package first.
+- City / venue / package code / notes / category are appended to the package description (since `packagesTable` doesn't model them as separate columns); this keeps imports lossless without a schema migration.
+
+Result payload extends the standard counts with `itemsCreated` and `productsCreated` so the wizard's results screen shows the full effect of the import.
+
+CSV template (`/api/imports/template/packages`) ships with a real grouped example: one Bronze booth package spread across three item rows (carry-forward), plus a metric Premium package — both in the format the system actually accepts.
+
+The whole commit runs inside `db.transaction`; any failure rolls back the package + its items + any newly created placeholder products together.

@@ -1,0 +1,159 @@
+Refine the existing Partner Commerce Portal by adding date-based blackout periods and booking windows for partner-owned rentable/reusable assets.
+
+Goal:
+I need rentable assets such as tables, chairs, tent frames, and other partner-owned inventory to be blockable for specific event dates, reserved windows, blackout periods, or unavailable time ranges so the system does not let the same assets be promised twice.
+
+Examples:
+- 120 chairs are blocked for a gala on May 10
+- 20 cocktail tables are reserved for a recurring venue from June 1 to June 3
+- 60 Easy Up frames are unavailable for one weekend event
+- some assets are blacked out for maintenance, damage, or internal use
+
+Scope:
+Keep this pass tightly focused on:
+1. date-based blackout periods
+2. event booking windows
+3. asset availability by date range
+4. preventing overlapping claims/reservations
+
+Do not rebuild unrelated workflows.
+
+Requirements:
+
+1. Asset blackout / booking model
+Extend the rentable/reusable asset model so each asset or asset family can have date-based availability controls.
+
+Support at minimum:
+- blackout start date
+- blackout end date
+- event reservation start date
+- event reservation end date
+- unavailable reason
+- linked event if applicable
+- linked order if applicable
+- manual/internal hold
+- maintenance/damage hold
+- recurring blackout placeholder if useful later
+
+Requirements:
+- support date ranges, not just single dates
+- allow multiple blackout/reservation records per asset
+- keep this tied to the real asset inventory logic
+
+2. Booking window behavior
+When an asset is reserved for an event:
+- the asset quantity should be claimed for that event’s date window
+- the same quantity should not be available for overlapping event windows
+- once the reserved window ends or the reservation is released/cancelled, availability should return
+
+Requirements:
+- use event dates where available
+- support install/teardown range if already stored and useful
+- if only event date exists, use that as the core reservation date
+- prevent silent double-booking
+
+3. Manual blackout periods
+Allow internal admin to manually block assets for reasons such as:
+- maintenance
+- damage
+- internal use
+- unavailable by partner request
+- venue-restricted use
+- hold for pending event
+- other custom note
+
+Requirements:
+- manual blackout should reduce availability for the affected date range
+- blackout reason should be visible internally
+- allow edit/remove of blackout records
+- keep this easy to manage from the partner asset section
+
+4. Overlap detection
+The system must detect overlapping event/reservation windows.
+
+Examples:
+- chairs reserved for Event A on June 10 to June 12
+- Event B tries to reserve the same chairs on June 11
+- system should detect overlap and reduce or block available quantity accordingly
+
+Requirements:
+- if enough quantity remains outside the overlap, allow only the remaining quantity
+- if not enough remains, show shortage/unavailable state
+- do not over-allocate because assets are technically “owned” if they are already committed in the same date window
+
+5. Availability by event date
+On event setup and ordering flows, rentable asset availability should reflect the event date window.
+
+Examples:
+- show chairs available for Event X based on Event X date range
+- hide or reduce rentable options that are already blocked for those dates
+- if a connected hardware family like Easy Up frames is exhausted for that window, switch to full-unit-required mode for that event window only
+
+Requirements:
+- availability should become date-aware, not just total quantity-aware
+- keep existing automatic switching behavior for connected product families
+- use real event dates where possible
+
+6. Admin and partner visibility
+In internal/admin views and relevant partner views, clearly show:
+- total quantity
+- reserved quantity for the selected date window
+- blackout quantity if applicable
+- available quantity for that date window
+- next unavailable dates or booked windows if feasible
+- reason for blackout/hold
+
+Examples of statuses:
+- Available
+- Partially booked
+- Fully booked
+- Blacked out
+- Manual hold
+- Maintenance hold
+
+7. Calendar / list view behavior
+If feasible, add a simple date-based visibility layer such as:
+- upcoming bookings list
+- blackout periods list
+- reserved windows list per asset
+- event-linked usage list
+
+This does not need to be a full calendar app.
+A clean list or timeline is enough if faster and safer.
+
+8. Connected product-family impact
+For connected families like Easy Up tents:
+- frame availability should be date-aware
+- if frames are fully booked for a given date range, print-only/component ordering tied to existing frames should no longer be available for that overlapping event window
+- the system should switch that event/order path to full-unit/new-frame-required mode for that date window only
+
+9. Add-On and rentable ordering impact
+If a rentable asset is unavailable for the chosen event dates:
+- do not show it as available for rent
+- or show it as unavailable / fully booked
+- if partial quantity is available, allow only the remaining quantity
+- if connected components depend on that hardware, adjust ordering behavior accordingly
+
+10. Seed/demo updates
+Add demo examples showing:
+- chairs blocked for one event date range
+- tables partially reserved for another event
+- Easy Up frames booked for one weekend event
+- a second overlapping event causing reduced availability
+- one manual blackout for maintenance
+- one automatic switch to full-unit-required mode because reusable hardware is fully booked in that date window
+
+11. Documentation
+Update replit.md with:
+- blackout/booking model
+- overlap detection behavior
+- date-window availability logic
+- manual blackout reasons
+- how connected product families react to date-based exhaustion
+- how availability returns after reservations end or are released
+
+Important:
+Do not rebuild the app.
+Do not change unrelated workflows.
+Extend the current rentable asset, partner inventory, connected product family, event date, and ordering logic cleanly.
+Actually implement date-based blackout and booking-window behavior, not placeholders only.

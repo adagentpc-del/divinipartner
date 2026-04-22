@@ -11,7 +11,7 @@ export interface ImportField {
   description?: string;
 }
 
-export type Resource = "suppliers" | "products" | "specs" | "venues" | "branding-locations" | "zone-measurements";
+export type Resource = "suppliers" | "products" | "specs" | "venues" | "branding-locations" | "zone-measurements" | "packages";
 
 export const SUPPLIER_FIELDS: ImportField[] = [
   { key: "name", label: "Supplier Name", required: true, type: "string", aliases: ["supplier", "vendor", "vendor name"] },
@@ -151,6 +151,47 @@ export const ZONE_MEASUREMENT_FIELDS: ImportField[] = [
   { key: "visibleHeight", label: "Visible Height", type: "number" },
 ];
 
+export const PACKAGE_FIELDS: ImportField[] = [
+  { key: "packageName", label: "Package Name", type: "string", aliases: ["package", "name", "bundle", "bundle name"], description: "Required on the first row of each package; subsequent itemized rows may leave it blank to inherit" },
+  { key: "packageCode", label: "Package Code", type: "string", aliases: ["code", "package id", "internal code", "ref"], description: "Optional unique code; preferred match key when present" },
+  { key: "partnerName", label: "Partner / Client (by name)", type: "string", aliases: ["partner", "client", "customer"], description: "Required unless importing into a partner profile" },
+  { key: "displayName", label: "Display Name", type: "string", aliases: ["display", "label"] },
+  { key: "tier", label: "Package Tier", type: "integer", aliases: ["tier", "level"], description: "1-10" },
+  { key: "description", label: "Package Description", type: "string", aliases: ["desc", "details"] },
+  { key: "category", label: "Package Category", type: "string", aliases: ["cat", "type"] },
+  { key: "supplierName", label: "Vendor / Source", type: "string", aliases: ["supplier", "vendor", "source"] },
+  { key: "price", label: "Package Price", type: "number", aliases: ["price", "package price", "total"] },
+  { key: "currency", label: "Currency", type: "string", aliases: ["ccy"] },
+  { key: "sizeWidth", label: "Width", type: "number", aliases: ["w"] },
+  { key: "sizeHeight", label: "Height", type: "number", aliases: ["h"] },
+  { key: "sizeDepth", label: "Depth", type: "number" },
+  { key: "sizeDiameter", label: "Diameter", type: "number" },
+  { key: "sizeUnit", label: "Size Unit", type: "unit", description: "in, ft, mm, cm, m" },
+  { key: "imageUrl", label: "Image URL", type: "url" },
+  { key: "city", label: "City Applicability", type: "string", aliases: ["cities"] },
+  { key: "venue", label: "Venue Applicability", type: "string", aliases: ["venues"] },
+  { key: "notes", label: "Package Notes", type: "string", aliases: ["package notes"] },
+  { key: "isActive", label: "Active", type: "boolean", aliases: ["active", "enabled", "status"] },
+  // Item-level columns (each row that has any of these becomes a package item)
+  { key: "itemName", label: "Item Name", type: "string", aliases: ["product", "product name", "item", "included item"] },
+  { key: "itemSku", label: "Item SKU", type: "string", aliases: ["sku", "item code"] },
+  { key: "itemCategory", label: "Item Category", type: "string", aliases: ["product category"] },
+  { key: "quantity", label: "Quantity", type: "integer", aliases: ["qty", "count"] },
+  { key: "isOptional", label: "Optional Add-on", type: "boolean", aliases: ["optional", "add-on", "addon"] },
+  { key: "itemNotes", label: "Item Notes", type: "string", aliases: ["notes per item"] },
+  { key: "itemWidth", label: "Item Width", type: "number" },
+  { key: "itemHeight", label: "Item Height", type: "number" },
+  { key: "itemDepth", label: "Item Depth", type: "number" },
+  { key: "itemDiameter", label: "Item Diameter", type: "number" },
+  { key: "itemSizeUnit", label: "Item Size Unit", type: "unit" },
+  { key: "itemMaterial", label: "Item Material", type: "string", aliases: ["material"] },
+  { key: "itemFinishing", label: "Item Finishing", type: "string", aliases: ["finishing", "finish"] },
+  { key: "itemHardwareIncluded", label: "Hardware Included", type: "boolean", aliases: ["hardware"] },
+  { key: "itemPrintOnly", label: "Print Only", type: "boolean", aliases: ["print only"] },
+  { key: "itemRentalEligible", label: "Rental Eligible", type: "boolean", aliases: ["rental"] },
+  { key: "itemPrice", label: "Item Price", type: "number", aliases: ["base price", "unit price"] },
+];
+
 export const FIELDS_BY_RESOURCE: Record<Resource, ImportField[]> = {
   suppliers: SUPPLIER_FIELDS,
   products: PRODUCT_FIELDS,
@@ -158,6 +199,7 @@ export const FIELDS_BY_RESOURCE: Record<Resource, ImportField[]> = {
   venues: VENUE_FIELDS,
   "branding-locations": BRANDING_LOCATION_FIELDS,
   "zone-measurements": ZONE_MEASUREMENT_FIELDS,
+  packages: PACKAGE_FIELDS,
 };
 
 const VALID_LENGTH_UNITS = new Set(["in", "ft", "mm", "cm", "m"]);
