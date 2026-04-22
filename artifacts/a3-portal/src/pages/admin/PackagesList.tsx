@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Loader2, Pencil, Trash2, Package, Copy, ChevronLeft, GripVertical, Upload, X as XIcon } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2, Package, Copy, ChevronLeft, GripVertical, Upload, X as XIcon, ArrowUp, ArrowDown } from "lucide-react";
 import { DimensionInput } from "@/components/units/DimensionInput";
 import type { LengthUnit } from "@/lib/units";
 
@@ -234,6 +234,39 @@ export default function PackagesList() {
   const refetch = () => qc.invalidateQueries({ queryKey: [`/api/packages`, { partnerId }] });
   const del = useMutation({ mutationFn: (id: number) => apiFetch(`/api/packages/${id}`, { method: "DELETE" }), onSuccess: () => { refetch(); toast({ title: "Package deleted" }); } });
   const dup = useMutation({ mutationFn: (id: number) => apiFetch(`/api/packages/${id}/duplicate`, { method: "POST" }), onSuccess: () => { refetch(); toast({ title: "Package duplicated" }); } });
+  const queryKey = [`/api/packages`, { partnerId }];
+  const reorder = useMutation({
+    mutationFn: (items: { id: number; sortOrder: number }[]) =>
+      apiFetch(`/api/packages/reorder`, { method: "POST", body: JSON.stringify({ partnerId, items }), headers: { "Content-Type": "application/json" } }),
+    onMutate: async () => {
+      await qc.cancelQueries({ queryKey });
+      return { previous: qc.getQueryData<Pkg[]>(queryKey) };
+    },
+    onError: (e: any, _vars, ctx) => {
+      if (ctx?.previous) qc.setQueryData(queryKey, ctx.previous);
+      toast({ title: "Reorder failed", description: e?.message, variant: "destructive" });
+    },
+    onSettled: () => refetch(),
+  });
+  const movePackage = (id: number, dir: -1 | 1) => {
+    const sorted = [...packages];
+    const idx = sorted.findIndex(p => p.id === id);
+    const j = idx + dir;
+    if (idx < 0 || j < 0 || j >= sorted.length) return;
+    if (sorted[idx].tier !== sorted[j].tier) {
+      toast({ title: "Cross-tier move blocked", description: "Packages are grouped by tier. Edit the package to change its tier." });
+      return;
+    }
+    [sorted[idx], sorted[j]] = [sorted[j], sorted[idx]];
+    const items = sorted.map((p, i) => ({ id: p.id, sortOrder: i }));
+    qc.setQueryData(queryKey, sorted);
+    reorder.mutate(items);
+  };
+  const canMove = (i: number, dir: -1 | 1) => {
+    const j = i + dir;
+    if (j < 0 || j >= packages.length) return false;
+    return packages[i].tier === packages[j].tier;
+  };
 
   if (isLoading) return <div className="flex justify-center py-24"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
 
@@ -250,10 +283,14 @@ export default function PackagesList() {
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {packages.map(p => (
+        {packages.map((p, i) => (
           <Card key={p.id} className="p-5 hover:shadow-md transition flex flex-col">
             <div className="flex items-start justify-between gap-2 mb-2">
-              <Badge variant="secondary">Tier {p.tier}</Badge>
+              <div className="flex items-center gap-1">
+                <Badge variant="secondary">Tier {p.tier}</Badge>
+                <Button variant="ghost" size="icon" className="h-7 w-7" disabled={!canMove(i, -1) || reorder.isPending} onClick={() => movePackage(p.id, -1)} title="Move up within tier"><ArrowUp className="h-3.5 w-3.5" /></Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7" disabled={!canMove(i, 1) || reorder.isPending} onClick={() => movePackage(p.id, 1)} title="Move down within tier"><ArrowDown className="h-3.5 w-3.5" /></Button>
+              </div>
               <div className="flex gap-1">
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => dup.mutate(p.id)} title="Duplicate"><Copy className="h-3.5 w-3.5" /></Button>
                 <PkgDialog partnerId={partnerId} suppliers={suppliers} pkg={p} trigger={<Button variant="ghost" size="icon" className="h-7 w-7"><Pencil className="h-3.5 w-3.5" /></Button>} onSaved={refetch} />

@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, inArray } from "drizzle-orm";
 import { db, packagesTable, packageItemsTable, productCatalogTable, withMmColumns } from "@workspace/db";
 import { z } from "zod";
 
@@ -63,6 +63,28 @@ router.get("/packages/:id", async (req, res): Promise<void> => {
     .where(eq(packageItemsTable.packageId, id))
     .orderBy(packageItemsTable.sortOrder);
   res.json({ ...pkg, items });
+});
+
+router.post("/packages/reorder", async (req, res): Promise<void> => {
+  const Body = z.object({
+    partnerId: z.number().int(),
+    items: z.array(z.object({ id: z.number().int(), sortOrder: z.number().int() })).max(500),
+  });
+  const parsed = Body.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+  const { partnerId, items } = parsed.data;
+  if (items.length === 0) { res.json({ ok: true, count: 0 }); return; }
+  const ids = items.map(i => i.id);
+  const owned = await db.select({ id: packagesTable.id }).from(packagesTable)
+    .where(and(eq(packagesTable.partnerId, partnerId), inArray(packagesTable.id, ids)));
+  if (owned.length !== ids.length) { res.status(403).json({ error: "One or more packages do not belong to this partner" }); return; }
+  await db.transaction(async (tx) => {
+    for (const it of items) {
+      await tx.update(packagesTable).set({ sortOrder: it.sortOrder })
+        .where(and(eq(packagesTable.id, it.id), eq(packagesTable.partnerId, partnerId)));
+    }
+  });
+  res.json({ ok: true, count: items.length });
 });
 
 router.post("/packages", async (req, res): Promise<void> => {
