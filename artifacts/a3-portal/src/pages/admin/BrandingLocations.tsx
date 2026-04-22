@@ -9,7 +9,8 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { DimensionInput } from "@/components/units/DimensionInput";
-import { normalizeUnit, type LengthUnit } from "@/lib/units";
+import { PricingModelInput } from "@/components/units/PricingModelInput";
+import { normalizeUnit, convert, type LengthUnit, type PricingModel, type PricingUnit } from "@/lib/units";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Loader2, Plus, Pencil, Trash2, MapPin, Eye, EyeOff, Check, AlertTriangle, Upload, FileText } from "lucide-react";
@@ -34,6 +35,12 @@ interface BrandingLocation {
   reviewStatus: string;
   isActive: boolean;
   sortOrder: number;
+  pricingModel: string | null;
+  unitRate: number | string | null;
+  pricingUnit: string | null;
+  minBillableSize: number | null;
+  minCharge: number | string | null;
+  allowsCustomSize: boolean;
 }
 
 const CATEGORIES = [
@@ -352,6 +359,29 @@ export default function BrandingLocations() {
                 }}
                 onChange={(v) => setEditingLocation(p => p ? { ...p, sizeWidth: v.width, sizeHeight: v.height, sizeUnit: v.unit } : p)}
                 helperText="Mix imperial and metric freely — values are stored as entered."
+              />
+              <PricingModelInput
+                value={{
+                  pricingModel: (editingLocation.pricingModel as PricingModel) || "fixed",
+                  unitRate: editingLocation.unitRate ?? null,
+                  pricingUnit: (editingLocation.pricingUnit as PricingUnit) || null,
+                  minBillableSize: editingLocation.minBillableSize ?? null,
+                  minCharge: editingLocation.minCharge ?? null,
+                  allowsCustomSize: editingLocation.allowsCustomSize ?? false,
+                }}
+                onChange={(v) => setEditingLocation(p => p ? {
+                  ...p,
+                  pricingModel: v.pricingModel,
+                  unitRate: v.unitRate,
+                  pricingUnit: v.pricingUnit,
+                  minBillableSize: v.minBillableSize,
+                  minCharge: v.minCharge,
+                  allowsCustomSize: v.allowsCustomSize,
+                } : p)}
+                sampleWidthMm={editingLocation.sizeWidth != null && editingLocation.sizeUnit
+                  ? convert(editingLocation.sizeWidth, editingLocation.sizeUnit, "mm") : null}
+                sampleHeightMm={editingLocation.sizeHeight != null && editingLocation.sizeUnit
+                  ? convert(editingLocation.sizeHeight, editingLocation.sizeUnit, "mm") : null}
               />
               
               <div className="grid sm:grid-cols-2 gap-3">

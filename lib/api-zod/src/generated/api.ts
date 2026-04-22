@@ -262,6 +262,11 @@ export const SubmitPublicRequestBody = zod.object({
         itemName: zod.string(),
         quantityNote: zod.string().optional(),
         sizeNote: zod.string().optional(),
+        width: zod.number().nullish(),
+        height: zod.number().nullish(),
+        sizeUnit: zod.enum(["in", "ft", "mm", "cm", "m"]).nullish(),
+        productId: zod.number().nullish(),
+        brandingZoneId: zod.number().nullish(),
       }),
     )
     .optional(),

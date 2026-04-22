@@ -196,6 +196,11 @@ export default function OrderDetail() {
                           {it.unitPrice && <div className="text-xs text-muted-foreground">${it.unitPrice}</div>}
                         </div>
                       </div>
+                      {(it as any).calculationBasis && (
+                        <div className="text-[11px] font-mono mt-1 text-muted-foreground">
+                          Pricing: {(it as any).calculationBasis}
+                        </div>
+                      )}
 
                       <div className="flex flex-wrap gap-1.5 mt-2">
                         {it.fulfillmentMode && <Badge variant="outline" className="text-[10px]">{MODE_LABELS[it.fulfillmentMode] || it.fulfillmentMode}</Badge>}

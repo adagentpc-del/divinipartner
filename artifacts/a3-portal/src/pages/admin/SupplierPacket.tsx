@@ -23,6 +23,12 @@ type Packet = {
     itemId: number; name: string; productName: string | null; quantity: number;
     dimensionDisplay: string | null;
     specs: ItemSpecs | null;
+    pricingBasis: {
+      pricingModel: string | null; pricingUnit: string | null; pricingUnitLabel: string | null;
+      unitRate: string | number | null; billableAreaSqm: number | null; billableLinearM: number | null;
+      unitPrice: string | number | null; minBillableSize: number | null;
+      minCharge: string | number | null; calculation: string | null; requiresQuote?: boolean;
+    } | null;
     fulfillmentMode: string | null; supplierStatus: string;
     supplierDueDate: string | null; supplierShipDate: string | null; supplierInstallDate: string | null;
     internalFulfillmentNotes: string | null; productionBlockedReason: string | null;
@@ -129,6 +135,30 @@ export default function SupplierPacket() {
                         </div>
                       )}
                       {!it.specs && it.dimensionDisplay && <p className="text-xs font-medium mt-0.5">Size: {it.dimensionDisplay}</p>}
+                      {it.pricingBasis && (
+                        <p className="text-xs mt-1">
+                          <span className="text-muted-foreground">Pricing:</span>{" "}
+                          {it.pricingBasis.requiresQuote ? (
+                            <span className="font-medium">Custom quote required</span>
+                          ) : (
+                            <>
+                              <span className="font-medium">{it.pricingBasis.pricingModel}</span>
+                              {it.pricingBasis.unitRate != null && it.pricingBasis.pricingUnitLabel && (
+                                <> @ {it.pricingBasis.unitRate} {it.pricingBasis.pricingUnitLabel}</>
+                              )}
+                              {it.pricingBasis.billableAreaSqm != null && (
+                                <>, billable {it.pricingBasis.billableAreaSqm} sqm</>
+                              )}
+                              {it.pricingBasis.billableLinearM != null && (
+                                <>, billable {it.pricingBasis.billableLinearM} m</>
+                              )}
+                              {it.pricingBasis.unitPrice != null && (
+                                <> = <span className="font-semibold">${it.pricingBasis.unitPrice}</span></>
+                              )}
+                            </>
+                          )}
+                        </p>
+                      )}
                     </div>
                     <div className="flex items-center gap-1.5">
                       {it.ready ? (

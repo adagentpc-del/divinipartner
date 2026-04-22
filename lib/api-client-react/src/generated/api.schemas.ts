@@ -154,11 +154,28 @@ export interface PublicPartner {
   pricingRules?: PublicPricingItem[];
 }
 
+export type RequestItemInputSizeUnit =
+  | (typeof RequestItemInputSizeUnit)[keyof typeof RequestItemInputSizeUnit]
+  | null;
+
+export const RequestItemInputSizeUnit = {
+  in: "in",
+  ft: "ft",
+  mm: "mm",
+  cm: "cm",
+  m: "m",
+} as const;
+
 export interface RequestItemInput {
   category: string;
   itemName: string;
   quantityNote?: string;
   sizeNote?: string;
+  width?: number | null;
+  height?: number | null;
+  sizeUnit?: RequestItemInputSizeUnit;
+  productId?: number | null;
+  brandingZoneId?: number | null;
 }
 
 export interface RequestUploadInput {

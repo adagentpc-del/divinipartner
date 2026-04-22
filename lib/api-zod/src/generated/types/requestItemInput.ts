@@ -5,10 +5,16 @@
  * A3 Partner Portal API
  * OpenAPI spec version: 0.1.0
  */
+import type { RequestItemInputSizeUnit } from "./requestItemInputSizeUnit";
 
 export interface RequestItemInput {
   category: string;
   itemName: string;
   quantityNote?: string;
   sizeNote?: string;
+  width?: number | null;
+  height?: number | null;
+  sizeUnit?: RequestItemInputSizeUnit;
+  productId?: number | null;
+  brandingZoneId?: number | null;
 }

@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, boolean, timestamp, jsonb, numeric } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, boolean, timestamp, jsonb, numeric, doublePrecision } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { partnersTable } from "./partners";
@@ -98,6 +98,20 @@ export const orderItemsTable = pgTable("order_items", {
   exceptionFlag: boolean("exception_flag").notNull().default(false),
   exceptionReason: text("exception_reason"),
   exceptionNotes: text("exception_notes"),
+  // Measurement-aware pricing snapshot for this line (April 2026 extension).
+  // entered_* preserve the partner's originally typed dimensions+unit;
+  // *_mm are the canonical normalized values; billable_* drive pricing display.
+  enteredWidth: doublePrecision("entered_width"),
+  enteredHeight: doublePrecision("entered_height"),
+  enteredSizeUnit: text("entered_size_unit"),
+  enteredWidthMm: doublePrecision("entered_width_mm"),
+  enteredHeightMm: doublePrecision("entered_height_mm"),
+  pricingModel: text("pricing_model"),
+  pricingUnit: text("pricing_unit"),
+  billableAreaSqm: doublePrecision("billable_area_sqm"),
+  billableLinearM: doublePrecision("billable_linear_m"),
+  minBillableSize: doublePrecision("min_billable_size"),
+  calculationBasis: text("calculation_basis"),
   artworkFileUrl: text("artwork_file_url"),
   artworkRequired: boolean("artwork_required"),
   proofRequired: boolean("proof_required"),

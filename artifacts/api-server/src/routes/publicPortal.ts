@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, and } from "drizzle-orm";
-import { db, partnersTable, requestsTable, requestItemsTable, requestUploadsTable, pricingRulesTable, partnerThemesTable, partnerSectionsTable, partnerBrandingLocationsTable, productCatalogTable, partnerProductOverridesTable, citiesTable, venuesTable, eventsTable, packagesTable, packageItemsTable, ordersTable, orderItemsTable, suppliersTable } from "@workspace/db";
+import { db, partnersTable, requestsTable, requestItemsTable, requestUploadsTable, pricingRulesTable, partnerThemesTable, partnerSectionsTable, partnerBrandingLocationsTable, productCatalogTable, partnerProductOverridesTable, citiesTable, venuesTable, eventsTable, packagesTable, packageItemsTable, ordersTable, orderItemsTable, suppliersTable, computePrice, convert, type LengthUnit, type PricingModel, type PricingUnit } from "@workspace/db";
+import { inArray as _inArray } from "drizzle-orm";
 import {
   GetPublicPartnerParams,
   SubmitPublicRequestParams,
@@ -250,14 +251,58 @@ router.post("/public/partners/:slug/requests", async (req, res): Promise<void> =
   }).returning();
 
   if (items.length > 0) {
+    // Resolve any product/zone refs once for measurement-aware pricing.
+    const reqProductIds = items.map(i => (i as any).productId).filter((x: any): x is number => !!x);
+    const reqZoneIds = items.map(i => (i as any).brandingZoneId).filter((x: any): x is number => !!x);
+    const reqProducts = reqProductIds.length
+      ? await db.select().from(productCatalogTable).where(_inArray(productCatalogTable.id, reqProductIds))
+      : [];
+    const reqZones = reqZoneIds.length
+      ? await db.select().from(partnerBrandingLocationsTable).where(_inArray(partnerBrandingLocationsTable.id, reqZoneIds))
+      : [];
+    const reqProdById = new Map(reqProducts.map(p => [p.id, p as any]));
+    const reqZoneById = new Map(reqZones.map(z => [z.id, z as any]));
     await db.insert(requestItemsTable).values(
-      items.map((i) => ({
-        requestId: request.id,
-        category: i.category,
-        itemName: i.itemName,
-        quantityNote: i.quantityNote,
-        sizeNote: i.sizeNote,
-      })),
+      items.map((i: any) => {
+        const w = i.width ?? null;
+        const h = i.height ?? null;
+        const u = (i.sizeUnit as LengthUnit | null) ?? null;
+        const wMm = w != null && u ? convert(w, u, "mm") : null;
+        const hMm = h != null && u ? convert(h, u, "mm") : null;
+        const meta: any = i.productId ? reqProdById.get(i.productId)
+          : i.brandingZoneId ? reqZoneById.get(i.brandingZoneId) : null;
+        let priced: ReturnType<typeof computePrice> | null = null;
+        if (meta && meta.pricingModel) {
+          priced = computePrice({
+            pricingModel: meta.pricingModel as PricingModel,
+            unitRate: meta.unitRate,
+            pricingUnit: meta.pricingUnit as PricingUnit | null,
+            widthMm: wMm ?? meta.sizeWidthMm ?? null,
+            heightMm: hMm ?? meta.sizeHeightMm ?? null,
+            quantity: 1,
+            minBillableSize: meta.minBillableSize,
+            minCharge: meta.minCharge,
+          });
+        }
+        return {
+          requestId: request.id,
+          category: i.category,
+          itemName: i.itemName,
+          quantityNote: i.quantityNote,
+          sizeNote: i.sizeNote,
+          sizeWidth: w,
+          sizeHeight: h,
+          sizeUnit: u,
+          sizeWidthMm: wMm,
+          sizeHeightMm: hMm,
+          pricingModel: priced?.pricingModel ?? meta?.pricingModel ?? null,
+          unitRate: meta?.unitRate ?? null,
+          pricingUnit: priced?.pricingUnit ?? meta?.pricingUnit ?? null,
+          calculatedAreaSqm: priced?.billableAreaSqm ?? null,
+          calculatedLinearM: priced?.billableLinearM ?? null,
+          estimatedPrice: priced?.total != null ? String(priced.total) : null,
+        };
+      }),
     );
   }
 
@@ -363,6 +408,9 @@ const PublicOrderItemSchema = z.object({
   fulfillmentMode: z.string().max(80).nullable().optional(),
   artworkFileUrl: z.string().url().max(2000).nullable().optional(),
   notes: z.string().max(2000).nullable().optional(),
+  customWidth: z.number().positive().nullable().optional(),
+  customHeight: z.number().positive().nullable().optional(),
+  customSizeUnit: z.enum(["in", "ft", "mm", "cm", "m"]).nullable().optional(),
 }).strict();
 
 const PublicOrderSchema = z.object({
@@ -396,6 +444,42 @@ router.post("/public/partners/:slug/orders", async (req, res): Promise<void> => 
   const data = parsed.data;
   const orderNumber = `PCP-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 
+  // Resolve pricing-aware metadata for line items: products + branding zones referenced.
+  const productIds = data.items.map(it => it.productId).filter((x): x is number => !!x);
+  const zoneIds = data.items.map(it => it.brandingZoneId).filter((x): x is number => !!x);
+  const productRows = productIds.length
+    ? await db.select().from(productCatalogTable).where(_inArray(productCatalogTable.id, productIds))
+    : [];
+  const zoneRows = zoneIds.length
+    ? await db.select().from(partnerBrandingLocationsTable).where(_inArray(partnerBrandingLocationsTable.id, zoneIds))
+    : [];
+  const productById = new Map(productRows.map(p => [p.id, p as any]));
+  const zoneById = new Map(zoneRows.map(z => [z.id, z as any]));
+
+  function priceForLine(it: z.infer<typeof PublicOrderItemSchema>) {
+    const meta: any = it.productId ? productById.get(it.productId)
+      : it.brandingZoneId ? zoneById.get(it.brandingZoneId) : null;
+    if (!meta || !meta.pricingModel) return null;
+    let widthMm: number | null = null, heightMm: number | null = null;
+    let enteredW = it.customWidth ?? null, enteredH = it.customHeight ?? null;
+    let enteredU: LengthUnit | null = (it.customSizeUnit as LengthUnit | null) ?? null;
+    if (enteredW != null && enteredU) widthMm = convert(enteredW, enteredU, "mm");
+    if (enteredH != null && enteredU) heightMm = convert(enteredH, enteredU, "mm");
+    // Fall back to product/zone native size when no custom size supplied.
+    if (widthMm == null && (meta as any).sizeWidthMm) widthMm = Number((meta as any).sizeWidthMm);
+    if (heightMm == null && (meta as any).sizeHeightMm) heightMm = Number((meta as any).sizeHeightMm);
+    const result = computePrice({
+      pricingModel: meta.pricingModel as PricingModel,
+      unitRate: meta.unitRate,
+      pricingUnit: meta.pricingUnit as PricingUnit | null,
+      widthMm, heightMm,
+      quantity: it.quantity,
+      minBillableSize: meta.minBillableSize,
+      minCharge: meta.minCharge,
+    });
+    return { result, widthMm, heightMm, enteredW, enteredH, enteredU };
+  }
+
   try {
     const result = await db.transaction(async (tx) => {
       const [order] = await tx.insert(ordersTable).values({
@@ -421,20 +505,36 @@ router.post("/public/partners/:slug/orders", async (req, res): Promise<void> => 
       }).returning();
 
       if (data.items.length) {
-        await tx.insert(orderItemsTable).values(data.items.map((it, idx) => ({
-          orderId: order.id,
-          itemType: it.itemType,
-          productId: it.productId ?? null,
-          packageId: it.packageId ?? null,
-          brandingZoneId: it.brandingZoneId ?? null,
-          name: it.name,
-          quantity: it.quantity,
-          unitPrice: it.unitPrice ?? null,
-          fulfillmentMode: it.fulfillmentMode ?? null,
-          artworkFileUrl: it.artworkFileUrl ?? null,
-          notes: it.notes ?? null,
-          sortOrder: idx,
-        })));
+        await tx.insert(orderItemsTable).values(data.items.map((it, idx) => {
+          const priced = priceForLine(it);
+          const r = priced?.result ?? null;
+          return {
+            orderId: order.id,
+            itemType: it.itemType,
+            productId: it.productId ?? null,
+            packageId: it.packageId ?? null,
+            brandingZoneId: it.brandingZoneId ?? null,
+            name: it.name,
+            quantity: it.quantity,
+            unitPrice: r?.requiresQuote
+              ? null
+              : (r?.unitPrice != null ? String(r.unitPrice) : (it.unitPrice ?? null)),
+            fulfillmentMode: it.fulfillmentMode ?? null,
+            artworkFileUrl: it.artworkFileUrl ?? null,
+            notes: it.notes ?? null,
+            sortOrder: idx,
+            enteredWidth: priced?.enteredW ?? null,
+            enteredHeight: priced?.enteredH ?? null,
+            enteredSizeUnit: priced?.enteredU ?? null,
+            enteredWidthMm: priced?.widthMm ?? null,
+            enteredHeightMm: priced?.heightMm ?? null,
+            billableAreaSqm: r?.billableAreaSqm ?? null,
+            billableLinearM: r?.billableLinearM ?? null,
+            pricingModel: r?.pricingModel ?? null,
+            pricingUnit: r?.pricingUnit ?? null,
+            calculationBasis: r?.basis ?? null,
+          };
+        }));
       }
       return order;
     });

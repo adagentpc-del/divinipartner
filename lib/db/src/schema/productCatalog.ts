@@ -1,4 +1,4 @@
-import { pgTable, serial, text, boolean, timestamp, jsonb, integer, doublePrecision } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, boolean, timestamp, jsonb, integer, doublePrecision, numeric } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -38,6 +38,15 @@ export const productCatalogTable = pgTable("product_catalog", {
   visibleHeight: doublePrecision("visible_height"),
   visibleWidthMm: doublePrecision("visible_width_mm"),
   visibleHeightMm: doublePrecision("visible_height_mm"),
+  // Measurement-aware pricing model (April 2026 extension).
+  // pricing_model: fixed | area | linear | quantity | custom_quote
+  // pricing_unit:  per_unit | per_sqft | per_sqm | per_linear_ft | per_linear_m
+  pricingModel: text("pricing_model").notNull().default("fixed"),
+  unitRate: numeric("unit_rate", { precision: 12, scale: 4 }),
+  pricingUnit: text("pricing_unit"),
+  minBillableSize: doublePrecision("min_billable_size"),
+  minCharge: numeric("min_charge", { precision: 12, scale: 2 }),
+  allowsCustomSize: boolean("allows_custom_size").notNull().default(false),
   backendProductionNotes: text("backend_production_notes"),
   hardwareIncluded: boolean("hardware_included").notNull().default(false),
   printOnlyAvailable: boolean("print_only_available").notNull().default(false),

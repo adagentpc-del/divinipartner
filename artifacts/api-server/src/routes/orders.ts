@@ -332,6 +332,16 @@ router.get("/orders/:id", async (req, res): Promise<void> => {
     artworkFileUrl: orderItemsTable.artworkFileUrl,
     notes: orderItemsTable.notes,
     sortOrder: orderItemsTable.sortOrder,
+    enteredWidth: orderItemsTable.enteredWidth,
+    enteredHeight: orderItemsTable.enteredHeight,
+    enteredSizeUnit: orderItemsTable.enteredSizeUnit,
+    enteredWidthMm: orderItemsTable.enteredWidthMm,
+    enteredHeightMm: orderItemsTable.enteredHeightMm,
+    billableAreaSqm: orderItemsTable.billableAreaSqm,
+    billableLinearM: orderItemsTable.billableLinearM,
+    pricingModel: orderItemsTable.pricingModel,
+    pricingUnit: orderItemsTable.pricingUnit,
+    calculationBasis: orderItemsTable.calculationBasis,
   }).from(orderItemsTable)
     .leftJoin(productCatalogTable, eq(orderItemsTable.productId, productCatalogTable.id))
     .leftJoin(packagesTable, eq(orderItemsTable.packageId, packagesTable.id))

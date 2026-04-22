@@ -29,6 +29,7 @@ export * from "./publicPricingItem";
 export * from "./requestDetail";
 export * from "./requestItem";
 export * from "./requestItemInput";
+export * from "./requestItemInputSizeUnit";
 export * from "./requestListResponse";
 export * from "./requestSummary";
 export * from "./requestUpload";

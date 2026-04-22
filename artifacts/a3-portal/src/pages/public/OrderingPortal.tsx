@@ -10,18 +10,30 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ChevronRight, ChevronLeft, Calendar, MapPin, Package, Plus, Minus, Check, Upload, ShoppingCart, Sparkles, X, Ruler } from "lucide-react";
-import { formatWxHDual, formatPrimarySecondary, type UnitSystem } from "@/lib/units";
+import { formatWxHDual, formatPrimarySecondary, computePrice, convert, PRICING_UNIT_LABELS, type UnitSystem, type LengthUnit, type PricingModel, type PricingUnit } from "@/lib/units";
 
 type City = { id: number; name: string; state: string | null };
 type Venue = { id: number; cityId: number | null; name: string; venueAddress: string | null; shippingAddress: string | null };
 type Event = { id: number; cityId: number | null; venueId: number | null; name: string; eventStartDate: string | null; eventEndDate: string | null; shippingDeadline: string | null; status: string; availablePackageIdsJson: number[] | null };
 type PkgItem = { id: number; productId: number; productName: string | null; productCategory: string | null; productImageUrl: string | null; quantity: number; isOptional: boolean };
 type Pkg = { id: number; name: string; displayName: string | null; description: string | null; tier: number; price: string | null; items: PkgItem[] };
-type Product = { id: number; name: string; category: string; imageUrl: string | null; sku: string | null; rentalEligible: boolean | null; printOnlyAvailable: boolean | null };
+type Product = {
+  id: number; name: string; category: string; imageUrl: string | null; sku: string | null;
+  rentalEligible: boolean | null; printOnlyAvailable: boolean | null;
+  pricingModel: string | null; unitRate: string | number | null; pricingUnit: string | null;
+  minBillableSize: number | null; minCharge: string | number | null; allowsCustomSize: boolean | null;
+  sizeWidthMm: string | number | null; sizeHeightMm: string | number | null;
+};
 type Partner = { id: number; companyName: string; introHeadline: string | null; introText: string | null; pricingDisplayEnabled: boolean | null };
 type Data = { partner: Partner; cities: City[]; venues: Venue[]; events: Event[]; packages: Pkg[]; products: Product[] };
 
-type CartItem = { key: string; itemType: "product" | "package" | "branding_zone"; productId?: number; packageId?: number; name: string; quantity: number; unitPrice?: string | null; productImageUrl?: string | null };
+type CartItem = {
+  key: string; itemType: "product" | "package" | "branding_zone";
+  productId?: number; packageId?: number; name: string; quantity: number;
+  unitPrice?: string | null; productImageUrl?: string | null;
+  customWidth?: number | null; customHeight?: number | null; customSizeUnit?: LengthUnit | null;
+  pricingBasis?: string | null;
+};
 
 const STEPS = ["Event", "Package", "Add-ons", "Artwork", "Contact", "Review"] as const;
 
@@ -82,14 +94,64 @@ export default function OrderingPortal({ slug }: { slug: string }) {
 
   const addonProducts = data.products.filter(p => !selectedPkg?.items.some(it => it.productId === p.id));
 
+  function priceCart(p: Product, item: Partial<CartItem>) {
+    if (!p.pricingModel) return { unitPrice: null as string | null, basis: null as string | null };
+    const u = item.customSizeUnit ?? null;
+    const wMm = item.customWidth != null && u ? convert(item.customWidth, u, "mm") : (p.sizeWidthMm != null ? Number(p.sizeWidthMm) : null);
+    const hMm = item.customHeight != null && u ? convert(item.customHeight, u, "mm") : (p.sizeHeightMm != null ? Number(p.sizeHeightMm) : null);
+    const r = computePrice({
+      pricingModel: p.pricingModel as PricingModel,
+      unitRate: p.unitRate,
+      pricingUnit: p.pricingUnit as PricingUnit | null,
+      widthMm: wMm, heightMm: hMm,
+      quantity: item.quantity ?? 1,
+      minBillableSize: p.minBillableSize,
+      minCharge: p.minCharge,
+    });
+    return { unitPrice: r.unitPrice != null ? String(r.unitPrice) : null, basis: r.basis || null };
+  }
+
   const addToCart = (p: Product) => {
     setCart(prev => {
-      const existing = prev.find(c => c.productId === p.id);
-      if (existing) return prev.map(c => c === existing ? { ...c, quantity: c.quantity + 1 } : c);
-      return [...prev, { key: `prod-${p.id}-${Date.now()}`, itemType: "product", productId: p.id, name: p.name, quantity: 1, productImageUrl: p.imageUrl }];
+      const customSize = !!p.allowsCustomSize && p.pricingModel !== "fixed" && p.pricingModel !== "quantity";
+      // Don't dedupe custom-size lines — each entry has its own dimensions.
+      const existing = !customSize ? prev.find(c => c.productId === p.id && !c.customWidth) : null;
+      if (existing) {
+        return prev.map(c => c === existing ? {
+          ...c, quantity: c.quantity + 1,
+          ...priceCart(p, { ...c, quantity: c.quantity + 1 }),
+        } : c);
+      }
+      const initial: CartItem = {
+        key: `prod-${p.id}-${Date.now()}`, itemType: "product",
+        productId: p.id, name: p.name, quantity: 1, productImageUrl: p.imageUrl,
+        customWidth: customSize ? null : null,
+        customHeight: customSize ? null : null,
+        customSizeUnit: customSize ? "m" : null,
+      };
+      const priced = priceCart(p, initial);
+      return [...prev, { ...initial, unitPrice: priced.unitPrice, pricingBasis: priced.basis }];
     });
   };
-  const updateQty = (key: string, delta: number) => setCart(prev => prev.map(c => c.key === key ? { ...c, quantity: Math.max(1, c.quantity + delta) } : c));
+  const updateQty = (key: string, delta: number) => setCart(prev => prev.map(c => {
+    if (c.key !== key) return c;
+    const q = Math.max(1, c.quantity + delta);
+    const p = data.products.find(pp => pp.id === c.productId);
+    const next = { ...c, quantity: q };
+    if (p?.pricingModel) Object.assign(next, priceCart(p, next));
+    return next;
+  }));
+  const updateCustomSize = (key: string, patch: Partial<Pick<CartItem, "customWidth" | "customHeight" | "customSizeUnit">>) => setCart(prev => prev.map(c => {
+    if (c.key !== key) return c;
+    const p = data.products.find(pp => pp.id === c.productId);
+    const next = { ...c, ...patch };
+    if (p?.pricingModel) {
+      const priced = priceCart(p, next);
+      next.unitPrice = priced.unitPrice;
+      next.pricingBasis = priced.basis;
+    }
+    return next;
+  }));
   const removeFromCart = (key: string) => setCart(prev => prev.filter(c => c.key !== key));
 
   const canAdvance = () => {
@@ -105,7 +167,13 @@ export default function OrderingPortal({ slug }: { slug: string }) {
       items.push({ itemType: "package", packageId: selectedPkg.id, name: selectedPkg.displayName || selectedPkg.name, quantity: 1, unitPrice: selectedPkg.price });
       selectedPkg.items.forEach(it => items.push({ itemType: "product", productId: it.productId, name: it.productName || `Product ${it.productId}`, quantity: it.quantity }));
     }
-    cart.forEach(c => items.push({ itemType: "product", productId: c.productId, name: c.name, quantity: c.quantity, unitPrice: c.unitPrice }));
+    cart.forEach(c => items.push({
+      itemType: "product", productId: c.productId, name: c.name,
+      quantity: c.quantity, unitPrice: c.unitPrice,
+      customWidth: c.customWidth ?? null,
+      customHeight: c.customHeight ?? null,
+      customSizeUnit: c.customSizeUnit ?? null,
+    }));
 
     submit.mutate({
       eventId, packageId: selectedPkgId, shippingVenueId: venueId,
@@ -211,16 +279,55 @@ export default function OrderingPortal({ slug }: { slug: string }) {
               {cart.length > 0 && (
                 <div className="bg-muted/40 rounded-lg p-4 space-y-2">
                   <div className="text-sm font-semibold">In your add-ons ({cart.length})</div>
-                  {cart.map(c => (
-                    <div key={c.key} className="flex items-center gap-2 bg-card p-2 rounded">
-                      {c.productImageUrl && <img src={c.productImageUrl} className="h-10 w-10 rounded object-cover" alt="" />}
-                      <div className="flex-1 text-sm">{c.name}</div>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateQty(c.key, -1)}><Minus className="h-3.5 w-3.5" /></Button>
-                      <span className="w-8 text-center font-semibold">{c.quantity}</span>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateQty(c.key, 1)}><Plus className="h-3.5 w-3.5" /></Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeFromCart(c.key)}><X className="h-3.5 w-3.5" /></Button>
-                    </div>
-                  ))}
+                  {cart.map(c => {
+                    const p = data.products.find(pp => pp.id === c.productId);
+                    const isCustom = !!p?.allowsCustomSize && p.pricingModel !== "fixed" && p.pricingModel !== "quantity";
+                    const isQuote = p?.pricingModel === "custom_quote";
+                    return (
+                      <div key={c.key} className="bg-card p-2 rounded space-y-2">
+                        <div className="flex items-center gap-2">
+                          {c.productImageUrl && <img src={c.productImageUrl} className="h-10 w-10 rounded object-cover" alt="" />}
+                          <div className="flex-1 text-sm">
+                            <div>{c.name}</div>
+                            {p?.pricingModel && p.pricingModel !== "fixed" && p.pricingModel !== "quantity" && (
+                              <div className="text-[11px] text-muted-foreground">
+                                {p.pricingModel === "custom_quote"
+                                  ? "Custom quote — sales will follow up"
+                                  : `${p.unitRate ?? "?"} ${p.pricingUnit ? PRICING_UNIT_LABELS[p.pricingUnit as PricingUnit] : ""}`}
+                              </div>
+                            )}
+                          </div>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateQty(c.key, -1)}><Minus className="h-3.5 w-3.5" /></Button>
+                          <span className="w-8 text-center font-semibold">{c.quantity}</span>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateQty(c.key, 1)}><Plus className="h-3.5 w-3.5" /></Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeFromCart(c.key)}><X className="h-3.5 w-3.5" /></Button>
+                        </div>
+                        {(isCustom || isQuote) && (
+                          <div className="border-t pt-2 space-y-2">
+                            <div className="flex items-center gap-2 text-[11px] text-muted-foreground"><Ruler className="h-3 w-3" />Enter your custom size</div>
+                            <div className="grid grid-cols-3 gap-2">
+                              <Input type="number" step="0.01" placeholder="Width" value={c.customWidth ?? ""}
+                                onChange={e => updateCustomSize(c.key, { customWidth: e.target.value === "" ? null : Number(e.target.value) })} />
+                              <Input type="number" step="0.01" placeholder="Height" value={c.customHeight ?? ""}
+                                onChange={e => updateCustomSize(c.key, { customHeight: e.target.value === "" ? null : Number(e.target.value) })} />
+                              <Select value={c.customSizeUnit ?? "m"} onValueChange={v => updateCustomSize(c.key, { customSizeUnit: v as LengthUnit })}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="m">m</SelectItem><SelectItem value="cm">cm</SelectItem><SelectItem value="mm">mm</SelectItem>
+                                  <SelectItem value="ft">ft</SelectItem><SelectItem value="in">in</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            {c.pricingBasis && (
+                              <div className="text-[11px] font-mono bg-muted/50 rounded p-1.5">
+                                {c.pricingBasis}{c.unitPrice && data.partner.pricingDisplayEnabled ? ` → $${c.unitPrice}` : ""}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 

@@ -69,6 +69,39 @@ async function seed() {
     { name: "Auction Paddles", slug: "auction-paddles", category: "Event Essentials", description: "Custom branded auction bid paddles", sizeOptionsJson: ["Standard"] },
     { name: "Awards & Trophies", slug: "awards", category: "Event Essentials", description: "Custom acrylic and engraved awards and trophies", sizeOptionsJson: ["Small", "Medium", "Large", "Custom"] },
     { name: "Invitations", slug: "invitations", category: "Printed Collateral", description: "Premium printed event invitations", sizeOptionsJson: ["5x7 in", "6x9 in", "Custom"] },
+    // ----------------------------------------------------------------------
+    // Measurement-aware pricing demo products (April 2026 extension).
+    // Each demonstrates one supported pricing model so the partner ordering
+    // portal can exercise fixed / area / linear / custom_quote flows.
+    // ----------------------------------------------------------------------
+    {
+      name: "Pop-Up Banner 200cm", slug: "pop-up-banner-200cm",
+      category: "Displays & Backdrops",
+      description: "200 cm wide retractable pop-up banner — fixed price.",
+      sizeWidth: 200, sizeHeight: 80, sizeUnit: "cm",
+      pricingModel: "fixed", unitRate: "120.00", pricingUnit: "per_unit",
+      allowsCustomSize: false, isActive: true,
+    },
+    {
+      name: "Wall Wrap (per sqm)", slug: "wall-wrap-per-sqm",
+      category: "Graphics",
+      description: "Vinyl wall wrap priced per square metre. Min 1 sqm.",
+      pricingModel: "area", unitRate: "45.00", pricingUnit: "per_sqm",
+      minBillableSize: 1, allowsCustomSize: true, isActive: true,
+    },
+    {
+      name: "Edge Trim (per linear m)", slug: "edge-trim-per-linear-m",
+      category: "Signage",
+      description: "Aluminium edge trim sold by the linear metre.",
+      pricingModel: "linear", unitRate: "18.00", pricingUnit: "per_linear_m",
+      minBillableSize: 1, allowsCustomSize: true, isActive: true,
+    },
+    {
+      name: "Custom Stage Set (quote)", slug: "custom-stage-set-quote",
+      category: "Custom Fabrication",
+      description: "Bespoke stage set — sales will follow up with a custom quote.",
+      pricingModel: "custom_quote", allowsCustomSize: true, isActive: true,
+    },
   ];
 
   await db.insert(productCatalogTable).values(products).onConflictDoNothing();

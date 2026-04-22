@@ -15,7 +15,10 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus, Pencil, Trash2, Package, Search, FileText, CheckCircle2, AlertCircle, Star, Upload, Download, X } from "lucide-react";
 import { DimensionInput } from "@/components/units/DimensionInput";
 import { ArtworkSpecInput } from "@/components/units/ArtworkSpecInput";
-import type { LengthUnit } from "@/lib/units";
+import { PricingModelInput } from "@/components/units/PricingModelInput";
+import { convert, type LengthUnit, type PricingModel, type PricingUnit } from "@/lib/units";
+
+function toMm(v: number, unit: string): number { return convert(v, unit, "mm"); }
 
 interface Product {
   id: number;
@@ -64,6 +67,12 @@ interface Product {
   customerFacingSummary: string | null;
   reviewStatus: string;
   missingDataFlagsJson: string[] | null;
+  pricingModel: string | null;
+  unitRate: number | string | null;
+  pricingUnit: string | null;
+  minBillableSize: number | null;
+  minCharge: number | string | null;
+  allowsCustomSize: boolean;
 }
 
 interface SpecStandard {
@@ -227,9 +236,10 @@ export default function ProductCatalog() {
           </DialogHeader>
           {editing && (
             <Tabs defaultValue="customer" className="mt-2">
-              <TabsList className="grid grid-cols-5 w-full">
+              <TabsList className="grid grid-cols-6 w-full">
                 <TabsTrigger value="customer">Customer-facing</TabsTrigger>
                 <TabsTrigger value="caps">Capabilities</TabsTrigger>
+                <TabsTrigger value="pricing">Pricing</TabsTrigger>
                 <TabsTrigger value="ops">Backend Ops</TabsTrigger>
                 <TabsTrigger value="standards" disabled={isNew}>Spec Standards</TabsTrigger>
                 <TabsTrigger value="quotes" disabled={isNew}>Sources ({editing.id ? <QuoteCount productId={editing.id} /> : 0})</TabsTrigger>
@@ -306,6 +316,22 @@ export default function ProductCatalog() {
                 <div className="flex items-center justify-between py-2 border-b"><Label className="text-sm">Orderable</Label><Switch checked={editing.isOrderable ?? true} onCheckedChange={v => setEditing(p => ({ ...p!, isOrderable: v }))} /></div>
                 <div className="flex items-center justify-between py-2 border-b"><Label className="text-sm">Allows design request</Label><Switch checked={editing.allowsDesignRequest ?? true} onCheckedChange={v => setEditing(p => ({ ...p!, allowsDesignRequest: v }))} /></div>
                 <div className="flex items-center justify-between py-2"><Label className="text-sm">Active</Label><Switch checked={editing.isActive ?? true} onCheckedChange={v => setEditing(p => ({ ...p!, isActive: v }))} /></div>
+              </TabsContent>
+
+              <TabsContent value="pricing" className="space-y-3 mt-4">
+                <PricingModelInput
+                  value={{
+                    pricingModel: editing.pricingModel ?? null,
+                    unitRate: (editing as any).unitRate ?? null,
+                    pricingUnit: editing.pricingUnit ?? null,
+                    minBillableSize: (editing as any).minBillableSize ?? null,
+                    minCharge: (editing as any).minCharge ?? null,
+                    allowsCustomSize: (editing as any).allowsCustomSize ?? false,
+                  }}
+                  onChange={patch => setEditing(p => ({ ...p!, ...patch }))}
+                  nativeWidthMm={(editing as any).sizeWidthMm ?? null}
+                  nativeHeightMm={(editing as any).sizeHeightMm ?? null}
+                />
               </TabsContent>
 
               <TabsContent value="ops" className="space-y-3 mt-4">

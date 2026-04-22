@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, boolean, doublePrecision, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, boolean, doublePrecision, timestamp, numeric } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { partnersTable } from "./partners";
@@ -34,6 +34,13 @@ export const partnerBrandingLocationsTable = pgTable("partner_branding_locations
   visibleHeight: doublePrecision("visible_height"),
   visibleWidthMm: doublePrecision("visible_width_mm"),
   visibleHeightMm: doublePrecision("visible_height_mm"),
+  // Measurement-aware pricing model (April 2026 extension) — same shape as product_catalog.
+  pricingModel: text("pricing_model").notNull().default("fixed"),
+  unitRate: numeric("unit_rate", { precision: 12, scale: 4 }),
+  pricingUnit: text("pricing_unit"),
+  minBillableSize: doublePrecision("min_billable_size"),
+  minCharge: numeric("min_charge", { precision: 12, scale: 2 }),
+  allowsCustomSize: boolean("allows_custom_size").notNull().default(false),
   sourcePageNumber: integer("source_page_number"),
   sourceFileUrl: text("source_file_url"),
   previewImageUrl: text("preview_image_url"),

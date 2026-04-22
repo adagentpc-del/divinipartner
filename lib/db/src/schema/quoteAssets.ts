@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, boolean, timestamp, date, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, boolean, timestamp, date, jsonb, doublePrecision, numeric } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -28,6 +28,13 @@ export const quoteAssetsTable = pgTable("quote_assets", {
   customerFacingSummary: text("customer_facing_summary"),
   backendOpsSummary: text("backend_ops_summary"),
   dimensionsSummary: text("dimensions_summary"),
+  // Measurement-aware pricing capture (April 2026 extension).
+  pricingUnit: text("pricing_unit"),
+  unitRate: numeric("unit_rate", { precision: 12, scale: 4 }),
+  billableAreaSqm: doublePrecision("billable_area_sqm"),
+  billableLinearM: doublePrecision("billable_linear_m"),
+  minBillableSize: doublePrecision("min_billable_size"),
+  sourceUnit: text("source_unit"),
   materialSummary: text("material_summary"),
   finishingSummary: text("finishing_summary"),
   attachmentSummary: text("attachment_summary"),

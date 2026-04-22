@@ -941,3 +941,12 @@ For the seeded London event: cascade resolves to `metric` via the event's own pr
 - Demo accounts are identified by slug heuristic (`acme` / `betaco` / `newvenue`); a dedicated `is_demo` flag would be cleaner but is not required for handoff.
 - No automated test suite is wired into CI; verification is manual + e2e via the testing skill.
 - Reconciliation is read/markup only — no double-entry ledger.
+
+### Measurement-aware pricing (April 2026 extension)
+- `product_catalog`, `partner_branding_locations`: `pricing_model` (fixed | area | linear | quantity | custom_quote), `unit_rate`, `pricing_unit` (per_unit | per_sqft | per_sqm | per_linear_ft | per_linear_m), `min_billable_size`, `min_charge`, `allows_custom_size`.
+- `request_items`: structured `width/height/size_unit` + computed `width_mm/height_mm/calculated_area_sqm/calculated_linear_m/estimated_price` and pricing snapshot.
+- `order_items`: `entered_width/height/size_unit`, normalized `entered_width_mm/entered_height_mm`, `billable_area_sqm`, `billable_linear_m`, `pricing_model`, `pricing_unit`, `calculation_basis` (human-readable formula).
+- `quote_assets`: `billable_area_sqm`, `billable_linear_m`, `min_billable_size`, `pricing_unit`, `source_unit`.
+- Helpers in `lib/db/src/units.ts` (mirrored at `artifacts/a3-portal/src/lib/units.ts`): `areaSqm/areaSqft/linearM/linearFt/computePrice` plus `PRICING_UNIT_LABELS`.
+- API: public order POST normalizes any `customWidth/Height/Unit` and persists computed billable + price; supplier packet emits a `pricingBasis` block per line; admin order detail and supplier packet UIs render the formula.
+- Demo seed: Pop-Up Banner 200cm (fixed @ $120), Wall Wrap (per_sqm @ $45), Edge Trim (per_linear_m @ $18), Custom Stage Set (custom_quote).

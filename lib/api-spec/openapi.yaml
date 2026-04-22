@@ -971,6 +971,22 @@ components:
           type: string
         sizeNote:
           type: string
+        width:
+          type: number
+          nullable: true
+        height:
+          type: number
+          nullable: true
+        sizeUnit:
+          type: string
+          nullable: true
+          enum: [in, ft, mm, cm, m]
+        productId:
+          type: integer
+          nullable: true
+        brandingZoneId:
+          type: integer
+          nullable: true
 
     RequestUploadInput:
       type: object

@@ -15,7 +15,11 @@ import {
   formatWxH,
   formatWxHDual,
   formatPrimarySecondary,
+  computePrice,
+  PRICING_UNIT_LABELS,
   type UnitSystem,
+  type PricingModel,
+  type PricingUnit,
 } from "@workspace/db";
 import { fire } from "../services/workflowEngine";
 
@@ -232,6 +236,50 @@ router.get("/orders/:orderId/supplier-packet/:supplierId", async (req, res) => {
     const specs = (finished || artwork || visible || bleed || safeArea) ? {
       finished, artwork, visible, bleed, safeArea,
     } : null;
+
+    // Pricing basis: prefer the snapshot persisted on the order item; if absent
+    // and the product carries a pricing model, recompute from the item's
+    // entered or product-native dimensions for display in the supplier packet.
+    let pricingBasis: any = null;
+    if ((it as any).pricingModel || (it as any).billableAreaSqm != null || (it as any).billableLinearM != null) {
+      pricingBasis = {
+        pricingModel: (it as any).pricingModel,
+        pricingUnit: (it as any).pricingUnit,
+        unitRate: prod?.unitRate ?? null,
+        billableAreaSqm: (it as any).billableAreaSqm,
+        billableLinearM: (it as any).billableLinearM,
+        unitPrice: it.unitPrice,
+        minBillableSize: prod?.minBillableSize ?? null,
+        minCharge: prod?.minCharge ?? null,
+        calculation: (it as any).calculationBasis,
+        pricingUnitLabel: (it as any).pricingUnit ? PRICING_UNIT_LABELS[(it as any).pricingUnit as PricingUnit] : null,
+      };
+    } else if (prod?.pricingModel) {
+      const r = computePrice({
+        pricingModel: prod.pricingModel as PricingModel,
+        unitRate: prod.unitRate,
+        pricingUnit: prod.pricingUnit as PricingUnit | null,
+        widthMm: (it as any).enteredWidthMm ?? prod.sizeWidthMm ?? null,
+        heightMm: (it as any).enteredHeightMm ?? prod.sizeHeightMm ?? null,
+        quantity: it.quantity,
+        minBillableSize: prod.minBillableSize,
+        minCharge: prod.minCharge,
+      });
+      pricingBasis = {
+        pricingModel: r.pricingModel,
+        pricingUnit: r.pricingUnit,
+        unitRate: prod.unitRate,
+        billableAreaSqm: r.billableAreaSqm,
+        billableLinearM: r.billableLinearM,
+        unitPrice: r.unitPrice,
+        minBillableSize: prod.minBillableSize,
+        minCharge: prod.minCharge,
+        calculation: r.basis,
+        pricingUnitLabel: r.pricingUnit ? PRICING_UNIT_LABELS[r.pricingUnit] : null,
+        requiresQuote: r.requiresQuote,
+      };
+    }
+
     return {
       itemId: it.id,
       name: it.name,
@@ -239,6 +287,7 @@ router.get("/orders/:orderId/supplier-packet/:supplierId", async (req, res) => {
       productName: prod?.name || null,
       dimensionDisplay: dimDisplay,
       specs,
+      pricingBasis,
       quantity: it.quantity,
       fulfillmentMode: it.fulfillmentMode,
       supplierStatus: it.supplierStatus,

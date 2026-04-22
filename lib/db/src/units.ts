@@ -198,6 +198,11 @@ const SIZE_DIMS: DimMap = [
   ["sizeDiameter", "sizeDiameterMm"],
 ];
 
+const ENTERED_DIMS: DimMap = [
+  ["enteredWidth", "enteredWidthMm"],
+  ["enteredHeight", "enteredHeightMm"],
+];
+
 const ARTWORK_DIMS: DimMap = [
   ["artworkWidth", "artworkWidthMm"],
   ["artworkHeight", "artworkHeightMm"],
@@ -265,6 +270,187 @@ export function withMmColumns<T extends Record<string, any>>(
   // Artwork unit falls back to whatever size unit is in scope (payload or existing).
   const sizeFallback = ("sizeUnit" in (input as any)) ? (input as any).sizeUnit : (existingSize ?? null);
   applyMmGroup(input as any, out, "artworkUnit", existingArtwork, ARTWORK_DIMS, sizeFallback);
+  // Order-line measurement snapshot (entered_*) keys off enteredSizeUnit.
+  const existingEntered = typeof existing === "object" && existing != null ? (existing as any).enteredSizeUnit : null;
+  applyMmGroup(input as any, out, "enteredSizeUnit", existingEntered, ENTERED_DIMS);
+  return out;
+}
+
+// ===========================================================================
+// Measurement-aware pricing helpers (April 2026 extension).
+// ===========================================================================
+
+export type PricingModel = "fixed" | "area" | "linear" | "quantity" | "custom_quote";
+export type PricingUnit = "per_unit" | "per_sqft" | "per_sqm" | "per_linear_ft" | "per_linear_m";
+
+export const PRICING_UNIT_LABELS: Record<PricingUnit, string> = {
+  per_unit: "per unit",
+  per_sqft: "per sq ft",
+  per_sqm: "per sq m",
+  per_linear_ft: "per linear ft",
+  per_linear_m: "per linear m",
+};
+
+const SQM_PER_SQFT = 0.092903;
+const SQFT_PER_SQM = 10.7639;
+const M_PER_FT = 0.3048;
+const FT_PER_M = 3.28084;
+
+export function areaSqm(widthMm: number | null | undefined, heightMm: number | null | undefined): number | null {
+  if (widthMm == null || heightMm == null) return null;
+  const w = Number(widthMm); const h = Number(heightMm);
+  if (!isFinite(w) || !isFinite(h) || w <= 0 || h <= 0) return null;
+  return (w / 1000) * (h / 1000);
+}
+export function areaSqft(widthMm: number | null | undefined, heightMm: number | null | undefined): number | null {
+  const sqm = areaSqm(widthMm, heightMm);
+  return sqm == null ? null : sqm * SQFT_PER_SQM;
+}
+export function linearM(valueMm: number | null | undefined): number | null {
+  if (valueMm == null) return null;
+  const v = Number(valueMm);
+  if (!isFinite(v) || v <= 0) return null;
+  return v / 1000;
+}
+export function linearFt(valueMm: number | null | undefined): number | null {
+  const m = linearM(valueMm);
+  return m == null ? null : m * FT_PER_M;
+}
+
+export function isPricingUnitArea(u: PricingUnit | string | null | undefined): boolean {
+  return u === "per_sqft" || u === "per_sqm";
+}
+export function isPricingUnitLinear(u: PricingUnit | string | null | undefined): boolean {
+  return u === "per_linear_ft" || u === "per_linear_m";
+}
+
+/** Round currency to 2 decimals. */
+function money(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+export interface PriceComputeInput {
+  pricingModel: PricingModel | string | null | undefined;
+  unitRate: number | string | null | undefined;
+  pricingUnit: PricingUnit | string | null | undefined;
+  widthMm?: number | null;
+  heightMm?: number | null;
+  /** For pure-linear products that store a single dimension. */
+  lengthMm?: number | null;
+  quantity?: number | null;
+  minBillableSize?: number | null;     // expressed in pricingUnit's own unit (sqm, sqft, m, or ft)
+  minCharge?: number | string | null;
+}
+
+export interface PriceComputeResult {
+  pricingModel: PricingModel;
+  pricingUnit: PricingUnit | null;
+  rate: number | null;
+  /** Billable area in sqm (always sqm internally; UI converts for display). */
+  billableAreaSqm: number | null;
+  /** Billable linear length in metres. */
+  billableLinearM: number | null;
+  /** Billable count for the pricing unit (sqm, sqft, m, ft, or units), already min-clamped. */
+  billableQuantity: number | null;
+  /** Computed unit price in dollars (rate * billable + min-charge clamp). null if quote required or insufficient data. */
+  unitPrice: number | null;
+  /** Total = unitPrice * quantity. */
+  total: number | null;
+  /** Human-readable basis string for ops/supplier display. */
+  basis: string;
+  /** True when pricing requires a manual quote and no number was computed. */
+  requiresQuote: boolean;
+}
+
+/**
+ * Compute a measurement-aware price for an order/request line.
+ * Always returns a `basis` string suitable for supplier packets / ops UIs.
+ */
+export function computePrice(input: PriceComputeInput): PriceComputeResult {
+  const model = (input.pricingModel || "fixed") as PricingModel;
+  const pUnit = (input.pricingUnit || null) as PricingUnit | null;
+  const rate = input.unitRate == null || input.unitRate === "" ? null : Number(input.unitRate);
+  const qty = input.quantity == null ? 1 : Math.max(1, Number(input.quantity));
+  const minCharge = input.minCharge == null || input.minCharge === "" ? null : Number(input.minCharge);
+  const minSize = input.minBillableSize == null ? null : Number(input.minBillableSize);
+
+  const sqm = areaSqm(input.widthMm, input.heightMm);
+  const sqft = sqm == null ? null : sqm * SQFT_PER_SQM;
+  // Prefer explicit lengthMm; otherwise fall back to widthMm for linear products.
+  const linMmRaw = input.lengthMm ?? input.widthMm ?? null;
+  const linM = linearM(linMmRaw);
+  const linFt = linM == null ? null : linM * FT_PER_M;
+
+  const out: PriceComputeResult = {
+    pricingModel: model,
+    pricingUnit: pUnit,
+    rate,
+    billableAreaSqm: sqm,
+    billableLinearM: linM,
+    billableQuantity: null,
+    unitPrice: null,
+    total: null,
+    basis: "",
+    requiresQuote: false,
+  };
+
+  if (model === "custom_quote") {
+    out.requiresQuote = true;
+    out.basis = "Custom quote required";
+    if (sqm != null) out.basis += ` · area ${money(sqm)} sqm`;
+    if (linM != null && sqm == null) out.basis += ` · ${money(linM)} m run`;
+    return out;
+  }
+
+  if (model === "fixed" || model === "quantity" || pUnit === "per_unit") {
+    if (rate == null) { out.basis = "No rate set"; return out; }
+    let unit = rate;
+    if (minCharge != null && unit < minCharge) unit = minCharge;
+    out.unitPrice = money(unit);
+    out.total = money(unit * qty);
+    out.billableQuantity = qty;
+    out.basis = `Fixed @ $${money(rate)}/unit × ${qty}`;
+    return out;
+  }
+
+  if (model === "area") {
+    if (rate == null || pUnit == null || !isPricingUnitArea(pUnit)) { out.basis = "Area pricing missing rate or unit"; return out; }
+    const native = pUnit === "per_sqm" ? sqm : sqft;
+    if (native == null) { out.basis = `Area pricing — needs width × height (${PRICING_UNIT_LABELS[pUnit]})`; return out; }
+    let billable = native;
+    if (minSize != null && billable < minSize) billable = minSize;
+    let unit = rate * billable;
+    if (minCharge != null && unit < minCharge) unit = minCharge;
+    out.billableQuantity = money(billable);
+    // Reflect clamped billable in the persisted geometric figure so DB display matches charge.
+    out.billableAreaSqm = money(pUnit === "per_sqm" ? billable : billable / SQFT_PER_SQM);
+    out.unitPrice = money(unit);
+    out.total = money(unit * qty);
+    out.basis = `${money(billable)} ${pUnit === "per_sqm" ? "sqm" : "sqft"} × $${money(rate)} ${PRICING_UNIT_LABELS[pUnit]} = $${money(unit)}` +
+      (minSize != null && native < minSize ? ` (min ${minSize})` : "") +
+      (qty > 1 ? ` × ${qty}` : "");
+    return out;
+  }
+
+  if (model === "linear") {
+    if (rate == null || pUnit == null || !isPricingUnitLinear(pUnit)) { out.basis = "Linear pricing missing rate or unit"; return out; }
+    const native = pUnit === "per_linear_m" ? linM : linFt;
+    if (native == null) { out.basis = `Linear pricing — needs length (${PRICING_UNIT_LABELS[pUnit]})`; return out; }
+    let billable = native;
+    if (minSize != null && billable < minSize) billable = minSize;
+    let unit = rate * billable;
+    if (minCharge != null && unit < minCharge) unit = minCharge;
+    out.billableQuantity = money(billable);
+    out.billableLinearM = money(pUnit === "per_linear_m" ? billable : billable / FT_PER_M);
+    out.unitPrice = money(unit);
+    out.total = money(unit * qty);
+    out.basis = `${money(billable)} ${pUnit === "per_linear_m" ? "m" : "ft"} × $${money(rate)} ${PRICING_UNIT_LABELS[pUnit]} = $${money(unit)}` +
+      (minSize != null && native < minSize ? ` (min ${minSize})` : "") +
+      (qty > 1 ? ` × ${qty}` : "");
+    return out;
+  }
+
+  out.basis = `Unsupported pricing model: ${model}`;
   return out;
 }
 

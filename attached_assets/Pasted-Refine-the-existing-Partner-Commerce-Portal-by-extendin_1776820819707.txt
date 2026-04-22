@@ -1,0 +1,186 @@
+Refine the existing Partner Commerce Portal by extending the new international measurement support into pricing logic, quantity calculators, coverage math, and custom-size quoting.
+
+Goal:
+Now that the platform supports imperial and metric measurements, make sure pricing, quantity calculations, and custom-size requests work correctly in both systems, especially for overseas events using meters, centimeters, and millimeters.
+
+Scope:
+Keep this pass narrowly focused on measurement-aware pricing, area calculations, and custom-size quoting behavior.
+Do not rebuild unrelated workflows.
+
+Requirements:
+
+1. Measurement-aware pricing foundation
+- extend products, branding zones, quote/spec references, and custom request flows so pricing can work with both imperial and metric units
+- support internally normalized calculations while preserving original entered values and units
+- allow a product or zone to use:
+  - fixed price
+  - price by unit
+  - price by area
+  - price by perimeter if useful
+  - custom/manual quote
+- support measurement-aware pricing rules without forcing the entire system to change pricing models
+
+2. Supported measurement logic
+At minimum support:
+- inches
+- feet
+- millimeters
+- centimeters
+- meters
+- square feet
+- square meters
+- linear feet where relevant
+- linear meters where relevant
+
+3. Area and coverage calculations
+Build reliable calculation support for products or zones that depend on coverage.
+
+Examples:
+- decals priced by square foot or square meter
+- wraps priced by covered area
+- fabric or banner materials priced by area
+- custom wall coverings priced by width x height
+- zone coverage requests priced by total branded surface
+
+Requirements:
+- automatically calculate area from width and height
+- support metric-first calculations cleanly
+- if a request is entered as 2 meters by 1.5 meters, calculate the correct square meter value
+- if useful internally, also show converted square foot value
+- avoid confusing rounding
+
+4. Linear and custom dimension quoting
+Support products that may be priced by a single dimension or by a repeated length.
+
+Examples:
+- perimeter-based edge graphics
+- linear banner runs
+- fence or barricade wraps
+- trim or branded tape by linear length
+
+Requirements:
+- support linear meters and linear feet where appropriate
+- allow admins to define which measurement type a product uses for pricing
+- keep UI simple and obvious for the user
+
+5. Product pricing models
+Extend product setup so internal admin can configure pricing model per product or zone.
+
+Support options such as:
+- fixed price item
+- area-based pricing
+- linear pricing
+- quantity-only pricing
+- custom quote required
+
+For area-based items, support:
+- base rate
+- minimum billable size if useful
+- minimum charge if useful
+- pricing unit selection:
+  - per sq ft
+  - per sq m
+
+For linear items, support:
+- rate per linear foot
+- rate per linear meter
+
+Do not overbuild a full estimating engine.
+Keep this practical and clean.
+
+6. Custom-size request flow
+In client ordering and partner onboarding flows, support custom requested measurements using the selected unit system.
+
+Examples:
+- Width: 2 m
+- Height: 1.2 m
+- Coverage needed: 18 sq m
+- Graphic run: 6 linear meters
+
+Requirements:
+- if a product allows custom sizing, show dimension inputs with unit selectors
+- automatically calculate derived dimensions and pricing when appropriate
+- if the product is custom/manual quote only, calculate measurement values but route pricing to quote-needed workflow
+- preserve the originally requested metric size throughout downstream views
+
+7. Branding zone and venue coverage logic
+Extend branding zones so they can support:
+- fixed dimensions
+- custom requested coverage within a zone
+- priced-by-area zones
+- custom/manual quote zones
+
+Examples:
+- a full wall wrap
+- a partial branded panel area
+- a custom overseas booth backdrop specified in meters
+- venue branding area that varies by event footprint
+
+Requirements:
+- zone setup should support dimension-based pricing rules
+- order flow should reflect the zone’s pricing model
+- internal ops and supplier packets should clearly show requested size and calculation basis
+
+8. Supplier packet and ops clarity
+Extend supplier packets, order summaries, and internal line-item detail to show:
+- entered measurement
+- displayed measurement
+- pricing basis
+- calculated area or linear quantity where relevant
+- custom-size requested value
+- normalized calculation summary if helpful internally
+
+Examples:
+- Requested size: 2 m x 1.5 m
+- Calculated coverage: 3 sq m
+- Pricing basis: per sq m
+- Estimated billable area: 3 sq m
+
+Keep this highly readable and production-safe.
+
+9. Quote/spec reference impact
+Extend quote/spec records so they can store pricing-relevant measurement logic such as:
+- finished width
+- finished height
+- billable area
+- billable linear length
+- minimum billable size
+- unit basis
+- original source unit
+- normalized internal value
+
+This should support cleaner custom quoting later without requiring manual recalculation every time.
+
+10. UX requirements
+- dimension and pricing inputs must be easy and obvious
+- show live calculation feedback where appropriate
+- clearly distinguish:
+  - fixed price item
+  - calculated price item
+  - custom quote item
+- for metric-first events, keep metric primary throughout the UI
+- do not make clients or partner managers manually convert anything
+- keep advanced internal calculation details collapsed unless needed
+
+11. Seed/demo updates
+- add at least one overseas metric-first event with custom-sized items
+- include one area-priced product using square meters
+- include one linear-priced product using meters
+- include one fixed-price product for comparison
+- include one custom/manual quote item with metric dimensions
+- include one branding zone priced by coverage area
+
+12. Documentation
+- update replit.md with:
+  - measurement-aware pricing models
+  - supported unit types
+  - area and linear calculation logic
+  - custom-size request handling
+  - how metric-first events affect pricing displays
+  - how original vs normalized values are stored
+
+Important:
+Do not rebuild the app.
+Do not change unrelated workflows.
+Extend the current product, zone, quote/spec, event, order, and supplier packet flows cleanly.
+Actually implement the pricing and quantity calculation logic and UI, not placeholders only.
