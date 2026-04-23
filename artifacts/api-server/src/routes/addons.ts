@@ -1,0 +1,165 @@
+/**
+ * Partner-specific add-ons (Section 35).
+ *
+ * - GET    /api/partners/:id/addons             → list (joined with product info)
+ * - PUT    /api/partners/:id/addons             → bulk replace selection
+ * - GET    /api/events/:id/addons/effective     → resolved list given partner +
+ *                                                 event override
+ * - GET    /api/public/partners/:slug/events/:eventId/addons
+ *                                                → public ordering helper
+ */
+import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
+import { eq, and, inArray, asc } from "drizzle-orm";
+import { z } from "zod";
+import { getAuth } from "@clerk/express";
+import {
+  db, partnerAddonsTable, productCatalogTable, partnersTable, eventsTable,
+} from "@workspace/db";
+
+const router: IRouter = Router();
+
+// Same posture as other admin routes in this codebase: per-route auth guard
+// because app.ts only mounts clerkMiddleware() (no global requireAuth).
+function requireAuth(req: Request, res: Response, next: NextFunction): void {
+  const auth = getAuth(req);
+  if (!auth?.userId) { res.status(401).json({ error: "Authentication required" }); return; }
+  next();
+}
+
+// Public ordering surfaces are gated by partner launch state, mirroring
+// publicPortal.ts so anonymous callers can't enumerate add-on configuration
+// for partners that aren't live or in preview.
+const PUBLIC_LAUNCH_STATES = ["live", "preview"] as const;
+
+const ReplaceBody = z.object({
+  addons: z.array(z.object({
+    productId: z.number().int().positive(),
+    sortOrder: z.number().int().nonnegative().optional(),
+    isFeatured: z.boolean().optional(),
+    isActive: z.boolean().optional(),
+  })).max(500),
+});
+
+async function listPartnerAddons(partnerId: number) {
+  return db.select({
+    id: partnerAddonsTable.id,
+    partnerId: partnerAddonsTable.partnerId,
+    productId: partnerAddonsTable.productId,
+    sortOrder: partnerAddonsTable.sortOrder,
+    isFeatured: partnerAddonsTable.isFeatured,
+    isActive: partnerAddonsTable.isActive,
+    productName: productCatalogTable.name,
+    productCategory: productCatalogTable.category,
+    productImageUrl: productCatalogTable.imageUrl,
+    productSlug: productCatalogTable.slug,
+    productIsActive: productCatalogTable.isActive,
+  }).from(partnerAddonsTable)
+    .leftJoin(productCatalogTable, eq(partnerAddonsTable.productId, productCatalogTable.id))
+    .where(eq(partnerAddonsTable.partnerId, partnerId))
+    .orderBy(asc(partnerAddonsTable.sortOrder), asc(partnerAddonsTable.id));
+}
+
+router.get("/partners/:id/addons", requireAuth, async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  res.json(await listPartnerAddons(id));
+});
+
+router.put("/partners/:id/addons", requireAuth, async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const parsed = ReplaceBody.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+  const [partner] = await db.select({ id: partnersTable.id }).from(partnersTable).where(eq(partnersTable.id, id));
+  if (!partner) { res.status(404).json({ error: "Partner not found" }); return; }
+
+  // Bulk replace: simplest correct strategy is delete-then-insert in a tx.
+  // Volumes are tiny (typically <50 add-ons per partner) so this is fine.
+  await db.transaction(async (tx) => {
+    await tx.delete(partnerAddonsTable).where(eq(partnerAddonsTable.partnerId, id));
+    if (parsed.data.addons.length > 0) {
+      // De-duplicate by productId in case the client sent the same product twice.
+      const seen = new Set<number>();
+      const rows = parsed.data.addons
+        .filter((a) => { if (seen.has(a.productId)) return false; seen.add(a.productId); return true; })
+        .map((a, idx) => ({
+          partnerId: id,
+          productId: a.productId,
+          sortOrder: a.sortOrder ?? idx,
+          isFeatured: a.isFeatured ?? false,
+          isActive: a.isActive ?? true,
+        }));
+      if (rows.length > 0) await tx.insert(partnerAddonsTable).values(rows);
+    }
+  });
+
+  res.json(await listPartnerAddons(id));
+});
+
+/**
+ * Resolve the add-on list for a single event given the inheritance rules:
+ *   - addonOverrideJson is null OR { mode: "inherit" }
+ *       → all active partner add-ons
+ *   - { mode: "override", productIds: [ids] }
+ *       → intersection with the partner's active add-on set (we never surface
+ *         a product the partner hasn't approved)
+ */
+async function resolveEventAddons(eventId: number) {
+  const [ev] = await db.select().from(eventsTable).where(eq(eventsTable.id, eventId));
+  if (!ev) return null;
+  const partnerAddons = await listPartnerAddons(ev.partnerId);
+  const activePartnerAddons = partnerAddons.filter((a) => a.isActive && a.productIsActive);
+
+  const override = ev.addonOverrideJson;
+  let inheritance: "inherit" | "override" = "inherit";
+  let chosen = activePartnerAddons;
+
+  if (override && override.mode === "override") {
+    inheritance = "override";
+    const allow = new Set<number>(Array.isArray(override.productIds) ? override.productIds : []);
+    chosen = activePartnerAddons.filter((a) => allow.has(a.productId));
+  }
+
+  return {
+    eventId: ev.id,
+    partnerId: ev.partnerId,
+    inheritance,
+    addons: chosen,
+    partnerAddonCount: activePartnerAddons.length,
+  };
+}
+
+router.get("/events/:id/addons/effective", requireAuth, async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const out = await resolveEventAddons(id);
+  if (!out) { res.status(404).json({ error: "Event not found" }); return; }
+  res.json(out);
+});
+
+// Public ordering helper — keeps the admin endpoint behind auth (when the
+// admin gate is configured) while letting the partner portal fetch the same
+// resolved list anonymously for a known partner+event pair.
+router.get("/public/partners/:slug/events/:eventId/addons", async (req, res): Promise<void> => {
+  const eventId = Number(req.params.eventId);
+  if (!Number.isFinite(eventId)) { res.status(400).json({ error: "Invalid event id" }); return; }
+  // Mirror publicPortal.ts gating: partner must be active AND in a publicly
+  // visible launch state. Otherwise treat as not found so we don't reveal
+  // existence of unpublished partners.
+  const [partner] = await db.select({ id: partnersTable.id })
+    .from(partnersTable)
+    .where(and(
+      eq(partnersTable.slug, req.params.slug),
+      eq(partnersTable.isActive, true),
+      inArray(partnersTable.launchStatus, [...PUBLIC_LAUNCH_STATES]),
+    ));
+  if (!partner) { res.status(404).json({ error: "Partner not found" }); return; }
+  const [ev] = await db.select({ id: eventsTable.id, partnerId: eventsTable.partnerId, isActive: eventsTable.isActive })
+    .from(eventsTable).where(eq(eventsTable.id, eventId));
+  if (!ev || ev.partnerId !== partner.id || !ev.isActive) { res.status(404).json({ error: "Event not found" }); return; }
+  const out = await resolveEventAddons(eventId);
+  res.json(out);
+});
+
+export { resolveEventAddons };
+export default router;

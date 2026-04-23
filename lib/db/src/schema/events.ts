@@ -26,6 +26,11 @@ export const eventsTable = pgTable("events", {
   availablePackageIdsJson: jsonb("available_package_ids_json").$type<number[]>(),
   availableProductIdsJson: jsonb("available_product_ids_json").$type<number[]>(),
   quantityLimitsJson: jsonb("quantity_limits_json").$type<Record<string, number>>(),
+  // Partner-add-on inheritance/override (Section 35).
+  // null      → inherit all active partner add-ons
+  // { mode:"inherit" }     → same as null
+  // { mode:"override", productIds:[...] } → use this explicit subset for this event
+  addonOverrideJson: jsonb("addon_override_json").$type<{ mode: "inherit" | "override"; productIds?: number[] }>(),
   imageUrl: text("image_url"),
   // Billing override (null = inherit from partner)
   billingExecModelOverride: text("billing_exec_model_override"),

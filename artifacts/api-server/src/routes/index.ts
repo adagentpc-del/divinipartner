@@ -49,6 +49,7 @@ import invoicesRouter from "./invoices";
 import billingRouter from "./billing";
 import publicConfigRouter from "./publicConfig";
 import securityReadinessRouter from "./securityReadiness";
+import addonsRouter from "./addons";
 import { uploadLimiter, orderSubmitLimiter, publicWriteLimiter } from "../middlewares/rateLimit";
 
 const router: IRouter = Router();
@@ -63,6 +64,7 @@ router.use("/onboarding/submit", publicWriteLimiter);
 router.use(healthRouter);
 router.use(publicConfigRouter);
 router.use(securityReadinessRouter);
+router.use(addonsRouter);
 router.use(partnersRouter);
 router.use(partnerEmailRecipientsRouter);
 router.use(partnerContactsRouter);

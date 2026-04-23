@@ -30,7 +30,8 @@ type Product = {
 };
 type Partner = { id: number; companyName: string; logoUrl?: string | null; secondaryLogoUrl?: string | null; introHeadline: string | null; introText: string | null; pricingDisplayEnabled: boolean | null; thankYouText?: string | null; replyToEmail?: string | null; contactEmail?: string | null };
 type ThemeShape = { primaryColor?: string | null; secondaryColor?: string | null; accentColor?: string | null; backgroundColor?: string | null; buttonColor?: string | null; textColor?: string | null; headingFont?: string | null; bodyFont?: string | null; borderRadius?: string | null } | null;
-type Data = { partner: Partner; theme?: ThemeShape; cities: City[]; venues: Venue[]; events: Event[]; packages: Pkg[]; products: Product[] };
+type EventAddons = { eventId: number; partnerId?: number; inheritance?: "inherit" | "override"; addons?: Array<{ productId: number; isFeatured: boolean; isActive: boolean; sortOrder: number }>; partnerAddonCount?: number };
+type Data = { partner: Partner; theme?: ThemeShape; cities: City[]; venues: Venue[]; events: Event[]; packages: Pkg[]; products: Product[]; eventAddons?: EventAddons[] };
 
 type CartItem = {
   key: string; itemType: "product" | "package" | "branding_zone";
@@ -201,7 +202,28 @@ export default function OrderingPortal({ slug }: { slug: string }) {
   const venuesForCity = cityId ? data.venues.filter(v => v.cityId === cityId) : [];
   const availablePkgs = selectedEvent?.availablePackageIdsJson?.length ? data.packages.filter(p => selectedEvent.availablePackageIdsJson!.includes(p.id)) : data.packages;
 
-  const addonProducts = data.products.filter(p => !selectedPkg?.items.some(it => it.productId === p.id));
+  // Section 35: per-event add-on resolution. When the API supplies an effective
+  // add-on list for the selected event, restrict the add-on picker to that
+  // partner-curated set (sorted, featured first). Falls back to the legacy
+  // behaviour (all products minus package contents) when the partner has no
+  // add-on library configured yet.
+  const eventAddonRow = useMemo(
+    () => data.eventAddons?.find(e => e.eventId === eventId) || null,
+    [data.eventAddons, eventId],
+  );
+  const partnerHasAddonLibrary = (eventAddonRow?.partnerAddonCount ?? 0) > 0;
+  const addonProducts = useMemo(() => {
+    const inPackage = (id: number) => !!selectedPkg?.items.some(it => it.productId === id);
+    if (partnerHasAddonLibrary && eventAddonRow?.addons) {
+      const sorted = [...eventAddonRow.addons].sort((a, b) =>
+        Number(b.isFeatured) - Number(a.isFeatured) || a.sortOrder - b.sortOrder
+      );
+      return sorted
+        .map(a => data.products.find(p => p.id === a.productId))
+        .filter((p): p is Product => !!p && !inPackage(p.id));
+    }
+    return data.products.filter(p => !inPackage(p.id));
+  }, [data.products, selectedPkg, eventAddonRow, partnerHasAddonLibrary]);
 
   function priceCart(p: Product, item: Partial<CartItem>) {
     if (!p.pricingModel) return { unitPrice: null as string | null, basis: null as string | null };

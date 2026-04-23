@@ -16,7 +16,9 @@ import { Plus, Loader2, Pencil, Trash2, Calendar, Copy, ChevronLeft, MapPin, Box
 import { EventInventoryDialog } from "@/components/admin/EventInventoryDialog";
 import { UnitPreferenceSelect } from "@/components/units/DimensionInput";
 
-type EventRow = { id: number; partnerId: number; cityId: number | null; cityName?: string | null; venueId: number | null; venueName?: string | null; name: string; eventStartDate: string | null; eventEndDate: string | null; installDate: string | null; teardownDate: string | null; shippingDeadline: string | null; status: string; notes: string | null; isActive: boolean; availablePackageIdsJson: number[] | null };
+type AddonOverride = { mode: "inherit" | "override"; productIds?: number[] } | null;
+type EventRow = { id: number; partnerId: number; cityId: number | null; cityName?: string | null; venueId: number | null; venueName?: string | null; name: string; eventStartDate: string | null; eventEndDate: string | null; installDate: string | null; teardownDate: string | null; shippingDeadline: string | null; status: string; notes: string | null; isActive: boolean; availablePackageIdsJson: number[] | null; addonOverrideJson?: AddonOverride };
+type PartnerAddon = { id: number; productId: number; sortOrder: number; isFeatured: boolean; isActive: boolean; productName: string | null; productCategory: string | null };
 type City = { id: number; name: string };
 type Venue = { id: number; name: string; cityId: number | null };
 type Pkg = { id: number; name: string; tier: number };
@@ -47,6 +49,15 @@ function EventDialog({ partnerId, cities, venues, packages, ev, trigger, onSaved
     isActive: ev?.isActive ?? true,
     availablePackageIds: ev?.availablePackageIdsJson || [],
     unitPreference: ((ev as any)?.unitPreference || "") as string,
+    addonMode: (ev?.addonOverrideJson?.mode || "inherit") as "inherit" | "override",
+    addonProductIds: (ev?.addonOverrideJson?.productIds || []) as number[],
+  });
+  // Partner add-on library — fetched lazily so the picker shows real products
+  // even when the dialog opens for a brand-new event.
+  const { data: partnerAddons = [] } = useQuery<PartnerAddon[]>({
+    queryKey: [`/api/partners/${partnerId}/addons`],
+    queryFn: () => apiFetch(`/api/partners/${partnerId}/addons`),
+    enabled: open,
   });
   const filteredVenues = form.cityId ? venues.filter(v => v.cityId === parseInt(form.cityId)) : venues;
 
@@ -67,6 +78,9 @@ function EventDialog({ partnerId, cities, venues, packages, ev, trigger, onSaved
         isActive: form.isActive,
         availablePackageIdsJson: form.availablePackageIds,
         unitPreference: form.unitPreference || null,
+        addonOverrideJson: form.addonMode === "override"
+          ? { mode: "override", productIds: form.addonProductIds }
+          : { mode: "inherit" },
       };
       if (ev) await apiFetch(`/api/events/${ev.id}`, { method: "PATCH", body: JSON.stringify(body) });
       else await apiFetch(`/api/events`, { method: "POST", body: JSON.stringify(body) });
@@ -77,6 +91,9 @@ function EventDialog({ partnerId, cities, venues, packages, ev, trigger, onSaved
 
   const togglePackage = (pkgId: number) => {
     setForm({ ...form, availablePackageIds: form.availablePackageIds.includes(pkgId) ? form.availablePackageIds.filter(id => id !== pkgId) : [...form.availablePackageIds, pkgId] });
+  };
+  const toggleAddon = (productId: number) => {
+    setForm({ ...form, addonProductIds: form.addonProductIds.includes(productId) ? form.addonProductIds.filter(id => id !== productId) : [...form.addonProductIds, productId] });
   };
 
   return (
@@ -113,6 +130,30 @@ function EventDialog({ partnerId, cities, venues, packages, ev, trigger, onSaved
             </div>
             <p className="text-xs text-muted-foreground mt-1">Tap to toggle. Empty = all packages available.</p>
           </div>}
+          <div className="border-t pt-3">
+            <Label>Add-Ons</Label>
+            <div className="flex gap-2 mt-2">
+              <button type="button" onClick={() => setForm({ ...form, addonMode: "inherit" })} className={`px-3 py-1.5 text-xs rounded-lg border transition ${form.addonMode === "inherit" ? "bg-primary text-primary-foreground border-primary" : "bg-card hover:bg-muted"}`}>Inherit from partner ({partnerAddons.filter(a => a.isActive).length} available)</button>
+              <button type="button" onClick={() => setForm({ ...form, addonMode: "override" })} className={`px-3 py-1.5 text-xs rounded-lg border transition ${form.addonMode === "override" ? "bg-primary text-primary-foreground border-primary" : "bg-card hover:bg-muted"}`}>Override (pick subset)</button>
+            </div>
+            {form.addonMode === "override" && (
+              partnerAddons.length === 0 ? (
+                <p className="text-xs text-muted-foreground mt-2">This partner has no add-ons configured. <Link href={`/admin/partners/${partnerId}/addons`}><a className="underline">Configure add-ons</a></Link> first.</p>
+              ) : (
+                <>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {partnerAddons.filter(a => a.isActive).map(a => (
+                      <button key={a.productId} type="button" onClick={() => toggleAddon(a.productId)} className={`px-3 py-1.5 text-xs rounded-lg border transition ${form.addonProductIds.includes(a.productId) ? "bg-primary text-primary-foreground border-primary" : "bg-card hover:bg-muted"}`}>{a.productName || `#${a.productId}`}</button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Tap to toggle. Empty = no add-ons offered for this event.</p>
+                </>
+              )
+            )}
+            {form.addonMode === "inherit" && partnerAddons.length === 0 && (
+              <p className="text-xs text-muted-foreground mt-2">No partner-level add-ons configured yet. <Link href={`/admin/partners/${partnerId}/addons`}><a className="underline">Configure add-ons</a></Link> to make them available here.</p>
+            )}
+          </div>
           <div className="flex items-center gap-2"><Switch checked={form.isActive} onCheckedChange={v => setForm({ ...form, isActive: v })} /><Label>Active</Label></div>
         </div>
         <DialogFooter><Button onClick={handleSave} disabled={!form.name}>Save</Button></DialogFooter>

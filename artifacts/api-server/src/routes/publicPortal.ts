@@ -407,7 +407,15 @@ router.get("/public/partners/:slug/ordering", async (req, res): Promise<void> =>
   // Include theme so OrderingPortal can render branded UI without a second fetch.
   const [theme] = await db.select().from(partnerThemesTable).where(eq(partnerThemesTable.partnerId, partner.id));
 
-  res.json({ partner, theme: theme || null, cities, venues, events, packages: packagesWithItems, products });
+  // Section 35: surface effective add-ons for each event so the OrderingPortal
+  // can render the partner's add-on library + per-event overrides without a
+  // second fetch per event.
+  const { resolveEventAddons } = await import("./addons");
+  const eventAddons = await Promise.all(
+    events.map(async (e) => ({ eventId: e.id, ...(await resolveEventAddons(e.id)) })),
+  );
+
+  res.json({ partner, theme: theme || null, cities, venues, events, packages: packagesWithItems, products, eventAddons });
 });
 
 import { z } from "zod";

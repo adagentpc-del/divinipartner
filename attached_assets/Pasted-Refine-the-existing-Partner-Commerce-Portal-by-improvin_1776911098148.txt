@@ -1,0 +1,118 @@
+Refine the existing Partner Commerce Portal by improving partner-specific add-on selection so add-ons can be chosen per partner portal and then selected during event setup.
+
+Goal:
+I need each partner portal to have partner-specific add-on items, and when setting up an event those add-ons need to be selectable as part of the event configuration. Right now I need a cleaner way to define which products are add-ons for that partner and then have those same add-ons available during event setup.
+
+Scope:
+Keep this pass tightly focused on:
+1. partner-specific add-on configuration
+2. selecting add-on products for a partner portal
+3. event setup selection of those add-ons
+4. visibility and management of active add-ons
+
+Do not rebuild unrelated workflows.
+
+Requirements:
+
+1. Partner-specific add-on library
+On each partner profile / partner portal builder, add a clear Add-Ons section where I can choose which products should be available as add-ons for that specific partner portal.
+
+Requirements:
+- show available products in a selectable list, card grid, or checkbox selector
+- allow selecting one or more products as add-ons for that partner
+- clearly show which products are already selected
+- allow removing/unselecting products
+- support active/inactive visibility per selected add-on if useful
+- keep this easy and visual, not buried in a raw form
+
+2. Add-on selection should be stored per partner
+The selected add-ons must be tied to that specific partner portal, not global for all partners.
+
+Requirements:
+- one partner can have a different add-on set than another partner
+- add-on selections should persist on the partner record
+- if a partner has no add-ons selected, the event setup should reflect that cleanly
+
+3. Event setup integration
+During event setup, the user should be able to select from the add-ons configured for that specific partner.
+
+Requirements:
+- show only the add-ons that are assigned to that partner
+- make add-ons selectable during event setup
+- support quantity selection where relevant
+- if useful, support toggles/checkboxes/cards for add-on selection
+- keep the event setup flow clean and obvious
+
+Examples:
+- add side walls
+- add backdrop
+- add extra banners
+- add extra tablecloths
+- add rentable chairs
+- add rentable tables
+
+4. Event-specific add-on choices
+When creating or editing an event:
+- allow enabling/disabling partner add-ons for that specific event if needed
+- allow selecting which add-ons are offered on that event
+- allow event-level overrides if useful
+- show which add-ons are inherited from the partner vs changed at the event level
+
+Requirements:
+- inheritance should be clear:
+  - partner default add-ons
+  - event override add-ons
+- make it obvious what comes from the partner default and what is changed for the event
+
+5. Add-on ordering behavior
+Once add-ons are selected for the event:
+- they should appear correctly in the ordering flow for that event
+- clients should be able to select them as part of the order where appropriate
+- quantities and measurement/spec logic should still work if already supported
+- rentable/reusable logic should still apply if relevant
+
+6. Partner builder UX
+Improve the partner builder/setup UI so Add-Ons is clearly managed.
+
+Recommended behavior:
+- show a visible Add-Ons section
+- show selected add-ons as chips/cards/list items
+- allow quick add/remove
+- allow reordering if useful
+- allow marking featured or recommended if already feasible
+
+7. Event setup UX
+In event setup, add a clear Add-Ons step or section.
+
+Requirements:
+- show add-ons available for that event
+- allow quick selection
+- allow quantity entry if relevant
+- keep the flow clean and easy to scan
+- do not make users guess where add-ons are configured
+
+8. Admin visibility
+Show on the partner detail and event detail pages:
+- which add-ons are configured at the partner level
+- which add-ons are active for the event
+- whether an event is using partner defaults or event-specific overrides
+
+9. Seed/demo updates
+Add demo examples showing:
+- one partner with selected add-ons
+- one event inheriting partner add-ons
+- one event overriding the partner add-ons
+- add-ons appearing correctly in the ordering flow
+
+10. Documentation
+Update replit.md with:
+- how partner-specific add-ons are stored
+- how add-ons are selected on the partner portal
+- how event setup inherits or overrides add-ons
+- how add-ons appear in the ordering flow
+
+Important:
+Do not rebuild the app.
+Do not change unrelated workflows.
+Extend the current partner builder, event setup, and ordering flows cleanly.
+Actually implement partner-specific add-on selection and event-level add-on setup, not placeholders only.

@@ -33,6 +33,11 @@ const EventBody = z.object({
   taxLabel: z.string().nullable().optional(),
   taxRate: z.union([z.string(), z.number()]).nullable().optional().transform(v => v == null || v === "" ? null : String(v)),
   taxInclusive: z.boolean().nullable().optional(),
+  // Partner-add-on override (Section 35). null/undefined → inherit.
+  addonOverrideJson: z.object({
+    mode: z.enum(["inherit", "override"]),
+    productIds: z.array(z.number().int().positive()).optional(),
+  }).nullable().optional(),
 });
 
 const router: IRouter = Router();
@@ -68,6 +73,7 @@ router.get("/events", async (req, res) => {
     isActive: eventsTable.isActive,
     createdAt: eventsTable.createdAt,
     unitPreference: eventsTable.unitPreference,
+    addonOverrideJson: eventsTable.addonOverrideJson,
   }).from(eventsTable)
     .leftJoin(citiesTable, eq(eventsTable.cityId, citiesTable.id))
     .leftJoin(venuesTable, eq(eventsTable.venueId, venuesTable.id))

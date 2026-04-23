@@ -18,6 +18,7 @@ import AssetsLibrary from "@/pages/admin/AssetsLibrary";
 import PricingRules from "@/pages/admin/PricingRules";
 import PartnerThemeEditor from "@/pages/admin/PartnerThemeEditor";
 import PartnerSections from "@/pages/admin/PartnerSections";
+import PartnerAddons from "@/pages/admin/PartnerAddons";
 import BrandingLocations from "@/pages/admin/BrandingLocations";
 import ProductCatalog from "@/pages/admin/ProductCatalog";
 import SuppliersList from "@/pages/admin/SuppliersList";
@@ -189,6 +190,9 @@ function ClerkProviderWithRoutes() {
             </Route>
             <Route path="/admin/partners/:id/sections">
               {() => <AdminRoute component={PartnerSections} />}
+            </Route>
+            <Route path="/admin/partners/:id/addons">
+              {() => <AdminRoute component={PartnerAddons} />}
             </Route>
             <Route path="/admin/partners/:id/branding-locations">
               {() => <AdminRoute component={BrandingLocations} />}
