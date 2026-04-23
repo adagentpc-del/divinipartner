@@ -23,6 +23,7 @@ export const partnerContactsTable = pgTable("partner_contacts", {
   partnerId: integer("partner_id").notNull().references(() => partnersTable.id, { onDelete: "cascade" }),
   role: text("role").notNull().default("other"),
   fullName: text("full_name").notNull(),
+  title: text("title"),
   email: text("email"),
   phone: text("phone"),
   notes: text("notes"),

@@ -25,6 +25,7 @@ export type PartnerContact = {
   partnerId: number;
   role: string;
   fullName: string;
+  title: string | null;
   email: string | null;
   phone: string | null;
   notes: string | null;
@@ -45,9 +46,9 @@ export default function PartnerContactsPanel({ partnerId }: { partnerId: number 
     queryKey, queryFn: () => apiFetch(`/api/partners/${partnerId}/contacts`),
   });
 
-  const [draft, setDraft] = useState({ role: "primary", fullName: "", email: "", phone: "", notes: "" });
+  const [draft, setDraft] = useState({ role: "primary", fullName: "", title: "", email: "", phone: "", notes: "" });
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [editDraft, setEditDraft] = useState<{ role: string; fullName: string; email: string; phone: string; notes: string }>({ role: "other", fullName: "", email: "", phone: "", notes: "" });
+  const [editDraft, setEditDraft] = useState<{ role: string; fullName: string; title: string; email: string; phone: string; notes: string }>({ role: "other", fullName: "", title: "", email: "", phone: "", notes: "" });
   const invalidate = () => qc.invalidateQueries({ queryKey });
   const onErr = (label: string) => (e: any) =>
     toast({ title: label, description: e?.body?.error || e?.message || String(e), variant: "destructive" });
@@ -56,7 +57,7 @@ export default function PartnerContactsPanel({ partnerId }: { partnerId: number 
     mutationFn: (body: any) => apiFetch(`/api/partners/${partnerId}/contacts`, { method: "POST", body: JSON.stringify(body) }),
     onSuccess: () => {
       invalidate();
-      setDraft({ role: "primary", fullName: "", email: "", phone: "", notes: "" });
+      setDraft({ role: "primary", fullName: "", title: "", email: "", phone: "", notes: "" });
       toast({ title: "Contact added" });
     },
     onError: onErr("Couldn't add contact"),
@@ -80,7 +81,7 @@ export default function PartnerContactsPanel({ partnerId }: { partnerId: number 
 
   function startEdit(c: PartnerContact) {
     setEditingId(c.id);
-    setEditDraft({ role: c.role, fullName: c.fullName, email: c.email || "", phone: c.phone || "", notes: c.notes || "" });
+    setEditDraft({ role: c.role, fullName: c.fullName, title: c.title || "", email: c.email || "", phone: c.phone || "", notes: c.notes || "" });
   }
   function saveEdit() {
     if (editingId == null) return;
@@ -90,6 +91,7 @@ export default function PartnerContactsPanel({ partnerId }: { partnerId: number 
       body: {
         role: editDraft.role,
         fullName: editDraft.fullName.trim(),
+        title: editDraft.title.trim() || null,
         email: editDraft.email.trim() || null,
         phone: editDraft.phone.trim() || null,
         notes: editDraft.notes.trim() || null,
@@ -141,6 +143,10 @@ export default function PartnerContactsPanel({ partnerId }: { partnerId: number 
                           <Input className="h-9 mt-1" value={editDraft.fullName} onChange={e => setEditDraft(d => ({ ...d, fullName: e.target.value }))} />
                         </div>
                         <div>
+                          <Label className="text-xs">Title</Label>
+                          <Input className="h-9 mt-1" placeholder="VP of Marketing" value={editDraft.title} onChange={e => setEditDraft(d => ({ ...d, title: e.target.value }))} />
+                        </div>
+                        <div>
                           <Label className="text-xs">Email</Label>
                           <Input className="h-9 mt-1" type="email" value={editDraft.email} onChange={e => setEditDraft(d => ({ ...d, email: e.target.value }))} />
                         </div>
@@ -169,6 +175,7 @@ export default function PartnerContactsPanel({ partnerId }: { partnerId: number 
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-medium text-sm truncate">{c.fullName}</span>
+                            {c.title && <span className="text-xs text-muted-foreground truncate">— {c.title}</span>}
                             {c.isPrimary && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1"><Star className="h-3 w-3 fill-current" /> Primary</span>}
                             {!c.isActive && <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground border">Inactive</span>}
                           </div>
@@ -224,6 +231,10 @@ export default function PartnerContactsPanel({ partnerId }: { partnerId: number 
               <Input className="h-9 mt-1" value={draft.fullName} onChange={e => setDraft(d => ({ ...d, fullName: e.target.value }))} placeholder="Jane Doe" />
             </div>
             <div>
+              <Label className="text-xs">Title</Label>
+              <Input className="h-9 mt-1" value={draft.title} onChange={e => setDraft(d => ({ ...d, title: e.target.value }))} placeholder="VP of Marketing" />
+            </div>
+            <div>
               <Label className="text-xs">Email</Label>
               <Input className="h-9 mt-1" type="email" value={draft.email} onChange={e => setDraft(d => ({ ...d, email: e.target.value }))} placeholder="jane@partner.example" />
             </div>
@@ -238,7 +249,7 @@ export default function PartnerContactsPanel({ partnerId }: { partnerId: number 
           </div>
           <div className="mt-3">
             <Button size="sm" disabled={!draft.fullName.trim() || create.isPending}
-              onClick={() => create.mutate({ ...draft, email: draft.email || null, phone: draft.phone || null, notes: draft.notes || null })}>
+              onClick={() => create.mutate({ ...draft, title: draft.title || null, email: draft.email || null, phone: draft.phone || null, notes: draft.notes || null })}>
               <Plus className="h-3.5 w-3.5 mr-1" /> {create.isPending ? "Adding…" : "Add contact"}
             </Button>
           </div>

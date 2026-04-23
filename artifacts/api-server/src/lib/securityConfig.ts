@@ -139,6 +139,31 @@ export function getAllowedOrigins(): string[] {
   if (process.env.REPLIT_DEV_DOMAIN) out.add(`https://${process.env.REPLIT_DEV_DOMAIN}`);
   // Deployment domain pattern.
   if (process.env.REPLIT_DEPLOYMENT_DOMAIN) out.add(`https://${process.env.REPLIT_DEPLOYMENT_DOMAIN}`);
+
+  // Auto-include www <-> apex twin for every https origin so a PUBLIC_APP_URL
+  // of https://partnershipportal.co also accepts requests from
+  // https://www.partnershipportal.co and vice versa. This avoids subtle CORS
+  // 500s when the canonical-host redirect lands the user on the variant that
+  // wasn't explicitly listed.
+  for (const origin of [...out]) {
+    try {
+      const u = new URL(origin);
+      if (u.protocol !== "https:" && u.protocol !== "http:") continue;
+      const host = u.hostname;
+      const port = u.port ? `:${u.port}` : "";
+      const isWww = host.startsWith("www.");
+      const apex = isWww ? host.slice(4) : host;
+      const www = isWww ? host : `www.${host}`;
+      // Don't fabricate a www. variant for IPs or single-label hosts (localhost).
+      const looksLikeDomain = apex.includes(".") && !/^\d+\.\d+\.\d+\.\d+$/.test(apex);
+      if (looksLikeDomain) {
+        out.add(`${u.protocol}//${apex}${port}`);
+        out.add(`${u.protocol}//${www}${port}`);
+      }
+    } catch {
+      // ignore malformed entries
+    }
+  }
   return [...out];
 }
 

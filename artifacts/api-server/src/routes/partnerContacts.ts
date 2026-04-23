@@ -16,6 +16,7 @@ router.use(["/partners/:partnerId/contacts", "/partner-contacts/:id"], requireAu
 const ContactBody = z.object({
   role: z.enum(PARTNER_CONTACT_ROLES).default("other"),
   fullName: z.string().min(1).max(200),
+  title: z.string().max(120).nullable().optional(),
   email: z.string().email().nullable().optional().or(z.literal("")),
   phone: z.string().max(50).nullable().optional(),
   notes: z.string().max(1000).nullable().optional(),
@@ -41,7 +42,8 @@ router.post("/partners/:partnerId/contacts", async (req, res): Promise<void> => 
   if (!partner) { res.status(404).json({ error: "Partner not found" }); return; }
   const parsed = ContactBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid body", details: parsed.error.format() }); return; }
-  const { isPrimary, email, ...rest } = parsed.data;
+  const { isPrimary, email, title, ...rest } = parsed.data;
+  const normalizedTitle = typeof title === "string" ? (title.trim() || null) : (title ?? null);
   try {
     const row = await db.transaction(async (tx) => {
       // First contact in a role auto-becomes primary so the order/exception
@@ -55,7 +57,7 @@ router.post("/partners/:partnerId/contacts", async (req, res): Promise<void> => 
           .where(and(eq(partnerContactsTable.partnerId, partnerId), eq(partnerContactsTable.role, parsed.data.role), eq(partnerContactsTable.isPrimary, true)));
       }
       const [created] = await tx.insert(partnerContactsTable).values({
-        partnerId, ...rest, email: email || null, isPrimary: wantsPrimary,
+        partnerId, ...rest, title: normalizedTitle, email: email || null, isPrimary: wantsPrimary,
       } as any).returning();
       return created;
     });
@@ -73,6 +75,7 @@ router.patch("/partner-contacts/:id", async (req, res): Promise<void> => {
   if (!parsed.success) { res.status(400).json({ error: "Invalid body", details: parsed.error.format() }); return; }
   const patch: any = { ...parsed.data };
   if (patch.email === "") patch.email = null;
+  if (typeof patch.title === "string" && patch.title.trim() === "") patch.title = null;
   try {
     const row = await db.transaction(async (tx) => {
       const [existing] = await tx.select().from(partnerContactsTable).where(eq(partnerContactsTable.id, id));
