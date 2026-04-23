@@ -4,6 +4,16 @@ import { logger } from "./logger";
 let connectionSettings: any;
 
 async function getCredentials() {
+  // Prefer direct env-var configuration when present so a freshly issued
+  // Resend API key (e.g. for a new account) can be used immediately without
+  // re-linking the Replit connector.
+  if (process.env.RESEND_API_KEY) {
+    return {
+      apiKey: process.env.RESEND_API_KEY,
+      fromEmail: process.env.RESEND_FROM_EMAIL || "noreply@partnershipportal.co",
+    };
+  }
+
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
   const xReplitToken = process.env.REPL_IDENTITY
     ? "repl " + process.env.REPL_IDENTITY
