@@ -203,7 +203,7 @@ export async function readinessForPartner(partnerId: number): Promise<{
     status: orders.length > 0 ? "complete" : "incomplete",
     severity: "info",
     hint: "Place a test order through the portal before going live.",
-    link: `/partner/${partner.slug}`,
+    link: `/${partner.slug}`,
   });
 
   const blockerCount = items.filter(i => i.severity === "blocker" && i.status !== "complete").length;

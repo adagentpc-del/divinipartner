@@ -55,6 +55,20 @@ The A3 Partner Commerce Portal is built as a `pnpm workspace monorepo` using Typ
 -   **Resend**: Email delivery service.
 -   **OpenAI**: AI integration for tasks like request summaries and PDF parsing.
 -   **Replit Object Storage**: Cloud storage for file uploads.
+## Section 33 — Bare-slug partner share URLs on canonical domain (April 23, 2026)
+
+### What we built
+- **Routing** — `artifacts/a3-portal/src/App.tsx`: added a top-level `/:slug` wouter route that renders `PartnerPortal`. Placed last in the `Switch` so all admin/auth/public-utility routes (`/admin/*`, `/login`, `/onboard`, `/invoice/:token`, `/partner/:slug`) match first. The legacy `/partner/:slug` route is kept as a back-compat alias.
+- **Reserved slugs** — `artifacts/api-server/src/routes/partners.ts`: tightened `slugSchema` to `^[a-z0-9][a-z0-9-]*$` (max 64 chars) and added a `RESERVED_SLUGS` blocklist (`admin`, `login`, `onboard`, `partner`, `invoice`, `api`, `__clerk`, `assets`, `public`, `static`, `favicon.ico`, `robots.txt`, plus a few sign-in variants) so a partner can't be created with a slug that would shadow a real route.
+- **Canonical link UI** — `artifacts/a3-portal/src/pages/admin/PartnersList.tsx`: new `PartnerShareLink` helper fetches `/api/public-config` and renders the share link as `partnershipportal.co/<slug>` (or `/<slug>` until `PUBLIC_APP_URL` is configured), with an inline copy-to-clipboard button. `PartnerForm` slug helper text and "Preview" anchor switched to bare slugs. `SalesCommandCenter` preview link likewise.
+- **Backend link emitters** — `artifacts/api-server/src/services/launchReadiness.ts`, `services/rolloutStabilization.ts`, and the `SHOWCASE_PRESETS` in `services/salesEnablement.ts` now emit `/<slug>` instead of `/partner/<slug>` so checklist links and demo presets stay on the canonical pattern.
+- **Env / domain** — added `PUBLIC_APP_URL` secret (`https://www.partnershipportal.co`); `getPublicUrlInfo()` now reports `source: "PUBLIC_APP_URL"` and `isCustomDomain: true`, so all email links + share-URL UI inherit the canonical host automatically. Customer still needs to point `www.partnershipportal.co` DNS at the Replit deployment for production traffic.
+
+### How it works
+- Admin opens a partner → "Preview" or the share-link cell goes to `https://www.partnershipportal.co/<slug>` (full URL on copy, host-stripped display in the table).
+- Public visitor hits `www.partnershipportal.co/<slug>` → wouter falls through admin/auth routes and matches `/:slug`, rendering `PartnerPortal`. Unknown slugs render the existing not-found behaviour from `PartnerPortal`.
+- Legacy `/partner/<slug>` URLs in the wild still resolve.
+
 ## Section 32 — Operational alerts, retention markers & inactive partner visibility (April 23, 2026)
 
 ### What we built

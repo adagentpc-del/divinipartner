@@ -162,7 +162,7 @@ export async function computeAccountBlockers(accountId: number): Promise<{
     });
     if (orders.length === 0) warnings.push({
       key: `p_${p.id}_first_order`, label: `Partner ${p.name}: no test order placed yet`, severity: "low",
-      why: "Place a test order to verify the full path before go-live.", link: `/partner/${p.slug}`,
+      why: "Place a test order to verify the full path before go-live.", link: `/${p.slug}`,
     });
   }
 

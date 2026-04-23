@@ -12,9 +12,23 @@ import {
   DeletePartnerAssetParams,
 } from "@workspace/api-zod";
 
+// Top-level path segments the SPA already routes to. A partner slug equal to
+// any of these would shadow the real route at `/<slug>` and silently break
+// links. Keep in sync with `App.tsx` route definitions.
+const RESERVED_SLUGS = new Set([
+  "admin", "login", "logout", "signup", "sign-in", "sign-up",
+  "onboard", "onboarding", "partner", "invoice", "api", "__clerk",
+  "assets", "public", "static", "favicon.ico", "robots.txt",
+]);
+const slugSchema = z.string()
+  .min(1)
+  .max(64)
+  .regex(/^[a-z0-9][a-z0-9-]*$/, "slug must be lowercase letters, digits, and hyphens (no leading hyphen)")
+  .refine((s) => !RESERVED_SLUGS.has(s), { message: "That slug is reserved by the app — pick another." });
+
 const PartnerBody = z.object({
   companyName: z.string().min(1),
-  slug: z.string().min(1),
+  slug: slugSchema,
   logoUrl: z.string().optional().nullable(),
   secondaryLogoUrl: z.string().optional().nullable(),
   websiteUrl: z.string().optional().nullable(),
