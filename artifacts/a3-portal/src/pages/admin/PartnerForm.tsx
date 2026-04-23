@@ -255,7 +255,7 @@ export default function PartnerForm() {
                 <Settings className="h-3.5 w-3.5" /> Packages
               </Button>
             </Link>
-            <a href={`/partner/${form.getValues("slug")}`} target="_blank" rel="noopener noreferrer">
+            <a href={`/${form.getValues("slug")}`} target="_blank" rel="noopener noreferrer">
               <Button variant="outline" size="sm" className="gap-1.5">
                 <ExternalLink className="h-3.5 w-3.5" /> Preview
               </Button>

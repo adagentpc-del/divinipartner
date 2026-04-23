@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { useListPartners } from "@workspace/api-client-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,33 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Loader2, Users, ExternalLink, Copy, Eye, Boxes, Rocket } from "lucide-react";
 import { EmptyStateCard } from "@/components/admin/EmptyStateCard";
 import PartnerStatusBadges from "@/components/admin/PartnerStatusBadges";
+import { fetchPublicConfig, publicLinkFrom, type PublicConfig } from "@/lib/publicUrl";
+
+function PartnerShareLink({ slug }: { slug: string }) {
+  const [cfg, setCfg] = useState<PublicConfig | null>(null);
+  const { toast } = useToast();
+  useEffect(() => { fetchPublicConfig().then(setCfg).catch(() => {}); }, []);
+  const fullUrl = publicLinkFrom(cfg, `/${slug}`);
+  const display = cfg?.publicAppUrlConfigured
+    ? `${cfg.publicHost}/${slug}`
+    : `/${slug}`;
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(fullUrl); toast({ title: "Link copied", description: fullUrl }); }
+    catch { toast({ title: "Couldn't copy", variant: "destructive" }); }
+  };
+  return (
+    <div className="flex items-center gap-1">
+      <a href={fullUrl} target="_blank" rel="noopener noreferrer"
+        className="text-sm text-primary hover:underline inline-flex items-center gap-1 font-mono">
+        {display}
+        <ExternalLink className="h-3 w-3" />
+      </a>
+      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={copy} title="Copy share link">
+        <Copy className="h-3 w-3" />
+      </Button>
+    </div>
+  );
+}
 
 const LAUNCH_BADGE: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; className?: string }> = {
   live:          { label: "Live",          variant: "default" },
@@ -88,12 +115,7 @@ export default function PartnersList() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <a href={`/partner/${partner.slug}`} target="_blank" rel="noopener noreferrer">
-                      <span className="text-sm text-primary hover:underline cursor-pointer inline-flex items-center gap-1">
-                        /partner/{partner.slug}
-                        <ExternalLink className="h-3 w-3" />
-                      </span>
-                    </a>
+                    <PartnerShareLink slug={partner.slug} />
                   </TableCell>
                   <TableCell>
                     <div>

@@ -342,6 +342,17 @@ function ClerkProviderWithRoutes() {
               )}
             </Route>
 
+            {/* Bare-slug partner URLs: www.partnershipportal.co/<slug>.
+                Reserved/admin paths above match first; this only catches
+                top-level slugs that aren't admin/auth/public-utility routes. */}
+            <Route path="/:slug">
+              {(params) => (
+                <PublicLayout>
+                  <PartnerPortal slug={params.slug} />
+                </PublicLayout>
+              )}
+            </Route>
+
             <Route component={NotFound} />
           </Switch>
         </TooltipProvider>
