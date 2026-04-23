@@ -138,7 +138,7 @@ export default function PartnersList() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <a href={`/partner/${partner.slug}`} target="_blank" rel="noopener noreferrer">
+                      <a href={`/${partner.slug}`} target="_blank" rel="noopener noreferrer">
                         <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-primary" title="Preview portal">
                           <Eye className="h-3.5 w-3.5" />
                         </Button>

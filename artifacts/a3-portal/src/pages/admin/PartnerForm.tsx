@@ -301,7 +301,7 @@ export default function PartnerForm() {
                   <FormItem>
                     <FormLabel>URL Slug</FormLabel>
                     <FormControl><Input placeholder="acme-events" {...field} /></FormControl>
-                    <FormDescription className="text-xs">/partner/{field.value || "slug"}</FormDescription>
+                    <FormDescription className="text-xs">Share URL: /{field.value || "slug"}</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -397,7 +397,7 @@ export default function PartnerForm() {
                         <SelectItem value="ordering">Ordering Portal (event/package/cart flow)</SelectItem>
                       </SelectContent>
                     </Select>
-                    <FormDescription className="text-xs">What clients see at /partner/{`{slug}`}</FormDescription>
+                    <FormDescription className="text-xs">What clients see at /{`{slug}`}</FormDescription>
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="unitPreference" render={({ field }) => (

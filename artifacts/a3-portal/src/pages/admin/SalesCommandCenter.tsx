@@ -171,7 +171,7 @@ export default function SalesCommandCenter() {
                       <div className="font-medium truncate">{a.name}</div>
                       <div className="text-xs text-muted-foreground mt-0.5 capitalize">{a.accountType.replace(/_/g, " ")}</div>
                     </div>
-                    <Link href={`/partner/${a.slug}`}><Button size="sm" variant="outline">Preview <ArrowRight className="h-3 w-3 ml-1" /></Button></Link>
+                    <Link href={`/${a.slug}`}><Button size="sm" variant="outline">Preview <ArrowRight className="h-3 w-3 ml-1" /></Button></Link>
                     <Link href={`/admin/commercial/accounts/${a.id}`}><Button size="sm" variant="ghost">Settings</Button></Link>
                   </div>
                 ))}
