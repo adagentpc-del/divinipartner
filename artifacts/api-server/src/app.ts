@@ -47,17 +47,37 @@ app.use(canonicalHostMiddleware());
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
 // CORS allowlist driven by ALLOWED_ORIGINS + PUBLIC_APP_URL + dev domains.
+// We wrap cors() so we can also reflect same-origin requests (Origin host
+// matches the request's own Host header). Same-origin browser requests should
+// never be blocked regardless of the configured allowlist — the SPA and API
+// are served from the same artifact in this app, so any cross-origin block on
+// them is by definition a misconfiguration, not a security boundary.
 const allowedOrigins = getAllowedOrigins();
-app.use(cors({
-  credentials: true,
-  origin(origin, cb) {
-    // Same-origin / curl / server-to-server requests have no Origin header.
-    if (!origin) return cb(null, true);
-    if (allowedOrigins.length === 0) return cb(null, true); // permissive bootstrap
-    if (allowedOrigins.includes(origin)) return cb(null, true);
-    return cb(new Error("Origin not allowed by CORS"));
-  },
-}));
+app.use((req, res, next) => {
+  const reqHost = (req.headers["x-forwarded-host"] as string | undefined)?.split(",")[0]?.trim()
+    || req.headers.host
+    || "";
+  cors({
+    credentials: true,
+    origin(origin, cb) {
+      // Same-origin / curl / server-to-server requests have no Origin header.
+      if (!origin) return cb(null, true);
+      // Same-origin browser request — Origin's host equals the server's own
+      // Host. Always allow.
+      try {
+        const oHost = new URL(origin).host;
+        if (reqHost && oHost === reqHost) return cb(null, true);
+      } catch { /* fall through */ }
+      if (allowedOrigins.length === 0) return cb(null, true); // permissive bootstrap
+      if (allowedOrigins.includes(origin)) return cb(null, true);
+      // Reject without throwing — throwing surfaces as a 500 in the error
+      // handler, which is misleading. cb(null, false) lets cors send the
+      // request through without CORS headers; the browser will then block it
+      // on its end with a clear CORS error in devtools.
+      return cb(null, false);
+    },
+  })(req, res, next);
+});
 
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true }));
