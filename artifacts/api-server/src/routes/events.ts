@@ -33,11 +33,20 @@ const EventBody = z.object({
   taxLabel: z.string().nullable().optional(),
   taxRate: z.union([z.string(), z.number()]).nullable().optional().transform(v => v == null || v === "" ? null : String(v)),
   taxInclusive: z.boolean().nullable().optional(),
-  // Partner-add-on override (Section 35). null/undefined → inherit.
+  // Partner-add-on override (Section 35) + optional per-event category filter (Section 36).
+  // null/undefined → inherit.
   addonOverrideJson: z.object({
     mode: z.enum(["inherit", "override"]),
     productIds: z.array(z.number().int().positive()).optional(),
+    // Section 36: trim/dedupe category strings so persisted values are
+    // canonical and comparisons in resolveEventAddons line up.
+    categories: z.array(z.string().min(1).max(80))
+      .max(50)
+      .transform((arr) => Array.from(new Set(arr.map((c) => c.trim()).filter(Boolean))))
+      .optional(),
   }).nullable().optional(),
+  // Section 36: per-event display format override (null = inherit from partner default).
+  addonDisplayFormat: z.enum(["flat", "grid", "category_tiles"]).nullable().optional(),
 });
 
 const router: IRouter = Router();
@@ -74,6 +83,7 @@ router.get("/events", async (req, res) => {
     createdAt: eventsTable.createdAt,
     unitPreference: eventsTable.unitPreference,
     addonOverrideJson: eventsTable.addonOverrideJson,
+    addonDisplayFormat: eventsTable.addonDisplayFormat,
   }).from(eventsTable)
     .leftJoin(citiesTable, eq(eventsTable.cityId, citiesTable.id))
     .leftJoin(venuesTable, eq(eventsTable.venueId, venuesTable.id))

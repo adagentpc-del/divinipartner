@@ -25,7 +25,9 @@ import {
 type Product = { id: number; name: string; category: string; imageUrl: string | null; isActive: boolean; slug: string };
 type AddonRow = {
   id?: number; productId: number; sortOrder: number; isFeatured: boolean; isActive: boolean;
+  categoryOverride?: string | null;
   productName?: string | null; productCategory?: string | null; productImageUrl?: string | null; productSlug?: string | null; productIsActive?: boolean | null;
+  effectiveCategory?: string | null;
 };
 
 export default function PartnerAddons() {
@@ -108,6 +110,7 @@ export default function PartnerAddons() {
           sortOrder: i,
           isFeatured: r.isFeatured,
           isActive: r.isActive,
+          categoryOverride: r.categoryOverride && r.categoryOverride.trim() ? r.categoryOverride.trim() : null,
         })),
       }),
     }),
@@ -162,7 +165,13 @@ export default function PartnerAddons() {
                         : <div className="w-10 h-10 rounded bg-muted" />}
                       <div className="flex-1 min-w-0">
                         <div className="font-medium truncate">{r.productName || `Product #${r.productId}`}</div>
-                        <div className="text-xs text-muted-foreground truncate">{r.productCategory}</div>
+                        <Input
+                          value={r.categoryOverride ?? ""}
+                          onChange={(e) => updateRow(r.productId, { categoryOverride: e.target.value })}
+                          placeholder={r.productCategory || "Uncategorized"}
+                          className="h-7 mt-1 text-xs"
+                          title="Category for tile-view grouping. Blank = use product's catalog category."
+                        />
                       </div>
                       <button
                         onClick={() => updateRow(r.productId, { isFeatured: !r.isFeatured })}

@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, boolean, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, boolean, timestamp, uniqueIndex, text } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { partnersTable } from "./partners";
@@ -21,6 +21,12 @@ export const partnerAddonsTable = pgTable("partner_addons", {
   sortOrder: integer("sort_order").notNull().default(0),
   isFeatured: boolean("is_featured").notNull().default(false),
   isActive: boolean("is_active").notNull().default(true),
+  // Section 36: optional per-add-on category override. When null, the partner
+  // portal groups this add-on under the underlying product's catalog category.
+  // When set, this string takes precedence (e.g. "tent accessories" even if
+  // the catalog says "outdoor"). Useful for tile-based displays where the
+  // partner wants different grouping than the product taxonomy.
+  categoryOverride: text("category_override"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (t) => ({

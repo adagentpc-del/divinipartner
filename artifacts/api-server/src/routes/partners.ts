@@ -89,6 +89,9 @@ const PartnerBody = z.object({
   taxInclusive: z.boolean().optional(),
   billingCountry: z.string().optional().nullable(),
   invoiceDisplayNotes: z.string().optional().nullable(),
+  // Section 36: add-on display preferences
+  addonDisplayFormat: z.enum(["flat", "grid", "category_tiles"]).optional(),
+  addonCategoryGroupingEnabled: z.boolean().optional(),
 });
 
 const UpdatePartnerBodySchema = PartnerBody.partial();

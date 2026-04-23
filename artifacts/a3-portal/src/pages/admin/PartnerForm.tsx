@@ -78,6 +78,9 @@ const formSchema = z.object({
   attachPdfOps: z.boolean().default(true),
   attachPdfFinance: z.boolean().default(false),
   attachPdfPartnerContact: z.boolean().default(false),
+  // Section 36: add-on display defaults.
+  addonDisplayFormat: z.enum(["flat", "grid", "category_tiles"]).default("grid"),
+  addonCategoryGroupingEnabled: z.boolean().default(false),
   // Currency / tax defaults (Section 19).
   defaultCurrency: z.string().default("USD"),
   defaultTaxMode: z.string().default("none"),
@@ -126,6 +129,7 @@ export default function PartnerForm() {
       attachPdfCustomer: false, attachPdfOps: true, attachPdfFinance: false, attachPdfPartnerContact: false,
       defaultCurrency: "USD", defaultTaxMode: "none", defaultTaxLabel: "", defaultTaxRate: "",
       taxInclusive: false, billingCountry: "", invoiceDisplayNotes: "",
+      addonDisplayFormat: "grid", addonCategoryGroupingEnabled: false,
     }
   });
 
@@ -180,6 +184,8 @@ export default function PartnerForm() {
         taxInclusive: (partner as any).taxInclusive ?? false,
         billingCountry: (partner as any).billingCountry || "",
         invoiceDisplayNotes: (partner as any).invoiceDisplayNotes || "",
+        addonDisplayFormat: ((partner as any).addonDisplayFormat || "grid") as "flat" | "grid" | "category_tiles",
+        addonCategoryGroupingEnabled: !!(partner as any).addonCategoryGroupingEnabled,
       });
     }
   }, [partner, form]);
@@ -600,6 +606,36 @@ export default function PartnerForm() {
                   <FormItem className="col-span-2"><FormLabel className="text-xs">Invoice display notes (e.g. overseas billing instructions, VAT registration #)</FormLabel><FormControl><Textarea {...field} value={field.value || ""} rows={2} /></FormControl></FormItem>
                 )} />
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Section 36: Add-On Display defaults */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2"><Settings className="h-4 w-4" /> Add-On Display</CardTitle>
+              <p className="text-xs text-muted-foreground">How add-ons are presented on this partner's ordering portal. Each event can override the format if needed.</p>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4">
+                <FormField control={form.control} name="addonDisplayFormat" render={({ field }) => (
+                  <FormItem><FormLabel className="text-xs">Default format</FormLabel>
+                    <select className="h-9 w-full rounded border bg-background px-2 text-sm" value={field.value} onChange={e => field.onChange(e.target.value)}>
+                      <option value="grid">Card / grid</option>
+                      <option value="flat">Flat list</option>
+                      <option value="category_tiles">Category tiles</option>
+                    </select>
+                    <p className="text-[11px] text-muted-foreground mt-1">Tiles open into the products inside each category — best when there are many add-ons spanning several categories.</p>
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="addonCategoryGroupingEnabled" render={({ field }) => (
+                  <FormItem className="flex items-end gap-2 space-y-0 pb-2"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel className="text-xs">Show category headings in flat / grid views</FormLabel></FormItem>
+                )} />
+              </div>
+              {isEditing && id && (
+                <p className="text-xs text-muted-foreground mt-3">
+                  Configure which products appear under which category in <Link href={`/admin/partners/${id}/addons`}><a className="underline">Add-Ons</a></Link>.
+                </p>
+              )}
             </CardContent>
           </Card>
 

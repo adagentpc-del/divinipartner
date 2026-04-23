@@ -37,17 +37,20 @@ const ReplaceBody = z.object({
     sortOrder: z.number().int().nonnegative().optional(),
     isFeatured: z.boolean().optional(),
     isActive: z.boolean().optional(),
+    // Section 36: optional per-add-on category override (null/empty = use product's catalog category).
+    categoryOverride: z.string().max(80).nullable().optional(),
   })).max(500),
 });
 
 async function listPartnerAddons(partnerId: number) {
-  return db.select({
+  const rows = await db.select({
     id: partnerAddonsTable.id,
     partnerId: partnerAddonsTable.partnerId,
     productId: partnerAddonsTable.productId,
     sortOrder: partnerAddonsTable.sortOrder,
     isFeatured: partnerAddonsTable.isFeatured,
     isActive: partnerAddonsTable.isActive,
+    categoryOverride: partnerAddonsTable.categoryOverride,
     productName: productCatalogTable.name,
     productCategory: productCatalogTable.category,
     productImageUrl: productCatalogTable.imageUrl,
@@ -57,6 +60,15 @@ async function listPartnerAddons(partnerId: number) {
     .leftJoin(productCatalogTable, eq(partnerAddonsTable.productId, productCatalogTable.id))
     .where(eq(partnerAddonsTable.partnerId, partnerId))
     .orderBy(asc(partnerAddonsTable.sortOrder), asc(partnerAddonsTable.id));
+  // Section 36: compute the "effective category" — categoryOverride if set,
+  // else the product's catalog category, else "Uncategorized" so the tile
+  // view always has a bucket.
+  return rows.map((r) => ({
+    ...r,
+    effectiveCategory: (r.categoryOverride && r.categoryOverride.trim())
+      || r.productCategory
+      || "Uncategorized",
+  }));
 }
 
 router.get("/partners/:id/addons", requireAuth, async (req, res): Promise<void> => {
@@ -88,6 +100,7 @@ router.put("/partners/:id/addons", requireAuth, async (req, res): Promise<void> 
           sortOrder: a.sortOrder ?? idx,
           isFeatured: a.isFeatured ?? false,
           isActive: a.isActive ?? true,
+          categoryOverride: a.categoryOverride && a.categoryOverride.trim() ? a.categoryOverride.trim() : null,
         }));
       if (rows.length > 0) await tx.insert(partnerAddonsTable).values(rows);
     }
@@ -107,6 +120,12 @@ router.put("/partners/:id/addons", requireAuth, async (req, res): Promise<void> 
 async function resolveEventAddons(eventId: number) {
   const [ev] = await db.select().from(eventsTable).where(eq(eventsTable.id, eventId));
   if (!ev) return null;
+  const [partner] = await db.select({
+    id: partnersTable.id,
+    addonDisplayFormat: partnersTable.addonDisplayFormat,
+    addonCategoryGroupingEnabled: partnersTable.addonCategoryGroupingEnabled,
+  }).from(partnersTable).where(eq(partnersTable.id, ev.partnerId));
+
   const partnerAddons = await listPartnerAddons(ev.partnerId);
   const activePartnerAddons = partnerAddons.filter((a) => a.isActive && a.productIsActive);
 
@@ -120,12 +139,56 @@ async function resolveEventAddons(eventId: number) {
     chosen = activePartnerAddons.filter((a) => allow.has(a.productId));
   }
 
+  // Section 36: optional per-event category filter (works regardless of mode
+  // — useful for "this venue only allows tables/chairs"). Trim/dedupe so
+  // whitespace-padded inputs (e.g. " Tables ") don't silently produce zero
+  // matches against the case-folded effectiveCategory comparison below.
+  const categoryFilter = Array.isArray(override?.categories)
+    ? Array.from(new Set(
+        override!.categories!
+          .filter((c): c is string => typeof c === "string")
+          .map((c) => c.trim())
+          .filter(Boolean)
+      ))
+    : [];
+  if (categoryFilter.length > 0) {
+    const allowCats = new Set(categoryFilter.map((c) => c.toLowerCase()));
+    chosen = chosen.filter((a) => allowCats.has(a.effectiveCategory.toLowerCase()));
+  }
+
+  // Section 36: resolve display format. Event override wins; falls back to
+  // partner default; falls back to "grid" if neither is set.
+  const partnerDefaultFormat = partner?.addonDisplayFormat || "grid";
+  const eventFormat = ev.addonDisplayFormat || null;
+  const effectiveDisplayFormat = (eventFormat || partnerDefaultFormat) as "flat" | "grid" | "category_tiles";
+
+  // Pre-group by effective category so the client doesn't have to.
+  const grouped: Record<string, typeof chosen> = {};
+  for (const a of chosen) {
+    const key = a.effectiveCategory;
+    (grouped[key] ||= []).push(a);
+  }
+  // Stable ordered category list (alphabetical, "Uncategorized" last).
+  const categoryOrder = Object.keys(grouped).sort((a, b) => {
+    if (a === "Uncategorized") return 1;
+    if (b === "Uncategorized") return -1;
+    return a.localeCompare(b);
+  });
+
   return {
     eventId: ev.id,
     partnerId: ev.partnerId,
     inheritance,
     addons: chosen,
     partnerAddonCount: activePartnerAddons.length,
+    // Display config
+    displayFormat: effectiveDisplayFormat,
+    displayFormatSource: eventFormat ? ("event_override" as const) : ("partner_default" as const),
+    partnerDefaultFormat,
+    categoryGroupingEnabled: !!partner?.addonCategoryGroupingEnabled,
+    categoryFilter,
+    categoryOrder,
+    addonsByCategory: categoryOrder.map((cat) => ({ category: cat, addons: grouped[cat] })),
   };
 }
 

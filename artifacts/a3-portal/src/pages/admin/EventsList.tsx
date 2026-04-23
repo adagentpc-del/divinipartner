@@ -16,7 +16,7 @@ import { Plus, Loader2, Pencil, Trash2, Calendar, Copy, ChevronLeft, MapPin, Box
 import { EventInventoryDialog } from "@/components/admin/EventInventoryDialog";
 import { UnitPreferenceSelect } from "@/components/units/DimensionInput";
 
-type AddonOverride = { mode: "inherit" | "override"; productIds?: number[] } | null;
+type AddonOverride = { mode: "inherit" | "override"; productIds?: number[]; categories?: string[] } | null;
 type EventRow = { id: number; partnerId: number; cityId: number | null; cityName?: string | null; venueId: number | null; venueName?: string | null; name: string; eventStartDate: string | null; eventEndDate: string | null; installDate: string | null; teardownDate: string | null; shippingDeadline: string | null; status: string; notes: string | null; isActive: boolean; availablePackageIdsJson: number[] | null; addonOverrideJson?: AddonOverride };
 type PartnerAddon = { id: number; productId: number; sortOrder: number; isFeatured: boolean; isActive: boolean; productName: string | null; productCategory: string | null };
 type City = { id: number; name: string };
@@ -51,6 +51,9 @@ function EventDialog({ partnerId, cities, venues, packages, ev, trigger, onSaved
     unitPreference: ((ev as any)?.unitPreference || "") as string,
     addonMode: (ev?.addonOverrideJson?.mode || "inherit") as "inherit" | "override",
     addonProductIds: (ev?.addonOverrideJson?.productIds || []) as number[],
+    // Section 36
+    addonCategories: (ev?.addonOverrideJson?.categories || []) as string[],
+    addonDisplayFormat: (((ev as any)?.addonDisplayFormat as string | null) || "") as "" | "flat" | "grid" | "category_tiles",
   });
   // Partner add-on library — fetched lazily so the picker shows real products
   // even when the dialog opens for a brand-new event.
@@ -78,9 +81,12 @@ function EventDialog({ partnerId, cities, venues, packages, ev, trigger, onSaved
         isActive: form.isActive,
         availablePackageIdsJson: form.availablePackageIds,
         unitPreference: form.unitPreference || null,
-        addonOverrideJson: form.addonMode === "override"
-          ? { mode: "override", productIds: form.addonProductIds }
-          : { mode: "inherit" },
+        addonOverrideJson: {
+          mode: form.addonMode,
+          ...(form.addonMode === "override" ? { productIds: form.addonProductIds } : {}),
+          ...(form.addonCategories.length > 0 ? { categories: form.addonCategories } : {}),
+        },
+        addonDisplayFormat: form.addonDisplayFormat || null,
       };
       if (ev) await apiFetch(`/api/events/${ev.id}`, { method: "PATCH", body: JSON.stringify(body) });
       else await apiFetch(`/api/events`, { method: "POST", body: JSON.stringify(body) });
@@ -153,6 +159,52 @@ function EventDialog({ partnerId, cities, venues, packages, ev, trigger, onSaved
             {form.addonMode === "inherit" && partnerAddons.length === 0 && (
               <p className="text-xs text-muted-foreground mt-2">No partner-level add-ons configured yet. <Link href={`/admin/partners/${partnerId}/addons`}><a className="underline">Configure add-ons</a></Link> to make them available here.</p>
             )}
+            {/* Section 36: per-event display format + category filter */}
+            {partnerAddons.length > 0 && (() => {
+              // Build the unique category list from the partner's active add-ons
+              // (using effectiveCategory so overrides are respected). Memoising
+              // here is fine — partnerAddons is already memoised by react-query.
+              const cats = Array.from(new Set(partnerAddons
+                .filter(a => a.isActive)
+                .map(a => (a as any).effectiveCategory || a.productCategory || "Uncategorized")
+              )).sort();
+              return (
+                <div className="mt-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs w-32">Display format</Label>
+                    <select
+                      className="h-8 rounded border bg-background px-2 text-xs"
+                      value={form.addonDisplayFormat}
+                      onChange={(e) => setForm({ ...form, addonDisplayFormat: e.target.value as any })}
+                    >
+                      <option value="">Inherit from partner</option>
+                      <option value="grid">Card / grid</option>
+                      <option value="flat">Flat list</option>
+                      <option value="category_tiles">Category tiles</option>
+                    </select>
+                  </div>
+                  {cats.length > 0 && (
+                    <div>
+                      <Label className="text-xs">Restrict to categories <span className="text-muted-foreground">(optional)</span></Label>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {cats.map((c) => {
+                          const active = form.addonCategories.includes(c);
+                          return (
+                            <button
+                              key={c}
+                              type="button"
+                              onClick={() => setForm({ ...form, addonCategories: active ? form.addonCategories.filter(x => x !== c) : [...form.addonCategories, c] })}
+                              className={`px-2 py-1 text-[11px] rounded border transition ${active ? "bg-primary text-primary-foreground border-primary" : "bg-card hover:bg-muted"}`}
+                            >{c}</button>
+                          );
+                        })}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-1">Empty = show all categories. Useful when a venue only allows certain item types.</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
           <div className="flex items-center gap-2"><Switch checked={form.isActive} onCheckedChange={v => setForm({ ...form, isActive: v })} /><Label>Active</Label></div>
         </div>

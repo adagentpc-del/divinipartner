@@ -48,6 +48,7 @@ The A3 Partner Commerce Portal is built as a `pnpm workspace monorepo` using Typ
 - **Order Exceptions & Artwork Workflow**: Implements an order-level exception state machine and artwork-needed flag for improved visibility.
 - **Role-based Partner Contacts**: Manages partner contacts with specific roles for accurate communication routing.
 - **Partner-specific Add-ons**: Allows partners to curate product add-ons with per-event overrides, ensuring flexible product offerings.
+- **Configurable Add-on Display**: Partners pick a default presentation for their ordering portal (flat list, card grid, or category tiles), with optional category headings. Each event can override the format and restrict which categories appear. Tiles open into the products inside each category — useful for partners with large catalogs spanning many product types. Each partner add-on can carry a category override so the same product can sit in different category buckets per partner.
 - **Operational Alerts & Retention Markers**: Derives alerts dynamically for operational issues (e.g., failed emails, inactive partners) and supports non-destructive archiving of partners and assets.
 - **Email Readiness & Test Sends**: Provides an admin interface to monitor email configuration health, test email delivery paths, and ensure branded email consistency.
 - **Bare-slug Partner Share URLs**: Allows partners to be accessed directly via `partnershipportal.co/<slug>`, improving URL usability while maintaining backward compatibility.

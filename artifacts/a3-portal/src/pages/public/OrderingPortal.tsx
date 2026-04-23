@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiFetch, resolveAssetUrl } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -30,7 +30,22 @@ type Product = {
 };
 type Partner = { id: number; companyName: string; logoUrl?: string | null; secondaryLogoUrl?: string | null; introHeadline: string | null; introText: string | null; pricingDisplayEnabled: boolean | null; thankYouText?: string | null; replyToEmail?: string | null; contactEmail?: string | null };
 type ThemeShape = { primaryColor?: string | null; secondaryColor?: string | null; accentColor?: string | null; backgroundColor?: string | null; buttonColor?: string | null; textColor?: string | null; headingFont?: string | null; bodyFont?: string | null; borderRadius?: string | null } | null;
-type EventAddons = { eventId: number; partnerId?: number; inheritance?: "inherit" | "override"; addons?: Array<{ productId: number; isFeatured: boolean; isActive: boolean; sortOrder: number }>; partnerAddonCount?: number };
+type EventAddonItem = { productId: number; isFeatured: boolean; isActive: boolean; sortOrder: number; categoryOverride?: string | null; effectiveCategory?: string | null };
+type EventAddons = {
+  eventId: number;
+  partnerId?: number;
+  inheritance?: "inherit" | "override";
+  addons?: EventAddonItem[];
+  partnerAddonCount?: number;
+  // Section 36: display config
+  displayFormat?: "flat" | "grid" | "category_tiles";
+  displayFormatSource?: "event_override" | "partner_default";
+  partnerDefaultFormat?: string;
+  categoryGroupingEnabled?: boolean;
+  categoryFilter?: string[];
+  categoryOrder?: string[];
+  addonsByCategory?: Array<{ category: string; addons: EventAddonItem[] }>;
+};
 type Data = { partner: Partner; theme?: ThemeShape; cities: City[]; venues: Venue[]; events: Event[]; packages: Pkg[]; products: Product[]; eventAddons?: EventAddons[] };
 
 type CartItem = {
@@ -42,6 +57,180 @@ type CartItem = {
 };
 
 const STEPS = ["Event", "Package", "Add-ons", "Artwork", "Contact", "Review"] as const;
+
+/**
+ * Section 36: format-aware add-on renderer.
+ *
+ * - "flat"            → vertical list (compact, image+name+add button on each row)
+ * - "grid" (default)  → existing card grid
+ * - "category_tiles"  → big tiles per category; clicking a tile expands its
+ *                       products inline. Defaults to a single auto-expanded
+ *                       category when only one exists.
+ *
+ * When the partner has no add-on library yet, we fall back to the grid layout
+ * over `addonProducts` (legacy behaviour from Section 35) and skip grouping.
+ */
+function AddonRenderer({
+  addonProducts,
+  eventAddonRow,
+  partnerHasAddonLibrary,
+  addToCart,
+}: {
+  addonProducts: Product[];
+  eventAddonRow: EventAddons | null;
+  partnerHasAddonLibrary: boolean;
+  addToCart: (p: Product) => void;
+}) {
+  const format: "flat" | "grid" | "category_tiles" =
+    (eventAddonRow?.displayFormat as any) || "grid";
+  const groupingEnabled = !!eventAddonRow?.categoryGroupingEnabled;
+  const productById = useMemo(() => {
+    const m = new Map<number, Product>();
+    for (const p of addonProducts) m.set(p.id, p);
+    return m;
+  }, [addonProducts]);
+
+  // Resolve grouped products from the API payload, intersecting with the
+  // visible addonProducts list (which already excludes products already in
+  // the package). If the partner has no curated library yet we synthesise
+  // a single bucket from the legacy product list.
+  const groups = useMemo(() => {
+    if (partnerHasAddonLibrary && eventAddonRow?.addonsByCategory?.length) {
+      return eventAddonRow.addonsByCategory
+        .map(g => ({
+          category: g.category,
+          products: g.addons
+            .map(a => productById.get(a.productId))
+            .filter((p): p is Product => !!p),
+        }))
+        .filter(g => g.products.length > 0);
+    }
+    // Legacy / fallback: group by product.category if grouping is enabled,
+    // otherwise a single bucket.
+    if (!groupingEnabled || format !== "category_tiles") {
+      return [{ category: "All", products: addonProducts }];
+    }
+    const byCat = new Map<string, Product[]>();
+    for (const p of addonProducts) {
+      const k = p.category || "Uncategorized";
+      if (!byCat.has(k)) byCat.set(k, []);
+      byCat.get(k)!.push(p);
+    }
+    return Array.from(byCat.entries())
+      .sort(([a], [b]) => (a === "Uncategorized" ? 1 : b === "Uncategorized" ? -1 : a.localeCompare(b)))
+      .map(([category, products]) => ({ category, products }));
+  }, [eventAddonRow, partnerHasAddonLibrary, productById, addonProducts, format, groupingEnabled]);
+
+  // Tile expansion state — auto-expand if there's only one category so the
+  // user isn't forced to click for nothing.
+  const [openCat, setOpenCat] = useState<string | null>(null);
+  useEffect(() => {
+    if (format === "category_tiles" && groups.length === 1) setOpenCat(groups[0].category);
+  }, [format, groups]);
+
+  const ProductCard = (p: Product) => (
+    <button key={p.id} type="button" onClick={() => addToCart(p)} className="text-left p-3 rounded-lg border hover:border-primary/40 hover:shadow-md transition bg-card">
+      {p.imageUrl ? <img src={p.imageUrl} className="aspect-square w-full rounded object-cover mb-2 bg-muted" alt={p.name} /> : <div className="aspect-square w-full rounded bg-muted mb-2 flex items-center justify-center"><Package className="h-8 w-8 text-muted-foreground/40" /></div>}
+      <div className="text-xs text-muted-foreground">{p.category}</div>
+      <div className="text-sm font-medium line-clamp-2">{p.name}</div>
+      <Button size="sm" variant="outline" className="w-full mt-2 h-7 text-xs gap-1"><Plus className="h-3 w-3" />Add</Button>
+    </button>
+  );
+
+  const ProductRow = (p: Product) => (
+    <button key={p.id} type="button" onClick={() => addToCart(p)} className="w-full flex items-center gap-3 p-2 rounded-lg border hover:border-primary/40 hover:bg-muted/30 transition bg-card text-left">
+      {p.imageUrl ? <img src={p.imageUrl} className="h-12 w-12 rounded object-cover bg-muted" alt={p.name} /> : <div className="h-12 w-12 rounded bg-muted flex items-center justify-center"><Package className="h-5 w-5 text-muted-foreground/40" /></div>}
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-medium truncate">{p.name}</div>
+        <div className="text-xs text-muted-foreground truncate">{p.category}</div>
+      </div>
+      <Button size="sm" variant="outline" className="h-7 text-xs gap-1"><Plus className="h-3 w-3" />Add</Button>
+    </button>
+  );
+
+  if (addonProducts.length === 0) return null;
+
+  if (format === "flat") {
+    if (groupingEnabled && groups.length > 1) {
+      return (
+        <div className="space-y-4">
+          {groups.map(g => (
+            <div key={g.category}>
+              <div className="text-xs uppercase tracking-wide text-muted-foreground font-semibold mb-2">{g.category}</div>
+              <div className="space-y-2">{g.products.map(ProductRow)}</div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    return <div className="space-y-2">{addonProducts.map(ProductRow)}</div>;
+  }
+
+  if (format === "category_tiles") {
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          {groups.map(g => {
+            const isOpen = openCat === g.category;
+            const cover = g.products.find(p => !!p.imageUrl)?.imageUrl || null;
+            return (
+              <button
+                key={g.category}
+                type="button"
+                onClick={() => setOpenCat(isOpen ? null : g.category)}
+                className={`relative text-left p-0 rounded-lg border overflow-hidden transition shadow-sm hover:shadow-md ${isOpen ? "border-primary ring-2 ring-primary/30" : "hover:border-primary/40"}`}
+              >
+                {cover
+                  ? <img src={cover} alt="" className="aspect-[4/3] w-full object-cover" />
+                  : <div className="aspect-[4/3] w-full bg-muted flex items-center justify-center"><Package className="h-10 w-10 text-muted-foreground/40" /></div>}
+                <div className="p-3">
+                  <div className="text-sm font-semibold">{g.category}</div>
+                  <div className="text-[11px] text-muted-foreground">{g.products.length} item{g.products.length === 1 ? "" : "s"}</div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        {openCat && (() => {
+          const g = groups.find(x => x.category === openCat);
+          if (!g) return null;
+          return (
+            <div className="rounded-lg border bg-muted/20 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-sm font-semibold">{g.category}</div>
+                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setOpenCat(null)}>
+                  <X className="h-3.5 w-3.5 mr-1" />Close
+                </Button>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {g.products.map(ProductCard)}
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+    );
+  }
+
+  // "grid" — default
+  if (groupingEnabled && groups.length > 1) {
+    return (
+      <div className="space-y-5">
+        {groups.map(g => (
+          <div key={g.category}>
+            <div className="text-xs uppercase tracking-wide text-muted-foreground font-semibold mb-2">{g.category}</div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">{g.products.map(ProductCard)}</div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+      {addonProducts.map(ProductCard)}
+    </div>
+  );
+}
 
 export default function OrderingPortal({ slug }: { slug: string }) {
   const { toast } = useToast();
@@ -519,16 +708,12 @@ export default function OrderingPortal({ slug }: { slug: string }) {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {addonProducts.map(p => (
-                  <button key={p.id} type="button" onClick={() => addToCart(p)} className="text-left p-3 rounded-lg border hover:border-primary/40 hover:shadow-md transition bg-card">
-                    {p.imageUrl ? <img src={p.imageUrl} className="aspect-square w-full rounded object-cover mb-2 bg-muted" alt={p.name} /> : <div className="aspect-square w-full rounded bg-muted mb-2 flex items-center justify-center"><Package className="h-8 w-8 text-muted-foreground/40" /></div>}
-                    <div className="text-xs text-muted-foreground">{p.category}</div>
-                    <div className="text-sm font-medium line-clamp-2">{p.name}</div>
-                    <Button size="sm" variant="outline" className="w-full mt-2 h-7 text-xs gap-1"><Plus className="h-3 w-3" />Add</Button>
-                  </button>
-                ))}
-              </div>
+              <AddonRenderer
+                addonProducts={addonProducts}
+                eventAddonRow={eventAddonRow}
+                partnerHasAddonLibrary={partnerHasAddonLibrary}
+                addToCart={addToCart}
+              />
 
               <div className={`rounded-lg border p-4 ${addonProducts.length === 0 ? "bg-amber-50 border-amber-200" : "bg-muted/30"}`}>
                 {addonProducts.length === 0 ? (

@@ -1,0 +1,168 @@
+Refine the existing Partner Commerce Portal by improving how add-on products are displayed so each partner portal and each event can choose the add-on display format, including category tiles that open into lists of products within each category.
+
+Goal:
+I need the add-on products to have flexible display options. One option should be category tiles, where the user clicks a category tile and then sees the list of products inside that category. This display format needs to be configurable per partner profile and per event, because each event space allows different items and may need a different presentation style.
+
+Scope:
+Keep this pass tightly focused on:
+1. add-on display format options
+2. category tile behavior
+3. partner-level add-on presentation settings
+4. event-level override settings
+5. category-based product grouping for add-ons
+
+Do not rebuild unrelated workflows.
+
+Requirements:
+
+1. Add-on display format options
+Add support for multiple ways to display add-on products.
+
+At minimum support:
+- flat list of add-ons
+- card/grid view of add-ons
+- category tile view
+
+Requirements:
+- the display format should be configurable
+- the display format should be selectable at the partner level
+- the display format should also be overrideable at the event level
+- show clearly what format is active:
+  - partner default
+  - event override
+
+2. Category tile view
+Implement a category tile display mode for add-ons.
+
+Behavior:
+- add-on products are grouped into categories
+- each category is shown as a tile/card
+- clicking a category tile opens or expands to show the products inside that category
+- products within the category can then be selected as add-ons
+
+Examples of categories:
+- tables
+- chairs
+- tent accessories
+- banners
+- table branding
+- backdrop components
+- signage
+- rentable items
+- replacement graphics
+
+Requirements:
+- category tiles should be easy to scan
+- each tile should show category name
+- optionally show product count in the category
+- clicking the tile should reveal the products cleanly
+- support accordion, modal, drawer, or inline expansion if appropriate
+- keep the UX polished and obvious
+
+3. Product category assignment
+Each add-on product must be able to belong to a category for display purposes.
+
+Requirements:
+- support add-on category on the product record or partner-event add-on config layer
+- allow admin to assign or edit the category
+- allow uncategorized fallback if needed
+- group products correctly under their category in tile view
+
+4. Partner-level add-on presentation settings
+On each partner profile / portal builder, add settings for how add-ons should be displayed by default.
+
+At minimum support:
+- default add-on display format
+- category grouping on/off
+- category tile mode on/off
+- default sort order if useful
+
+Requirements:
+- these settings should live on the partner profile/builder
+- they should be easy to edit
+- they should control the default add-on experience for that partner portal
+
+5. Event-level add-on presentation overrides
+Each event should be able to override the partner default display format if needed.
+
+Examples:
+- one event uses category tiles
+- another event uses a flat add-on list
+- one venue only allows a smaller curated set of add-ons and needs a different format
+
+Requirements:
+- in event setup, allow selecting the display format for that event
+- allow event-specific add-on categories or filtered categories if useful
+- clearly show:
+  - inherited from partner
+  - overridden at event level
+
+6. Event-specific item availability
+Because each event space allows different items:
+- allow only certain add-ons or certain categories to be active for a given event
+- allow filtering or hiding categories/products not valid for that event
+- keep the event-specific selection clean and easy
+
+Examples:
+- one event allows tables and chairs only
+- one event allows tent accessories and banners
+- one venue allows signage but not furniture
+- one event can show rentable items separately from print add-ons
+
+7. Admin configuration UX
+Improve the admin/partner/event setup experience for add-on display management.
+
+On the partner setup side:
+- choose add-on products
+- assign them to categories
+- choose default display format
+
+On the event setup side:
+- choose which add-ons/categories are available
+- choose whether to inherit partner display format or override it
+- choose event-specific display format if overriding
+
+Requirements:
+- make this easy to understand
+- avoid raw, confusing forms
+- use cards, dropdowns, selectors, or toggles where appropriate
+
+8. Client-facing ordering UX
+In the ordering flow:
+- if category tile mode is active, show category tiles first
+- when a category is selected, show the products inside
+- allow the user to choose products and quantities cleanly
+- keep rentable/reusable logic and measurement/spec logic working if already supported
+- make the flow intuitive, not cluttered
+
+9. Visibility and state management
+Show clearly in admin:
+- which add-ons are assigned to the partner
+- which categories exist
+- which add-ons belong to each category
+- which display format is active for the partner
+- which display format is active for the event
+- whether the event is using partner defaults or an event override
+
+10. Seed/demo updates
+Add demo examples showing:
+- one partner using category tiles as default
+- one event inheriting the category tile display
+- one event overriding to flat list
+- add-ons grouped into categories like tables, chairs, and tent accessories
+- one event with only selected categories active
+
+11. Documentation
+Update replit.md with:
+- add-on display format options
+- how category tile view works
+- how products are assigned to categories
+- how partner defaults work
+- how event overrides work
+- how event-specific category/item restrictions work
+
+Important:
+Do not rebuild the app.
+Do not change unrelated workflows.
+Extend the current partner builder, event setup, add-on configuration, and ordering UI cleanly.
+Actually implement configurable add-on display formats, category tiles, and partner/event-level override behavior, not placeholders only.

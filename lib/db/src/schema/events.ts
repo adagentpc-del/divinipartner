@@ -30,7 +30,13 @@ export const eventsTable = pgTable("events", {
   // null      → inherit all active partner add-ons
   // { mode:"inherit" }     → same as null
   // { mode:"override", productIds:[...] } → use this explicit subset for this event
-  addonOverrideJson: jsonb("addon_override_json").$type<{ mode: "inherit" | "override"; productIds?: number[] }>(),
+  // Section 35 + 36: per-event add-on selection override AND optional
+  // category filter (when the partner uses category_tiles, an event can
+  // restrict which categories appear).
+  addonOverrideJson: jsonb("addon_override_json").$type<{ mode: "inherit" | "override"; productIds?: number[]; categories?: string[] }>(),
+  // Section 36: per-event display format override. null = inherit from
+  // partner. Values: "flat" | "grid" | "category_tiles".
+  addonDisplayFormat: text("addon_display_format"),
   imageUrl: text("image_url"),
   // Billing override (null = inherit from partner)
   billingExecModelOverride: text("billing_exec_model_override"),

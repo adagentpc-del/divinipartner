@@ -95,6 +95,12 @@ export const partnersTable = pgTable("partners", {
   taxInclusive: boolean("tax_inclusive").notNull().default(false),
   billingCountry: text("billing_country"), // ISO-2 (e.g. US, GB, AE)
   invoiceDisplayNotes: text("invoice_display_notes"),
+  // Section 36: default add-on display format on this partner's portal.
+  // Values: "flat" | "grid" | "category_tiles" (default "grid").
+  addonDisplayFormat: text("addon_display_format").notNull().default("grid"),
+  // When true, flat/grid views show category subheadings; when false they're
+  // a single ungrouped list. category_tiles always groups.
+  addonCategoryGroupingEnabled: boolean("addon_category_grouping_enabled").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
