@@ -87,6 +87,7 @@ export default function OrderingPortal({ slug }: { slug: string }) {
     }
   };
   const [contact, setContact] = useState({ contactName: "", contactEmail: "", contactPhone: "", companyName: "", notes: "" });
+  const [addonRequest, setAddonRequest] = useState("");
   const [submitted, setSubmitted] = useState<{ orderNumber: string; email?: { confirmation: boolean; forward: boolean; warnings: string[] } } | null>(null);
 
   const submit = useMutation({
@@ -187,7 +188,7 @@ export default function OrderingPortal({ slug }: { slug: string }) {
             {!emailFailed && submitted.email?.confirmation && (
               <div className="mb-4 text-xs" style={{ color: branding.muted }}>A confirmation email is on the way to your inbox.</div>
             )}
-            <Button onClick={() => { setSubmitted(null); setStep(0); setCart([]); setSelectedPkgId(null); setEventId(null); setArtworkFiles([]); setContact({ contactName: "", contactEmail: "", contactPhone: "", companyName: "", notes: "" }); }} style={{ background: branding.button, color: branding.buttonText }}>
+            <Button onClick={() => { setSubmitted(null); setStep(0); setCart([]); setSelectedPkgId(null); setEventId(null); setArtworkFiles([]); setContact({ contactName: "", contactEmail: "", contactPhone: "", companyName: "", notes: "" }); setAddonRequest(""); }} style={{ background: branding.button, color: branding.buttonText }}>
               Place another order
             </Button>
           </Card>
@@ -283,10 +284,15 @@ export default function OrderingPortal({ slug }: { slug: string }) {
       customSizeUnit: c.customSizeUnit ?? null,
     }));
 
+    const addonReqTrim = addonRequest.trim();
+    const mergedNotes = addonReqTrim
+      ? `${contact.notes ? contact.notes.trim() + "\n\n" : ""}Custom add-on request:\n${addonReqTrim}`
+      : contact.notes;
+
     submit.mutate({
       eventId, packageId: selectedPkgId, shippingVenueId: venueId,
       shippingAddress: selectedVenue ? { address: selectedVenue.shippingAddress || selectedVenue.venueAddress, venueName: selectedVenue.name } : null,
-      ...contact, items, artworkFiles, totalEstimate: totalEstimate > 0 ? totalEstimate.toFixed(2) : null,
+      ...contact, notes: mergedNotes, items, artworkFiles, totalEstimate: totalEstimate > 0 ? totalEstimate.toFixed(2) : null,
     });
   };
 
@@ -500,6 +506,30 @@ export default function OrderingPortal({ slug }: { slug: string }) {
                     <Button size="sm" variant="outline" className="w-full mt-2 h-7 text-xs gap-1"><Plus className="h-3 w-3" />Add</Button>
                   </button>
                 ))}
+              </div>
+
+              <div className={`rounded-lg border p-4 ${addonProducts.length === 0 ? "bg-amber-50 border-amber-200" : "bg-muted/30"}`}>
+                {addonProducts.length === 0 ? (
+                  <>
+                    <div className="text-sm font-semibold mb-1">Don't see what you need?</div>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      There aren't any specific add-ons listed for this package. Tell us what else you'd like and we'll put together a custom quote.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-sm font-semibold mb-1">Need something not listed?</div>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Describe anything else you'd like added to your order and we'll quote it for you.
+                    </p>
+                  </>
+                )}
+                <Textarea
+                  rows={4}
+                  value={addonRequest}
+                  onChange={e => setAddonRequest(e.target.value)}
+                  placeholder="e.g. 2 extra retractable banners with our logo, custom-printed table runner 6ft, branded lanyards x50…"
+                />
               </div>
             </div>
           )}
