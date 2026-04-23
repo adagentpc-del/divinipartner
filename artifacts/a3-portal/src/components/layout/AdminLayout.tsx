@@ -38,6 +38,7 @@ import {
 import { FeedbackButton } from "@/components/admin/FeedbackButton";
 import { DemoModeBanner, DemoModeToggle } from "@/components/admin/DemoModeBanner";
 import EmailReadinessBanner from "@/components/admin/EmailReadinessBanner";
+import AlertsBadge from "@/components/admin/AlertsBadge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
@@ -97,6 +98,7 @@ const NAV_GROUPS: NavGroup[] = [
     { name: "Users",       href: "/admin/users",        icon: UserCog },
     { name: "Settings",    href: "/admin/settings",     icon: SettingsIcon },
     { name: "Email Readiness", href: "/admin/email-readiness", icon: Mail },
+    { name: "Alert Center", href: "/admin/alerts", icon: ShieldCheck },
     { name: "Help",        href: "/admin/help",         icon: HelpCircle },
     { name: "Runbook",     href: "/admin/help/runbook", icon: BookOpen },
   ] },
@@ -254,6 +256,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </nav>
 
           <div className="ml-auto flex items-center gap-3 shrink-0">
+            <AlertsBadge />
             <DemoModeToggle />
             <UserButton afterSignOutUrl="/login" />
           </div>

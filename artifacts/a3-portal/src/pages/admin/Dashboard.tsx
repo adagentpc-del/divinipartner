@@ -1,7 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, FileText, ShoppingCart, AlertTriangle, ArrowUpRight, Loader2, Clock, Truck, Calendar, TrendingUp, Boxes, Package, Printer, FileWarning, Rocket } from "lucide-react";
+import { Users, FileText, ShoppingCart, AlertTriangle, ArrowUpRight, Loader2, Clock, Truck, Calendar, TrendingUp, Boxes, Package, Printer, FileWarning, Rocket, Bell } from "lucide-react";
+import AlertList from "@/components/admin/AlertList";
+import type { AlertsResponse } from "@/lib/alertTypes";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -102,6 +104,7 @@ export default function Dashboard() {
       </div>
 
       <LaunchBanner />
+      <DashboardAlertsWidget />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard icon={Users} label="Partners" value={s.totalPartners} sub={`${s.activePartners} active · ${s.orderingPartners} ordering · ${s.brandingPartners} branding`} href="/admin/partners" />
@@ -227,5 +230,37 @@ export default function Dashboard() {
         </Card>
       </div>
     </div>
+  );
+}
+
+function DashboardAlertsWidget() {
+  const { data } = useQuery<{ summary: AlertsResponse["summary"]; top: AlertsResponse["alerts"] }>({
+    queryKey: ["/api/admin/alerts/summary"],
+    queryFn: () => apiFetch("/api/admin/alerts/summary"),
+    staleTime: 60 * 1000,
+    retry: false,
+  });
+  if (!data || data.summary.total === 0) return null;
+  const { summary, top } = data;
+  return (
+    <Card className="border-amber-200 bg-amber-50/30">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Bell className="h-4 w-4 text-amber-600" />
+            Active alerts
+            <span className="ml-2 inline-flex items-center gap-2 text-xs font-normal text-muted-foreground">
+              {summary.bySeverity.critical > 0 && <span className="px-1.5 py-0.5 rounded bg-red-100 text-red-800 border border-red-200">{summary.bySeverity.critical} critical</span>}
+              {summary.bySeverity.warning > 0 && <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200">{summary.bySeverity.warning} warning</span>}
+              {summary.bySeverity.info > 0 && <span className="px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 border border-sky-200">{summary.bySeverity.info} info</span>}
+            </span>
+          </CardTitle>
+          <Link href="/admin/alerts"><span className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1">Open Alert Center <ArrowUpRight className="h-3 w-3" /></span></Link>
+        </div>
+      </CardHeader>
+      <CardContent className="p-0">
+        <AlertList alerts={top} compact />
+      </CardContent>
+    </Card>
   );
 }

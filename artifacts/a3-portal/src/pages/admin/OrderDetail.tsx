@@ -15,6 +15,7 @@ import OrderAssetsPanel from "@/components/admin/OrderAssetsPanel";
 import TaskPanel from "@/components/admin/TaskPanel";
 import OrderEmailDeliveryPanel from "@/components/admin/OrderEmailDeliveryPanel";
 import OrderExceptionPanel from "@/components/admin/OrderExceptionPanel";
+import EntityAlertsPanel from "@/components/admin/EntityAlertsPanel";
 import { formatMoney, SUPPORTED_CURRENCIES, TAX_MODES, TAX_MODE_LABELS } from "@/lib/currency";
 
 /**
@@ -467,6 +468,9 @@ export default function OrderDetail() {
 
           {/* Section 28 — per-order email delivery timeline. Reads usage_events. */}
           <OrderEmailDeliveryPanel orderId={order.id} />
+
+          {/* Section 32 — derived alerts scoped to this order */}
+          <EntityAlertsPanel scope="order" id={order.id} />
         </div>
 
         <div className="space-y-4">

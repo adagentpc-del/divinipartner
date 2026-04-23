@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useGetPartner, useCreatePartner, useUpdatePartner, getListPartnersQueryKey } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
@@ -21,6 +21,8 @@ import { resolveBranding } from "@/components/branding/usePartnerBranding";
 import { apiUrl } from "@/lib/api";
 import { RecipientsManager } from "@/components/admin/RecipientsManager";
 import PartnerContactsPanel from "@/components/admin/PartnerContactsPanel";
+import EntityAlertsPanel from "@/components/admin/EntityAlertsPanel";
+import PartnerStatusBadges from "@/components/admin/PartnerStatusBadges";
 import { FamilyStatusGrid, type FamilyAvailability } from "@/components/admin/FamilyStatusCard";
 import { RentableAssetsCard } from "@/components/admin/RentableAssetsCard";
 import { useQuery } from "@tanstack/react-query";
@@ -215,7 +217,10 @@ export default function PartnerForm() {
       </div>
 
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{isEditing ? "Edit Partner" : "New Partner"}</h1>
+        <div className="flex items-center gap-3 flex-wrap">
+          <h1 className="text-2xl font-bold">{isEditing ? "Edit Partner" : "New Partner"}</h1>
+          {isEditing && partner && <PartnerStatusBadges partner={partner as any} size="sm" />}
+        </div>
         {isEditing && id && (
           <div className="flex gap-2">
             <Link href={`/admin/partners/${id}/theme`}>
@@ -595,11 +600,13 @@ export default function PartnerForm() {
 
           {isEditing && id && (
             <>
+              <EntityAlertsPanel scope="partner" id={id} />
               <CommunicationsCard partnerId={id} form={form} />
               <PartnerContactsPanel partnerId={id} />
               <RecipientsManager partnerId={id} />
               <ReusableAssetsCard partnerId={id} />
               <RentableAssetsCard partnerId={id} />
+              <PartnerArchiveCard partnerId={id} partner={partner} />
             </>
           )}
 
@@ -885,6 +892,51 @@ function ReusableAssetsCard({ partnerId }: { partnerId: number }) {
         {isLoading
           ? <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" />Loading…</div>
           : <FamilyStatusGrid families={families} partnerId={pid} />}
+      </CardContent>
+    </Card>
+  );
+}
+
+function PartnerArchiveCard({ partnerId, partner }: { partnerId: number; partner: any }) {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const [reason, setReason] = useState("");
+  const isArchived = !!partner?.archivedAt;
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const path = isArchived ? `/api/admin/partners/${partnerId}/unarchive` : `/api/admin/partners/${partnerId}/archive`;
+      return apiFetch(path, { method: "POST", body: JSON.stringify(isArchived ? {} : { reason: reason.trim() || undefined }) });
+    },
+    onSuccess: () => {
+      toast({ title: isArchived ? "Partner unarchived" : "Partner archived" });
+      qc.invalidateQueries();
+    },
+    onError: (e: any) => toast({ title: "Failed", description: e?.message || String(e), variant: "destructive" }),
+  });
+  return (
+    <Card className={isArchived ? "border-red-300 bg-red-50/40" : "border-amber-200"}>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">{isArchived ? "Archived" : "Archive partner"}</CardTitle>
+        <CardDescription>
+          {isArchived
+            ? `Archived ${partner.archivedAt ? new Date(partner.archivedAt).toLocaleDateString() : ""}${partner.archivedReason ? ` · ${partner.archivedReason}` : ""}. The partner is hidden from active flows but no data is deleted.`
+            : "Mark this partner inactive and stash for retention. Their orders, assets, and history are preserved — only listing visibility and operational alerts change."}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {!isArchived && (
+          <Input placeholder="Optional reason (e.g. partner offboarded April 2026)" value={reason} onChange={e => setReason(e.target.value)} />
+        )}
+        <Button
+          type="button"
+          variant={isArchived ? "outline" : "destructive"}
+          size="sm"
+          disabled={mutation.isPending}
+          onClick={() => mutation.mutate()}
+        >
+          {mutation.isPending && <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />}
+          {isArchived ? "Unarchive partner" : "Archive partner"}
+        </Button>
       </CardContent>
     </Card>
   );

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Loader2, Users, ExternalLink, Copy, Eye, Boxes, Rocket } from "lucide-react";
 import { EmptyStateCard } from "@/components/admin/EmptyStateCard";
+import PartnerStatusBadges from "@/components/admin/PartnerStatusBadges";
 
 const LAUNCH_BADGE: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; className?: string }> = {
   live:          { label: "Live",          variant: "default" },
@@ -107,7 +108,8 @@ export default function PartnersList() {
                       return (
                         <div className="flex flex-col gap-1">
                           <Badge variant={cfg.variant} className={`text-xs ${cfg.className ?? ""}`}>{cfg.label}</Badge>
-                          {!partner.isActive && <Badge variant="outline" className="text-[10px] text-muted-foreground">Inactive</Badge>}
+                          <PartnerStatusBadges partner={partner as any} />
+                          {!(partner as any).archivedAt && partner.isActive && <></>}
                         </div>
                       );
                     })()}

@@ -55,6 +55,28 @@ The A3 Partner Commerce Portal is built as a `pnpm workspace monorepo` using Typ
 -   **Resend**: Email delivery service.
 -   **OpenAI**: AI integration for tasks like request summaries and PDF parsing.
 -   **Replit Object Storage**: Cloud storage for file uploads.
+## Section 32 — Operational alerts, retention markers & inactive partner visibility (April 23, 2026)
+
+### What we built
+- **Schema** — `lib/db/src/schema/partners.ts`: added `archivedAt` (timestamp) + `archivedReason` (text). Asset retention reuses existing `assets.status='archived'`. No data migration required (`pnpm --filter @workspace/db run push --force`).
+- **Backend** — `artifacts/api-server/src/lib/alerts.ts` + `routes/alerts.ts`:
+  - `computeAlerts({partnerId?, orderId?, limit?})` derives alerts on the fly from existing tables (no new alerts table). Types: `failed_email`, `missing_artwork`, `order_exception`, `inactive_partner`, `stale_partner_setup`, `unresolved_support_issue`, `missing_contact_config`, `asset_issue`, `manual_followup`. All broad aggregates (`orderAssetCounts`, `lastOrderRows`) are scoped by `partnerId` / `orderId` when provided so per-entity panels stay cheap.
+  - `summarizeAlerts(alerts)` rolls up by severity for the header bell + dashboard widget.
+  - `routeAlertToSms(ctx, alert)` is an intentional **no-op stub** that writes a `alert.sms_route_attempt` row to `usage_events` — leaves a clean audit trail when text-to-phone is wired up later.
+  - Routes: `GET /api/admin/alerts`, `/admin/alerts/summary`, `/admin/alerts/partner/:id`, `/admin/alerts/order/:id`; `POST /admin/alerts/manual-followup` + `/resolve`; `POST /admin/support-issues` + `/:id/resolve`; `POST /admin/partners/:id/archive` + `/unarchive` (toggles `archivedAt`/`archivedReason` only — does **not** mutate `isActive`, so prior intentional active state is preserved); `POST /admin/assets/:id/archive` + `/unarchive`.
+- **Frontend** — `artifacts/a3-portal/src/`:
+  - `lib/alertTypes.ts` — shared severity → color/icon mapping.
+  - `components/admin/AlertsBadge.tsx` — header bell with summary count, polls `/admin/alerts/summary`.
+  - `components/admin/AlertList.tsx` + `EntityAlertsPanel.tsx` — reusable list (used by Alert Center + entity panels).
+  - `components/admin/PartnerStatusBadges.tsx` — inline pills for archived / inactive / launch status.
+  - `pages/admin/AlertCenter.tsx` — full-page list with manual-followup + support-issue dialogs.
+  - Wired into `App.tsx` (route `/admin/alerts`), `AdminLayout` (nav link + header badge), `Dashboard` (top alerts widget), `PartnersList` (status badges per row), `PartnerForm` (alerts panel + status badges + archive/unarchive card), `OrderDetail` (order-scoped alerts panel).
+
+### Conventions kept
+- Admin routes use `requireAuth` only (no role check) — consistent with the rest of `routes/admin*.ts`. Architect flagged this on Section 31 too; same trade-off accepted.
+- Archive is **non-destructive**: only `archivedAt`/`archivedReason` flip, so unarchive cleanly restores prior state.
+- SMS routing is wired structurally but never sends — replace `routeAlertToSms` body when a provider is selected.
+
 ## Section 31 — Email readiness, branded sending visibility & test sends (April 22, 2026)
 
 ### What we built
