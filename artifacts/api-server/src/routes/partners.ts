@@ -166,9 +166,17 @@ router.patch("/partners/:id", async (req, res): Promise<void> => {
     return;
   }
 
+  // Normalize empty strings to null for all string fields so blank inputs
+  // clear the column instead of storing literal "". Booleans and numerics are
+  // left alone.
+  const updateData: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(parsed.data)) {
+    updateData[k] = (typeof v === "string" && v.trim() === "") ? null : v;
+  }
+
   const [partner] = await db
     .update(partnersTable)
-    .set(parsed.data)
+    .set(updateData as any)
     .where(eq(partnersTable.id, id))
     .returning();
 

@@ -9,18 +9,97 @@
 export interface CreatePartnerBody {
   companyName: string;
   slug: string;
-  logoUrl?: string;
+  /** @nullable */
+  logoUrl?: string | null;
+  /** @nullable */
+  secondaryLogoUrl?: string | null;
+  /** @nullable */
+  websiteUrl?: string | null;
   smallA3BadgeEnabled?: boolean;
-  introHeadline?: string;
-  introText?: string;
-  contactName?: string;
-  contactEmail?: string;
-  contactPhone?: string;
-  venueAddress?: string;
-  industryFocus?: string;
-  useCaseOptionsJson?: string[];
-  globalSizzleReelUrl?: string;
-  partnerVideoUrl?: string;
+  /** @nullable */
+  introHeadline?: string | null;
+  /** @nullable */
+  introText?: string | null;
+  /** @nullable */
+  thankYouText?: string | null;
+  /** @nullable */
+  capabilitiesLink?: string | null;
+  /** @nullable */
+  contactName?: string | null;
+  /** @nullable */
+  contactEmail?: string | null;
+  /** @nullable */
+  contactPhone?: string | null;
+  /** @nullable */
+  routingEmail?: string | null;
+  /** @nullable */
+  venueAddress?: string | null;
+  /** @nullable */
+  industryFocus?: string | null;
+  /** @nullable */
+  useCaseOptionsJson?: string[] | null;
+  /** @nullable */
+  globalSizzleReelUrl?: string | null;
+  /** @nullable */
+  partnerVideoUrl?: string | null;
+  /** @nullable */
+  partnerDeckFileUrl?: string | null;
+  /** @nullable */
+  siteSurveyDeckFileUrl?: string | null;
+  portalMode?: string;
+  /** @nullable */
+  partnerType?: string | null;
+  /** @nullable */
+  unitPreference?: string | null;
   pricingDisplayEnabled?: boolean;
   isActive?: boolean;
+  /** @nullable */
+  defaultBillingExecModel?: string | null;
+  /** @nullable */
+  billingEntityName?: string | null;
+  /** @nullable */
+  paymentTerms?: string | null;
+  depositRequired?: boolean;
+  /** @nullable */
+  depositPct?: string | null;
+  allowPartialPayment?: boolean;
+  allowOrderOverride?: boolean;
+  /** @nullable */
+  defaultBillingNotes?: string | null;
+  /** @nullable */
+  billingContactName?: string | null;
+  /** @nullable */
+  billingContactEmail?: string | null;
+  /** @nullable */
+  billingContactPhone?: string | null;
+  billingActive?: boolean;
+  /** @nullable */
+  emailFromName?: string | null;
+  /** @nullable */
+  replyToEmail?: string | null;
+  /** @nullable */
+  emailSenderLabel?: string | null;
+  /** @nullable */
+  internalForwardEmail?: string | null;
+  /** @nullable */
+  ccEmail?: string | null;
+  emailEnabled?: boolean;
+  attachPdfCustomer?: boolean;
+  attachPdfOps?: boolean;
+  attachPdfFinance?: boolean;
+  attachPdfPartnerContact?: boolean;
+  defaultCurrency?: string;
+  defaultTaxMode?: string;
+  /** @nullable */
+  defaultTaxLabel?: string | null;
+  /** @nullable */
+  defaultTaxRate?: string | null;
+  taxInclusive?: boolean;
+  /** @nullable */
+  billingCountry?: string | null;
+  /** @nullable */
+  invoiceDisplayNotes?: string | null;
+  addonDisplayFormat?: string;
+  addonCategoryGroupingEnabled?: boolean;
+  [key: string]: unknown;
 }

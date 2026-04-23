@@ -1,0 +1,117 @@
+Refine the existing Partner Commerce Portal by improving the Add-Ons section inside the partner profile edit area so add-on products are searchable and show matching options as I type/select them.
+
+Goal:
+In the partner profile edit area under Add-Ons, I need the add-on products to be searchable and I need matching product options to appear when I enter text, instead of having to scroll through everything or guess what is available.
+
+Scope:
+Keep this pass tightly focused on:
+1. searchable add-on product selection
+2. product suggestions/autocomplete behavior
+3. cleaner partner profile edit UX under Add-Ons
+4. preserving partner-specific add-on assignment
+
+Do not rebuild unrelated workflows.
+
+Requirements:
+
+1. Searchable add-on selector
+In the partner profile edit area under Add-Ons, replace or improve the current selection method so it supports:
+- typing to search products
+- live matching results
+- clickable product suggestions
+- fast selection of one or multiple products
+
+Requirements:
+- as I type, show matching product options
+- support partial matches
+- support product name search
+- support SKU search if available
+- support category search if useful
+- make the search feel fast and clean
+
+2. Suggestion dropdown / autocomplete behavior
+The Add-Ons field should behave like a searchable selector, not a static list.
+
+Requirements:
+- show a dropdown, autocomplete list, or searchable modal as the user types
+- each result should clearly show:
+  - product name
+  - category if useful
+  - SKU if useful
+  - status if relevant
+- clicking a result should add it to that partner’s selected add-ons
+- selected items should remain visible after selection
+
+3. Multi-select behavior
+Allow selecting more than one add-on product for the same partner.
+
+Requirements:
+- after selecting one product, continue allowing search for another
+- show selected add-ons as chips, cards, or list items
+- allow removing/unselecting easily
+- keep the field usable even with many selected items
+
+4. Partner-specific storage
+The selected add-ons must still be stored per partner profile.
+
+Requirements:
+- search results come from the available product catalog
+- selected results save only to that specific partner’s add-on configuration
+- one partner can have a different add-on list than another
+
+5. Search filtering
+If feasible, support filtering the searchable results by:
+- active products only
+- add-on eligible products only
+- category
+- rentable items
+- print-only compatible items
+- partner-compatible items if that logic already exists
+
+Do not overbuild this.
+Keep the search practical and useful.
+
+6. UX improvements in partner edit area
+Make the Add-Ons section in the partner profile edit area feel cleaner.
+
+Requirements:
+- clear section title
+- searchable field or add-product action
+- selected add-ons shown clearly underneath
+- support remove/edit/reorder if already appropriate
+- no confusing raw form experience
+
+7. Event setup compatibility
+The add-ons selected here must continue to flow into event setup and event-level override logic already built or being built.
+
+Requirements:
+- do not break partner-level add-on inheritance
+- do not break event-specific add-on selection
+- this pass is about making partner add-on selection easier and searchable
+
+8. Empty / no-result states
+If no products match:
+- show a clear “no matching products found” message
+- do not break the field
+- if useful, offer a quick link to create/import products later, but keep this secondary
+
+9. Seed/demo updates
+Add demo examples showing:
+- searchable add-on field in partner profile
+- typed search returning matching products
+- multiple selected add-ons displayed clearly
+- one partner with several add-ons assigned via the new search field
+
+10. Documentation
+Update replit.md with:
+- how searchable add-on selection works
+- what fields are searched
+- how selected add-ons are stored per partner
+- how multi-select behavior works
+- any filtering logic used in the add-on search
+
+Important:
+Do not rebuild the app.
+Do not change unrelated workflows.
+Extend the current partner profile edit area and add-on assignment flow cleanly.
+Actually implement searchable add-on product selection with live matching options, not placeholders only.

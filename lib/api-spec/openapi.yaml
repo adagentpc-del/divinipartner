@@ -711,6 +711,7 @@ components:
     Partner:
       type: object
       required: [id, companyName, slug, isActive, createdAt, updatedAt]
+      additionalProperties: true
       properties:
         id:
           type: integer
@@ -720,17 +721,27 @@ components:
           type: string
         logoUrl:
           type: ["string", "null"]
+        secondaryLogoUrl:
+          type: ["string", "null"]
+        websiteUrl:
+          type: ["string", "null"]
         smallA3BadgeEnabled:
           type: boolean
         introHeadline:
           type: ["string", "null"]
         introText:
           type: ["string", "null"]
+        thankYouText:
+          type: ["string", "null"]
+        capabilitiesLink:
+          type: ["string", "null"]
         contactName:
           type: ["string", "null"]
         contactEmail:
           type: ["string", "null"]
         contactPhone:
+          type: ["string", "null"]
+        routingEmail:
           type: ["string", "null"]
         venueAddress:
           type: ["string", "null"]
@@ -744,9 +755,81 @@ components:
           type: ["string", "null"]
         partnerVideoUrl:
           type: ["string", "null"]
+        partnerDeckFileUrl:
+          type: ["string", "null"]
+        siteSurveyDeckFileUrl:
+          type: ["string", "null"]
+        portalMode:
+          type: ["string", "null"]
+        partnerType:
+          type: ["string", "null"]
+        unitPreference:
+          type: ["string", "null"]
         pricingDisplayEnabled:
           type: boolean
         isActive:
+          type: boolean
+        defaultBillingExecModel:
+          type: ["string", "null"]
+        billingEntityName:
+          type: ["string", "null"]
+        paymentTerms:
+          type: ["string", "null"]
+        depositRequired:
+          type: boolean
+        depositPct:
+          type: ["string", "null"]
+        allowPartialPayment:
+          type: boolean
+        allowOrderOverride:
+          type: boolean
+        defaultBillingNotes:
+          type: ["string", "null"]
+        billingContactName:
+          type: ["string", "null"]
+        billingContactEmail:
+          type: ["string", "null"]
+        billingContactPhone:
+          type: ["string", "null"]
+        billingActive:
+          type: boolean
+        emailFromName:
+          type: ["string", "null"]
+        replyToEmail:
+          type: ["string", "null"]
+        emailSenderLabel:
+          type: ["string", "null"]
+        internalForwardEmail:
+          type: ["string", "null"]
+        ccEmail:
+          type: ["string", "null"]
+        emailEnabled:
+          type: boolean
+        attachPdfCustomer:
+          type: boolean
+        attachPdfOps:
+          type: boolean
+        attachPdfFinance:
+          type: boolean
+        attachPdfPartnerContact:
+          type: boolean
+        defaultCurrency:
+          type: ["string", "null"]
+        defaultTaxMode:
+          type: ["string", "null"]
+        defaultTaxLabel:
+          type: ["string", "null"]
+        defaultTaxRate:
+          type: ["string", "null"]
+        taxInclusive:
+          type: boolean
+        billingCountry:
+          type: ["string", "null"]
+        invoiceDisplayNotes:
+          type: ["string", "null"]
+        addonDisplayFormat:
+          type: ["string", "null"]
+        addonCategoryGroupingEnabled:
           type: boolean
         createdAt:
           type: string
@@ -758,44 +841,7 @@ components:
     CreatePartnerBody:
       type: object
       required: [companyName, slug]
-      properties:
-        companyName:
-          type: string
-        slug:
-          type: string
-        logoUrl:
-          type: string
-        smallA3BadgeEnabled:
-          type: boolean
-        introHeadline:
-          type: string
-        introText:
-          type: string
-        contactName:
-          type: string
-        contactEmail:
-          type: string
-        contactPhone:
-          type: string
-        venueAddress:
-          type: string
-        industryFocus:
-          type: string
-        useCaseOptionsJson:
-          type: array
-          items:
-            type: string
-        globalSizzleReelUrl:
-          type: string
-        partnerVideoUrl:
-          type: string
-        pricingDisplayEnabled:
-          type: boolean
-        isActive:
-          type: boolean
-
-    UpdatePartnerBody:
-      type: object
+      additionalProperties: true
       properties:
         companyName:
           type: string
@@ -803,17 +849,27 @@ components:
           type: string
         logoUrl:
           type: ["string", "null"]
+        secondaryLogoUrl:
+          type: ["string", "null"]
+        websiteUrl:
+          type: ["string", "null"]
         smallA3BadgeEnabled:
           type: boolean
         introHeadline:
           type: ["string", "null"]
         introText:
           type: ["string", "null"]
+        thankYouText:
+          type: ["string", "null"]
+        capabilitiesLink:
+          type: ["string", "null"]
         contactName:
           type: ["string", "null"]
         contactEmail:
           type: ["string", "null"]
         contactPhone:
+          type: ["string", "null"]
+        routingEmail:
           type: ["string", "null"]
         venueAddress:
           type: ["string", "null"]
@@ -827,9 +883,202 @@ components:
           type: ["string", "null"]
         partnerVideoUrl:
           type: ["string", "null"]
+        partnerDeckFileUrl:
+          type: ["string", "null"]
+        siteSurveyDeckFileUrl:
+          type: ["string", "null"]
+        portalMode:
+          type: string
+        partnerType:
+          type: ["string", "null"]
+        unitPreference:
+          type: ["string", "null"]
         pricingDisplayEnabled:
           type: boolean
         isActive:
+          type: boolean
+        defaultBillingExecModel:
+          type: ["string", "null"]
+        billingEntityName:
+          type: ["string", "null"]
+        paymentTerms:
+          type: ["string", "null"]
+        depositRequired:
+          type: boolean
+        depositPct:
+          type: ["string", "null"]
+        allowPartialPayment:
+          type: boolean
+        allowOrderOverride:
+          type: boolean
+        defaultBillingNotes:
+          type: ["string", "null"]
+        billingContactName:
+          type: ["string", "null"]
+        billingContactEmail:
+          type: ["string", "null"]
+        billingContactPhone:
+          type: ["string", "null"]
+        billingActive:
+          type: boolean
+        emailFromName:
+          type: ["string", "null"]
+        replyToEmail:
+          type: ["string", "null"]
+        emailSenderLabel:
+          type: ["string", "null"]
+        internalForwardEmail:
+          type: ["string", "null"]
+        ccEmail:
+          type: ["string", "null"]
+        emailEnabled:
+          type: boolean
+        attachPdfCustomer:
+          type: boolean
+        attachPdfOps:
+          type: boolean
+        attachPdfFinance:
+          type: boolean
+        attachPdfPartnerContact:
+          type: boolean
+        defaultCurrency:
+          type: string
+        defaultTaxMode:
+          type: string
+        defaultTaxLabel:
+          type: ["string", "null"]
+        defaultTaxRate:
+          type: ["string", "null"]
+        taxInclusive:
+          type: boolean
+        billingCountry:
+          type: ["string", "null"]
+        invoiceDisplayNotes:
+          type: ["string", "null"]
+        addonDisplayFormat:
+          type: string
+        addonCategoryGroupingEnabled:
+          type: boolean
+
+    UpdatePartnerBody:
+      type: object
+      additionalProperties: true
+      properties:
+        companyName:
+          type: string
+        slug:
+          type: string
+        logoUrl:
+          type: ["string", "null"]
+        secondaryLogoUrl:
+          type: ["string", "null"]
+        websiteUrl:
+          type: ["string", "null"]
+        smallA3BadgeEnabled:
+          type: boolean
+        introHeadline:
+          type: ["string", "null"]
+        introText:
+          type: ["string", "null"]
+        thankYouText:
+          type: ["string", "null"]
+        capabilitiesLink:
+          type: ["string", "null"]
+        contactName:
+          type: ["string", "null"]
+        contactEmail:
+          type: ["string", "null"]
+        contactPhone:
+          type: ["string", "null"]
+        routingEmail:
+          type: ["string", "null"]
+        venueAddress:
+          type: ["string", "null"]
+        industryFocus:
+          type: ["string", "null"]
+        useCaseOptionsJson:
+          type: ["array", "null"]
+          items:
+            type: string
+        globalSizzleReelUrl:
+          type: ["string", "null"]
+        partnerVideoUrl:
+          type: ["string", "null"]
+        partnerDeckFileUrl:
+          type: ["string", "null"]
+        siteSurveyDeckFileUrl:
+          type: ["string", "null"]
+        portalMode:
+          type: ["string", "null"]
+        partnerType:
+          type: ["string", "null"]
+        unitPreference:
+          type: ["string", "null"]
+        pricingDisplayEnabled:
+          type: boolean
+        isActive:
+          type: boolean
+        defaultBillingExecModel:
+          type: ["string", "null"]
+        billingEntityName:
+          type: ["string", "null"]
+        paymentTerms:
+          type: ["string", "null"]
+        depositRequired:
+          type: boolean
+        depositPct:
+          type: ["string", "null"]
+        allowPartialPayment:
+          type: boolean
+        allowOrderOverride:
+          type: boolean
+        defaultBillingNotes:
+          type: ["string", "null"]
+        billingContactName:
+          type: ["string", "null"]
+        billingContactEmail:
+          type: ["string", "null"]
+        billingContactPhone:
+          type: ["string", "null"]
+        billingActive:
+          type: boolean
+        emailFromName:
+          type: ["string", "null"]
+        replyToEmail:
+          type: ["string", "null"]
+        emailSenderLabel:
+          type: ["string", "null"]
+        internalForwardEmail:
+          type: ["string", "null"]
+        ccEmail:
+          type: ["string", "null"]
+        emailEnabled:
+          type: boolean
+        attachPdfCustomer:
+          type: boolean
+        attachPdfOps:
+          type: boolean
+        attachPdfFinance:
+          type: boolean
+        attachPdfPartnerContact:
+          type: boolean
+        defaultCurrency:
+          type: string
+        defaultTaxMode:
+          type: string
+        defaultTaxLabel:
+          type: ["string", "null"]
+        defaultTaxRate:
+          type: ["string", "null"]
+        taxInclusive:
+          type: boolean
+        billingCountry:
+          type: ["string", "null"]
+        invoiceDisplayNotes:
+          type: ["string", "null"]
+        addonDisplayFormat:
+          type: string
+        addonCategoryGroupingEnabled:
           type: boolean
 
     PartnerAsset:
