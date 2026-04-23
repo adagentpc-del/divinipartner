@@ -124,7 +124,11 @@ router.get("/partners", async (req, res): Promise<void> => {
 router.post("/partners", async (req, res): Promise<void> => {
   const parsed = PartnerBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json({
+      error: "Some fields are invalid. Please check the highlighted entries.",
+      details: parsed.error.format(),
+      issues: parsed.error.issues.map(i => ({ path: i.path.join("."), message: i.message })),
+    });
     return;
   }
 
@@ -152,7 +156,11 @@ router.patch("/partners/:id", async (req, res): Promise<void> => {
 
   const parsed = UpdatePartnerBodySchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json({
+      error: "Some fields are invalid. Please check the highlighted entries.",
+      details: parsed.error.format(),
+      issues: parsed.error.issues.map(i => ({ path: i.path.join("."), message: i.message })),
+    });
     return;
   }
 

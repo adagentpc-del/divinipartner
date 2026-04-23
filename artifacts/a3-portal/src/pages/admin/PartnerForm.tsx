@@ -190,16 +190,55 @@ export default function PartnerForm() {
     }
   }, [partner, form]);
 
+  // Surface server-side validation errors back into the form so the offending
+  // fields show in red instead of just a vague "Failed to update" toast.
+  const applyServerErrors = (err: any): { fieldsHit: string[]; topMessage: string } => {
+    const body = err?.body;
+    const issues: Array<{ path: string; message: string }> = Array.isArray(body?.issues) ? body.issues : [];
+    const fieldsHit: string[] = [];
+    const known = new Set(Object.keys(form.getValues()));
+    for (const iss of issues) {
+      // Take the first segment of the path — that's the form field name.
+      const top = (iss.path || "").split(".")[0];
+      if (top && known.has(top)) {
+        form.setError(top as any, { type: "server", message: iss.message || "Invalid value" });
+        fieldsHit.push(top);
+      }
+    }
+    const topMessage = body?.error || err?.message || "Request failed";
+    return { fieldsHit, topMessage };
+  };
+
   const onSubmit = (values: FormValues) => {
     const data = values as any;
+    // Clear any previous server errors so stale red marks disappear.
+    form.clearErrors();
     const mutation = isEditing && id
       ? () => updateMutation.mutate({ id, data }, {
           onSuccess: () => { queryClient.invalidateQueries({ queryKey: getListPartnersQueryKey() }); toast({ title: "Partner updated" }); setLocation("/admin/partners"); },
-          onError: () => toast({ title: "Failed to update", variant: "destructive" })
+          onError: (err: any) => {
+            const { fieldsHit, topMessage } = applyServerErrors(err);
+            toast({
+              title: fieldsHit.length > 0 ? "Please fix the highlighted fields" : "Failed to update",
+              description: fieldsHit.length > 0
+                ? `${fieldsHit.length} field${fieldsHit.length === 1 ? "" : "s"} need attention: ${fieldsHit.join(", ")}`
+                : topMessage,
+              variant: "destructive",
+            });
+          },
         })
       : () => createMutation.mutate({ data: values }, {
           onSuccess: () => { queryClient.invalidateQueries({ queryKey: getListPartnersQueryKey() }); toast({ title: "Partner created" }); setLocation("/admin/partners"); },
-          onError: () => toast({ title: "Failed to create", variant: "destructive" })
+          onError: (err: any) => {
+            const { fieldsHit, topMessage } = applyServerErrors(err);
+            toast({
+              title: fieldsHit.length > 0 ? "Please fix the highlighted fields" : "Failed to create",
+              description: fieldsHit.length > 0
+                ? `${fieldsHit.length} field${fieldsHit.length === 1 ? "" : "s"} need attention: ${fieldsHit.join(", ")}`
+                : topMessage,
+              variant: "destructive",
+            });
+          },
         });
     mutation();
   };
