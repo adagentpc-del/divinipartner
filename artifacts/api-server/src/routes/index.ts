@@ -48,11 +48,21 @@ import reconciliationRouter from "./reconciliation";
 import invoicesRouter from "./invoices";
 import billingRouter from "./billing";
 import publicConfigRouter from "./publicConfig";
+import securityReadinessRouter from "./securityReadiness";
+import { uploadLimiter, orderSubmitLimiter, publicWriteLimiter } from "../middlewares/rateLimit";
 
 const router: IRouter = Router();
 
+// Targeted rate limits for sensitive entry points. Applied before the routers
+// themselves so the limit fires before any handler runs.
+router.use("/storage/uploads/request-url", uploadLimiter);
+router.use(/^\/public\/partners\/[^/]+\/orders$/, orderSubmitLimiter);
+router.use(/^\/public\/partners\/[^/]+\/(requests|orders)$/, publicWriteLimiter);
+router.use("/onboarding/submit", publicWriteLimiter);
+
 router.use(healthRouter);
 router.use(publicConfigRouter);
+router.use(securityReadinessRouter);
 router.use(partnersRouter);
 router.use(partnerEmailRecipientsRouter);
 router.use(partnerContactsRouter);

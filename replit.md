@@ -55,6 +55,36 @@ The A3 Partner Commerce Portal is built as a `pnpm workspace monorepo` using Typ
 -   **Resend**: Email delivery service.
 -   **OpenAI**: AI integration for tasks like request summaries and PDF parsing.
 -   **Replit Object Storage**: Cloud storage for file uploads.
+## Section 34 — Production security hardening (April 23, 2026)
+
+### What we built
+- **`lib/securityConfig.ts`**: single source of truth for every secret the app cares about. Each entry is tagged `required | recommended | optional | unused` with a plain-English purpose. Never reads or returns the value — only presence + length bucket.
+- **Boot-time check**: `assertRequiredSecrets()` runs in `app.ts`. In production, missing required secrets throw and the process exits; in dev they only warn.
+- **`middlewares/requireAdmin.ts`**: Clerk-backed gate. When `ADMIN_ALLOWED_EMAILS` is set, the user's primary Clerk email must match the comma-separated allowlist; otherwise any signed-in user is admitted (open-beta posture, surfaced as a warning in the readiness UI).
+- **`middlewares/rateLimit.ts`** with `express-rate-limit`: `loginLimiter`, `orderSubmitLimiter` (20/10min/ip on `POST /public/partners/:slug/orders`), `uploadLimiter` (60/min/ip on `POST /storage/uploads/request-url`), `publicWriteLimiter` (30/min/ip on public portal POSTs and onboarding submit).
+- **`middlewares/errorHandler.ts`**: final express handler. Logs full error via the structured logger (cookies + Authorization already redacted), but in production responds with sanitized text only — no stack traces, no `err.message` for 5xx.
+- **`app.ts` hardening**: `helmet()` (HSTS, no-sniff, frame-deny, referrer-policy), `trust proxy: 1` for accurate `req.ip` behind Replit's edge, CORS narrowed to `getAllowedOrigins()` (`ALLOWED_ORIGINS` env + `PUBLIC_APP_URL` + dev domains).
+- **Upload restrictions** in `routes/imports.ts`: multer `fileFilter` rejects non-spreadsheet mimetypes before bytes are read; `safeFilename()` strips `originalname` to `[a-zA-Z0-9._-]` and caps at 120 chars before any logging or downstream use; 10 MB cap, single file per request. Object storage signing route already enforces 25 MB + content-type allowlist.
+- **`/api/security/readiness`**: admin-only endpoint returning the structured readiness report (secrets inventory, network policy, upload limits, rate limits, admin posture, error sanitization status).
+- **Admin page `/admin/security`**: SPA view rendering the readiness report — secrets table with status badges, summary tiles for missing/weak counts, sections for network, uploads, rate limits, and error handling.
+
+### Security model
+- **Authentication**: Clerk (no server-side sessions; `SESSION_SECRET` is intentionally unused and reported as such).
+- **Admin access**: Clerk auth + optional `ADMIN_ALLOWED_EMAILS` allowlist enforced via `requireAdmin()`. Open-beta posture (any signed-in user is admin) is surfaced as a banner warning in the readiness page.
+- **Public surface (no auth)**: `/api/healthz`, `/api/public-config`, `/api/public/*` (partner portal reads + order submit), `/api/onboarding/submit`, `/api/invoices/public/:token`, `/api/storage/public-objects/*`, `/api/imports/template/*`. All write paths are rate-limited.
+- **Errors**: production responses never include stack traces or 5xx detail. Logs always redact cookies and Authorization headers (`lib/logger.ts`).
+
+### Required vs. unused secrets (canonical list lives in `lib/securityConfig.ts`)
+- **Required**: `DATABASE_URL`, `PUBLIC_APP_URL`, `VITE_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `DEFAULT_OBJECT_STORAGE_BUCKET_ID`, `PRIVATE_OBJECT_DIR`, `PUBLIC_OBJECT_SEARCH_PATHS`.
+- **Recommended**: `ADMIN_ALLOWED_EMAILS` (lock the admin surface), `ALLOWED_ORIGINS` (CORS allowlist), `EMAIL_REPLY_TO`, `INTERNAL_ORDER_EMAILS`.
+- **Optional / not currently integrated**: `SESSION_SECRET`, `ENCRYPTION_KEY`, `EMAIL_FROM` (alias of `RESEND_FROM_EMAIL`), `CANONICAL_DOMAIN` (alias of `PUBLIC_APP_URL`).
+- **Unused**: `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` — PayPal isn't integrated in this build.
+
+### Conventions kept
+- No new database tables. Readiness is computed live from `process.env`.
+- No secret values are ever serialised — only `present | missing | weak | unused` plus a length bucket like `≥64 chars`.
+- Existing route-level `getAuth(req)` checks are left in place; `requireAdmin()` is additive.
+
 ## Section 33 — Bare-slug partner share URLs on canonical domain (April 23, 2026)
 
 ### What we built

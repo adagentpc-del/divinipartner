@@ -19,7 +19,33 @@ import {
   type ImportField,
 } from "../lib/importSchemas";
 
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+// Upload restrictions for the importer:
+//  - 10 MB hard cap (multer rejects past this point)
+//  - Spreadsheet/CSV mime-types only (multer rejects others before we read bytes)
+//  - Filename is sanitised below in the handler before being used in any logs/headers
+const ALLOWED_IMPORT_MIME = new Set([
+  "text/csv", "application/csv", "text/plain", "text/tab-separated-values",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/octet-stream", // some browsers tag .xlsx this way
+]);
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024, files: 1 },
+  fileFilter: (_req, file, cb) => {
+    if (!ALLOWED_IMPORT_MIME.has((file.mimetype || "").toLowerCase())) {
+      cb(new Error(`Unsupported content type: ${file.mimetype}`));
+      return;
+    }
+    cb(null, true);
+  },
+});
+function safeFilename(name: string): string {
+  return String(name || "upload")
+    .replace(/[^a-zA-Z0-9._-]/g, "_")
+    .replace(/_{2,}/g, "_")
+    .slice(0, 120) || "upload";
+}
 const router: IRouter = Router();
 
 const ResourceParam = z.enum(["suppliers", "products", "specs", "venues", "branding-locations", "zone-measurements", "packages"]);
@@ -55,6 +81,9 @@ router.post("/imports/parse", upload.single("file"), async (req: Request, res: R
   const r = ResourceParam.safeParse(req.body.resource);
   if (!r.success) { res.status(400).json({ error: "Invalid resource" }); return; }
   if (!req.file) { res.status(400).json({ error: "No file uploaded" }); return; }
+  // Replace the user-controlled filename with a sanitised version before any
+  // downstream code touches it (logs, response payloads, etc.).
+  req.file.originalname = safeFilename(req.file.originalname);
   const lower = req.file.originalname.toLowerCase();
   if (!/\.(csv|tsv|xlsx|xls)$/.test(lower)) { res.status(415).json({ error: "Unsupported file type. Use CSV or XLSX." }); return; }
   try {

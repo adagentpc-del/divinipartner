@@ -36,6 +36,7 @@ import Reconciliation from "@/pages/admin/Reconciliation";
 import Billing from "@/pages/admin/Billing";
 import Settings from "@/pages/admin/Settings";
 import EmailReadiness from "@/pages/admin/EmailReadiness";
+import SecurityReadiness from "@/pages/admin/SecurityReadiness";
 import AlertCenter from "@/pages/admin/AlertCenter";
 import InvoiceDetail from "@/pages/admin/InvoiceDetail";
 import PublicInvoice from "@/pages/Invoice";
@@ -160,6 +161,9 @@ function ClerkProviderWithRoutes() {
             </Route>
             <Route path="/admin/email-readiness">
               {() => <AdminRoute component={EmailReadiness} />}
+            </Route>
+            <Route path="/admin/security">
+              {() => <AdminRoute component={SecurityReadiness} />}
             </Route>
             <Route path="/admin/alerts">
               {() => <AdminRoute component={AlertCenter} />}
