@@ -39,9 +39,9 @@ const formSchema = z.object({
   thankYouText: z.string().optional(),
   capabilitiesLink: z.string().optional(),
   contactName: z.string().optional(),
-  contactEmail: z.string().email().optional().or(z.literal("")),
+  contactEmail: z.string().optional(),
   contactPhone: z.string().optional(),
-  routingEmail: z.string().email().optional().or(z.literal("")),
+  routingEmail: z.string().optional(),
   venueAddress: z.string().optional(),
   industryFocus: z.string().optional(),
   globalSizzleReelUrl: z.string().optional(),
@@ -68,10 +68,10 @@ const formSchema = z.object({
   billingActive: z.boolean().default(true),
   // Communications / email config (April 2026)
   emailFromName: z.string().optional(),
-  replyToEmail: z.string().email().optional().or(z.literal("")),
+  replyToEmail: z.string().optional(),
   emailSenderLabel: z.string().optional(),
-  internalForwardEmail: z.string().email().optional().or(z.literal("")),
-  ccEmail: z.string().email().optional().or(z.literal("")),
+  internalForwardEmail: z.string().optional(),
+  ccEmail: z.string().optional(),
   emailEnabled: z.boolean().default(true),
   // PDF attachment toggles (April 2026)
   attachPdfCustomer: z.boolean().default(false),
@@ -505,7 +505,7 @@ export default function PartnerForm() {
                 <FormField control={form.control} name="contactEmail" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Contact Email</FormLabel>
-                    <FormControl><Input type="email" {...field} /></FormControl>
+                    <FormControl><Input type="text" {...field} /></FormControl>
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="contactPhone" render={({ field }) => (
@@ -517,7 +517,7 @@ export default function PartnerForm() {
                 <FormField control={form.control} name="routingEmail" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Routing Email</FormLabel>
-                    <FormControl><Input type="email" placeholder="notifications@..." {...field} /></FormControl>
+                    <FormControl><Input type="text" placeholder="notifications@..." {...field} /></FormControl>
                     <FormDescription className="text-xs">Request notifications sent here</FormDescription>
                   </FormItem>
                 )} />
@@ -573,7 +573,7 @@ export default function PartnerForm() {
                   <FormItem><FormLabel className="text-xs">Billing contact</FormLabel><FormControl><Input {...field} value={field.value || ""} /></FormControl></FormItem>
                 )} />
                 <FormField control={form.control} name="billingContactEmail" render={({ field }) => (
-                  <FormItem><FormLabel className="text-xs">Billing email</FormLabel><FormControl><Input type="email" {...field} value={field.value || ""} /></FormControl></FormItem>
+                  <FormItem><FormLabel className="text-xs">Billing email</FormLabel><FormControl><Input type="text" {...field} value={field.value || ""} /></FormControl></FormItem>
                 )} />
                 <FormField control={form.control} name="billingContactPhone" render={({ field }) => (
                   <FormItem><FormLabel className="text-xs">Billing phone</FormLabel><FormControl><Input {...field} value={field.value || ""} /></FormControl></FormItem>
@@ -824,7 +824,7 @@ function CommunicationsCard({ partnerId, form }: { partnerId: number; form: any 
           <FormField control={form.control} name="replyToEmail" render={({ field }: any) => (
             <FormItem>
               <FormLabel>Reply-To Email</FormLabel>
-              <FormControl><Input type="email" placeholder="orders@acme.com" {...field} value={field.value || ""} /></FormControl>
+              <FormControl><Input type="text" placeholder="orders@acme.com" {...field} value={field.value || ""} /></FormControl>
               <FormDescription className="text-xs">Where customer replies are routed. Falls back to Contact Email.</FormDescription>
               <FormMessage />
             </FormItem>
@@ -832,7 +832,7 @@ function CommunicationsCard({ partnerId, form }: { partnerId: number; form: any 
           <FormField control={form.control} name="internalForwardEmail" render={({ field }: any) => (
             <FormItem>
               <FormLabel>Internal Forwarding Email</FormLabel>
-              <FormControl><Input type="email" placeholder="ops@acme.com" {...field} value={field.value || ""} /></FormControl>
+              <FormControl><Input type="text" placeholder="ops@acme.com" {...field} value={field.value || ""} /></FormControl>
               <FormDescription className="text-xs">Receives the operational copy of every new order.</FormDescription>
               <FormMessage />
             </FormItem>
@@ -840,7 +840,7 @@ function CommunicationsCard({ partnerId, form }: { partnerId: number; form: any 
           <FormField control={form.control} name="ccEmail" render={({ field }: any) => (
             <FormItem>
               <FormLabel>CC Email (optional)</FormLabel>
-              <FormControl><Input type="email" placeholder="finance@acme.com" {...field} value={field.value || ""} /></FormControl>
+              <FormControl><Input type="text" placeholder="finance@acme.com" {...field} value={field.value || ""} /></FormControl>
               <FormDescription className="text-xs">CC'd on internal forward only — not on customer confirmations.</FormDescription>
               <FormMessage />
             </FormItem>

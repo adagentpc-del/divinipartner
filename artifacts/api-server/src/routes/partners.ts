@@ -69,12 +69,14 @@ const PartnerBody = z.object({
   internalBillingOwnerUserId: z.string().optional().nullable(),
   billingActive: z.boolean().optional(),
   unitPreference: z.enum(["imperial", "metric"]).nullable().optional(),
-  // Communications / email config
+  // Communications / email config — kept lenient so partners can save
+  // partial/draft data. Strict email validation is enforced only when an
+  // actual send is attempted (e.g. test-confirmation-email route).
   emailFromName: z.string().max(120).optional().nullable(),
-  replyToEmail: z.string().email().optional().nullable().or(z.literal("")),
+  replyToEmail: z.string().max(320).optional().nullable(),
   emailSenderLabel: z.string().max(120).optional().nullable(),
-  internalForwardEmail: z.string().email().optional().nullable().or(z.literal("")),
-  ccEmail: z.string().email().optional().nullable().or(z.literal("")),
+  internalForwardEmail: z.string().max(320).optional().nullable(),
+  ccEmail: z.string().max(320).optional().nullable(),
   emailEnabled: z.boolean().optional(),
   // PDF attachment toggles (April 2026)
   attachPdfCustomer: z.boolean().optional(),
