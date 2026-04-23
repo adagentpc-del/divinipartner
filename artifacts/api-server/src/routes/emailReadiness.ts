@@ -105,10 +105,10 @@ router.get("/admin/email-readiness", async (_req, res): Promise<void> => {
     objectType: usageEvents.objectType,
     objectId: usageEvents.objectId,
     meta: usageEvents.meta,
-    createdAt: usageEvents.createdAt,
+    createdAt: usageEvents.occurredAt,
   }).from(usageEvents)
     .where(eq(usageEvents.eventType, "email.failed"))
-    .orderBy(desc(usageEvents.createdAt))
+    .orderBy(desc(usageEvents.occurredAt))
     .limit(25);
 
   const summary = partnerRows.reduce((acc, r) => {

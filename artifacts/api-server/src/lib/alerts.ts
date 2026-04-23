@@ -81,13 +81,13 @@ export async function computeAlerts(opts: ComputeOpts = {}): Promise<Alert[]> {
       objectType: usageEvents.objectType,
       objectId: usageEvents.objectId,
       meta: usageEvents.meta,
-      createdAt: usageEvents.createdAt,
+      createdAt: usageEvents.occurredAt,
     }).from(usageEvents).where(and(
       eq(usageEvents.eventType, "email.failed"),
-      gte(usageEvents.createdAt, daysAgo(failedEmailWindow)),
+      gte(usageEvents.occurredAt, daysAgo(failedEmailWindow)),
       opts.partnerId ? eq(usageEvents.partnerId, opts.partnerId) : (sql`1=1` as any),
       opts.orderId ? and(eq(usageEvents.objectType, "order"), eq(usageEvents.objectId, opts.orderId)) : (sql`1=1` as any),
-    ) as any).orderBy(desc(usageEvents.createdAt)).limit(200);
+    ) as any).orderBy(desc(usageEvents.occurredAt)).limit(200);
 
     for (const ev of failedEmails) {
       const meta = (ev.meta as any) || {};
@@ -335,11 +335,11 @@ export async function computeAlerts(opts: ComputeOpts = {}): Promise<Alert[]> {
       partnerId: usageEvents.partnerId,
       objectId: usageEvents.objectId,
       meta: usageEvents.meta,
-      createdAt: usageEvents.createdAt,
+      createdAt: usageEvents.occurredAt,
     }).from(usageEvents).where(and(
       eq(usageEvents.eventType, "support.issue_submitted"),
       opts.partnerId ? eq(usageEvents.partnerId, opts.partnerId) : (sql`1=1` as any),
-    ) as any).orderBy(desc(usageEvents.createdAt)).limit(200);
+    ) as any).orderBy(desc(usageEvents.occurredAt)).limit(200);
 
     if (submitted.length > 0) {
       const issueIds = submitted.map(s => (s.meta as any)?.issueId).filter(Boolean) as string[];
@@ -377,11 +377,11 @@ export async function computeAlerts(opts: ComputeOpts = {}): Promise<Alert[]> {
       objectType: usageEvents.objectType,
       objectId: usageEvents.objectId,
       meta: usageEvents.meta,
-      createdAt: usageEvents.createdAt,
+      createdAt: usageEvents.occurredAt,
     }).from(usageEvents).where(and(
       eq(usageEvents.eventType, "alert.manual_followup"),
       opts.partnerId ? eq(usageEvents.partnerId, opts.partnerId) : (sql`1=1` as any),
-    ) as any).orderBy(desc(usageEvents.createdAt)).limit(100);
+    ) as any).orderBy(desc(usageEvents.occurredAt)).limit(100);
     for (const f of followups) {
       if ((f.meta as any)?.resolved) continue;
       out.push({

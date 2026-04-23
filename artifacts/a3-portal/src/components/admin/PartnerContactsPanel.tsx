@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Loader2, Plus, Star, Trash2, Mail, Phone, Users } from "lucide-react";
+import { Loader2, Plus, Star, Trash2, Mail, Phone, Users, Pencil, X, Check } from "lucide-react";
 
 export const PARTNER_CONTACT_ROLES = [
   { value: "primary",          label: "Primary contact",   color: "bg-blue-100 text-blue-800 border-blue-200" },
@@ -38,31 +39,63 @@ export function partnerContactRoleMeta(role: string) {
 
 export default function PartnerContactsPanel({ partnerId }: { partnerId: number }) {
   const qc = useQueryClient();
+  const { toast } = useToast();
   const queryKey = [`/api/partners/${partnerId}/contacts`];
   const { data: contacts = [], isLoading } = useQuery<PartnerContact[]>({
     queryKey, queryFn: () => apiFetch(`/api/partners/${partnerId}/contacts`),
   });
 
   const [draft, setDraft] = useState({ role: "primary", fullName: "", email: "", phone: "", notes: "" });
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editDraft, setEditDraft] = useState<{ role: string; fullName: string; email: string; phone: string; notes: string }>({ role: "other", fullName: "", email: "", phone: "", notes: "" });
   const invalidate = () => qc.invalidateQueries({ queryKey });
+  const onErr = (label: string) => (e: any) =>
+    toast({ title: label, description: e?.body?.error || e?.message || String(e), variant: "destructive" });
 
   const create = useMutation({
     mutationFn: (body: any) => apiFetch(`/api/partners/${partnerId}/contacts`, { method: "POST", body: JSON.stringify(body) }),
-    onSuccess: () => { invalidate(); setDraft({ role: "primary", fullName: "", email: "", phone: "", notes: "" }); },
+    onSuccess: () => {
+      invalidate();
+      setDraft({ role: "primary", fullName: "", email: "", phone: "", notes: "" });
+      toast({ title: "Contact added" });
+    },
+    onError: onErr("Couldn't add contact"),
   });
   const patch = useMutation({
     mutationFn: ({ id, body }: { id: number; body: any }) =>
       apiFetch(`/api/partner-contacts/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
-    onSuccess: () => invalidate(),
+    onSuccess: () => { invalidate(); setEditingId(null); },
+    onError: onErr("Couldn't save changes"),
   });
   const remove = useMutation({
     mutationFn: (id: number) => apiFetch(`/api/partner-contacts/${id}`, { method: "DELETE" }),
     onSuccess: () => invalidate(),
+    onError: onErr("Couldn't remove contact"),
   });
   const makePrimary = useMutation({
     mutationFn: (id: number) => apiFetch(`/api/partner-contacts/${id}/make-primary`, { method: "POST" }),
     onSuccess: () => invalidate(),
+    onError: onErr("Couldn't update primary contact"),
   });
+
+  function startEdit(c: PartnerContact) {
+    setEditingId(c.id);
+    setEditDraft({ role: c.role, fullName: c.fullName, email: c.email || "", phone: c.phone || "", notes: c.notes || "" });
+  }
+  function saveEdit() {
+    if (editingId == null) return;
+    if (!editDraft.fullName.trim()) { toast({ title: "Name required", variant: "destructive" }); return; }
+    patch.mutate({
+      id: editingId,
+      body: {
+        role: editDraft.role,
+        fullName: editDraft.fullName.trim(),
+        email: editDraft.email.trim() || null,
+        phone: editDraft.phone.trim() || null,
+        notes: editDraft.notes.trim() || null,
+      },
+    });
+  }
 
   const grouped = PARTNER_CONTACT_ROLES.map(r => ({
     role: r,
@@ -91,7 +124,46 @@ export default function PartnerContactsPanel({ partnerId }: { partnerId: number 
                   <span className="text-[11px] text-muted-foreground">{g.contacts.length} {g.contacts.length === 1 ? "contact" : "contacts"}</span>
                 </div>
                 <div className="grid gap-2">
-                  {g.contacts.map(c => (
+                  {g.contacts.map(c => editingId === c.id ? (
+                    <div key={c.id} className="border-2 border-primary/40 rounded-lg p-3 bg-primary/5 space-y-2">
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        <div>
+                          <Label className="text-xs">Role</Label>
+                          <Select value={editDraft.role} onValueChange={v => setEditDraft(d => ({ ...d, role: v }))}>
+                            <SelectTrigger className="h-9 mt-1"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {PARTNER_CONTACT_ROLES.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label className="text-xs">Full name</Label>
+                          <Input className="h-9 mt-1" value={editDraft.fullName} onChange={e => setEditDraft(d => ({ ...d, fullName: e.target.value }))} />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Email</Label>
+                          <Input className="h-9 mt-1" type="email" value={editDraft.email} onChange={e => setEditDraft(d => ({ ...d, email: e.target.value }))} />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Phone</Label>
+                          <Input className="h-9 mt-1" type="tel" value={editDraft.phone} onChange={e => setEditDraft(d => ({ ...d, phone: e.target.value }))} />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <Label className="text-xs">Notes</Label>
+                          <Textarea className="mt-1" rows={2} value={editDraft.notes} onChange={e => setEditDraft(d => ({ ...d, notes: e.target.value }))} />
+                        </div>
+                      </div>
+                      <div className="flex justify-end gap-2 pt-1">
+                        <Button size="sm" variant="ghost" onClick={() => setEditingId(null)} disabled={patch.isPending}>
+                          <X className="h-3.5 w-3.5 mr-1" /> Cancel
+                        </Button>
+                        <Button size="sm" onClick={saveEdit} disabled={patch.isPending}>
+                          {patch.isPending ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Check className="h-3.5 w-3.5 mr-1" />}
+                          Save
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
                     <div key={c.id} className={`border rounded-lg p-3 ${!c.isActive ? "opacity-60 bg-muted/40" : "bg-card"}`}>
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
@@ -107,6 +179,10 @@ export default function PartnerContactsPanel({ partnerId }: { partnerId: number 
                           {c.notes && <div className="text-[11px] text-muted-foreground mt-1 whitespace-pre-wrap">{c.notes}</div>}
                         </div>
                         <div className="flex flex-col items-end gap-1 shrink-0">
+                          <Button size="sm" variant="ghost" className="h-7 text-xs"
+                            onClick={() => startEdit(c)}>
+                            <Pencil className="h-3 w-3 mr-1" /> Edit
+                          </Button>
                           {!c.isPrimary && c.isActive && (
                             <Button size="sm" variant="ghost" className="h-7 text-xs"
                               onClick={() => makePrimary.mutate(c.id)} disabled={makePrimary.isPending}>
