@@ -201,8 +201,14 @@ export default function PartnerForm() {
 
   // Surface server-side validation errors back into the form so the offending
   // fields show in red instead of just a vague "Failed to update" toast.
+  //
+  // Error shape varies by client:
+  //  - Legacy `apiFetch` (lib/api.ts): attaches the parsed response JSON to `err.body`.
+  //  - Generated client (`@workspace/api-client-react` → `customFetch`): wraps
+  //    the response in an ApiError where the parsed body lives on `err.data`.
+  // We read both so this works regardless of which client triggered the error.
   const applyServerErrors = (err: any): { fieldsHit: string[]; topMessage: string } => {
-    const body = err?.body;
+    const body = err?.data ?? err?.body ?? null;
     const issues: Array<{ path: string; message: string }> = Array.isArray(body?.issues) ? body.issues : [];
     const fieldsHit: string[] = [];
     const known = new Set(Object.keys(form.getValues()));
@@ -214,7 +220,22 @@ export default function PartnerForm() {
         fieldsHit.push(top);
       }
     }
+    // Prefer the server's human-readable error string; fall back to the
+    // ApiError's composed message (e.g. "HTTP 400 Bad Request: ...") and
+    // finally to a generic label so the toast description is never empty.
     const topMessage = body?.error || err?.message || "Request failed";
+    // Mirror the raw error to the console so devs can inspect status, URL,
+    // and any unhandled `issues[]` paths that didn't map to known form fields.
+    if (typeof console !== "undefined") {
+      // eslint-disable-next-line no-console
+      console.error("[PartnerForm] save failed", {
+        status: err?.status, url: err?.url, message: err?.message,
+        body, fieldsHit, unmappedIssues: issues.filter(i => {
+          const top = (i.path || "").split(".")[0];
+          return !top || !known.has(top);
+        }),
+      });
+    }
     return { fieldsHit, topMessage };
   };
 

@@ -1,0 +1,136 @@
+Refine the existing Partner Commerce Portal by fixing the broken Partner Profile save/update flow.
+
+Goal:
+When I make updates in the partner profile and click Save, it is showing a failed notice. It used to work, and I need it to save reliably so I do not have to keep re-editing the partner every time I open it.
+
+Scope:
+Keep this pass tightly focused on:
+1. partner profile save/update failure
+2. partner form validation and submission
+3. backend mutation/update route
+4. persistence of saved partner data
+5. useful admin error visibility
+
+Do not rebuild unrelated workflows.
+
+Requirements:
+
+1. Diagnose the actual save failure
+Audit the full partner profile edit/save flow and identify exactly why saving is failing.
+
+Check for issues such as:
+- broken frontend submit handler
+- bad API route or mutation call
+- validation failure
+- required field mismatch
+- schema mismatch
+- enum/status mismatch
+- partner ID or slug mismatch
+- unsaved nested fields causing payload failure
+- email/color/logo/section/add-on fields failing validation
+- backend auth/permission issue
+- database update failure
+- null/undefined payload values
+- recent changes to partner settings causing update breakage
+
+Do not guess.
+Find the actual failure point and fix it.
+
+2. Fix partner profile save behavior
+When I click Save in the partner profile:
+- changes should persist successfully
+- the partner should reopen with the saved values still there
+- no false “failed” notice if the save actually worked
+- no silent failure
+- no data loss from fields that were edited
+
+3. Frontend submit and state handling
+Audit and fix the partner profile edit form behavior.
+
+Requirements:
+- Save button must trigger the correct submit/update action
+- form state must include current edited values
+- nested fields like branding, add-ons, email settings, contacts, and section selections must not break the save
+- prevent stale or partial state from causing save failure
+- if autosave/draft logic exists, do not let it interfere with manual save
+
+4. Backend update route / mutation
+Audit and fix the backend save/update logic for partner records.
+
+Requirements:
+- correct partner record must be updated
+- all expected editable fields must be accepted safely
+- optional fields should not fail the request if blank
+- validation should be consistent with the UI
+- update route should return a clear success/failure response
+- database writes should actually persist
+
+5. Validation cleanup
+If validation is blocking save:
+- identify which fields are causing failure
+- fix incorrect required-field logic
+- fix bad type handling
+- fix field formats that no longer match current partner profile UI
+- show clear field-level errors where possible instead of a generic failed notice
+
+Examples:
+- empty optional field should not fail the whole save
+- logo/branding fields should not break if missing
+- add-on/category/event settings should not break save if partially configured
+- internal email/contact fields should validate cleanly if present
+
+6. Save success and failure messaging
+Improve the save feedback behavior.
+
+Requirements:
+- on success, show a clear saved/success notice
+- on failure, show a useful internal/admin-facing error state
+- if feasible, show what section/field caused the problem
+- do not show a generic failed state without context
+- do not let a failed toast appear if the backend actually saved successfully
+
+7. Protect existing saved data
+When a save fails:
+- do not wipe the form
+- preserve current form values
+- allow me to fix the issue and retry
+- avoid forcing me to re-enter everything
+
+8. Test the most likely failing sections
+Specifically verify saving works when editing:
+- partner name/basic details
+- branding/colors/logo
+- email settings
+- add-ons
+- section selections
+- contacts
+- international settings if present
+- rentable asset settings if present
+- event/add-on display settings if present
+
+9. Add admin debug clarity
+If save still fails in edge cases:
+- log the error internally
+- surface a readable admin-facing message
+- make it easier to identify whether the issue is frontend, validation, or database
+
+10. Seed/demo verification
+Make sure save/update works for:
+- fully configured partner
+- partially configured partner
+- partner missing optional settings
+- partner with add-ons, contacts, branding, and email settings
+- partner with no logo/colors
+
+11. Documentation
+Update replit.md with:
+- how partner profile save/update works
+- what fields are validated
+- what was causing the save failure
+- how it was fixed
+- how success/failure messaging now behaves
+
+Important:
+Do not rebuild the app.
+Do not change unrelated workflows.
+Actually diagnose and fix the broken Partner Profile save/update flow so edits persist correctly, not placeholders only.
