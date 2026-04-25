@@ -1,0 +1,160 @@
+Refine the existing app by reducing token use and AI cost specifically in support, chat, and issue-handling flows.
+
+Goal:
+Keep support/chat features useful, but stop them from burning tokens by resending too much history, too much app context, or too many repeated summaries.
+
+Scope:
+Keep this pass tightly focused on:
+1. support/chat flows
+2. support issue summarization
+3. conversation history management
+4. internal issue-routing AI usage
+5. cost reduction without breaking support quality
+
+Do not rebuild unrelated workflows.
+
+Requirements:
+
+1. Audit support/chat AI usage
+Identify every place in the app where AI is used for:
+- support chat
+- issue submission flows
+- support summaries
+- clarification flows
+- order issue handling
+- exception handling conversations
+- chatbot-style guidance
+
+For each usage point, determine:
+- what triggers the AI call
+- how much conversation history is being sent
+- whether unrelated partner/order/event context is being sent
+- whether the same summaries are being regenerated repeatedly
+- whether the output is longer than needed
+- whether the task should be normal code/rules instead of AI
+
+2. Reduce conversation history size
+Refactor support/chat flows so they do not resend full thread history unnecessarily.
+
+Requirements:
+- do not send the full conversation every time
+- use a short rolling summary when needed
+- send only the most recent relevant turns
+- store structured issue state in the database instead of re-explaining it in every prompt
+- keep history windows tight and task-specific
+
+3. Store structured support state
+Where support issues already have structured data, use that instead of long prose context.
+
+Examples:
+- issue type
+- order ID
+- partner ID
+- missing assets yes/no
+- artwork needed yes/no
+- billing question yes/no
+- urgency
+- current status
+- assigned contact
+
+Requirements:
+- use structured issue/order/partner fields as the primary context
+- avoid reconstructing support context from long text each time
+- keep the prompt compact
+
+4. Use AI only for the ambiguous part
+For support/chat flows, move deterministic parts into code/rules.
+
+Examples that should not require AI:
+- categorizing obvious issue types by form input
+- routing to the right internal contact
+- checking if assets are missing
+- checking if an order is incomplete
+- showing known status values
+- linking a support issue to the correct order/partner
+
+Use AI only for:
+- summarizing a messy user message
+- extracting unclear intent from freeform text
+- rewriting a concise support reply draft
+- summarizing a long support thread when truly needed
+
+5. Add short structured outputs
+When AI is used for support/chat, constrain outputs.
+
+Examples:
+- issue_category
+- short_summary
+- next_action
+- escalation_needed yes/no
+- missing_info list
+
+Requirements:
+- avoid long conversational outputs unless the user is explicitly chatting
+- use JSON or short structured responses where possible
+- keep summaries concise
+
+6. Prevent repeated summarization
+If a support issue or chat thread has already been summarized:
+- store the summary
+- update it incrementally if needed
+- do not regenerate from scratch every time the thread is opened
+
+Requirements:
+- reuse existing summaries
+- allow refresh/update only when needed
+- avoid repeated full-history summarization
+
+7. Gate AI calls behind real actions
+Do not call AI automatically every time:
+- a support page loads
+- an order detail page opens
+- a chat thread is viewed
+- an admin clicks around
+
+AI should trigger only when:
+- a support message is submitted
+- a thread needs summarization
+- an admin explicitly requests a summary or draft reply
+- a chatbot action truly needs interpretation
+
+8. Add lightweight chat/support observability
+Track:
+- support route/feature
+- number of AI calls per issue/thread
+- approximate context size
+- whether full history was used
+- whether stored summary was reused
+- highest-cost support workflows by design
+
+Do not build a giant analytics system.
+Keep this practical and internal.
+
+9. Add safeguards
+Support:
+- max history length
+- max turns included in support/chat prompt
+- truncation rules
+- fallback to stored summary when thread is too long
+- graceful handling if AI support call fails
+- non-AI fallback messaging where useful
+
+10. Seed/demo updates
+Add examples showing:
+- one support issue summarized once and reused
+- one chat flow using only recent turns plus structured state
+- one long support thread using rolling summary instead of full history
+- one support routing flow that uses code/rules instead of AI
+
+11. Documentation
+Update replit.md and/or AI_USAGE_AUDIT.md with:
+- where support/chat currently uses AI
+- what was changed to reduce token use
+- how history is now limited
+- how stored summaries are reused
+- what support tasks still use AI and why
+
+Important:
+Do not rebuild the app.
+Do not change unrelated workflows.
+Actually implement the cost-reduction changes in support/chat flows, not placeholders only.

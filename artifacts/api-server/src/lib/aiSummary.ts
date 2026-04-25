@@ -1,5 +1,35 @@
+// ===========================================================================
+// Project-request AI summary (cost-optimized).
+// ---------------------------------------------------------------------------
+// Strategy (mirrors the cost-reduction approach used in deckExtraction.ts /
+// packageExtraction.ts / billingSignals.ts):
+//
+//   1. Compute every deterministic section in code — complexity, timeline,
+//      missing-info detection, recommended next step are all pure functions
+//      of the input. AI is NEVER asked for these.
+//
+//   2. Send a compact JSON payload (not a long natural-language prompt) to
+//      the model and ask for two short fields only: an "overview" prose
+//      blurb and a "risks" array. Hard cap on output tokens.
+//
+//   3. response_format: json_object so we can parse without prompt-fragility.
+//
+//   4. Emit usage_events for observability — `request.ai_summary.generated`
+//      / `.failed` with token counts so cost is visible alongside the
+//      existing `deck.parse.ai`, `package_pdf.parse.ai`, etc. metrics.
+//
+// The composed output text keeps the same multi-section shape RequestDetail.tsx
+// renders today, so the UI is unchanged.
+// ===========================================================================
+
 import OpenAI from "openai";
 import { logger } from "./logger";
+import { emit as usageEmit } from "../services/usageTracking";
+
+// Hard caps tuned for this flow. Output is two small fields, ~150 tokens of
+// content; 250 leaves headroom without permitting waste.
+const AI_MAX_OUTPUT_TOKENS = 250;
+const MODEL = "gpt-4o-mini";
 
 function getOpenAIClient() {
   return new OpenAI({
@@ -8,7 +38,7 @@ function getOpenAIClient() {
   });
 }
 
-export async function generateAiSummary(requestData: {
+interface SummaryInput {
   companyName: string;
   contactName: string;
   eventName: string;
@@ -22,51 +52,159 @@ export async function generateAiSummary(requestData: {
   promotionalItemsRequested: boolean;
   additionalNotes: string | null;
   uploads: { uploadType: string; fileName: string }[];
-}): Promise<string> {
+}
+
+// Pure date math — no AI needed. Buckets chosen to match how PMs actually
+// triage: <2 weeks = urgent, 2-6 weeks = tight, 6-13 weeks = standard.
+function computeTimeline(eventDate: string | null): string {
+  if (!eventDate) return "Unknown — no event date provided.";
+  const d = new Date(eventDate);
+  if (isNaN(d.getTime())) return "Unknown — event date unparseable.";
+  const days = Math.round((d.getTime() - Date.now()) / 86_400_000);
+  if (days < 0) return `Past event (${Math.abs(days)} days ago).`;
+  if (days <= 14) return `Urgent — ${days} days to event.`;
+  if (days <= 45) return `Tight — ${days} days to event.`;
+  if (days <= 90) return `Standard — ${days} days to event.`;
+  return `Comfortable — ${days} days to event.`;
+}
+
+function computeMissing(input: SummaryInput): string[] {
+  const missing: string[] = [];
+  if (!input.eventDate) missing.push("Event date");
+  if (!input.venueName && !input.venueAddress) missing.push("Venue details");
+  if (input.items.length === 0) missing.push("Specific item selections");
+  if (input.uploads.length === 0) missing.push("Supporting files / artwork");
+  return missing;
+}
+
+function computeNextStep(input: SummaryInput, missingCount: number, scope: string): string {
+  if (missingCount > 2) return "Request missing information before quoting.";
+  if (input.customFabricationRequested || input.immersiveRequested) {
+    return "Schedule scope call to discuss fabrication / immersive requirements.";
+  }
+  if (scope === "High") return "Assign senior project manager and begin scoping call.";
+  return "Begin quote preparation.";
+}
+
+export async function generateAiSummary(
+  requestData: SummaryInput,
+  ctx?: { requestId?: number; partnerId?: number },
+): Promise<string> {
+  // -------- Deterministic sections (zero AI cost) --------
+  const scope = estimateScopeLevel(
+    requestData.items.map((i) => ({ category: i.category })),
+    {
+      designAssistanceRequested: requestData.designAssistanceRequested,
+      customFabricationRequested: requestData.customFabricationRequested,
+      immersiveRequested: requestData.immersiveRequested,
+      promotionalItemsRequested: requestData.promotionalItemsRequested,
+    },
+  );
+  const timeline = computeTimeline(requestData.eventDate);
+  const missing = computeMissing(requestData);
+  const nextStep = computeNextStep(requestData, missing.length, scope);
+
+  // -------- AI-only fields: overview prose + risk flags --------
+  // Compact structured input — much smaller than the prior natural-language
+  // template (which embedded labels, "Yes/No" strings, full item names, etc).
+  // Categories deduped + capped at 8 to bound token count on big requests.
+  const compact = {
+    company: requestData.companyName,
+    event: requestData.eventName,
+    date: requestData.eventDate,
+    venue: requestData.venueName || requestData.venueAddress || null,
+    flags: {
+      design: requestData.designAssistanceRequested,
+      fabrication: requestData.customFabricationRequested,
+      immersive: requestData.immersiveRequested,
+      promo: requestData.promotionalItemsRequested,
+    },
+    itemCount: requestData.items.length,
+    categories: Array.from(new Set(requestData.items.map((i) => i.category))).slice(0, 8),
+    uploads: requestData.uploads.length,
+    notes: (requestData.additionalNotes || "").slice(0, 400),
+    scope,
+    missing,
+  };
+
+  let overview = `${requestData.companyName} — ${requestData.eventName}.`;
+  let risks: string[] = [];
+  let tokensIn = 0;
+  let tokensOut = 0;
+  let aiOk = false;
+
   try {
     const client = getOpenAIClient();
-    const itemsList = requestData.items.map((i) => `- ${i.category}: ${i.itemName}`).join("\n");
-    const uploadsList = requestData.uploads.map((u) => `- ${u.uploadType}: ${u.fileName}`).join("\n");
-
-    const prompt = `You are an internal project coordinator at A3 Visual, a premium event production company. Analyze this project request and provide a concise internal summary.
-
-Request Details:
-- Company: ${requestData.companyName}
-- Contact: ${requestData.contactName}
-- Event: ${requestData.eventName}
-- Event Date: ${requestData.eventDate || "TBD"}
-- Venue: ${requestData.venueName || "TBD"} at ${requestData.venueAddress || "TBD"}
-- Design Assistance: ${requestData.designAssistanceRequested ? "Yes" : "No"}
-- Custom Fabrication: ${requestData.customFabricationRequested ? "Yes" : "No"}
-- Immersive Experiences: ${requestData.immersiveRequested ? "Yes" : "No"}
-- Promotional Items: ${requestData.promotionalItemsRequested ? "Yes" : "No"}
-- Additional Notes: ${requestData.additionalNotes || "None"}
-
-Requested Items:
-${itemsList || "None specified"}
-
-Uploaded Files:
-${uploadsList || "None"}
-
-Provide a summary with these sections (use plain text, no markdown):
-1. Project Overview (2-3 sentences)
-2. Complexity Estimate (Small/Medium/High with brief reasoning)
-3. Timeline Sensitivity (based on event date proximity)
-4. Potential Risk Flags
-5. Missing Details
-6. Recommended Next Step`;
-
     const response = await client.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
-      max_completion_tokens: 1000,
+      model: MODEL,
+      temperature: 0.2,
+      max_tokens: AI_MAX_OUTPUT_TOKENS,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content:
+            'A3 Visual project intake. Return JSON {"overview":"<2-3 sentences plain prose>","risks":["<short flag>",...]}. ' +
+            "Risks: ≤4 short flags, omit array if none. " +
+            "Treat the supplied scope, missing[] and flags as already-known facts — do not restate them. " +
+            "No prose outside JSON. No bullet markers in fields.",
+        },
+        { role: "user", content: JSON.stringify(compact) },
+      ],
     });
-
-    return response.choices[0]?.message?.content || "Unable to generate summary.";
+    const content = response.choices[0]?.message?.content;
+    if (content) {
+      const parsed = JSON.parse(content);
+      if (typeof parsed.overview === "string" && parsed.overview.trim()) {
+        overview = parsed.overview.trim();
+      }
+      if (Array.isArray(parsed.risks)) {
+        risks = parsed.risks.filter((r: any) => typeof r === "string" && r.trim()).slice(0, 4);
+      }
+    }
+    tokensIn = response.usage?.prompt_tokens || 0;
+    tokensOut = response.usage?.completion_tokens || 0;
+    aiOk = true;
   } catch (err) {
-    logger.error({ err }, "Failed to generate AI summary");
-    return "AI summary generation failed. Please review the request manually.";
+    logger.error({ err, requestId: ctx?.requestId }, "Failed to generate AI summary");
   }
+
+  // Observability — emit alongside deck.parse.*, package_pdf.parse.*, etc.
+  // so request-summary AI cost shows up in the same usage_events view.
+  // Fire-and-forget; do not block response on the insert.
+  if (ctx) {
+    usageEmit(aiOk ? "request.ai_summary.generated" : "request.ai_summary.failed", {
+      partnerId: ctx.partnerId ?? null,
+      objectType: "request",
+      objectId: ctx.requestId ?? null,
+      meta: { tokensIn, tokensOut, model: MODEL, risks: risks.length, scope },
+    }).catch(() => { /* tracking is best-effort */ });
+  }
+
+  // -------- Compose the final multi-section text --------
+  // Same 1-6 numbered sections RequestDetail.tsx already renders; only the
+  // SOURCE of each section changed (most are now deterministic). Sections
+  // 4 and 5 always emit headers — placeholders are used when empty so the
+  // layout never collapses.
+  const lines: string[] = [];
+  lines.push("1. Project Overview");
+  lines.push(overview);
+  lines.push("");
+  lines.push(`2. Complexity Estimate: ${scope}`);
+  lines.push("");
+  lines.push(`3. Timeline: ${timeline}`);
+  lines.push("");
+  lines.push("4. Risk Flags");
+  if (risks.length > 0) {
+    for (const r of risks) lines.push(`- ${r}`);
+  } else {
+    lines.push("- None noted.");
+  }
+  lines.push("");
+  lines.push(`5. Missing Details: ${missing.length > 0 ? missing.join(", ") : "None — all key information provided."}`);
+  lines.push("");
+  lines.push(`6. Recommended Next Step: ${nextStep}`);
+  return lines.join("\n");
 }
 
 export function generateInternalSummary(requestData: {

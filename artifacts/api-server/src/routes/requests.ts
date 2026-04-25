@@ -237,7 +237,7 @@ router.post("/requests/:id/regenerate-ai", async (req, res): Promise<void> => {
     promotionalItemsRequested: request.promotionalItemsRequested,
     additionalNotes: request.additionalNotes,
     uploads: uploads.map((u) => ({ uploadType: u.uploadType, fileName: u.fileName })),
-  });
+  }, { requestId: request.id, partnerId: request.partnerId });
 
   const [updated] = await db
     .update(requestsTable)

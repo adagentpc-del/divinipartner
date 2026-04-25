@@ -1,0 +1,256 @@
+Refine the existing app by auditing and reducing AI token usage and cost across the current implementation without breaking what is already built.
+
+Goal:
+Build on the current codebase and current AI features, but reduce token use and cost substantially. Do not remove valuable AI functionality unless it is clearly wasteful. Keep the current product working while making the AI layer leaner, cheaper, and more structured.
+
+Important:
+This app already has meaningful workflows built. Do not rebuild from scratch.
+Do not undo existing AI-enabled features unless there is a clear lower-cost way to preserve the same value.
+This pass is about optimization, not reinvention.
+
+Primary objective:
+Find where the app is overusing AI, oversized prompts, repeated context, repeated document processing, or expensive models for simple tasks, then refactor those areas.
+
+Focus especially on:
+- uploads
+- PDF/quote/spec parsing
+- package PDF parsing
+- form submit flows
+- generated summaries
+- proposal/content generation
+- admin workflows hit often
+- any route where users trigger AI repeatedly
+- any place where deterministic logic is still being sent to AI
+
+Requirements:
+
+1. Audit current AI usage
+Identify every place in the current codebase where the app:
+- calls an AI model
+- prepares prompt/context for AI
+- reuses conversation history
+- processes uploaded files with AI
+- generates summaries/content with AI
+- chains multiple AI calls in one workflow
+
+For each AI usage point, evaluate:
+- what triggers it
+- what exact data/context is being sent
+- whether too much history or unrelated context is included
+- whether full uploaded files are being resent
+- whether outputs are longer than needed
+- whether AI is being used for something that should be normal code
+- whether a smaller/cheaper model could handle it
+- whether the result could be cached or stored and reused
+
+Create or update an internal audit summary in:
+- replit.md
+or
+- AI_USAGE_AUDIT.md
+
+2. Reduce oversized prompts and repeated context
+Refactor existing AI calls so they send only the minimum required context.
+
+Requirements:
+- stop sending full partner/account/event/order/product objects unless the exact action needs them
+- stop resending full conversation history unless absolutely necessary
+- stop sending full uploaded PDFs or long raw text when only a few sections matter
+- replace prose dumps with compact structured inputs where possible
+- use short rolling summaries instead of full histories if memory/context is needed
+
+3. Use code for deterministic work
+Audit the current implementation and move deterministic logic out of AI.
+
+Examples that should be handled in normal code:
+- unit conversion
+- metric/imperial conversion
+- pricing math
+- VAT/tax math
+- inventory counts
+- rentable asset availability
+- blackout/date overlap logic
+- validation
+- package totals
+- status logic
+- routing logic
+- order readiness checks
+- add-on availability
+- PDF/doc generation from stored structured data
+
+Requirements:
+- preserve current behavior
+- replace only the AI-dependent parts that are clearly deterministic
+- keep AI for ambiguity and messy parsing only
+
+4. Add structured request patterns
+Where AI is still needed, refactor requests to use compact structured inputs and constrained outputs.
+
+Requirements:
+- prefer small JSON payloads over long prose
+- require short structured outputs
+- ask for exact fields needed
+- cap output length aggressively
+- avoid narrative summaries unless explicitly needed by the UI
+
+Examples:
+- extraction returns only dimensions/material/pricing/tax fields
+- support summary returns only category + concise summary + next action
+- package parser returns structured rows, not essays
+
+5. Prevent repeated document reprocessing
+Audit upload and document-processing flows, especially:
+- PDF quote parsing
+- spec parsing
+- package PDF parsing
+- vendor package extraction
+- uploaded support/reference docs
+
+Requirements:
+- process a document once
+- store extracted structured results
+- reuse those stored results later
+- do not reprocess the same file every time someone opens a page
+- if AI is needed again, send only the relevant excerpt/chunk, not the full file
+
+6. Add document fingerprinting / deduping
+Reduce repeated AI cost from duplicate files.
+
+Requirements:
+- create a file fingerprint/hash where feasible
+- detect when the same file is uploaded again
+- reuse prior extraction/parsing results if appropriate
+- clearly mark duplicate/reused parse cases
+- avoid rerunning expensive parsing unless explicitly requested
+
+7. Add staged parsing pipelines
+For PDF/quote/spec/package workflows, refactor into a cheaper staged pipeline.
+
+Suggested pattern:
+- stage 1: file validation and metadata extraction in code
+- stage 2: text extraction in code/tooling
+- stage 3: strip repeated headers/footers and irrelevant boilerplate
+- stage 4: identify relevant sections/chunks
+- stage 5: AI only handles ambiguous extraction/normalization
+- stage 6: store structured parse output for reuse
+
+Requirements:
+- keep token-heavy processing limited to the smallest useful chunk
+- do not send irrelevant cover pages/legal text/repeated footer text unless needed
+
+8. Replace repeated AI chains with fewer calls
+Find workflows that currently do multiple AI calls when one structured call would be enough.
+
+Examples:
+- classify then summarize then rewrite then format
+- extract then clean then summarize
+- package parse then regroup then rewrite
+
+Requirements:
+- consolidate where practical
+- preserve reliability
+- reduce total call count per workflow
+
+9. Prepare task-based model selection
+Where the app currently uses one model for everything, refactor so different tasks can use different model tiers.
+
+Examples:
+- simple classification/tagging → lower-cost model
+- short structured extraction → lower-cost model
+- messy quote/package parsing → stronger model
+- complex reasoning/proposal writing → stronger model
+
+Requirements:
+- centralize model/task routing in a clean abstraction/config layer
+- do not hardcode one model into every feature
+- preserve current functionality while making future cost control easier
+
+10. Downloads must be template/data driven
+Audit any flows that generate:
+- PDFs
+- invoices
+- order summaries
+- supplier packets
+- branded summaries
+- exports
+
+Requirements:
+- if the document can be produced from stored structured data, render it from templates/code
+- do not call AI to regenerate data-driven documents unnecessarily
+- use AI only if custom narrative text is truly required
+
+11. Reduce unnecessary AI triggers
+Audit when AI is being called.
+
+Requirements:
+- do not call AI on page load unless absolutely necessary
+- do not call AI on every keystroke
+- do not call AI for minor field changes
+- gate AI behind explicit user actions or meaningful workflow events
+- eliminate duplicate/background calls that do not clearly add value
+
+12. Add caching and reuse where practical
+Where stable instructions or repeated derived results exist, add reuse patterns.
+
+Examples:
+- cached/stable system prompt prefix
+- stored parse results
+- stored summaries
+- stored normalized product/spec mappings
+- memoized expensive preparation logic
+
+Requirements:
+- build on what already exists
+- avoid redoing expensive prep work repeatedly
+
+13. Add lightweight observability
+Add practical internal tracking for AI usage and likely cost drivers.
+
+Track where feasible:
+- feature/route name
+- workflow/action type
+- whether AI was called
+- approximate context size
+- number of calls per workflow
+- whether a document was reprocessed or reused
+- top high-cost or high-frequency AI workflows by design
+
+Do not build a giant observability platform.
+Keep it internal and practical.
+
+14. Focus on highest-impact current workflows first
+Prioritize refactoring the most likely cost-heavy areas:
+- uploads
+- PDF quote parsing
+- spec parsing
+- package PDF parsing
+- structured extraction from vendor docs
+- generated summaries hit often
+- any user-facing submit flow that sends too much context
+- any admin workflow repeatedly calling AI
+
+15. Deliverables
+At the end of this pass, I want:
+- reduced AI context size in important workflows
+- fewer repeated document parses
+- deterministic logic moved out of AI where appropriate
+- smaller, more structured AI calls
+- fewer unnecessary chained calls
+- clearer task-based model usage architecture
+- internal AI usage audit notes added
+- current product behavior preserved as much as possible
+
+16. Documentation
+Update replit.md and/or create AI_USAGE_AUDIT.md with:
+- where AI is currently used
+- what was changed to reduce token use and cost
+- where deterministic logic replaced AI
+- where document reuse/caching was added
+- which workflows still use AI and why
+- which areas remain highest-cost
+- recommended next cost-reduction opportunities
+
+Important:
+Do not rebuild the app.
+Do not remove good AI functionality just to save pennies if it hurts the product.
+Build on the current implementation and optimize what is already there.
+Actually implement the cost-saving refactors and safeguards, not placeholders only.

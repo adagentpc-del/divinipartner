@@ -188,3 +188,74 @@ one of `rules | ai | none | failed`; `parsed_review_status` is one of
 quote we have observed end up on the `rules`-only path (currency symbol +
 "VAT 20%" / "Sales Tax 7%" patterns are deterministic). The `ai` path only
 fires on multi-currency or tax-ambiguous documents.
+
+## 7. Project-request `aiSummary` refactor (April 25, 2026)
+
+The §4 "already cheap" caveat for `aiSummary.ts` was revisited and tightened.
+While the call sends no document text, the original implementation still:
+- Asked the model for **6 sections** (Overview, Complexity, Timeline, Risks,
+  Missing Info, Next Step), 4 of which were already computed deterministically
+  elsewhere (`estimateScopeLevel`, `generateInternalSummary`).
+- Allowed `max_completion_tokens = 1000` for what is fundamentally a 2-3
+  sentence blurb plus a short bullet list.
+- Sent a verbose natural-language prompt embedding labels, item names, and
+  "Yes/No" wrappers.
+- Used no `response_format`, so the model could ramble outside the expected
+  structure.
+- Emitted **no** `usage_events`, so request-summary AI cost was invisible
+  next to the deck/package/billing flows.
+
+**What changed in `lib/aiSummary.ts`**:
+- AI is now asked **only** for two fields:
+  `{"overview": "<2-3 sentences>", "risks": ["<≤4 short flags>"]}`.
+- Complexity, timeline, missing-info detection, and recommended next step
+  are computed in pure code (`computeTimeline`, `computeMissing`,
+  `computeNextStep`, plus the existing `estimateScopeLevel`).
+- Input payload is now a compact JSON object (~20 keys, deduped categories
+  capped at 8, `additionalNotes` truncated to 400 chars) instead of a long
+  labelled prompt.
+- `response_format: { type: "json_object" }` enforced; parser tolerates
+  malformed responses by falling back to a deterministic overview.
+- `max_tokens = 250` (down from 1,000).
+- `temperature = 0.2` for stability.
+- New `usage_events`:
+  - `request.ai_summary.generated` — meta `{tokensIn, tokensOut, model, risks, scope}`
+  - `request.ai_summary.failed` — meta `{tokensIn:0, tokensOut:0, model, risks:0, scope}`
+  - emitted from both the public-intake path and the admin
+    `POST /requests/:id/regenerate-ai` path.
+
+**Before / after per call**:
+
+| Metric | Before | After |
+|---|---|---|
+| Prompt sections requested | 6 | 2 |
+| `max_completion_tokens` | 1,000 | 250 |
+| System-prompt size | ~250 tokens (multi-paragraph) | ~80 tokens (single line) |
+| User payload | labelled NL template (~600 chars typical) | compact JSON (~250 chars typical) |
+| `response_format` | none | `json_object` |
+| Output stored | model prose only | composed: deterministic sections + AI overview/risks |
+| Usage event | none | `request.ai_summary.generated` / `.failed` |
+
+**Output text shape unchanged** — the composed string still uses the same
+1-6 numbered sections that `RequestDetail.tsx` renders, so the admin UI did
+not need any changes. The deterministic sections are now *more* reliable
+(no hallucinated dates / scope levels) and the AI sections are *cheaper*
+(80% fewer output tokens at the cap).
+
+**No new schema columns** — change is logic-only. The existing
+`requests.aiSummary` text column continues to hold the composed result.
+
+## 8. Total remaining AI surface (after §7)
+
+| Flow | Path | When AI fires | Per-call output cap |
+|---|---|---|---|
+| Deck extraction | `lib/deckExtraction.ts` | first-time non-duplicate PDF with branding/dimensions chunks | 1,500 |
+| Package extraction | `lib/packageExtraction.ts` | first-time non-duplicate vendor package PDF | 2,500 |
+| Billing-signals (quote_assets) | `lib/billingSignals.ts` | regex couldn't resolve currency or tax | 200 |
+| Project-request summary | `lib/aiSummary.ts` | every request submit + admin regenerate | **250** (was 1,000) |
+
+Every other code path (workflow engine, partner health, sales enablement,
+faq, etc.) is **deterministic** — no calls to OpenAI / Anthropic / Gemini /
+OpenRouter clients exist outside the four files above. Verified by repo-wide
+search for `chat.completions`, `openai`, `anthropic`, and the
+`AI_INTEGRATIONS_*_BASE_URL` env keys.

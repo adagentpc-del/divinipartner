@@ -344,7 +344,7 @@ router.post("/public/partners/:slug/requests", async (req, res): Promise<void> =
     promotionalItemsRequested: data.promotionalItemsRequested || false,
     additionalNotes: data.additionalNotes || null,
     uploads: uploads.map((u) => ({ uploadType: u.uploadType, fileName: u.fileName })),
-  }).then(async (aiSummary) => {
+  }, { requestId: request.id, partnerId: partner.id }).then(async (aiSummary) => {
     await db
       .update(requestsTable)
       .set({ aiSummary })

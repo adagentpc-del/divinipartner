@@ -1,0 +1,66 @@
+Audit this Replit codebase for unnecessary AI token usage and reduce cost without breaking the product.
+
+Goal:
+Lower token use and AI cost across the app, especially for uploads, submit flows, summaries, generated outputs, and repeated admin workflows.
+
+Requirements:
+
+1. Identify every place the app calls AI or prepares context for AI.
+2. For each AI call, determine:
+- what triggers it
+- what context is being sent
+- whether too much history/data is being sent
+- whether full uploaded files are being resent
+- whether the output is longer than needed
+- whether this should be normal code instead of AI
+- whether a smaller model could handle it
+- whether prior results should be cached and reused
+
+3. Refactor the highest-cost workflows first:
+- uploads
+- PDF/quote/spec parsing
+- form submit flows
+- generated summaries
+- proposal/content generation
+- admin workflows hit frequently
+
+4. Replace deterministic AI work with code where possible:
+- pricing math
+- unit conversion
+- inventory logic
+- validation
+- date logic
+- status rules
+- totals and calculations
+
+5. Reduce context size:
+- stop sending full conversation history
+- stop sending full partner/order/catalog objects when not needed
+- stop resending full uploaded documents
+- use compact structured JSON inputs
+
+6. Add storage/reuse:
+- process uploaded files once
+- save structured extracted results
+- reuse prior summaries and normalized outputs
+- detect duplicate file uploads and reuse prior parse results where possible
+
+7. Constrain outputs:
+- use short structured responses
+- require exact fields
+- reduce output length aggressively
+
+8. Add lightweight internal observability:
+- track AI calls by feature/route
+- log approximate prompt size
+- log repeated processing of the same file/record
+- identify the most expensive workflows by design
+
+9. Create or update documentation with:
+- current AI usage points
+- what was changed to reduce cost
+- what still uses AI and why
+- next recommended cost-reduction opportunities
+
+Do not rebuild the app.
+Actually implement the cost-saving refactors, not placeholders only.
