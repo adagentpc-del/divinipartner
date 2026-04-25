@@ -68,6 +68,7 @@ import WorkflowRules from "@/pages/admin/WorkflowRules";
 
 import PublicLayout from "@/components/layout/PublicLayout";
 import PartnerPortal from "@/pages/public/PartnerPortal";
+import { PartnerPortalErrorBoundary } from "@/components/PartnerPortalErrorBoundary";
 import PartnerOnboarding from "@/pages/public/PartnerOnboarding";
 import OnboardingSubmissions from "@/pages/admin/OnboardingSubmissions";
 import CommittedInventory from "@/pages/admin/CommittedInventory";
@@ -345,7 +346,9 @@ function ClerkProviderWithRoutes() {
             <Route path="/partner/:slug">
               {(params) => (
                 <PublicLayout>
-                  <PartnerPortal slug={params.slug} />
+                  <PartnerPortalErrorBoundary slug={params.slug}>
+                    <PartnerPortal slug={params.slug} />
+                  </PartnerPortalErrorBoundary>
                 </PublicLayout>
               )}
             </Route>
@@ -356,7 +359,9 @@ function ClerkProviderWithRoutes() {
             <Route path="/:slug">
               {(params) => (
                 <PublicLayout>
-                  <PartnerPortal slug={params.slug} />
+                  <PartnerPortalErrorBoundary slug={params.slug}>
+                    <PartnerPortal slug={params.slug} />
+                  </PartnerPortalErrorBoundary>
                 </PublicLayout>
               )}
             </Route>

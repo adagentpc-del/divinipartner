@@ -342,6 +342,35 @@ export default function OrderingPortal({ slug }: { slug: string }) {
     return t;
   }, [cart, selectedPkg]);
 
+  // ---------------------------------------------------------------------------
+  // IMPORTANT: All hooks must run BEFORE the conditional early returns below.
+  // Previously `eventAddonRow` and `addonProducts` (useMemo calls) lived AFTER
+  // the loading/error short-circuits, which meant they were skipped on the
+  // first render (when data was still loading) but then ran on the second
+  // render (when data arrived). React detected the changing hook count and
+  // threw a "Rules of Hooks" violation, which crashed the entire portal —
+  // hence the empty Preview tab. Hoist these hooks here and tolerate
+  // `data === undefined` with safe defaults so they're identical across renders.
+  // ---------------------------------------------------------------------------
+  const eventAddonRow = useMemo(
+    () => data?.eventAddons?.find(e => e.eventId === eventId) || null,
+    [data, eventId],
+  );
+  const partnerHasAddonLibrary = (eventAddonRow?.partnerAddonCount ?? 0) > 0;
+  const addonProducts = useMemo(() => {
+    const products = data?.products ?? [];
+    const inPackage = (id: number) => !!selectedPkg?.items.some(it => it.productId === id);
+    if (partnerHasAddonLibrary && eventAddonRow?.addons) {
+      const sorted = [...eventAddonRow.addons].sort((a, b) =>
+        Number(b.isFeatured) - Number(a.isFeatured) || a.sortOrder - b.sortOrder
+      );
+      return sorted
+        .map(a => products.find(p => p.id === a.productId))
+        .filter((p): p is Product => !!p && !inPackage(p.id));
+    }
+    return products.filter(p => !inPackage(p.id));
+  }, [data, selectedPkg, eventAddonRow, partnerHasAddonLibrary]);
+
   if (isLoading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
   if (isError || !data) return <div className="min-h-screen flex items-center justify-center"><Card className="p-10 max-w-md text-center"><p className="text-lg font-semibold">We couldn't load this portal.</p><p className="text-sm text-muted-foreground mt-2">Please check the link or try again shortly.</p></Card></div>;
 
@@ -391,28 +420,9 @@ export default function OrderingPortal({ slug }: { slug: string }) {
   const venuesForCity = cityId ? data.venues.filter(v => v.cityId === cityId) : [];
   const availablePkgs = selectedEvent?.availablePackageIdsJson?.length ? data.packages.filter(p => selectedEvent.availablePackageIdsJson!.includes(p.id)) : data.packages;
 
-  // Section 35: per-event add-on resolution. When the API supplies an effective
-  // add-on list for the selected event, restrict the add-on picker to that
-  // partner-curated set (sorted, featured first). Falls back to the legacy
-  // behaviour (all products minus package contents) when the partner has no
-  // add-on library configured yet.
-  const eventAddonRow = useMemo(
-    () => data.eventAddons?.find(e => e.eventId === eventId) || null,
-    [data.eventAddons, eventId],
-  );
-  const partnerHasAddonLibrary = (eventAddonRow?.partnerAddonCount ?? 0) > 0;
-  const addonProducts = useMemo(() => {
-    const inPackage = (id: number) => !!selectedPkg?.items.some(it => it.productId === id);
-    if (partnerHasAddonLibrary && eventAddonRow?.addons) {
-      const sorted = [...eventAddonRow.addons].sort((a, b) =>
-        Number(b.isFeatured) - Number(a.isFeatured) || a.sortOrder - b.sortOrder
-      );
-      return sorted
-        .map(a => data.products.find(p => p.id === a.productId))
-        .filter((p): p is Product => !!p && !inPackage(p.id));
-    }
-    return data.products.filter(p => !inPackage(p.id));
-  }, [data.products, selectedPkg, eventAddonRow, partnerHasAddonLibrary]);
+  // Note: `eventAddonRow`, `partnerHasAddonLibrary`, and `addonProducts` are
+  // computed earlier (above the loading/error early returns) so their useMemo
+  // hooks always run on every render. See the "Rules of Hooks" comment above.
 
   function priceCart(p: Product, item: Partial<CartItem>) {
     if (!p.pricingModel) return { unitPrice: null as string | null, basis: null as string | null };

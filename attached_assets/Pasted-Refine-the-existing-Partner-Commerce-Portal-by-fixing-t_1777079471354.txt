@@ -1,0 +1,127 @@
+Refine the existing Partner Commerce Portal by fixing the broken Preview Partnership Page flow.
+
+Goal:
+When I click “Preview Partnership Page,” it is not loading. I need you to diagnose the root cause and fix the preview so it loads reliably.
+
+Scope:
+Keep this pass tightly focused on:
+1. preview partnership page routing
+2. preview page data loading
+3. partner preview rendering
+4. safe fallbacks if partner data is incomplete
+
+Do not rebuild unrelated workflows.
+
+Requirements:
+
+1. Diagnose the preview failure
+Audit the full “Preview Partnership Page” flow and identify exactly why it is failing.
+
+Check for issues such as:
+- broken route path
+- wrong preview URL
+- missing route registration
+- bad partner ID / slug handling
+- null or undefined partner data
+- preview expecting sections that do not exist yet
+- branding/logo/color data causing render crash
+- event/add-on/section config causing preview to fail
+- auth/permission issue blocking preview
+- canonical domain or link generation issue
+- frontend state issue
+- server error on preview endpoint
+
+Do not just guess.
+Find the actual failure point and fix it.
+
+2. Fix preview route loading
+Make sure clicking “Preview Partnership Page” correctly opens the preview page.
+
+Requirements:
+- correct route/path
+- correct partner ID or slug passed into preview
+- correct data fetch on load
+- preview page should render for the selected partner
+- no blank page, spinner forever, or broken redirect
+
+3. Add safe fallback behavior
+If the partner setup is incomplete, the preview page should still load gracefully.
+
+Examples:
+- missing logo should not crash preview
+- missing colors should use fallback styling
+- missing sections should show a clean empty state
+- missing packages/catalog/cities should not break the whole preview
+- if no sections are active yet, show a preview placeholder instead of failing
+
+4. Preview data loading
+Make sure the preview pulls the correct partner-specific data such as:
+- partner branding
+- logo
+- section selections
+- active/hidden sections
+- packages
+- add-ons
+- cities/venues
+- branding zones if relevant
+- event-specific settings if preview is event-based
+
+Requirements:
+- preview should use the current saved configuration
+- preview should reflect section order and visibility
+- preview should not require unrelated modules to be perfect just to load
+
+5. Handle missing or broken section config
+If one configured section is malformed or missing required data:
+- do not let the entire preview crash
+- isolate the bad section
+- show a warning/fallback for that section only if needed
+- let the rest of the preview load
+
+6. Improve preview button behavior
+Make sure the “Preview Partnership Page” action itself is reliable.
+
+Requirements:
+- button should point to the correct route
+- if a partner must be saved before preview, show that clearly
+- if there is no valid partner record yet, show a helpful message
+- no dead click or silent failure
+
+7. Add admin-visible debug clarity
+If preview cannot load, show a useful internal/admin-facing error state instead of a generic blank page.
+
+Examples:
+- partner preview route missing
+- partner configuration incomplete
+- failed to load partner data
+- one or more sections misconfigured
+
+Keep this clean and useful, not overly technical.
+
+8. Prevent future preview crashes
+Add guardrails so preview remains stable:
+- null checks
+- loading/error states
+- missing data defaults
+- section-level error isolation where sensible
+- route validation
+
+9. Seed/demo verification
+Make sure preview works for:
+- a partner with full config
+- a partner with partial config
+- a partner with missing logo/colors
+- a partner with only some sections enabled
+
+10. Documentation
+Update replit.md with:
+- how preview routing works
+- what data the preview depends on
+- fallback behavior for incomplete partner setups
+- what was causing the preview failure
+- how it was fixed
+
+Important:
+Do not rebuild the app.
+Do not change unrelated workflows.
+Actually diagnose and fix the broken preview partnership page loading issue, not placeholders only.

@@ -27,6 +27,8 @@ import { FamilyStatusGrid, type FamilyAvailability } from "@/components/admin/Fa
 import { RentableAssetsCard } from "@/components/admin/RentableAssetsCard";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
+import { fetchPublicConfig, publicLinkFrom, type PublicConfig } from "@/lib/publicUrl";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const formSchema = z.object({
   companyName: z.string().min(1, "Company name is required"),
@@ -107,6 +109,13 @@ export default function PartnerForm() {
 
   const createMutation = useCreatePartner();
   const updateMutation = useUpdatePartner();
+
+  // Resolve the canonical public URL once so the Preview button always opens
+  // on the working public host (PUBLIC_APP_URL) instead of inheriting the
+  // admin's current host — which may be a stale CNAME or an internal preview
+  // domain that the public router does not serve.
+  const [publicCfg, setPublicCfg] = useState<PublicConfig | null>(null);
+  useEffect(() => { fetchPublicConfig().then(setPublicCfg).catch(() => {}); }, []);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -305,11 +314,49 @@ export default function PartnerForm() {
                 <Settings className="h-3.5 w-3.5" /> Add-Ons
               </Button>
             </Link>
-            <a href={`/${form.getValues("slug")}`} target="_blank" rel="noopener noreferrer">
-              <Button variant="outline" size="sm" className="gap-1.5">
-                <ExternalLink className="h-3.5 w-3.5" /> Preview
-              </Button>
-            </a>
+            {(() => {
+              // Use ONLY the saved slug from the loaded partner record. The
+              // form's current value can be unsaved input that doesn't yet
+              // resolve to a real route, so we deliberately do not fall back
+              // to it — the Preview button must reflect what real visitors
+              // will see right now.
+              const savedSlug = (partner as any)?.slug || "";
+              // Wait for publicCfg before enabling the link so we never fall
+              // back to `window.location.origin`, which is exactly the
+              // failure mode (stale admin host like www.partnershipportal.co)
+              // we're trying to avoid. publicCfg loads in a single fetch on
+              // mount, so this is a brief gate, not a long wait.
+              const cfgReady = publicCfg !== null;
+              const disabled = !savedSlug || !cfgReady;
+              const previewUrl = !disabled ? publicLinkFrom(publicCfg, `/${savedSlug}`) : "";
+              const button = (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  disabled={disabled}
+                  data-testid="button-preview-partner"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" /> Preview
+                </Button>
+              );
+              if (disabled) {
+                const reason = !savedSlug
+                  ? "Save the partner with a slug before previewing."
+                  : "Resolving the public preview URL…";
+                return (
+                  <Tooltip>
+                    <TooltipTrigger asChild><span>{button}</span></TooltipTrigger>
+                    <TooltipContent>{reason}</TooltipContent>
+                  </Tooltip>
+                );
+              }
+              return (
+                <a href={previewUrl} target="_blank" rel="noopener noreferrer">
+                  {button}
+                </a>
+              );
+            })()}
           </div>
         )}
       </div>

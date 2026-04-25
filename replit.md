@@ -52,6 +52,8 @@ The A3 Partner Commerce Portal is built as a `pnpm workspace monorepo` using Typ
 - **Operational Alerts & Retention Markers**: Derives alerts dynamically for operational issues (e.g., failed emails, inactive partners) and supports non-destructive archiving of partners and assets.
 - **Email Readiness & Test Sends**: Provides an admin interface to monitor email configuration health, test email delivery paths, and ensure branded email consistency.
 - **Bare-slug Partner Share URLs**: Allows partners to be accessed directly via `partnershipportal.co/<slug>`, improving URL usability while maintaining backward compatibility.
+- **Robust Partner Preview**: The admin "Preview Partnership Page" button always builds the canonical public URL via `publicLinkFrom(publicCfg, ...)` (so it never inherits a stale admin host like `www`), uses the *saved* partner slug rather than unsaved form input, and is disabled with an explanatory tooltip when no slug exists yet.
+- **Public Portal Error Isolation**: Public partner routes (`/partner/:slug` and bare `/:slug`) are wrapped in a `PartnerPortalErrorBoundary` so a render crash from incomplete partner config (missing sections, broken theme, bad asset URLs) shows a clean recoverable message with technical details instead of a blank white page.
 
 ## External Dependencies
 
