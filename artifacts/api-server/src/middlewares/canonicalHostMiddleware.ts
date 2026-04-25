@@ -27,7 +27,13 @@ export function canonicalHostMiddleware() {
 
     const isReplitProd = host.endsWith(".replit.app");
     const isReplitDev = isReplitDevHost(host);
-    if (!isReplitProd && !isReplitDev) return next();
+    // A `www.<canonical>` alias is a common case (e.g. www.partnershipportal.co
+    // when canonical is partnershipportal.co). Treat it like an internal Replit
+    // host and redirect it to the canonical URL so visitors who type `www.`
+    // land on the canonical hostname automatically.
+    const isWwwAlias =
+      canonicalHost.split(".").length >= 2 && host === `www.${canonicalHost}`;
+    if (!isReplitProd && !isReplitDev && !isWwwAlias) return next();
 
     if (isReplitDev) return next();
 
