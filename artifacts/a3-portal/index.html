@@ -3,6 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <script>
+      (function () {
+        var h = location.hostname;
+        if (h.indexOf("www.") === 0) {
+          var apex = h.slice(4);
+          location.replace(
+            location.protocol + "//" + apex + location.pathname + location.search + location.hash
+          );
+        }
+      })();
+    </script>
     <title>A3 Partner Portal</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
