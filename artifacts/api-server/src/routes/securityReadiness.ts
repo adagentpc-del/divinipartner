@@ -65,6 +65,13 @@ router.get("/security/readiness", requireAdmin(), (_req, res) => {
       orderSubmit: "20 / 10 min / ip",
       upload: "60 / 1 min / ip",
       publicWrite: "30 / 1 min / ip",
+      publicRead: "120 / 1 min / ip (GET/HEAD on /public/* and /storage/public-objects/*)",
+      aiTrigger: "20 / 10 min / ip (deck/package extraction create + rerun)",
+    },
+    bodyLimits: {
+      json: "2 MB (uploads use presigned URLs, never JSON-encoded bytes)",
+      urlencoded: "2 MB",
+      multerImporter: "10 MB (CSV/XLSX importer)",
     },
 
     errors: {

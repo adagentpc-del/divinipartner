@@ -39,3 +39,26 @@ export const publicWriteLimiter = rateLimit({
   limit: 30,
   message: { error: "Too many requests. Please slow down." },
 });
+
+// Public READ traffic — partner portal pages, pricing lookups, ordering page,
+// product family context. These are cheap individual DB reads but currently
+// unbounded; a loose limit prevents scraping/DoS without affecting normal use.
+// 120/min/ip = ~2/sec sustained, which covers any legitimate user clicking
+// through a portal but stops a scraper cold.
+export const publicReadLimiter = rateLimit({
+  ...baseOptions,
+  windowMs: 60 * 1000,
+  limit: 120,
+  message: { error: "Too many requests. Please slow down." },
+});
+
+// Admin-triggered AI-heavy endpoints (deck-extraction / package-extraction
+// create + rerun). Content-hash dedup already makes repeats free, but a
+// runaway client-side loop could still hit the AI path on the first pass for
+// each new file. Same shape as orderSubmitLimiter — sparse legitimate use.
+export const aiTriggerLimiter = rateLimit({
+  ...baseOptions,
+  windowMs: 10 * 60 * 1000,
+  limit: 20,
+  message: { error: "Too many AI-extraction requests from this network. Please wait a moment." },
+});

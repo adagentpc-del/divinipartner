@@ -79,8 +79,12 @@ app.use((req, res, next) => {
   })(req, res, next);
 });
 
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ extended: true }));
+// JSON body cap. Files travel via presigned URLs to object storage, never
+// through JSON, so legitimate bodies are small (largest is POST orders with
+// up to 200 items ≈ 200 KB). 2 MB gives 10× headroom while preventing the
+// memory-exhaustion DoS that the prior 50 MB cap allowed.
+app.use(express.json({ limit: "2mb" }));
+app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 
 app.use(clerkMiddleware());
 

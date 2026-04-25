@@ -1,0 +1,254 @@
+Refine the existing platform by restructuring it toward the lowest practical AI cost, lowest practical infrastructure cost, and strongest operational protection for a multi-partner, multi-vendor portal where users upload images, PDFs, and order information.
+
+Goal:
+Optimize the current platform for:
+1. lowest realistic AI/token cost
+2. lowest realistic infrastructure/storage cost
+3. front-end and back-end protection
+4. growth across multiple partners and vendors
+5. high-volume uploads and order submissions
+6. reliable scaling without overengineering
+
+Important:
+Do not rebuild the app from scratch.
+Build on the current codebase and current workflows.
+Do not remove valuable functionality unless there is a lower-cost, equally reliable way to preserve it.
+This pass is about architecture optimization, cost reduction, and protection.
+
+Target architecture:
+Use the current app as the application layer, but refactor the system toward this structure:
+- PostgreSQL as the primary operational database
+- pgvector inside PostgreSQL for lightweight retrieval/embedding-based lookup where needed
+- Redis-compatible caching layer for request/result caching, dedupe, rate-limiting state, rolling summaries, and usage metering
+- object storage for uploaded PDFs, images, assets, and derived files
+- parse-once/store-once/reuse-forever document workflows
+- provider-native prompt/context caching where AI calls remain necessary
+- defensive front-end/back-end guards to prevent abuse and waste
+
+Primary objective:
+Find the places where the current system is overusing AI, overprocessing uploads, or exposing expensive/high-risk endpoints, then refactor toward a lower-cost and more protected architecture.
+
+Requirements:
+
+1. Architecture audit
+Audit the current implementation and identify:
+- where AI is called
+- where full documents are repeatedly reprocessed
+- where oversized context is sent
+- where deterministic logic is still being sent to AI
+- where uploads are processed synchronously when they should be queued or staged
+- where public endpoints are vulnerable to abuse or expensive repeated usage
+- where file delivery is hitting the app layer unnecessarily
+- where caching is missing but would materially reduce cost
+
+Create or update an architecture audit in replit.md and/or COST_AND_PROTECTION_AUDIT.md.
+
+2. Database and retrieval strategy
+Refactor toward PostgreSQL as the source of truth for structured state:
+- partners
+- events
+- orders
+- uploaded document metadata
+- parsed quote/spec/package rows
+- support issue state
+- billing state
+- asset metadata
+- AI-derived structured outputs
+
+Where vector retrieval is useful, support pgvector instead of assuming a separate vector database is required.
+Use PostgreSQL + pgvector as the default economical retrieval layer unless a stronger reason appears in the codebase.
+
+3. Redis / cache strategy
+Introduce or strengthen a Redis-compatible cache layer for:
+- duplicate file fingerprints
+- parsed document result cache
+- rolling support/chat summaries
+- request dedupe/idempotency keys
+- hot-path response cache
+- AI result cache
+- feature/route usage metering
+- rate-limiting state
+- temporary workflow staging data where useful
+
+Do not use the database for every repeated transient operation if caching is the better fit.
+
+4. Object/file storage strategy
+Refactor file handling so uploaded PDFs, images, assets, and derived files are treated as object-storage-first.
+
+Requirements:
+- uploaded files should not be repeatedly pushed through the app server if not necessary
+- file metadata and access rules should live in the database
+- original files should live in object storage
+- file-derived parse results should be stored separately as structured records
+- generated summaries/derived docs should be reused instead of regenerated when possible
+
+5. Parse once, reuse forever
+For quotes, specs, package PDFs, and other document-heavy workflows:
+- upload once
+- fingerprint file
+- extract text once
+- parse once
+- store structured output once
+- reuse the stored output everywhere else
+
+Requirements:
+- detect duplicate uploads
+- avoid reparsing the same file on view/open
+- avoid resending full files to AI on subsequent actions
+- support explicit rerun only when requested
+
+6. Move deterministic logic out of AI
+Audit the current code and replace AI usage with normal code where the work is deterministic.
+
+Examples:
+- measurement conversion
+- pricing math
+- VAT/tax math
+- inventory math
+- rentable asset availability
+- blackout/date overlap logic
+- package totals
+- event eligibility logic
+- validation
+- status rules
+- routing decisions
+- readiness checks
+- PDF generation from structured data
+
+Preserve current behavior while removing unnecessary AI dependence.
+
+7. Prompt/context minimization
+For AI calls that remain:
+- stop sending full partner/order/catalog/event objects unless strictly necessary
+- stop sending full chat/history unless required
+- stop resending full extracted document text
+- use compact structured inputs
+- use small relevant chunks only
+- cap output length
+- use structured outputs only where possible
+
+8. Task-based model routing
+Refactor the AI layer so different task types can use different model tiers.
+
+Examples:
+- simple classification/tagging → cheaper model
+- short structured extraction → cheaper model
+- messy document normalization → stronger model
+- high-value commercial writing → stronger model
+
+Centralize this logic in one AI service/config layer.
+Do not hardcode one expensive model everywhere.
+
+9. Prompt/context caching readiness
+Refactor AI calls so repeated stable context is reusable/cachable.
+
+Examples:
+- stable system instructions
+- repeated extraction schemas
+- repeated portal/business rules
+- repeated internal operational instructions
+
+Structure requests so repeated prompt prefixes or repeated context can be cached where the AI provider supports it.
+
+10. Front-end abuse protection
+Audit the public and semi-public routes and add or strengthen protection around:
+- login
+- signup/invite
+- file upload
+- order submission
+- support submission
+- AI-heavy endpoints
+- document parsing triggers
+- search/autocomplete endpoints if expensive
+
+Add practical protections such as:
+- rate limiting
+- abuse throttling
+- upload limits
+- request-size limits
+- retry/backoff behavior
+- duplicate-submit prevention
+- idempotency keys where useful
+
+11. Back-end protection
+Strengthen server-side protections around:
+- admin-only routes
+- partner isolation
+- vendor isolation
+- internal data visibility
+- file access controls
+- object ownership validation
+- document parsing endpoints
+- AI endpoints
+- import/export actions
+
+Do not rely on frontend protections for sensitive operations.
+
+12. Usage metering and cost visibility
+Add lightweight internal observability for:
+- AI calls by feature/route
+- repeated document processing
+- large-context requests
+- top expensive workflows by design
+- upload volume
+- parse volume
+- cache hit/miss opportunities
+- likely abuse-heavy endpoints
+
+Do not build a giant observability system.
+Keep this practical and useful for controlling cost.
+
+13. Keep downloads data-driven
+Audit and refactor all downloads such as:
+- order summaries
+- supplier packets
+- invoices
+- branded PDFs
+- receipts
+- exports
+
+Requirements:
+- generate these from stored structured data and templates
+- do not use AI to regenerate data-driven documents unless custom prose is truly needed
+
+14. Queue and async readiness
+For expensive workflows like:
+- PDF parsing
+- package extraction
+- quote/spec normalization
+- large file handling
+
+Refactor toward asynchronous or staged processing where practical instead of blocking user-facing flows.
+
+15. Keep the current product working
+This pass should preserve the current portal experience as much as possible.
+Do not rip out useful AI features just to save small amounts.
+Prioritize the biggest, most repeatable savings.
+
+16. Deliverables
+At the end of this pass, I want:
+- a leaner architecture using DB + cache + object storage correctly
+- AI only used where it adds value
+- reduced repeated file parsing
+- reduced oversized prompt usage
+- cheaper handling of repeated context
+- safer public endpoints
+- stronger internal visibility into cost-heavy workflows
+- updated documentation of the new cost/protection architecture
+
+17. Documentation
+Update replit.md and/or create COST_AND_PROTECTION_AUDIT.md with:
+- recommended architecture implemented
+- what stayed in the database
+- what moved to cache
+- what moved to object storage
+- what AI usage was removed
+- what AI usage remains
+- where dedupe/reuse was added
+- where rate limiting/protection was added
+- recommended next scaling step if traffic grows
+
+Important:
+Do not rebuild the app.
+Do not change unrelated workflows unnecessarily.
+Actually implement the architectural cost and protection improvements, not placeholders only.
