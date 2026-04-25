@@ -367,3 +367,39 @@ with priorHash → reused in 4 ms with no tokens; items list reversed →
 **still reuses** (sort-stability proven); changed company → AI re-runs and
 produces a different hash. All `request.ai_summary.*` events land in the
 shared `usage_events` table.
+
+## 11. Support / chat / issue-handling AI scope — verified empty
+
+A targeted audit pass was run for AI usage in support, chat, issue
+submission, conversation history, and internal issue-routing flows.
+**Scope is empty in this codebase.** Concrete verification:
+
+- No chat / message / thread / conversation / ticket / support tables exist
+  in `lib/db/src/schema/` (ripgrep returned zero matches across the schema
+  directory).
+- No support / chat / chatbot / ticket / messaging routes exist on the API
+  server. The route directory contains only domain workflows (partners,
+  orders, packages, inventory, pricing, billing, deck/package extraction,
+  etc.). No `support.ts`, `chat.ts`, `tickets.ts`, `messages.ts`,
+  `conversations.ts`.
+- `adminNotesTable` is the closest analog — admins can attach free-form
+  notes to a request — but its routes (`POST /requests/:id/notes`,
+  `GET /requests/:id/notes`) do plain CRUD only. No AI summarization, no
+  rolling summary, no thread context, no conversation history.
+- The "exception" matches surfaced by full-text search
+  (`exceptionState`, `exceptionType` on `orders.ts`, exception-related
+  branches in `lib/email.ts` and `lib/alerts.ts`) are deterministic
+  business-workflow flags, not support tickets, and have no AI involvement.
+- The complete AI call surface remains the four files in §8:
+  `aiSummary.ts`, `deckExtraction.ts`, `packageExtraction.ts`,
+  `billingSignals.ts`. None of them are support/chat flows.
+
+**Conclusion.** Items 1-11 of the support-pass spec have no live surface
+to refactor. The spec is preserved here as the canonical scope-check so
+the next time anyone asks "did we optimize support/chat AI?" the answer
+is "there is no support/chat AI to optimize — verified on
+$(date -u +%Y-%m-%d)." If support/chat is added later (e.g. an admin reply
+draft, a chatbot, an issue-summarization queue), the principles in §7-§10
+above (compact JSON inputs, deterministic-when-possible, content-hash
+caching, per-task model routing in `lib/aiModels.ts`, `usage_events`
+emission) are the patterns to follow.
