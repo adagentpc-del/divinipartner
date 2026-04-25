@@ -1,0 +1,69 @@
+Refine the existing Partner Commerce Portal by performing a live-readiness reliability sweep.
+
+Goal:
+The cost/protection architecture is now documented and stable. Do not add new infrastructure unless a documented scaling threshold is actually hit. Instead, focus on reliability of the live workflows that matter operationally.
+
+Priority:
+1. partner profile save/update reliability
+2. preview partnership page reliability
+3. order submission reliability
+4. email routing reliability
+5. file upload reliability
+6. exception handling visibility
+7. partial-failure handling
+8. admin-facing debug clarity
+
+Requirements:
+
+1. Audit the highest-value live workflows:
+- edit partner profile and save
+- preview partnership page
+- create/edit event
+- configure add-ons
+- submit order
+- upload assets
+- send customer confirmation email
+- send internal routing email
+- reopen saved partner and confirm persistence
+
+2. Fix real reliability issues, including:
+- save failures
+- false failure toasts
+- data not persisting
+- broken preview links/routes
+- email send partial failures
+- asset upload edge cases
+- stale state after save
+- dead clicks or silent failures
+
+3. Improve admin-facing error clarity:
+- if save fails, show useful reason
+- if preview fails, show useful reason
+- if email fails, show useful reason
+- if asset upload fails, show useful reason
+- do not show generic “failed” notices without context
+
+4. Protect against data loss:
+- preserve form state if save fails
+- preserve uploaded file references if later steps fail
+- avoid wiping edits on retry
+
+5. Add a lightweight internal live-readiness checklist view or note covering:
+- partner save works
+- preview works
+- email config works
+- order routing works
+- assets upload correctly
+- known blockers if any
+
+6. Update replit.md with:
+- current stable architecture state
+- what was tested in the live-readiness sweep
+- what was fixed
+- what still needs manual verification before broader rollout
+
+Important:
+Do not add Redis, pgvector, queues, or deeper observability unless a documented threshold is actually hit.
+Do not rebuild unrelated workflows.
+Focus on fixing real live-use reliability issues now.
+Actually implement the fixes, not placeholders only.

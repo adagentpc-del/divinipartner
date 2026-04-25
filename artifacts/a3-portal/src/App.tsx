@@ -63,6 +63,7 @@ import DemoFollowups from "@/pages/admin/DemoFollowups";
 import HelpFaq from "@/pages/admin/HelpFaq";
 import OperatorRunbook from "@/pages/admin/OperatorRunbook";
 import DeploymentReadiness from "@/pages/admin/DeploymentReadiness";
+import LiveReadiness from "@/pages/admin/LiveReadiness";
 import { DemoModeProvider } from "@/contexts/DemoModeContext";
 import WorkflowRules from "@/pages/admin/WorkflowRules";
 
@@ -318,6 +319,9 @@ function ClerkProviderWithRoutes() {
             </Route>
             <Route path="/admin/deployment">
               {() => <AdminRoute component={DeploymentReadiness} />}
+            </Route>
+            <Route path="/admin/live-readiness">
+              {() => <AdminRoute component={LiveReadiness} />}
             </Route>
             <Route path="/admin/workflow">
               {() => <AdminRoute component={WorkflowDashboard} />}
