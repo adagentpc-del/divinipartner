@@ -259,3 +259,111 @@ faq, etc.) is **deterministic** — no calls to OpenAI / Anthropic / Gemini /
 OpenRouter clients exist outside the four files above. Verified by repo-wide
 search for `chat.completions`, `openai`, `anthropic`, and the
 `AI_INTEGRATIONS_*_BASE_URL` env keys.
+
+## 9. Centralized model + client routing (item 9 — task-based selection)
+
+**Problem.** Each of the four AI files hardcoded `const model = "gpt-4o-mini"`
+and re-constructed an OpenAI client (or a fetch URL pair) from
+`AI_INTEGRATIONS_OPENAI_*` env vars. Promoting any single task to a stronger
+model — or demoting it to a cheaper tier — required edits in four places and
+risked drift between them.
+
+**Change.** New `artifacts/api-server/src/lib/aiModels.ts` is now the single
+source of truth for:
+
+- the `AiTask` enum (`requestSummary`, `deckExtraction`, `packageExtraction`,
+  `billingSignals`)
+- per-task `{ model, maxTokens }` config
+- `getOpenAIClient()` — a process-singleton OpenAI SDK instance (used by
+  `aiSummary.ts`)
+- `getOpenAIRestConfig()` — `{ baseUrl, apiKey } | null` for the three files
+  that hand-roll `fetch()` against the proxy (used by `deckExtraction.ts`,
+  `packageExtraction.ts`, `billingSignals.ts`)
+- `stableHash(input)` — sorted-key SHA-256 used by content-hash caching (§10)
+
+All four AI call sites now resolve their model via
+`getModelForTask("...")`. Token caps for the three PDF flows still live in
+their existing local `PDF_LIMITS.AI_MAX_OUTPUT_TOKENS` constants (those
+predate this work and govern per-pipeline buffering); the request-summary
+flow uses `getMaxTokensForTask("requestSummary")`. Switching, e.g.,
+`billingSignals` to `gpt-4o-mini-nano` is now a one-line change in `TASK_CONFIG`.
+
+**No behavior change today** — every task is still `gpt-4o-mini` with the
+same caps as §7 / §8.
+
+## 10. Content-hash caching for `regenerate-ai` (item 12 — caching/reuse)
+
+**Problem.** The admin **Regenerate AI Summary** button on `RequestDetail.tsx`
+unconditionally re-billed full token cost on every click, even when nothing
+about the underlying request had changed since the last run. With a 250-token
+output cap that's modest per click, but it's unbounded against repeat clicks.
+
+**Change.**
+
+- New nullable `requests.ai_summary_input_hash text` column (added via
+  `db push`; safe additive change). Populated alongside `ai_summary` whenever
+  a summary is generated.
+- `generateAiSummary` now returns `{ text, inputHash, usedAi }` and accepts
+  optional `priorHash` / `priorSummary` in its context. When `priorHash`
+  matches the freshly computed hash *and* `priorSummary` is non-empty, the
+  function short-circuits: no OpenAI call, no token spend, returns the prior
+  summary verbatim, and emits a `request.ai_summary.reused` usage event with
+  `meta: { tokensIn: 0, tokensOut: 0, reason: "input_hash_match", model, scope }`.
+- The hash is computed over the same compact JSON payload that gets sent to
+  the model — including the deterministic-section outputs (`scope`, `missing`).
+  Any meaningful edit (event date, item list, flags, notes, uploads,
+  company/event/venue) busts the cache automatically.
+- Public-portal submit always saves the hash so the very first
+  Regenerate-AI click after a submit can short-circuit.
+- Admin `POST /requests/:id/regenerate-ai` passes the row's current
+  `aiSummaryInputHash` and `aiSummary` as `priorHash` / `priorSummary`.
+
+**Verified end-to-end** (live, on the dev API server):
+
+| Run | Input | `usedAi` | Round-trip | Tokens billed |
+|---|---|---|---|---|
+| 1 | cold (no priorHash) | true | 1,154 ms | 167 in / 61 out |
+| 2 | same input + priorHash | **false** | **4 ms** | **0 / 0** (`request.ai_summary.reused`) |
+| 3 | company name changed | true | 845 ms | full call (`request.ai_summary.generated`) |
+
+Both events are emitted to the same `usage_events` table the rest of the
+audit uses, so cost-attribution dashboards see the savings without any
+schema or query changes.
+
+**Net effect on item 12.** Repeat-clicks on Regenerate AI Summary are now
+free; the only path that costs tokens is a regenerate after a real edit, or
+the initial public-submit fire-and-forget call.
+
+### 10.1 Cache-correctness hardening (post-review fixes)
+
+Code review surfaced three correctness issues with the initial cache impl;
+all are fixed:
+
+1. **Stale reuse on prompt or model change.**
+   The hash now folds in both the active model name and a manual
+   `PROMPT_VERSION` constant in `aiSummary.ts`. Bumping the version (or
+   pointing the task at a different model in `aiModels.ts`) invalidates every
+   prior persisted hash automatically — old summaries will not be reused
+   under new prompt semantics.
+
+2. **Failure-state poisoning.**
+   The fallback summary written when AI fails (`usedAi=false`) used to be
+   stored alongside an input hash, which meant subsequent regenerate-ai
+   clicks on the same input would forever reuse the deterministic fallback
+   and never retry AI. Both call sites
+   (`routes/publicPortal.ts`, `routes/requests.ts`) now persist the hash
+   conditionally: `aiSummaryInputHash: usedAi ? inputHash : null`. A failed
+   AI run leaves `ai_summary_input_hash = NULL`, so the next click retries.
+
+3. **Item-order nondeterminism.**
+   The regenerate-ai endpoint loads request items without `ORDER BY`, so the
+   `categories` array could come out in different order across calls and
+   produce different hashes for unchanged data. Hash input now sorts both
+   `categories` and the `missing[]` array before serialization, making the
+   hash invariant under DB return order.
+
+Verified live (tsx): cold call → AI runs and writes hash; identical follow-up
+with priorHash → reused in 4 ms with no tokens; items list reversed →
+**still reuses** (sort-stability proven); changed company → AI re-runs and
+produces a different hash. All `request.ai_summary.*` events land in the
+shared `usage_events` table.

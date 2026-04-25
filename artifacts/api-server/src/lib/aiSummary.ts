@@ -22,21 +22,24 @@
 // renders today, so the UI is unchanged.
 // ===========================================================================
 
-import OpenAI from "openai";
 import { logger } from "./logger";
 import { emit as usageEmit } from "../services/usageTracking";
+import {
+  getOpenAIClient,
+  getModelForTask,
+  getMaxTokensForTask,
+  stableHash,
+} from "./aiModels";
 
-// Hard caps tuned for this flow. Output is two small fields, ~150 tokens of
-// content; 250 leaves headroom without permitting waste.
-const AI_MAX_OUTPUT_TOKENS = 250;
-const MODEL = "gpt-4o-mini";
+// All model + token-cap config lives in aiModels.ts so future cost work
+// can promote/demote this task in one place. Today: gpt-4o-mini, 250 out.
+const TASK = "requestSummary" as const;
 
-function getOpenAIClient() {
-  return new OpenAI({
-    baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-    apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  });
-}
+// Bump this whenever the system prompt, response shape, or any AI-affecting
+// behavior in this file changes. The value is folded into the cache hash so
+// every persisted hash from the prior version is automatically invalidated
+// (next regenerate-ai re-runs AI rather than reusing a stale summary).
+const PROMPT_VERSION = "v1";
 
 interface SummaryInput {
   companyName: string;
@@ -86,10 +89,26 @@ function computeNextStep(input: SummaryInput, missingCount: number, scope: strin
   return "Begin quote preparation.";
 }
 
+export interface AiSummaryResult {
+  text: string;
+  inputHash: string;
+  usedAi: boolean;
+}
+
 export async function generateAiSummary(
   requestData: SummaryInput,
-  ctx?: { requestId?: number; partnerId?: number },
-): Promise<string> {
+  ctx?: {
+    requestId?: number;
+    partnerId?: number;
+    // Caller-provided "what's already on disk" — when these match the freshly
+    // computed hash AND priorSummary is non-empty/non-failure, the AI call is
+    // skipped entirely and the prior summary is reused. Used by the admin
+    // /requests/:id/regenerate-ai endpoint to avoid re-billing tokens for
+    // identical regenerations.
+    priorHash?: string | null;
+    priorSummary?: string | null;
+  },
+): Promise<AiSummaryResult> {
   // -------- Deterministic sections (zero AI cost) --------
   const scope = estimateScopeLevel(
     requestData.items.map((i) => ({ category: i.category })),
@@ -108,6 +127,13 @@ export async function generateAiSummary(
   // Compact structured input — much smaller than the prior natural-language
   // template (which embedded labels, "Yes/No" strings, full item names, etc).
   // Categories deduped + capped at 8 to bound token count on big requests.
+  // Categories and missing[] are SORTED before being put on the wire so two
+  // identical requests load-order-shuffled by the DB still produce the same
+  // hash (item rows are not loaded with ORDER BY in the regenerate route).
+  const categories = Array.from(new Set(requestData.items.map((i) => i.category)))
+    .sort()
+    .slice(0, 8);
+  const missingSorted = [...missing].sort();
   const compact = {
     company: requestData.companyName,
     event: requestData.eventName,
@@ -120,12 +146,44 @@ export async function generateAiSummary(
       promo: requestData.promotionalItemsRequested,
     },
     itemCount: requestData.items.length,
-    categories: Array.from(new Set(requestData.items.map((i) => i.category))).slice(0, 8),
+    categories,
     uploads: requestData.uploads.length,
     notes: (requestData.additionalNotes || "").slice(0, 400),
     scope,
-    missing,
+    missing: missingSorted,
   };
+
+  const model = getModelForTask(TASK);
+
+  // Stable content hash of the AI input. Includes:
+  //  - the compact payload (so any meaningful field change busts the cache)
+  //  - the deterministic-section outputs (folded into compact via scope/missing)
+  //  - the model name + a manual PROMPT_VERSION (so swapping models or
+  //    rewording the prompt automatically invalidates every prior hash).
+  const inputHash = stableHash({ payload: compact, model, promptVersion: PROMPT_VERSION });
+
+  // -------- Cache short-circuit --------
+  // If the caller has a prior hash + non-empty summary that matches what we
+  // would compute, skip the AI call entirely. NB: callers only persist the
+  // hash when the prior run actually used AI (`usedAi=true`); a deterministic
+  // fallback from a failed AI run stores hash=null, so the next regenerate
+  // naturally retries instead of reusing the fallback forever.
+  if (
+    ctx?.priorHash &&
+    ctx.priorHash === inputHash &&
+    typeof ctx.priorSummary === "string" &&
+    ctx.priorSummary.trim().length > 0
+  ) {
+    if (ctx.requestId !== undefined || ctx.partnerId !== undefined) {
+      usageEmit("request.ai_summary.reused", {
+        partnerId: ctx.partnerId ?? null,
+        objectType: "request",
+        objectId: ctx.requestId ?? null,
+        meta: { model, tokensIn: 0, tokensOut: 0, scope, reason: "input_hash_match" },
+      }).catch(() => { /* tracking is best-effort */ });
+    }
+    return { text: ctx.priorSummary, inputHash, usedAi: false };
+  }
 
   let overview = `${requestData.companyName} — ${requestData.eventName}.`;
   let risks: string[] = [];
@@ -136,9 +194,9 @@ export async function generateAiSummary(
   try {
     const client = getOpenAIClient();
     const response = await client.chat.completions.create({
-      model: MODEL,
+      model,
       temperature: 0.2,
-      max_tokens: AI_MAX_OUTPUT_TOKENS,
+      max_tokens: getMaxTokensForTask(TASK),
       response_format: { type: "json_object" },
       messages: [
         {
@@ -177,7 +235,7 @@ export async function generateAiSummary(
       partnerId: ctx.partnerId ?? null,
       objectType: "request",
       objectId: ctx.requestId ?? null,
-      meta: { tokensIn, tokensOut, model: MODEL, risks: risks.length, scope },
+      meta: { tokensIn, tokensOut, model, risks: risks.length, scope },
     }).catch(() => { /* tracking is best-effort */ });
   }
 
@@ -204,7 +262,7 @@ export async function generateAiSummary(
   lines.push(`5. Missing Details: ${missing.length > 0 ? missing.join(", ") : "None — all key information provided."}`);
   lines.push("");
   lines.push(`6. Recommended Next Step: ${nextStep}`);
-  return lines.join("\n");
+  return { text: lines.join("\n"), inputHash, usedAi: aiOk };
 }
 
 export function generateInternalSummary(requestData: {

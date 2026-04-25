@@ -2,6 +2,7 @@ import { db, deckExtractionsTable, deckExtractionItemsTable, deckExtractionClaim
 import { and, desc, eq, sql } from "drizzle-orm";
 import crypto from "crypto";
 import { emit as usageEmit } from "../services/usageTracking";
+import { getOpenAIRestConfig, getModelForTask } from "./aiModels";
 
 /**
  * Try to claim ownership of a (partnerId, fileHash) parse. Backed by a unique
@@ -242,9 +243,9 @@ export function selectRelevantChunks(pages: { page: number; text: string }[]): {
 async function extractWithOpenAI(
   chunks: { page: number; text: string; reason: string }[],
 ): Promise<{ items: ExtractedItem[]; tokensIn: number; tokensOut: number; model: string } | null> {
-  const baseUrl = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
-  const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
-  if (!baseUrl || !apiKey) return null;
+  const cfg = getOpenAIRestConfig();
+  if (!cfg) return null;
+  const { baseUrl, apiKey } = cfg;
 
   // Compact prompt — chunks only, no full document, hard input cap.
   let payloadText = chunks.map(c => `--- Page ${c.page} (${c.reason}) ---\n${c.text}`).join("\n\n");
@@ -252,7 +253,7 @@ async function extractWithOpenAI(
     payloadText = payloadText.substring(0, PDF_LIMITS.MAX_AI_INPUT_CHARS);
   }
 
-  const model = "gpt-4o-mini";
+  const model = getModelForTask("deckExtraction");
   try {
     const res = await fetch(`${baseUrl}/chat/completions`, {
       method: "POST",

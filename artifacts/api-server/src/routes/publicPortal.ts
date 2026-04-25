@@ -344,10 +344,14 @@ router.post("/public/partners/:slug/requests", async (req, res): Promise<void> =
     promotionalItemsRequested: data.promotionalItemsRequested || false,
     additionalNotes: data.additionalNotes || null,
     uploads: uploads.map((u) => ({ uploadType: u.uploadType, fileName: u.fileName })),
-  }, { requestId: request.id, partnerId: partner.id }).then(async (aiSummary) => {
+  }, { requestId: request.id, partnerId: partner.id }).then(async ({ text, inputHash, usedAi }) => {
+    // Persist the composed text always; persist the input hash ONLY when AI
+    // actually ran successfully — a deterministic fallback (usedAi=false)
+    // stores hash=null so the next regenerate-ai click will retry instead of
+    // permanently reusing the fallback text.
     await db
       .update(requestsTable)
-      .set({ aiSummary })
+      .set({ aiSummary: text, aiSummaryInputHash: usedAi ? inputHash : null })
       .where(eq(requestsTable.id, request.id));
   }).catch(() => {});
 

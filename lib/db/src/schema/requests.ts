@@ -26,6 +26,10 @@ export const requestsTable = pgTable("requests", {
   additionalNotes: text("additional_notes"),
   status: text("status").notNull().default("New"),
   aiSummary: text("ai_summary"),
+  // Stable hash of the input payload used to produce `aiSummary`. Lets
+  // /requests/:id/regenerate-ai short-circuit when the underlying request
+  // data hasn't changed since the last AI run — see lib/aiSummary.ts.
+  aiSummaryInputHash: text("ai_summary_input_hash"),
   internalSummary: text("internal_summary"),
   estimatedScopeLevel: text("estimated_scope_level"),
   recommendedUpsellsJson: jsonb("recommended_upsells_json").$type<string[]>(),

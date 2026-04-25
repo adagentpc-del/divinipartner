@@ -3,6 +3,7 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import crypto from "crypto";
 import { emit as usageEmit } from "../services/usageTracking";
 import { logger } from "./logger";
+import { getOpenAIRestConfig, getModelForTask } from "./aiModels";
 
 /**
  * Section 25 ext#3 — PDF package intake.
@@ -237,16 +238,16 @@ async function extractWithOpenAI(
   chunks: { page: number; text: string; reason: string }[],
   partnerName: string,
 ): Promise<{ rows: ParsedPackageRow[]; tokensIn: number; tokensOut: number; model: string; warnings: { severity: string; code: string; message: string }[] } | null> {
-  const baseUrl = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
-  const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
-  if (!baseUrl || !apiKey) return null;
+  const cfg = getOpenAIRestConfig();
+  if (!cfg) return null;
+  const { baseUrl, apiKey } = cfg;
 
   let payloadText = chunks.map(c => `--- Page ${c.page} (${c.reason}) ---\n${c.text}`).join("\n\n");
   if (payloadText.length > PDF_LIMITS.MAX_AI_INPUT_CHARS) {
     payloadText = payloadText.substring(0, PDF_LIMITS.MAX_AI_INPUT_CHARS);
   }
 
-  const model = "gpt-4o-mini";
+  const model = getModelForTask("packageExtraction");
   // Tight package-focused prompt. Asks for grouped rows: each row is either a
   // package header (packageName + tier/price/etc) OR a sub-item row (itemName/
   // quantity/material). _groupKey ties them together so the UI can render

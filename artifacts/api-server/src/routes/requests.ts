@@ -223,7 +223,7 @@ router.post("/requests/:id/regenerate-ai", async (req, res): Promise<void> => {
   const items = await db.select().from(requestItemsTable).where(eq(requestItemsTable.requestId, params.data.id));
   const uploads = await db.select().from(requestUploadsTable).where(eq(requestUploadsTable.requestId, params.data.id));
 
-  const aiSummary = await generateAiSummary({
+  const { text: aiSummary, inputHash: aiSummaryInputHash, usedAi } = await generateAiSummary({
     companyName: request.companyName,
     contactName: request.contactName,
     eventName: request.eventName,
@@ -237,11 +237,22 @@ router.post("/requests/:id/regenerate-ai", async (req, res): Promise<void> => {
     promotionalItemsRequested: request.promotionalItemsRequested,
     additionalNotes: request.additionalNotes,
     uploads: uploads.map((u) => ({ uploadType: u.uploadType, fileName: u.fileName })),
-  }, { requestId: request.id, partnerId: request.partnerId });
+  }, {
+    requestId: request.id,
+    partnerId: request.partnerId,
+    // Pass current row state so generateAiSummary can short-circuit when the
+    // input payload hasn't changed since the last AI run — no token spend on
+    // an idempotent regenerate-ai click.
+    priorHash: request.aiSummaryInputHash,
+    priorSummary: request.aiSummary,
+  });
 
   const [updated] = await db
     .update(requestsTable)
-    .set({ aiSummary })
+    // Hash persists only when AI actually ran. A deterministic fallback
+    // (usedAi=false) clears the hash so the next regenerate-ai retries
+    // instead of reusing the fallback text forever.
+    .set({ aiSummary, aiSummaryInputHash: usedAi ? aiSummaryInputHash : null })
     .where(eq(requestsTable.id, params.data.id))
     .returning();
 

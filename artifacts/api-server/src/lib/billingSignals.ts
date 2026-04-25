@@ -15,6 +15,7 @@
 // ===========================================================================
 
 import { PDF_LIMITS, stripBoilerplate, selectRelevantChunks } from "./deckExtraction";
+import { getOpenAIRestConfig, getModelForTask } from "./aiModels";
 
 export type ParseSource = "rules" | "ai" | "none" | "failed";
 
@@ -284,12 +285,12 @@ async function runAiFallback(billingPages: { page: number; text: string }[]): Pr
   tokensIn: number;
   tokensOut: number;
 } | null> {
-  const baseUrl = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
-  const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
-  if (!baseUrl || !apiKey) return null;
+  const cfg = getOpenAIRestConfig();
+  if (!cfg) return null;
+  const { baseUrl, apiKey } = cfg;
   let payload = billingPages.map(p => `--- p${p.page} ---\n${p.text}`).join("\n\n");
   if (payload.length > AI_MAX_INPUT_CHARS) payload = payload.substring(0, AI_MAX_INPUT_CHARS);
-  const model = "gpt-4o-mini";
+  const model = getModelForTask("billingSignals");
   try {
     const res = await fetch(`${baseUrl}/chat/completions`, {
       method: "POST",
