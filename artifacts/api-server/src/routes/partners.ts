@@ -156,7 +156,29 @@ router.patch("/partners/:id", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
-  const parsed = UpdatePartnerBodySchema.safeParse(req.body);
+  // Look up the existing partner first so we can tolerate legacy slugs.
+  // Some production partners were created before the strict lowercase slug
+  // rule (e.g. "SCF", "A3TheMoveMiami"). If the form re-submits the same
+  // slug unchanged, we should not reject the update — strict validation
+  // only applies when the slug is actually being changed to a new value.
+  const [existing] = await db.select().from(partnersTable).where(eq(partnersTable.id, id));
+  if (!existing) {
+    res.status(404).json({ error: "Partner not found" });
+    return;
+  }
+
+  // Body must be a plain JSON object — guard against arrays/primitives
+  // sneaking through Express's JSON parser.
+  if (req.body == null || typeof req.body !== "object" || Array.isArray(req.body)) {
+    res.status(400).json({ error: "Request body must be a JSON object" });
+    return;
+  }
+  const incoming = { ...(req.body as Record<string, unknown>) };
+  if (typeof incoming.slug === "string" && incoming.slug === existing.slug) {
+    delete incoming.slug;
+  }
+
+  const parsed = UpdatePartnerBodySchema.safeParse(incoming);
   if (!parsed.success) {
     res.status(400).json({
       error: "Some fields are invalid. Please check the highlighted entries.",
@@ -295,7 +317,10 @@ router.post("/partners/:id/duplicate", async (req, res): Promise<void> => {
   if (!source) { res.status(404).json({ error: "Partner not found" }); return; }
 
   const { id: _id, createdAt: _ca, updatedAt: _ua, ...fields } = source;
-  const newSlug = `${source.slug}-copy-${Date.now().toString(36)}`;
+  // Normalize the source slug so duplicating a legacy uppercase partner
+  // produces a valid lowercase slug that matches our current rules.
+  const safeSourceSlug = source.slug.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "") || "partner";
+  const newSlug = `${safeSourceSlug}-copy-${Date.now().toString(36)}`;
   const [newPartner] = await db.insert(partnersTable).values({
     ...fields,
     slug: newSlug,
