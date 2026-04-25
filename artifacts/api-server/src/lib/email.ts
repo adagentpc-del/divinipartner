@@ -415,6 +415,56 @@ async function maybeAttach(ctx: OrderEmailContext, audience: "customer" | "inter
   }
 }
 
+// ---------------------------------------------------------------------------
+// Generic branded test send — used by the admin "test send" tooling so a
+// human can verify branding, deliverability, and provider connectivity
+// without first creating a fake order. Renders a tiny branded shell using
+// the partner's existing color/logo theme so what arrives in the inbox is
+// representative of real customer-facing mail.
+// ---------------------------------------------------------------------------
+export async function sendGenericBrandedTest(params: {
+  partner: Partner;
+  to: string;
+  subject?: string;
+  message?: string;
+}): Promise<SendResult> {
+  const { partner, to } = params;
+  const subject = params.subject?.trim() || `${partner.companyName} — branded email test`;
+  const message = params.message?.trim()
+    || `This is a test email from your ${partner.companyName} portal to confirm that branded emails reach the inbox cleanly.`;
+  // Load the partner's theme so the test reflects the real brand colors a
+  // recipient will see in production order emails — otherwise the "branded"
+  // test would silently fall back to default colors and not actually verify
+  // brand consistency.
+  const [theme] = await db.select().from(partnerThemesTable).where(eq(partnerThemesTable.partnerId, partner.id));
+  const colors = resolveBrandColors(theme);
+  const safeMessage = message
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/\n/g, "<br>");
+  const html = `<!doctype html><html><body style="margin:0;padding:0;background:${colors.background};font-family:Inter,Arial,sans-serif;color:${colors.text};">
+    <div style="max-width:560px;margin:32px auto;background:#fff;border:1px solid ${colors.primary}1a;border-radius:12px;overflow:hidden;">
+      <div style="padding:20px 24px;background:${colors.primary};color:#fff;font-weight:600;">${partner.emailSenderLabel || partner.companyName}</div>
+      <div style="padding:24px;">
+        <h1 style="margin:0 0 8px 0;font-size:18px;">Branded test email</h1>
+        <p style="margin:0 0 12px 0;font-size:14px;line-height:1.5;color:#475569;">${safeMessage}</p>
+        <p style="margin:16px 0 0 0;font-size:12px;color:#94a3b8;">
+          If you received this from your branded sender domain, customer confirmations and ops forwards will too.
+          If it landed in spam, check the Domain Authentication panel in admin.
+        </p>
+      </div>
+    </div>
+  </body></html>`;
+  return sendBrandedEmail({
+    partner,
+    to,
+    subject,
+    html,
+    replyTo: partner.replyToEmail || partner.contactEmail || null,
+    emailType: "admin_generic_test",
+    orderId: null,
+  });
+}
+
 export async function sendOrderConfirmation(ctx: OrderEmailContext): Promise<SendResult> {
   const { partner, order } = ctx;
   if (!order.contactEmail) return { ok: false, error: "no_customer_email" };
@@ -577,7 +627,7 @@ export async function sendInternalOrderForward(ctx: OrderEmailContext): Promise<
   return sendOpsForward(ctx);
 }
 
-export async function sendOpsForward(ctx: OrderEmailContext, overrideTo?: string[]): Promise<SendResult> {
+export async function sendOpsForward(ctx: OrderEmailContext, overrideTo?: string[], opts?: { suppressCcBcc?: boolean }): Promise<SendResult> {
   const { partner, order } = ctx;
   const recipients = await getRecipientsByRole(partner.id);
   const to = overrideTo && overrideTo.length > 0
@@ -587,10 +637,16 @@ export async function sendOpsForward(ctx: OrderEmailContext, overrideTo?: string
   // Legacy partner.ccEmail is only a fallback — if any role-based cc
   // recipients are configured, the legacy field is ignored to avoid leaking
   // order data to stale addresses after a partner migrates to the new model.
-  const cc = (recipients.cc && recipients.cc.length > 0)
-    ? uniq(recipients.cc)
-    : uniq([partner.ccEmail]);
-  const bcc = uniq(recipients.bcc || []);
+  // When `suppressCcBcc` is set (used by admin test sends to a single
+  // override address), we deliberately skip both cc and bcc so test mail
+  // never fans out to real ops/cc/bcc recipients.
+  const suppressCcBcc = !!opts?.suppressCcBcc;
+  const cc = suppressCcBcc
+    ? []
+    : ((recipients.cc && recipients.cc.length > 0)
+      ? uniq(recipients.cc)
+      : uniq([partner.ccEmail]));
+  const bcc = suppressCcBcc ? [] : uniq(recipients.bcc || []);
   const html = renderInternalForwardHtml(ctx);
   const attachments = await maybeAttach(ctx, "internal", !!partner.attachPdfOps);
   return sendBrandedEmail({

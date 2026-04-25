@@ -1,8 +1,18 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Mail, CheckCircle2, AlertTriangle, FileText, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Mail, CheckCircle2, AlertTriangle, FileText, Loader2, RefreshCw } from "lucide-react";
+
+const RETRYABLE_TYPES = new Set([
+  "order_confirmation",
+  "order_ops_forward",
+  "order_finance_notification",
+  "order_partner_contact_notification",
+  "order_vendor_notification",
+]);
 
 /**
  * Section 28 — per-order email delivery panel.
@@ -35,10 +45,29 @@ function fmtRecipients(to: unknown): string {
 }
 
 export default function OrderEmailDeliveryPanel({ orderId }: { orderId: number }) {
+  const queryClient = useQueryClient();
   const { data, isLoading } = useQuery<{ events: EventRow[] }>({
     queryKey: [`/api/orders/${orderId}/email-events`],
     queryFn: () => apiFetch(`/api/orders/${orderId}/email-events`),
     enabled: Number.isFinite(orderId),
+  });
+
+  const [retryFeedback, setRetryFeedback] = useState<{ id: number; ok: boolean; text: string } | null>(null);
+  const retryMutation = useMutation({
+    mutationFn: (eventId: number) => apiFetch(`/api/admin/email-readiness/retry/${eventId}`, { method: "POST" }),
+    onSuccess: (r: any, eventId) => setRetryFeedback({
+      id: eventId,
+      ok: !!r.ok,
+      text: r.ok ? `Resent — provider id ${r.providerId || "—"}` : `Retry failed: ${r.error || "unknown error"}`,
+    }),
+    onError: (e: any, eventId) => setRetryFeedback({
+      id: eventId,
+      ok: false,
+      text: e?.message || "Retry request failed.",
+    }),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/orders/${orderId}/email-events`] });
+    },
   });
   const events = data?.events || [];
   const emailEvents = events.filter(e => e.eventType === "email.sent" || e.eventType === "email.failed");
@@ -90,6 +119,8 @@ export default function OrderEmailDeliveryPanel({ orderId }: { orderId: number }
             {emailEvents.map(ev => {
               const ok = ev.eventType === "email.sent";
               const m = ev.meta || {};
+              const canRetry = !ok && typeof m.type === "string" && RETRYABLE_TYPES.has(m.type);
+              const fb = retryFeedback?.id === ev.id ? retryFeedback : null;
               return (
                 <div key={ev.id} className={`text-xs rounded-md border p-2 ${ok ? "bg-emerald-50/40 border-emerald-200" : "bg-rose-50/40 border-rose-200"}`}>
                   <div className="flex items-center justify-between gap-2">
@@ -105,6 +136,26 @@ export default function OrderEmailDeliveryPanel({ orderId }: { orderId: number }
                     <div className="text-muted-foreground"><FileText className="h-3 w-3 inline mr-1" />Attached: {m.attachments.join(", ")}</div>
                   )}
                   {!ok && m.error && <div className="text-rose-700 mt-0.5">Error: {m.error}</div>}
+                  {canRetry && (
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-6 text-[11px] px-2"
+                        disabled={retryMutation.isPending && retryMutation.variables === ev.id}
+                        onClick={() => retryMutation.mutate(ev.id)}
+                        title="Rebuild this email from the current order data and resend it."
+                      >
+                        {retryMutation.isPending && retryMutation.variables === ev.id
+                          ? <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          : <RefreshCw className="h-3 w-3 mr-1" />}
+                        Retry send
+                      </Button>
+                      {fb && (
+                        <span className={fb.ok ? "text-emerald-700 text-[11px]" : "text-rose-700 text-[11px]"}>{fb.text}</span>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
