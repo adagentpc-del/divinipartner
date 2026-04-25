@@ -1,0 +1,141 @@
+Refine the existing Partner Commerce Portal by hardening email deliverability, domain authentication readiness, branded sending, and admin visibility for outbound emails.
+
+Goal:
+Make sure the portal’s emails are much less likely to go to spam, use the correct branded/custom domain behavior, and are testable/visible from inside the software.
+
+Scope:
+Keep this pass tightly focused on:
+1. email deliverability readiness
+2. branded sender/domain consistency
+3. SPF/DKIM/DMARC readiness visibility
+4. test-send and failure visibility
+5. safe email configuration checks
+
+Do not rebuild unrelated workflows.
+
+Requirements:
+
+1. Email readiness / deliverability admin section
+Add an internal Email Deliverability / Email Readiness section visible to admin.
+
+Show at minimum:
+- canonical public domain
+- email sending provider configured yes/no
+- sender email
+- sender display name
+- reply-to email
+- internal routing emails configured yes/no
+- custom domain configured yes/no
+- branded links using custom domain yes/no
+- customer confirmation enabled yes/no
+- internal routing enabled yes/no
+
+This should be easy to find in admin/settings or a dedicated email settings area.
+
+2. Domain authentication readiness visibility
+Add admin-visible readiness indicators for:
+- SPF record configured placeholder/status
+- DKIM configured placeholder/status
+- DMARC configured placeholder/status
+- domain verification status if already available from provider integration
+- whether the sender domain appears aligned with the custom domain setup
+
+Important:
+Do not invent false external verification.
+If live provider-side verification is not available, show this as:
+- manual verification required
+- config not confirmed
+- provider status unknown
+- ready for verification
+
+The point is to make the system operationally clear, not fake-confirmed.
+
+3. Branded sender consistency
+Ensure all email flows use the correct branded sending context where configured.
+
+At minimum verify/use:
+- sender display name
+- sender email
+- reply-to email
+- partner logo where appropriate
+- partner colors where already supported
+- custom-domain links in email bodies and buttons
+- no accidental replit.app links in public-facing emails if custom domain is configured
+
+4. Test-send tools
+Add clean test actions for:
+- test customer confirmation email
+- test internal routing email
+- optional generic branded email test
+
+Requirements:
+- allow admin to enter a destination test email or use configured addresses
+- show success/failure feedback clearly
+- log test sends if communications logging already exists
+- do not require a real order just to test email formatting and routing
+
+5. Failure visibility
+If an email fails to send:
+- do not silently fail
+- log the failure internally
+- show the failure in admin
+- tie failure to the related order or communication record where appropriate
+- allow retry if feasible
+
+6. Internal routing verification
+Because the business model relies on order emails reaching me and Sean:
+- clearly show whether primary internal routing email is configured
+- clearly show whether secondary internal routing email is configured
+- indicate missing or invalid config
+- make it easy to test both recipients
+
+7. Safe config checks
+Add a configuration check for key email-related settings such as:
+- email provider API key present
+- sender email configured
+- reply-to email configured
+- internal routing emails configured
+- canonical/custom domain configured
+- public app URL configured for email links
+
+If missing:
+- show admin warning
+- do not crash the app
+- do not expose raw secret values
+- keep end-user experience safe
+
+8. Email link integrity
+Audit generated links in emails and ensure they use:
+- custom domain/public app URL
+- correct routes for confirmations, invites, resets, portal links, and order references
+- no mixed-domain behavior if custom domain is set
+
+9. Communications and order detail visibility
+Where relevant, show on order detail / communications history:
+- email sent yes/no
+- failed yes/no
+- recipient
+- send timestamp
+- retry action if feasible
+
+10. Seed/demo updates
+Add examples for:
+- branded sender configured
+- custom domain links in email
+- internal routing configured for two recipients
+- one test send success
+- one failure state visible in admin
+
+11. Documentation
+Update replit.md with:
+- email deliverability readiness model
+- what config is required
+- how branded sender/domain behavior works
+- what test-send actions exist
+- what admin visibility exists for failures and missing config
+- what domain-auth items require outside-DNS/provider verification
+
+Important:
+Do not rebuild the app.
+Do not change unrelated workflows.
+Actually implement email deliverability readiness, branded sender consistency, config checks, admin visibility, and test-send tooling, not placeholders only.

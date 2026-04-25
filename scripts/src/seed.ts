@@ -1,5 +1,5 @@
 import { eq, and } from "drizzle-orm";
-import { db, partnersTable, pricingRulesTable, productCatalogTable, partnerSectionsTable, partnerThemesTable, suppliersTable, citiesTable, venuesTable, eventsTable, packagesTable, packageItemsTable, inventoryTable, userRolesTable } from "@workspace/db";
+import { db, partnersTable, pricingRulesTable, productCatalogTable, partnerSectionsTable, partnerThemesTable, suppliersTable, citiesTable, venuesTable, eventsTable, packagesTable, packageItemsTable, inventoryTable, userRolesTable, partnerEmailRecipientsTable, usageEvents, ordersTable } from "@workspace/db";
 
 async function seed() {
   console.log("Seeding pricing rules...");
@@ -125,6 +125,18 @@ async function seed() {
       portalMode: "full",
       isActive: true,
       smallA3BadgeEnabled: true,
+      // Branded-sender demo wiring so the Email Readiness page shows a
+      // partner that is fully configured for deliverability out of the box.
+      // These fields drive the From line, Reply-To, internal forward, and
+      // legacy CC fallbacks; the per-role recipients seeded later override
+      // them when present.
+      emailFromName: "Move Miami Events",
+      emailSenderLabel: "Move Miami × A3 Visual",
+      replyToEmail: "events@movemiami.example",
+      internalForwardEmail: "ops@movemiami.example",
+      ccEmail: "ops-cc@movemiami.example",
+      billingContactEmail: "billing@movemiami.example",
+      emailEnabled: true,
     },
     {
       companyName: "Hilton",
@@ -389,6 +401,107 @@ async function seed() {
   const existingAdmin = await db.select().from(userRolesTable).where(eq(userRolesTable.email, adminEmail));
   if (existingAdmin.length === 0) {
     await db.insert(userRolesTable).values({ email: adminEmail, role: "super_admin", fullName: "Default Super Admin", isActive: true, acceptedAt: new Date() });
+  }
+
+  // -------------------------------------------------------------------------
+  // Email Readiness demo data (idempotent).
+  //
+  // Gives the Email Readiness admin page a partner that is fully wired for
+  // outbound email so a fresh environment shows what a "configured" partner
+  // looks like rather than an empty checklist:
+  //   - two ops recipients (primary + secondary) so internal routing has
+  //     redundancy, exactly what the brief calls out for "this email reaches
+  //     me and Sean"
+  //   - one cc recipient
+  //   - one historical email.sent event (proof that a send succeeded)
+  //   - one historical email.failed event (so the failures list and Retry
+  //     button are exercised in a fresh environment)
+  // -------------------------------------------------------------------------
+  console.log("Seeding email-readiness demo data...");
+  const [demoPartner] = await db.select().from(partnersTable).where(eq(partnersTable.slug, "move-miami"));
+  if (demoPartner) {
+    const demoRecipients: Array<{ role: string; email: string; label: string; sortOrder: number }> = [
+      { role: "ops", email: "ops-primary@movemiami.example", label: "Primary ops (orders)", sortOrder: 0 },
+      { role: "ops", email: "ops-secondary@movemiami.example", label: "Secondary ops (redundancy)", sortOrder: 1 },
+      { role: "cc", email: "ops-cc@movemiami.example", label: "Operations CC", sortOrder: 0 },
+      { role: "finance", email: "billing@movemiami.example", label: "Finance / billing", sortOrder: 0 },
+    ];
+    for (const r of demoRecipients) {
+      const existing = await db.select().from(partnerEmailRecipientsTable).where(and(
+        eq(partnerEmailRecipientsTable.partnerId, demoPartner.id),
+        eq(partnerEmailRecipientsTable.role, r.role),
+        eq(partnerEmailRecipientsTable.email, r.email),
+      ));
+      if (existing.length === 0) {
+        await db.insert(partnerEmailRecipientsTable).values({
+          partnerId: demoPartner.id,
+          role: r.role,
+          email: r.email,
+          label: r.label,
+          isActive: true,
+          sortOrder: r.sortOrder,
+        });
+      }
+    }
+    console.log(`  Seeded ${demoRecipients.length} role-based recipients for ${demoPartner.companyName}`);
+
+    // Try to attach the demo events to a real order if one exists; otherwise
+    // record them with no objectId so they still show up in the admin failures
+    // / activity views.
+    const [latestOrder] = await db.select().from(ordersTable).where(eq(ordersTable.partnerId, demoPartner.id)).limit(1);
+
+    const sentMarker = "demo-seed:email.sent:move-miami";
+    const failedMarker = "demo-seed:email.failed:move-miami";
+
+    const existingSent = await db.select().from(usageEvents).where(and(
+      eq(usageEvents.eventType, "email.sent"),
+      eq(usageEvents.partnerId, demoPartner.id),
+    ));
+    const sentAlreadySeeded = existingSent.some(e => {
+      const m = (e.meta ?? {}) as Record<string, unknown>;
+      return m.seedMarker === sentMarker;
+    });
+    if (!sentAlreadySeeded) {
+      await db.insert(usageEvents).values({
+        eventType: "email.sent",
+        partnerId: demoPartner.id,
+        objectType: latestOrder ? "order" : null,
+        objectId: latestOrder?.id ?? null,
+        meta: {
+          seedMarker: sentMarker,
+          emailType: "order_confirmation",
+          to: "events@movemiami.com",
+          subject: "Your order has been received",
+          providerId: "demo_resend_id_001",
+        },
+      });
+    }
+
+    const existingFailed = await db.select().from(usageEvents).where(and(
+      eq(usageEvents.eventType, "email.failed"),
+      eq(usageEvents.partnerId, demoPartner.id),
+    ));
+    const failedAlreadySeeded = existingFailed.some(e => {
+      const m = (e.meta ?? {}) as Record<string, unknown>;
+      return m.seedMarker === failedMarker;
+    });
+    if (!failedAlreadySeeded) {
+      await db.insert(usageEvents).values({
+        eventType: "email.failed",
+        partnerId: demoPartner.id,
+        objectType: latestOrder ? "order" : null,
+        objectId: latestOrder?.id ?? null,
+        meta: {
+          seedMarker: failedMarker,
+          emailType: "order_ops_forward",
+          to: "ops-primary@movemiami.example",
+          error: "demo: simulated provider 4xx — invalid recipient (seeded for admin visibility)",
+        },
+      });
+    }
+    console.log("  Demo email.sent + email.failed events ensured");
+  } else {
+    console.log("  Skipped — Move Miami partner not found");
   }
 
   console.log("Seed complete!");
