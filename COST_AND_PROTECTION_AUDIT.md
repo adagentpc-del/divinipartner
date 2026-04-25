@@ -82,6 +82,22 @@ is deterministic code.
 | `lib/packageExtraction.ts`           | Package PDF row extraction            | "extraction" tier                             | file hash   | Hard error.                       |
 | `lib/billingSignals.ts`              | Billing PDF signal extraction         | "extraction" tier                             | file hash   | Hard error.                       |
 
+**Provider-native prompt caching readiness.** All four callsites use the
+shape `messages: [{role:"system", content: <stable string>}, {role:"user",
+content: <variable payload>}]`. That's exactly the order OpenAI's
+automatic prompt cache requires (stable prefix first, variable suffix
+after). When total prompt length crosses **1024 tokens** the cache kicks
+in automatically with a 50% discount on cached input tokens — no client
+flag, no SDK option, just the right message ordering. In practice:
+
+- `deckExtraction` and `packageExtraction` routinely exceed 1024 tokens
+  because the PDF text lives in the user message; cache applies for free.
+- `aiSummary` (~75-token system + small JSON input) and `billingSignals`
+  (~40-token system + small PDF excerpt) stay well below 1024 tokens by
+  design, so caching doesn't trigger and there is nothing to gain by
+  forcing it. The spend on those calls is already minimal because the
+  prompts themselves are small.
+
 All four:
 
 - Build prompts from **compact JSON inputs**, not raw catalogs/orders/full
@@ -269,24 +285,99 @@ itself said `reliable scaling without overengineering`."
 
 ---
 
-## 10. Next scaling step (when traffic actually grows)
+## 10. Scaling thresholds — when to add what
 
-In rough order of "do it when you actually feel the pain":
+Each step below has an **observable trigger**. Add the infrastructure
+when (and only when) the trigger fires. Do not add anything earlier "for
+future-proofing" — every item on this list has a recurring cost or a new
+failure mode, and nothing on this list is needed at the app's current
+scale.
 
-1. **Multiple api-server instances.** When one instance is no longer
-   enough, the in-memory rate-limit store is the first thing that
-   breaks (each instance gets its own bucket, so the effective limit
-   becomes `N × bucket`). Switch to a shared store — Redis-compatible
-   keystore is fine; so is the PG-backed store from `rate-limit-postgres`.
-2. **Horizontal AI parse workers.** If PDF parse latency starts being
-   user-visible, the deck/package extractors are pure functions of
-   `(file, prompt_version, model)` — pull them into a worker that
-   consumes a `pending_extractions` PG table.
-3. **CDN in front of object storage** for hot public assets (partner
-   branding files served on portal pages). Object storage already
-   serves directly; a CDN would just shave latency.
-4. **pgvector** — only when a "search across all uploads / find similar
-   spec" feature is on the actual roadmap.
+### 10.1 Add a shared rate-limit store (Redis-compatible *or* PG-backed)
+**Trigger:** the api-server is intentionally run on **more than one
+instance** at the same time (horizontal scale-out behind the Replit edge
+or a load balancer).
 
-None of these are needed today. Documenting them so the path is obvious
-when they are.
+**Why:** today's rate limiters are `express-rate-limit`'s in-memory
+buckets. Two instances → each instance has its own bucket → the effective
+limit becomes `N × the configured limit`. Once N > 1, the protection
+silently weakens proportionally to N.
+
+**Cheapest fix:** `rate-limit-postgres` reuses the existing PG. Real
+Redis (Upstash / Replit Redis if/when available) is a small step up if
+the rate-limit write traffic ever becomes a hot path on PG.
+
+### 10.2 Add a parse-extraction queue / worker
+**Trigger:** any of:
+- p95 latency on `POST /api/partners/:id/(deck|package)-extractions`
+  exceeds **30 s** in production logs over a 24-hour window, *and*
+- `usage_events` shows more than ~50 `*.generated` extraction events per
+  day (i.e. enough that the api-server is meaningfully blocked on AI
+  inference rather than I/O), *or*
+- a single user complains that "uploading a deck hangs the page."
+
+**Why:** the deck/package extractors are pure functions of
+`(file_hash, prompt_version, model_tier)`, which means they can be
+pulled into a worker without changing semantics. Until the trigger
+fires, the current "fire one HTTP request, write the result" path is
+simpler, cheaper to operate, and has the right error-surface for an
+admin-driven workflow.
+
+**Implementation when needed:** add a `pending_extractions` table
+(file_hash, kind, status, attempts, last_error, claimed_at) and a tiny
+worker loop. Reuse the existing `lib/aiModels.ts` and the existing
+`usage_events` instrumentation as-is.
+
+### 10.3 Add pgvector
+**Trigger:** a real product feature is on the roadmap that requires
+similarity search — e.g. "find similar specs across all uploaded
+packages," "suggest matching products from a vendor's catalog," or
+"search the support knowledge base by meaning." Until such a feature
+exists, pgvector is unused weight (extension to install, embeddings to
+backfill, dimensions to maintain).
+
+**Why not earlier:** there is no retrieval feature in this product
+today. Adding pgvector "in case" means choosing an embedding model,
+running the embed pipeline on every upload, and paying for embeddings
+that nothing reads.
+
+### 10.4 Add a CDN in front of public object reads
+**Trigger:** monthly object-storage **egress** cost from
+`/api/storage/public-objects/*` becomes the largest line item on the
+infra bill, *or* p95 latency for partner-logo image loads on portal
+pages exceeds **300 ms** in real-user-monitoring.
+
+**Why:** Replit Object Storage already serves public objects directly;
+a CDN only saves the egress fee and shaves last-mile latency. Neither
+matters until traffic is high.
+
+### 10.5 Add deeper observability (APM / metrics push / tracing)
+**Trigger:** answering a real cost or correctness question by running
+SQL against `usage_events` takes **more than ~5 minutes** to write the
+query *and* you find yourself running it more than once a week. Until
+that's true, the SQL view is strictly cheaper than any APM agent.
+
+**Why not earlier:** every APM/metrics tool has a per-host or per-event
+cost. The current `usage_events` table answers "how many AI calls did
+billing-signal extraction make this week, broken down by hash-hit vs
+miss?" with one query and zero recurring cost. Add an APM only when the
+SQL stops being enough — not before.
+
+### 10.6 Add Redis for hot-path caching (response cache, dedupe TTLs)
+**Trigger:** the same expensive read is served from PG more than ~10×
+per second sustained, *and* PG CPU is visibly responding. Until then,
+the existing PG-row content-hash cache (one row per AI result, looked
+up by hash) is doing the same job for free.
+
+**Why not earlier:** Redis adds a second stateful service with its own
+failure mode and its own bill. The current dedup pattern is "look up
+PG row by hash; if present, return; if not, compute and insert," which
+is fast, durable, and has no separate operational surface.
+
+---
+
+**Summary of "not yet":** Redis, pgvector, queue workers, CDN, APM —
+all of them are documented above with a concrete trigger. None of them
+are needed today. The point of this section is to make the upgrade path
+obvious when the trigger does fire, *and* to make it cheap to say
+"not yet" the next time someone asks "should we add X?"
