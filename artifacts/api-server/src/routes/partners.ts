@@ -196,6 +196,14 @@ router.patch("/partners/:id", async (req, res): Promise<void> => {
     updateData[k] = (typeof v === "string" && v.trim() === "") ? null : v;
   }
 
+  // If nothing actually changed (e.g. only an unchanged slug was sent and got
+  // stripped above), there is nothing to update — just return the existing
+  // partner so the client treats this as a successful no-op save.
+  if (Object.keys(updateData).length === 0) {
+    res.json(existing);
+    return;
+  }
+
   const [partner] = await db
     .update(partnersTable)
     .set(updateData as any)
