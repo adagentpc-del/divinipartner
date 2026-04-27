@@ -647,14 +647,34 @@ export async function sendOpsForward(ctx: OrderEmailContext, overrideTo?: string
       ? uniq(recipients.cc)
       : uniq([partner.ccEmail]));
   const bcc = suppressCcBcc ? [] : uniq(recipients.bcc || []);
-  const html = renderInternalForwardHtml(ctx);
+  // Pass 7 (April 2026): the ops forward is the polished A3-side intake email.
+  // It uses the analysis builder so Alyssa/Shawn/Sales see the same hardware/
+  // print-only/full-unit decisions, remaining inventory and follow-up
+  // questions that the OrderDetail "Internal Intake" panel renders. The
+  // generic `renderInternalForwardHtml` is still exported and is used for the
+  // vendor template + as a fallback if the analysis pass OR module load fails
+  // — the dynamic import is intentionally inside the try so a missing/broken
+  // module never blocks the email entirely.
+  let html: string;
+  let subject: string;
+  try {
+    const { buildA3IntakeAnalysis, renderA3InternalIntakeHtml } = await import("./internalIntakeEmail");
+    const analysis = await buildA3IntakeAnalysis(ctx);
+    html = renderA3InternalIntakeHtml(ctx, analysis);
+    const eventTag = ctx.event?.name ? ` · ${ctx.event.name}` : "";
+    subject = `[A3 Intake] ${partner.companyName} · ${order.orderNumber}${eventTag}`;
+  } catch (err) {
+    logger.error({ err, orderId: order.id }, "A3 intake analysis failed; falling back to legacy ops template");
+    html = renderInternalForwardHtml(ctx);
+    subject = `[New order] ${partner.companyName} · ${order.orderNumber}`;
+  }
   const attachments = await maybeAttach(ctx, "internal", !!partner.attachPdfOps);
   return sendBrandedEmail({
     partner,
     to,
     cc: cc.length > 0 ? cc : null,
     bcc: bcc.length > 0 ? bcc : null,
-    subject: `[New order] ${partner.companyName} · ${order.orderNumber}`,
+    subject,
     html,
     replyTo: order.contactEmail,
     emailType: "order_ops_forward",

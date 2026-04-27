@@ -14,6 +14,7 @@ import { Loader2, ChevronLeft, Save, Printer, ShoppingCart, MapPin, Calendar, Tr
 import OrderAssetsPanel from "@/components/admin/OrderAssetsPanel";
 import TaskPanel from "@/components/admin/TaskPanel";
 import OrderEmailDeliveryPanel from "@/components/admin/OrderEmailDeliveryPanel";
+import OrderInternalIntakePanel from "@/components/admin/OrderInternalIntakePanel";
 import OrderExceptionPanel from "@/components/admin/OrderExceptionPanel";
 import EntityAlertsPanel from "@/components/admin/EntityAlertsPanel";
 import { formatMoney, SUPPORTED_CURRENCIES, TAX_MODES, TAX_MODE_LABELS } from "@/lib/currency";
@@ -465,6 +466,11 @@ export default function OrderDetail() {
               />
             );
           })()}
+
+          {/* Pass 7 (April 2026) — A3-side intake summary mirroring the
+              polished internal ops email. Built from buildA3IntakeAnalysis
+              so the inbox view and this panel never disagree. */}
+          <OrderInternalIntakePanel orderId={order.id} />
 
           {/* Section 28 — per-order email delivery timeline. Reads usage_events. */}
           <OrderEmailDeliveryPanel orderId={order.id} />

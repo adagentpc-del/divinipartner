@@ -1,5 +1,5 @@
 import { eq, and } from "drizzle-orm";
-import { db, partnersTable, pricingRulesTable, productCatalogTable, partnerSectionsTable, partnerThemesTable, suppliersTable, citiesTable, venuesTable, eventsTable, packagesTable, packageItemsTable, inventoryTable, userRolesTable, partnerEmailRecipientsTable, usageEvents, ordersTable } from "@workspace/db";
+import { db, partnersTable, pricingRulesTable, productCatalogTable, partnerSectionsTable, partnerThemesTable, suppliersTable, citiesTable, venuesTable, eventsTable, packagesTable, packageItemsTable, inventoryTable, userRolesTable, partnerEmailRecipientsTable, usageEvents, ordersTable, productFamiliesTable, productFamilyMembersTable } from "@workspace/db";
 
 async function seed() {
   console.log("Seeding pricing rules...");
@@ -137,6 +137,16 @@ async function seed() {
       ccEmail: "ops-cc@movemiami.example",
       billingContactEmail: "billing@movemiami.example",
       emailEnabled: true,
+      // Pass 7 (April 2026) — Internal A3 intake fields. Demonstrates the
+      // top-of-email "who do I call, what NetSuite customer is this, who's
+      // the program manager?" block on the polished operational order email.
+      netsuiteCustomerNumber: "102487",
+      programManagerName: "Alyssa Rivera",
+      programManagerEmail: "alyssa@a3visual.example",
+      internalAccountOwnerName: "Shawn Mendez",
+      internalAccountOwnerEmail: "shawn@a3visual.example",
+      supportContactName: "A3 Partner Ops Desk",
+      supportContactEmail: "partner-ops@a3visual.example",
     },
     {
       companyName: "Hilton",
@@ -395,6 +405,110 @@ async function seed() {
     }
   }
   console.log("Seeded inventory");
+
+  // -------------------------------------------------------------------------
+  // Pass 7 (April 2026) — Easy Up product family demo for SCF.
+  //
+  // Demonstrates the "print-only on partner inventory" vs "full unit
+  // required" detection used by the polished internal A3 intake email and
+  // the OrderDetail intake panel. Two products bound by a family:
+  //   • easy-up-frame      — hardware
+  //   • easy-up-canopy-top — printable component (1 frame per top)
+  //
+  // SCF cities get a few frames on hand so a partner ordering ONLY canopy
+  // tops shows up as "print only on partner inventory"; ordering a frame +
+  // top together shows up as "full unit required". The rest of the email
+  // analysis (remaining inventory, follow-ups, next steps) flows from there.
+  // -------------------------------------------------------------------------
+  if (scf) {
+    console.log("Seeding Easy Up product family for SCF...");
+    const familyProductsToEnsure = [
+      {
+        name: "Easy Up Frame (10x10)",
+        slug: "easy-up-frame",
+        category: "Rentals",
+        description: "10x10 aluminium pop-up tent frame. Reusable hardware — partners typically own these and only re-print the canopy top per event.",
+        pricingModel: "fixed", unitRate: "0.00",
+        allowsCustomSize: false, isActive: true,
+      },
+      {
+        name: "Easy Up Canopy Top (printed)",
+        slug: "easy-up-canopy-top",
+        category: "Printing",
+        description: "Custom-printed canopy top fitted to the Easy Up Frame. One canopy fits one frame.",
+        pricingModel: "fixed", unitRate: "350.00",
+        allowsCustomSize: true, isActive: true,
+      },
+    ];
+    await db.insert(productCatalogTable).values(familyProductsToEnsure).onConflictDoNothing();
+
+    const allProducts = await db.select().from(productCatalogTable);
+    const findP2 = (slug: string) => allProducts.find(p => p.slug === slug);
+    const frame = findP2("easy-up-frame");
+    const canopy = findP2("easy-up-canopy-top");
+
+    if (frame && canopy) {
+      const familySlug = "easy-up";
+      const existingFamily = await db.select().from(productFamiliesTable).where(eq(productFamiliesTable.slug, familySlug));
+      let familyId: number;
+      if (existingFamily.length === 0) {
+        const [created] = await db.insert(productFamiliesTable).values({
+          slug: familySlug,
+          name: "Easy Up (10x10)",
+          description: "Pop-up tent system: one reusable frame + one printed canopy top per event.",
+          hardwareProductId: frame.id,
+          requiresHardwareDefault: true,
+          lowStockThreshold: 2,
+          isActive: true,
+        }).returning();
+        familyId = created.id;
+        console.log("  Created product family: Easy Up");
+      } else {
+        await db.update(productFamiliesTable).set({
+          hardwareProductId: frame.id,
+          name: "Easy Up (10x10)",
+        }).where(eq(productFamiliesTable.id, existingFamily[0].id));
+        familyId = existingFamily[0].id;
+      }
+
+      // Members — idempotent on (familyId, productId).
+      await db.insert(productFamilyMembersTable).values([
+        { familyId, productId: frame.id, role: "hardware", requiresHardwareUnits: 1, isOptional: false, sortOrder: 0 },
+        { familyId, productId: canopy.id, role: "component", requiresHardwareUnits: 1, isOptional: false, sortOrder: 1 },
+      ]).onConflictDoNothing();
+
+      // Frames-on-hand inventory for SCF cities so "print only" is meaningful.
+      // partnerId is set explicitly because the intake analysis filters
+      // family inventory by partner — without it the demo data wouldn't
+      // contribute to the "remaining after this order" rollup.
+      const scfCities = await db.select().from(citiesTable).where(eq(citiesTable.partnerId, scf.id));
+      for (const c of scfCities) {
+        const existingFrame = await db.select().from(inventoryTable).where(and(eq(inventoryTable.cityId, c.id), eq(inventoryTable.productId, frame.id)));
+        if (existingFrame.length === 0) {
+          await db.insert(inventoryTable).values({
+            partnerId: scf.id, cityId: c.id, productId: frame.id,
+            hardwareOnHand: 4, reserved: 0, damaged: 0,
+            graphicOnlyAvailable: true, lowInventoryThreshold: 2,
+          });
+        } else if (existingFrame[0].partnerId == null) {
+          await db.update(inventoryTable).set({ partnerId: scf.id }).where(eq(inventoryTable.id, existingFrame[0].id));
+        }
+        // Canopy tops are NOT pre-stocked — they're printed per event. We
+        // still register the inventory row so admin views show the line.
+        const existingCanopy = await db.select().from(inventoryTable).where(and(eq(inventoryTable.cityId, c.id), eq(inventoryTable.productId, canopy.id)));
+        if (existingCanopy.length === 0) {
+          await db.insert(inventoryTable).values({
+            partnerId: scf.id, cityId: c.id, productId: canopy.id,
+            hardwareOnHand: 0, reserved: 0, damaged: 0,
+            graphicOnlyAvailable: true, lowInventoryThreshold: 1,
+          });
+        } else if (existingCanopy[0].partnerId == null) {
+          await db.update(inventoryTable).set({ partnerId: scf.id }).where(eq(inventoryTable.id, existingCanopy[0].id));
+        }
+      }
+      console.log(`  Easy Up family wired with ${scfCities.length} SCF city inventory rows`);
+    }
+  }
 
   console.log("Seeding default super admin role...");
   const adminEmail = process.env.ADMIN_EMAIL ?? "admin@a3visual.com";

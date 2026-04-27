@@ -95,6 +95,21 @@ export const partnersTable = pgTable("partners", {
   taxInclusive: boolean("tax_inclusive").notNull().default(false),
   billingCountry: text("billing_country"), // ISO-2 (e.g. US, GB, AE)
   invoiceDisplayNotes: text("invoice_display_notes"),
+  // Internal A3 intake fields (April 2026 — internal ops email refresh).
+  // These are surfaced on the structured operational order intake email
+  // (sent to Alyssa/Shawn/A3 ops) and on the order detail Internal Intake
+  // panel. NetSuite customer number is the ERP customer record A3 will
+  // post the order against; program manager / internal account owner /
+  // support contact are the human routing pointers Shawn uses to figure
+  // out who to call when a question lands. All optional — when blank, the
+  // email simply omits the row instead of showing a confusing "—".
+  netsuiteCustomerNumber: text("netsuite_customer_number"),
+  programManagerName: text("program_manager_name"),
+  programManagerEmail: text("program_manager_email"),
+  internalAccountOwnerName: text("internal_account_owner_name"),
+  internalAccountOwnerEmail: text("internal_account_owner_email"),
+  supportContactName: text("support_contact_name"),
+  supportContactEmail: text("support_contact_email"),
   // Section 36: default add-on display format on this partner's portal.
   // Values: "flat" | "grid" | "category_tiles" (default "grid").
   addonDisplayFormat: text("addon_display_format").notNull().default("grid"),

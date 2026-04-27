@@ -80,6 +80,16 @@ const formSchema = z.object({
   attachPdfOps: z.boolean().default(true),
   attachPdfFinance: z.boolean().default(false),
   attachPdfPartnerContact: z.boolean().default(false),
+  // Pass 7 (April 2026) — Internal A3 intake fields. These appear at the top
+  // of the polished operational order email and on the OrderDetail "Internal
+  // A3 Intake" panel. All optional; blank fields are simply hidden.
+  netsuiteCustomerNumber: z.string().optional(),
+  programManagerName: z.string().optional(),
+  programManagerEmail: z.string().optional(),
+  internalAccountOwnerName: z.string().optional(),
+  internalAccountOwnerEmail: z.string().optional(),
+  supportContactName: z.string().optional(),
+  supportContactEmail: z.string().optional(),
   // Section 36: add-on display defaults.
   addonDisplayFormat: z.enum(["flat", "grid", "category_tiles"]).default("grid"),
   addonCategoryGroupingEnabled: z.boolean().default(false),
@@ -136,6 +146,10 @@ export default function PartnerForm() {
       emailFromName: "", replyToEmail: "", emailSenderLabel: "",
       internalForwardEmail: "", ccEmail: "", emailEnabled: true,
       attachPdfCustomer: false, attachPdfOps: true, attachPdfFinance: false, attachPdfPartnerContact: false,
+      netsuiteCustomerNumber: "",
+      programManagerName: "", programManagerEmail: "",
+      internalAccountOwnerName: "", internalAccountOwnerEmail: "",
+      supportContactName: "", supportContactEmail: "",
       defaultCurrency: "USD", defaultTaxMode: "none", defaultTaxLabel: "", defaultTaxRate: "",
       taxInclusive: false, billingCountry: "", invoiceDisplayNotes: "",
       addonDisplayFormat: "grid", addonCategoryGroupingEnabled: false,
@@ -186,6 +200,13 @@ export default function PartnerForm() {
         attachPdfOps: (partner as any).attachPdfOps ?? true,
         attachPdfFinance: (partner as any).attachPdfFinance ?? false,
         attachPdfPartnerContact: (partner as any).attachPdfPartnerContact ?? false,
+        netsuiteCustomerNumber: (partner as any).netsuiteCustomerNumber || "",
+        programManagerName: (partner as any).programManagerName || "",
+        programManagerEmail: (partner as any).programManagerEmail || "",
+        internalAccountOwnerName: (partner as any).internalAccountOwnerName || "",
+        internalAccountOwnerEmail: (partner as any).internalAccountOwnerEmail || "",
+        supportContactName: (partner as any).supportContactName || "",
+        supportContactEmail: (partner as any).supportContactEmail || "",
         defaultCurrency: (partner as any).defaultCurrency || "USD",
         defaultTaxMode: (partner as any).defaultTaxMode || "none",
         defaultTaxLabel: (partner as any).defaultTaxLabel || "",
@@ -953,6 +974,62 @@ function CommunicationsCard({ partnerId, form }: { partnerId: number; form: any 
               <FormItem className="flex items-start gap-2 space-y-0">
                 <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
                 <div><FormLabel className="text-sm">Partner contact notification</FormLabel><FormDescription className="text-xs">Customer-facing PDF (no internal pricing).</FormDescription></div>
+              </FormItem>
+            )} />
+          </div>
+        </div>
+
+        {/* Pass 7 (April 2026) — Internal A3 intake routing fields. These show
+            up at the top of the polished operational order email and on the
+            OrderDetail "Internal A3 Intake" panel, so the A3 team always
+            knows who to call and which NetSuite customer to bill against. */}
+        <div className="rounded-lg border bg-slate-50/60 p-4 space-y-3">
+          <div>
+            <div className="text-sm font-semibold flex items-center gap-2"><Building2 className="h-4 w-4" /> Internal A3 intake</div>
+            <div className="text-xs text-muted-foreground">Surfaced on the polished internal order email (sent to A3's intake desk) and on the order detail page. All optional — blank fields are simply hidden.</div>
+          </div>
+          <FormField control={form.control} name="netsuiteCustomerNumber" render={({ field }: any) => (
+            <FormItem>
+              <FormLabel>NetSuite customer #</FormLabel>
+              <FormControl><Input placeholder="e.g. 102487" {...field} value={field.value || ""} /></FormControl>
+              <FormDescription className="text-xs">The ERP customer record A3 invoices against. Shown at the top of every internal intake email.</FormDescription>
+            </FormItem>
+          )} />
+          <div className="grid sm:grid-cols-2 gap-3">
+            <FormField control={form.control} name="programManagerName" render={({ field }: any) => (
+              <FormItem>
+                <FormLabel>Program manager (name)</FormLabel>
+                <FormControl><Input placeholder="e.g. Alyssa R." {...field} value={field.value || ""} /></FormControl>
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="programManagerEmail" render={({ field }: any) => (
+              <FormItem>
+                <FormLabel>Program manager (email)</FormLabel>
+                <FormControl><Input type="text" placeholder="alyssa@a3visual.com" {...field} value={field.value || ""} /></FormControl>
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="internalAccountOwnerName" render={({ field }: any) => (
+              <FormItem>
+                <FormLabel>A3 account owner (name)</FormLabel>
+                <FormControl><Input placeholder="e.g. Shawn M." {...field} value={field.value || ""} /></FormControl>
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="internalAccountOwnerEmail" render={({ field }: any) => (
+              <FormItem>
+                <FormLabel>A3 account owner (email)</FormLabel>
+                <FormControl><Input type="text" placeholder="shawn@a3visual.com" {...field} value={field.value || ""} /></FormControl>
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="supportContactName" render={({ field }: any) => (
+              <FormItem>
+                <FormLabel>Support contact (name)</FormLabel>
+                <FormControl><Input placeholder="e.g. Partner ops desk" {...field} value={field.value || ""} /></FormControl>
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="supportContactEmail" render={({ field }: any) => (
+              <FormItem>
+                <FormLabel>Support contact (email)</FormLabel>
+                <FormControl><Input type="text" placeholder="support@a3visual.com" {...field} value={field.value || ""} /></FormControl>
               </FormItem>
             )} />
           </div>

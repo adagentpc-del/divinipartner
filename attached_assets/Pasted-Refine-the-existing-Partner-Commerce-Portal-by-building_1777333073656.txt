@@ -1,0 +1,254 @@
+Refine the existing Partner Commerce Portal by building a polished internal A3 order intake email format for orders routed to Shawn, myself, and the internal A3 team, and include rental/reusable asset logic in the order summary.
+
+Goal:
+The internal order email must function like a clean operational intake sheet for A3. It should contain everything needed for the A3 team to review the order, confirm vendors, follow up if needed, and enter the job into the A3 backend workflow.
+
+Current operating model:
+- orders come through the portal
+- internal email goes to Alyssa and Shawn
+- Shawn / A3 team will enter the order into the A3 system
+- A3 handles backend billing, quote, proofs, payment link, and supplier routing outside this portal for now
+- the portal should identify when a rental or partner-owned reusable asset is being used
+- if a reusable asset exists in partner inventory, the email should clearly show that only the related printed/fabric component is needed
+- the email should also show remaining rentable inventory where relevant
+
+Examples:
+- if SCF has Easy Up frames in inventory and the client selects that option, the system should identify that only the canopy top needs to be printed
+- the internal email should include a note like:
+  - "Using existing SCF Easy Up frame inventory"
+  - "Only canopy top print required"
+  - "3 remaining Easy Up frames left to rent in SCF inventory"
+
+Scope:
+Keep this pass tightly focused on:
+1. internal operational order email structure
+2. partner profile fields needed for this email
+3. rental / reusable asset logic inside the email summary
+4. clean formatting for intake and follow-up
+5. email content completeness for A3 handoff
+
+Do not rebuild unrelated workflows.
+
+Requirements:
+
+1. Add partner profile fields needed for internal intake email
+On the partner profile, add or refine fields such as:
+- NetSuite customer number
+- primary contact
+- billing contact
+- graphic design contact
+- support contact
+- internal account owner
+- program manager
+- default routing recipients if not already present
+
+2. Build a structured internal A3 order email template
+The internal email should include clear sections:
+
+A. Order Snapshot
+- order reference number
+- submission timestamp
+- partner portal name
+- portal source
+- NetSuite customer number
+- priority/rush flag if applicable
+- internal owner
+- program manager
+
+B. Client and Billing Information
+- company/client name
+- client contact name
+- email
+- phone
+- billing contact
+- billing address
+- billing email
+- PO number if applicable
+- currency
+- tax/VAT mode if relevant
+
+C. Event and Venue Logistics
+- event name
+- event city
+- venue name
+- venue address
+- install location in venue
+- event dates
+- delivery date/time
+- install date/time
+- removal date/time
+- teardown/pickup notes
+
+D. Main Contacts
+- primary client contact
+- onsite contact
+- graphic designer contact
+- billing contact
+
+E. Ordered Package and Items
+- package selected
+- package tier
+- all included pieces
+- quantities
+- measurements
+- add-ons
+- rentable items
+- print-only items
+- partner-owned asset usage if applicable
+
+F. Hardware, Rental, and Fulfillment Notes
+This is a critical section.
+
+Include:
+- hardware included
+- new hardware required
+- existing partner-owned hardware used
+- connected family/component logic if relevant
+- rental items selected
+- whether the item is:
+  - rental only
+  - reusable partner-owned asset
+  - print-only component tied to existing hardware
+  - full unit requiring new hardware
+
+Examples:
+- Easy Up frame: using existing SCF rentable inventory
+- canopy top: print required
+- back wall: print required
+- side walls: not selected
+- new frame required: No
+
+If a rental/reusable item is being used, the email must clearly call this out in readable language.
+
+Example note blocks:
+- "Using existing SCF Easy Up frame inventory"
+- "Only canopy top print required"
+- "Backdrop print required"
+- "No new frame hardware required"
+
+G. Remaining Rental Inventory Note
+If a reusable/rental inventory item is selected and tracked in the partner inventory, include a note showing remaining inventory.
+
+Examples:
+- "3 remaining Easy Up frames left to rent in SCF inventory"
+- "18 remaining cocktail tables left in partner inventory"
+- "0 remaining frames left, new hardware required for future orders"
+
+Requirements:
+- this note should only show when relevant
+- it should reflect current actual tracked remaining quantity
+- it should be tied to the selected rentable/reusable item family
+- if quantity reaches zero, the note should instead indicate that new hardware/full unit is required
+
+H. Recommended Vendors
+- recommended vendor(s) from the system
+- note that Shawn/program manager must confirm vendor availability or find equivalent
+- indicate if recommendation is exact or approximate if useful
+
+I. Art Files and Asset Status
+- uploaded file names
+- file links if feasible
+- missing files flag
+- artwork needed yes/no
+- proofs required yes/no
+- design contact if applicable
+
+J. Follow-Up Questions Needed
+- missing artwork
+- missing dimensions
+- unclear install location
+- incomplete billing info
+- vendor/item confirmation needed
+- design work needed
+- rush timing clarification needed
+- rental asset confirmation needed if inventory is tight
+- any prompted questions still requiring follow-up
+
+K. Next Steps
+- follow up with customer
+- confirm vendors
+- prepare quote
+- prepare proofs if needed
+- send payment link/invoice through A3 workflow
+- confirm delivery/install timing
+
+3. Rental / reusable asset behavior in the internal email
+If the order uses a partner-owned or rentable asset:
+- clearly identify the asset family
+- identify what already exists
+- identify what needs to be printed or produced
+- identify how many remain in inventory after this order if possible
+
+Examples:
+- existing Easy Up frame used, canopy top print only
+- existing table asset used, branded tablecloth print only
+- existing backdrop frame used, backdrop graphic print only
+- chairs selected as rental item, quantity reserved from partner inventory
+
+If the asset is exhausted or nearly exhausted:
+- show a warning or note
+- indicate whether future orders must include new hardware
+
+4. Email formatting
+The internal email should feel:
+- polished
+- easy to scan
+- action-oriented
+- clean enough for immediate backend intake
+
+Use:
+- section headers
+- concise labels
+- grouped blocks
+- clear follow-up and next-step sections
+- highlighted inventory/rental note where relevant
+
+5. Completeness / readiness state
+If feasible, add a readiness label in the email such as:
+- ready for quote
+- ready pending artwork
+- ready pending clarification
+- ready pending vendor confirmation
+- ready pending rental inventory confirmation
+
+6. Order detail alignment
+Make sure the internal order detail page inside the portal mirrors the same structure as the email where useful, including:
+- rental/reusable asset usage
+- remaining inventory note
+- print-only vs full-unit logic
+- follow-up questions
+- next steps
+
+7. Communications logging
+Log:
+- internal email sent
+- recipients
+- send status
+- timestamp
+
+8. Seed/demo updates
+Add demo examples showing:
+- one internal A3 order email
+- partner with NetSuite customer number
+- order with files and vendor recommendation
+- order with follow-up questions needed
+- order using SCF Easy Up frame inventory with only canopy top print required
+- example note showing remaining rental inventory such as:
+  - "3 remaining Easy Up frames left to rent in SCF inventory"
+
+9. Documentation
+Update replit.md with:
+- internal A3 email structure
+- partner profile fields required
+- rental/reusable asset logic in the email
+- how remaining inventory notes are shown
+- how print-only vs full-unit behavior is explained
+- what follow-up questions are included
+- how recommended vendor suggestions are presented
+- how next steps are communicated
+
+Important:
+Do not rebuild the app.
+Do not change unrelated workflows.
+Extend the current partner profile, order detail, rentable asset logic, and internal email routing cleanly.
+Actually implement the structured internal A3 intake email with rental/reusable asset visibility and remaining inventory notes, not placeholders only.

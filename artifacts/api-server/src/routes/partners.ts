@@ -83,6 +83,17 @@ const PartnerBody = z.object({
   attachPdfOps: z.boolean().optional(),
   attachPdfFinance: z.boolean().optional(),
   attachPdfPartnerContact: z.boolean().optional(),
+  // Pass 7 (April 2026) — Internal A3 intake routing fields. Surfaced on
+  // the polished operational order email and on the OrderDetail intake
+  // panel. Lenient validation: kept optional/nullable so partials save
+  // cleanly; format checks happen at send time, not save time.
+  netsuiteCustomerNumber: z.string().max(64).optional().nullable(),
+  programManagerName: z.string().max(160).optional().nullable(),
+  programManagerEmail: z.string().max(320).optional().nullable(),
+  internalAccountOwnerName: z.string().max(160).optional().nullable(),
+  internalAccountOwnerEmail: z.string().max(320).optional().nullable(),
+  supportContactName: z.string().max(160).optional().nullable(),
+  supportContactEmail: z.string().max(320).optional().nullable(),
   // Currency & tax defaults (April 2026 international billing extension)
   defaultCurrency: z.string().min(3).max(3).optional(),
   defaultTaxMode: z.enum(["none","sales_tax","vat","gst","custom"]).optional(),

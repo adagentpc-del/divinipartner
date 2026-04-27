@@ -1135,6 +1135,27 @@ router.get("/vendor/orders/:orderId/packet", async (req, res): Promise<void> => 
 // (and for failures), so this single read gives admins a complete delivery
 // timeline without a dedicated table. Auth-gated because recipient emails are
 // internal data.
+// Pass 7 (April 2026) — A3-side intake analysis for an order. Used by the
+// OrderDetail "Internal A3 Intake" panel; the same builder powers the
+// internal ops email so the inbox view and the admin UI never disagree.
+router.get("/orders/:id/intake-analysis", async (req, res): Promise<void> => {
+  const { getAuth } = await import("@clerk/express");
+  const auth = getAuth(req as any);
+  if (!auth?.userId) { res.status(401).json({ error: "Authentication required" }); return; }
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid order id" }); return; }
+  try {
+    const { buildOrderEmailContext } = await import("../lib/email");
+    const ctx = await buildOrderEmailContext(id);
+    if (!ctx) { res.status(404).json({ error: "Order not found" }); return; }
+    const { buildA3IntakeAnalysis } = await import("../lib/internalIntakeEmail");
+    const analysis = await buildA3IntakeAnalysis(ctx);
+    res.json({ analysis });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || "Failed to build intake analysis" });
+  }
+});
+
 router.get("/orders/:id/email-events", async (req, res): Promise<void> => {
   const { getAuth } = await import("@clerk/express");
   const auth = getAuth(req as any);
