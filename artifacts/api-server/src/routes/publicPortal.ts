@@ -53,7 +53,10 @@ router.get("/public/partners/:slug", async (req, res): Promise<void> => {
     }));
   }
 
-  res.json({ ...partner, pricingRules, previewMode: partner.launchStatus === "preview" });
+  const [theme] = await db.select().from(partnerThemesTable)
+    .where(eq(partnerThemesTable.partnerId, partner.id));
+
+  res.json({ ...partner, pricingRules, theme: theme || null, previewMode: partner.launchStatus === "preview" });
 });
 
 router.get("/public/partners/:slug/portal", async (req, res): Promise<void> => {

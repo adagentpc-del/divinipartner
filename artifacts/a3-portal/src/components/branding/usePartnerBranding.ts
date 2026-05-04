@@ -109,6 +109,16 @@ export function readableOn(hex: string | null | undefined, fallback = "#ffffff")
   return yiq >= 150 ? "#0f172a" : "#ffffff";
 }
 
+function isColorDark(hex: string | null | undefined): boolean {
+  if (!hex || !/^#?[0-9a-f]{6}$/i.test(hex.replace("#", ""))) return false;
+  const h = hex.replace("#", "");
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+  return yiq < 128;
+}
+
 export function resolveBranding(theme?: PartnerThemeShape | null): ResolvedBranding {
   const templateKey = (theme?.templateKey as TemplateKey) || "clean_premium";
   const tpl = TEMPLATE_DEFAULTS[templateKey] || TEMPLATE_DEFAULTS.clean_premium;
@@ -118,15 +128,18 @@ export function resolveBranding(theme?: PartnerThemeShape | null): ResolvedBrand
   const borderRadiusStyle = theme?.borderRadiusStyle || tpl.borderRadiusStyle;
   const radius = BORDER_RADIUS_MAP[borderRadiusStyle] || theme?.borderRadius || "0.5rem";
 
+  const background = theme?.backgroundColor || tpl.backgroundColor;
+  const effectiveIsDark = theme?.backgroundColor ? isColorDark(theme.backgroundColor) : isDarkTemplate(templateKey);
+
   const resolved: Omit<ResolvedBranding, "shellStyle"> = {
     primary,
     secondary: theme?.secondaryColor || tpl.secondaryColor,
     accent: theme?.accentColor || tpl.accentColor,
-    background: theme?.backgroundColor || tpl.backgroundColor,
+    background,
     button,
     buttonText: readableOn(button),
     text: theme?.textColor || tpl.textColor,
-    muted: isDarkTemplate(templateKey) ? "rgba(255,255,255,0.5)" : "#64748b",
+    muted: effectiveIsDark ? "rgba(255,255,255,0.5)" : "#64748b",
     headingFont: theme?.headingFont || tpl.headingFont,
     bodyFont: theme?.bodyFont || tpl.bodyFont,
     radius,
@@ -148,7 +161,7 @@ export function resolveBranding(theme?: PartnerThemeShape | null): ResolvedBrand
     secondaryCtaLabel: theme?.secondaryCtaLabel || "",
     showPoweredByA3: theme?.showPoweredByA3 ?? true,
     customWelcomeMessage: theme?.customWelcomeMessage || "",
-    isDark: isDarkTemplate(templateKey),
+    isDark: effectiveIsDark,
   };
 
   const shellStyle: React.CSSProperties = {

@@ -15,6 +15,9 @@ import { formatWxHDual, formatPrimarySecondary, computePrice, convert, PRICING_U
 import { BrandedShell } from "@/components/branding/BrandedShell";
 import { resolveBranding } from "@/components/branding/usePartnerBranding";
 import { PartnerLogo } from "@/components/branding/PartnerLogo";
+import { PortalNavbar } from "@/components/branding/PortalNavbar";
+import { PortalFooter } from "@/components/branding/PortalFooter";
+import { PortalCTA } from "@/components/branding/PortalCTA";
 
 type City = { id: number; name: string; state: string | null };
 type Venue = { id: number; cityId: number | null; name: string; venueAddress: string | null; shippingAddress: string | null };
@@ -526,25 +529,11 @@ export default function OrderingPortal({ slug }: { slug: string }) {
           Preview mode — this portal is visible for review only. Submissions are disabled until it goes live.
         </div>
       )}
-      {/* Branded header — shows the partner logo + company name across every step. */}
-      <header className="border-b" style={{ background: `linear-gradient(135deg, ${branding.primary} 0%, ${branding.primary}ee 100%)`, borderColor: `${branding.primary}33` }}>
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="bg-white rounded-lg p-2 shadow-sm">
-              <PartnerLogo src={data.partner.logoUrl} name={data.partner.companyName} size={36} />
-            </div>
-            <div className="text-white">
-              <div className="text-xs opacity-75">Order portal</div>
-              <div className="text-sm font-semibold">{data.partner.companyName}</div>
-            </div>
-          </div>
-          {data.partner.replyToEmail || data.partner.contactEmail ? (
-            <a href={`mailto:${data.partner.replyToEmail || data.partner.contactEmail}`} className="text-white/80 hover:text-white text-xs font-medium">
-              Need help?
-            </a>
-          ) : null}
-        </div>
-      </header>
+      <PortalNavbar
+        partnerName={data.partner.companyName}
+        partnerLogoUrl={data.partner.logoUrl}
+        branding={branding}
+      />
       <div className="max-w-7xl mx-auto px-4 py-8 md:py-12">
         <div className="text-center mb-8">
           <Badge className="mb-3" style={{ background: `${branding.accent}26`, color: branding.text, border: "none" }}><Sparkles className="h-3 w-3 mr-1" />Order Portal</Badge>
@@ -925,6 +914,7 @@ export default function OrderingPortal({ slug }: { slug: string }) {
           </aside>
         </div>
       </div>
+      <PortalFooter partnerName={data.partner.companyName} branding={branding} />
     </BrandedShell>
   );
 }

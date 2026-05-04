@@ -17,6 +17,11 @@ import {
 } from "lucide-react";
 import FullPortal from "./portal/FullPortal";
 import OrderingPortal from "./OrderingPortal";
+import { resolveBranding } from "@/components/branding/usePartnerBranding";
+import { PortalNavbar } from "@/components/branding/PortalNavbar";
+import { PortalHero } from "@/components/branding/PortalHero";
+import { PortalFooter } from "@/components/branding/PortalFooter";
+import { PortalCTA } from "@/components/branding/PortalCTA";
 
 const step1Schema = z.object({
   contactName: z.string().min(1, "Name is required"),
@@ -204,58 +209,46 @@ function IntakePortal({ slug, partner }: { slug: string; partner: any }) {
     });
   };
 
+  const branding = resolveBranding((partner as any)?.theme || null);
+
   return (
-    <div className="min-h-screen flex flex-col bg-muted/30">
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: branding.background, color: branding.text, fontFamily: branding.bodyFont }}>
       {(partner as any)?.previewMode && (
         <div className="bg-blue-600 text-white text-xs sm:text-sm px-4 py-2 text-center font-medium">
           Preview mode — this portal is visible for review only. Submissions are disabled until it goes live.
         </div>
       )}
-      <header className="bg-card border-b sticky top-0 z-20">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            {partner.logoUrl ? (
-              <img src={partner.logoUrl} alt={partner.companyName} className="h-10 sm:h-11 object-contain" />
-            ) : (
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight">{partner.companyName}</h1>
-            )}
-            {partner.smallA3BadgeEnabled && (
-              <>
-                <div className="w-px h-7 bg-border hidden sm:block" />
-                <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <span>Powered by</span>
-                  <div className="h-5 w-5 bg-primary rounded flex items-center justify-center text-[9px] text-primary-foreground font-bold leading-none">A3</div>
-                </div>
-              </>
-            )}
+      <PortalNavbar
+        partnerName={partner.companyName}
+        partnerLogoUrl={partner.logoUrl}
+        branding={branding}
+      />
+
+      {step === 1 && (
+        <PortalHero
+          partnerName={partner.companyName}
+          partnerLogoUrl={partner.logoUrl}
+          branding={branding}
+          defaultHeadline={partner.introHeadline || `Start your project with ${partner.companyName}`}
+          defaultSubheadline={partner.introText || "Fill out the details below to request a quote and kick off your event production."}
+        />
+      )}
+
+      {step === 1 && (partner.globalSizzleReelUrl || partner.partnerVideoUrl) && (
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 -mt-6 relative z-10 mb-4">
+          <div className="aspect-video rounded-xl overflow-hidden shadow-2xl border" style={{ borderColor: branding.isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }}>
+            <iframe
+              src={partner.partnerVideoUrl || partner.globalSizzleReelUrl || ""}
+              className="w-full h-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              title="Partner sizzle reel"
+            />
           </div>
         </div>
-      </header>
+      )}
 
       <main className="flex-1 w-full max-w-3xl mx-auto py-8 sm:py-12 px-4 sm:px-6">
-
-        {step === 1 && (
-          <div className="mb-10 text-center animate-in fade-in slide-in-from-bottom-2 duration-500">
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-balance mb-3">
-              {partner.introHeadline || `Start your project with ${partner.companyName}`}
-            </h2>
-            <p className="text-base sm:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">
-              {partner.introText || "Fill out the details below to request a quote and kick off your event production."}
-            </p>
-
-            {(partner.globalSizzleReelUrl || partner.partnerVideoUrl) && (
-              <div className="mt-8 aspect-video rounded-xl overflow-hidden bg-primary/5 border shadow-sm max-w-2xl mx-auto">
-                <iframe
-                  src={partner.partnerVideoUrl || partner.globalSizzleReelUrl || ""}
-                  className="w-full h-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  title="Partner sizzle reel"
-                />
-              </div>
-            )}
-          </div>
-        )}
 
         <div className="mb-10">
           <div className="flex items-center gap-0 relative">
@@ -266,22 +259,27 @@ function IntakePortal({ slug, partner }: { slug: string; partner: any }) {
               return (
                 <div key={s} className="flex-1 flex flex-col items-center relative">
                   {i > 0 && (
-                    <div className={`absolute top-4 right-1/2 w-full h-0.5 -translate-y-1/2 transition-colors duration-300 ${
-                      step > s ? "bg-primary" : step === s ? "bg-primary/30" : "bg-border"
-                    }`} />
+                    <div
+                      className="absolute top-4 right-1/2 w-full h-0.5 -translate-y-1/2 transition-colors duration-300"
+                      style={{ backgroundColor: step > s ? branding.primary : step === s ? `${branding.primary}4d` : (branding.isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)') }}
+                    />
                   )}
-                  <div className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 ${
-                    isCompleted
-                      ? "bg-primary text-primary-foreground"
-                      : isCurrent
-                        ? "bg-primary text-primary-foreground ring-4 ring-primary/20"
-                        : "bg-card border-2 border-border text-muted-foreground"
-                  }`}>
+                  <div
+                    className="relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300"
+                    style={
+                      isCompleted
+                        ? { backgroundColor: branding.primary, color: branding.buttonText }
+                        : isCurrent
+                          ? { backgroundColor: branding.primary, color: branding.buttonText, boxShadow: `0 0 0 4px ${branding.primary}33` }
+                          : { backgroundColor: branding.isDark ? 'rgba(255,255,255,0.06)' : '#fff', border: `2px solid ${branding.isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)'}`, color: branding.muted }
+                    }
+                  >
                     {isCompleted ? <Check className="h-4 w-4" /> : s}
                   </div>
-                  <span className={`mt-2 text-xs font-medium transition-colors ${
-                    isCurrent ? "text-foreground" : "text-muted-foreground"
-                  } hidden sm:block`}>
+                  <span
+                    className="mt-2 text-xs font-medium transition-colors hidden sm:block"
+                    style={{ color: isCurrent ? branding.text : branding.muted }}
+                  >
                     {label}
                   </span>
                 </div>
@@ -290,7 +288,14 @@ function IntakePortal({ slug, partner }: { slug: string; partner: any }) {
           </div>
         </div>
 
-        <div className="bg-card border rounded-2xl shadow-sm animate-in fade-in duration-300">
+        <div
+          className="rounded-2xl shadow-sm animate-in fade-in duration-300"
+          style={{
+            backgroundColor: branding.isDark ? 'rgba(255,255,255,0.04)' : '#ffffff',
+            border: `1px solid ${branding.isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+            borderRadius: branding.radius,
+          }}
+        >
           <Form {...form}>
             <form className="p-6 sm:p-8" onSubmit={(e) => { e.preventDefault(); if(step===5) form.handleSubmit(onSubmit)(e); }}>
 
@@ -678,7 +683,7 @@ function IntakePortal({ slug, partner }: { slug: string; partner: any }) {
         </div>
 
         {step === 1 && (
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-6 sm:gap-10 text-muted-foreground">
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-6 sm:gap-10" style={{ color: branding.muted }}>
             <div className="flex items-center gap-2 text-xs sm:text-sm">
               <Shield className="h-4 w-4" />
               <span>Secure & confidential</span>
@@ -695,32 +700,25 @@ function IntakePortal({ slug, partner }: { slug: string; partner: any }) {
         )}
       </main>
 
-      {partner.smallA3BadgeEnabled && (
-        <footer className="py-6 border-t bg-card">
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-            <span>Production services by</span>
-            <div className="h-4 w-4 bg-primary rounded flex items-center justify-center text-[8px] text-primary-foreground font-bold leading-none">A3</div>
-            <span className="font-medium text-foreground/70">A3 Visual</span>
-          </div>
-        </footer>
-      )}
+      <PortalFooter partnerName={partner.companyName} branding={branding} />
 
       <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
         <DialogContent className="sm:max-w-md p-0 overflow-hidden">
-          <div className="bg-primary/5 py-10 flex items-center justify-center">
-            <div className="h-20 w-20 bg-primary rounded-full flex items-center justify-center shadow-lg shadow-primary/20">
-              <Check className="h-10 w-10 text-primary-foreground" strokeWidth={3} />
+          <div className="py-10 flex items-center justify-center" style={{ backgroundColor: `${branding.primary}0a` }}>
+            <div
+              className="h-20 w-20 rounded-full flex items-center justify-center shadow-lg"
+              style={{ backgroundColor: branding.primary, boxShadow: `0 10px 25px ${branding.primary}33` }}
+            >
+              <Check className="h-10 w-10" style={{ color: branding.buttonText }} strokeWidth={3} />
             </div>
           </div>
           <div className="p-8 text-center">
-            <DialogTitle className="text-2xl font-bold mb-3">Request Submitted</DialogTitle>
-            <DialogDescription className="text-base leading-relaxed text-muted-foreground">
+            <DialogTitle className="text-2xl font-bold mb-3" style={{ fontFamily: branding.headingFont }}>Request Submitted</DialogTitle>
+            <DialogDescription className="text-base leading-relaxed" style={{ color: branding.muted }}>
               Thank you! Your project request has been received. Our team will review the details and follow up within one business day. If you have questions, please email admin@a3visual.com.
             </DialogDescription>
             <DialogFooter className="mt-8 sm:justify-center">
-              <Button onClick={() => window.location.reload()} size="lg" className="w-full sm:w-auto px-8">
-                Start New Request
-              </Button>
+              <PortalCTA branding={branding} label="Start New Request" size="lg" onClick={() => window.location.reload()} />
             </DialogFooter>
           </div>
         </DialogContent>

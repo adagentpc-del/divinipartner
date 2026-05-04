@@ -29,7 +29,8 @@ The A3 Partner Commerce Portal is a `pnpm workspace monorepo` built with TypeScr
 - **Database Design**: PostgreSQL with Drizzle ORM for managing partners, orders, inventory, and assets.
 - **API-First Approach**: RESTful APIs with OpenAPI specification and Orval codegen.
 - **Quote Ingestion & Catalog Intelligence**: Converts raw supplier data into structured catalog entries.
-- **Modular Frontend**: React with Vite and Tailwind CSS, featuring a dark navy and warm gold aesthetic, Inter typography, and partner-specific theming.
+- **Modular Frontend**: React with Vite and Tailwind CSS, featuring a dark navy and warm gold aesthetic, Inter typography, and partner-specific theming with 3 selectable design templates (Luxe Dark, Neon Creative, Clean Premium).
+- **Premium Portal Theming**: Template-aware branding system with `resolveBranding()` utility, premium components (PortalNavbar, PortalHero, PortalCard, PortalCTA, PortalFooter) in `components/branding/`, and admin theme editor with template picker, hero controls, logo placement, card/button styles, and live preview. Template defaults in `templateDefaults.ts`.
 - **Inventory Management**: Real-time reusable inventory system with asset tracking, reservation, and shortage detection.
 - **Order Fulfillment Engine**: Automates supplier routing and item-level assignments.
 - **Reconciliation & Billing**: Supports various payment models, commission tracking, and multi-currency invoicing.

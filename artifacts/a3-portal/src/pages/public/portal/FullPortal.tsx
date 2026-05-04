@@ -8,6 +8,13 @@ import {
 } from "lucide-react";
 import RequestFormDialog from "./RequestFormDialog";
 import { formatWxH, type UnitSystem } from "@/lib/units";
+import { resolveBranding } from "@/components/branding/usePartnerBranding";
+import { PortalNavbar } from "@/components/branding/PortalNavbar";
+import { PortalHero } from "@/components/branding/PortalHero";
+import { PortalFooter } from "@/components/branding/PortalFooter";
+import { PortalCard } from "@/components/branding/PortalCard";
+import { PortalCTA } from "@/components/branding/PortalCTA";
+import { CARD_STYLE_MAP, BORDER_RADIUS_MAP } from "@/components/branding/templateDefaults";
 
 interface PortalData {
   partner: {
@@ -140,15 +147,15 @@ export default function FullPortal({ slug }: { slug: string }) {
       .catch(() => { if (!cancelled) setPreferredSystem(undefined); });
     return () => { cancelled = true; };
   }, [partner?.id]);
-  const primaryColor = theme?.primaryColor || "#0f1729";
-  const accentColor = theme?.accentColor || "#f59e0b";
-  const bgColor = theme?.backgroundColor || "#f8fafc";
-  // buttonColor falls back to primaryColor for partners that haven't customized buttons yet.
-  const buttonColor = (theme as any)?.buttonColor || primaryColor;
-  const textColor = (theme as any)?.textColor || "#0f172a";
-  const borderRadius = theme?.borderRadius || "0.75rem";
-  const headingFont = theme?.headingFont || "inherit";
-  const bodyFont = theme?.bodyFont || "inherit";
+  const branding = resolveBranding(theme);
+  const primaryColor = branding.primary;
+  const accentColor = branding.accent;
+  const bgColor = branding.background;
+  const buttonColor = branding.button;
+  const textColor = branding.text;
+  const borderRadius = branding.radius;
+  const headingFont = branding.headingFont;
+  const bodyFont = branding.bodyFont;
 
   const enabledSections = useMemo(() => data?.sections || [], [data?.sections]);
   const sectionTypes = useMemo(() => new Set(enabledSections.map(s => s.sectionType)), [enabledSections]);
@@ -271,28 +278,38 @@ export default function FullPortal({ slug }: { slug: string }) {
     const Icon = SECTION_ICONS[sectionType] || Package;
     return (
       <section key={section.id} id={`section-${sectionType}`} className="scroll-mt-20">
-        <Card className="overflow-hidden" style={{ borderRadius }}>
-          <div className="p-6 sm:p-8" style={{ background: `linear-gradient(135deg, ${primaryColor}08, ${accentColor}08)` }}>
+        <div
+          className="overflow-hidden"
+          style={{
+            borderRadius,
+            backgroundColor: branding.isDark ? 'rgba(255,255,255,0.04)' : '#ffffff',
+            border: `1px solid ${branding.isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+          }}
+        >
+          <div
+            className="p-6 sm:p-8"
+            style={{ background: branding.isDark ? `linear-gradient(135deg, ${primaryColor}15, ${accentColor}10)` : `linear-gradient(135deg, ${primaryColor}08, ${accentColor}08)` }}
+          >
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${accentColor}20` }}>
                 <Icon className="h-6 w-6" style={{ color: accentColor }} />
               </div>
               <div className="flex-1 space-y-2">
-                <h3 className="text-xl sm:text-2xl font-bold">{section.title || SECTION_LABELS[sectionType]}</h3>
-                {section.subtitle && <p className="text-muted-foreground">{section.subtitle}</p>}
+                <h3 className="text-xl sm:text-2xl font-bold" style={{ color: branding.text, fontFamily: headingFont }}>{section.title || SECTION_LABELS[sectionType]}</h3>
+                {section.subtitle && <p style={{ color: branding.muted }}>{section.subtitle}</p>}
                 {section.description && (
-                  <p className="text-sm text-muted-foreground max-w-xl">{section.description}</p>
+                  <p className="text-sm max-w-xl" style={{ color: branding.muted }}>{section.description}</p>
                 )}
-                <Button className="mt-4 gap-1.5" style={{ backgroundColor: buttonColor, color: "#fff" }} onClick={() => openSectionDialog(sectionType, section.title || SECTION_LABELS[sectionType])}>
-                  <Icon className="h-4 w-4" /> {ctaLabel}
-                </Button>
+                <PortalCTA branding={branding} label={ctaLabel} size="md" onClick={() => openSectionDialog(sectionType, section.title || SECTION_LABELS[sectionType])}>
+                  <Icon className="h-4 w-4 mr-1.5 inline" /> {ctaLabel}
+                </PortalCTA>
               </div>
               {section.featuredImageUrl && (
                 <img src={section.featuredImageUrl} alt="" className="hidden lg:block w-40 h-28 object-cover rounded-lg" />
               )}
             </div>
           </div>
-        </Card>
+        </div>
       </section>
     );
   };
@@ -304,75 +321,37 @@ export default function FullPortal({ slug }: { slug: string }) {
           Preview mode — this portal is visible for review only. Submissions are disabled until it goes live.
         </div>
       )}
-      <header className="sticky top-0 z-30 border-b backdrop-blur-lg" style={{ backgroundColor: `${primaryColor}f0` }}>
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            {partner.logoUrl ? (
-              <img src={partner.logoUrl} alt={partner.companyName} className="h-9 sm:h-10 object-contain" />
-            ) : (
-              <h1 className="text-lg sm:text-xl font-bold text-white">{partner.companyName}</h1>
-            )}
-            {partner.secondaryLogoUrl && (
-              <>
-                <div className="w-px h-6 bg-white/20" />
-                <img src={partner.secondaryLogoUrl} alt="Secondary logo" className="h-7 sm:h-8 object-contain opacity-80" />
-              </>
-            )}
-            {partner.smallA3BadgeEnabled && (
-              <>
-                <div className="w-px h-6 bg-white/20 hidden sm:block" />
-                <div className="hidden sm:flex items-center gap-1.5 text-xs text-white/60">
-                  <span>Production by</span>
-                  <div className="h-5 w-5 rounded flex items-center justify-center text-[9px] font-bold leading-none" style={{ backgroundColor: accentColor, color: primaryColor }}>A3</div>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
+      <PortalNavbar
+        partnerName={partner.companyName}
+        partnerLogoUrl={partner.logoUrl}
+        branding={branding}
+      />
 
-      <section className="relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)` }}>
-        <div className="absolute inset-0 opacity-5" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")" }} />
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16 sm:py-24 relative">
-          <div className="text-center text-white space-y-4">
-            <h2 className="text-3xl sm:text-5xl font-bold tracking-tight leading-tight" style={{ fontFamily: headingFont }}>
-              {partner.introHeadline || `Welcome to the ${partner.companyName} Partner Portal`}
-            </h2>
-            {partner.introText && (
-              <p className="text-base sm:text-lg text-white/80 max-w-2xl mx-auto leading-relaxed">
-                {partner.introText}
-              </p>
+      <PortalHero
+        partnerName={partner.companyName}
+        partnerLogoUrl={partner.logoUrl}
+        branding={branding}
+        defaultHeadline={partner.introHeadline || `Welcome to the ${partner.companyName} Partner Portal`}
+        defaultSubheadline={partner.introText || ""}
+        ctaSlot={
+          <>
+            {partner.capabilitiesLink && (
+              <a href={partner.capabilitiesLink} target="_blank" rel="noopener noreferrer">
+                <PortalCTA branding={branding} label={branding.ctaLabel || "A3 Capabilities"} variant="outline" size="lg" />
+              </a>
             )}
-            {partner.thankYouText && (
-              <p className="text-sm text-white/60 max-w-xl mx-auto italic">
-                {partner.thankYouText}
-              </p>
+            {partner.partnerDeckFileUrl && (
+              <a href={partner.partnerDeckFileUrl} target="_blank" rel="noopener noreferrer">
+                <PortalCTA branding={branding} label={branding.secondaryCtaLabel || "Partner Deck"} variant="outline" size="lg" />
+              </a>
             )}
-            {(partner.capabilitiesLink || partner.partnerDeckFileUrl) && (
-              <div className="flex flex-wrap justify-center gap-3 pt-4">
-                {partner.capabilitiesLink && (
-                  <a href={partner.capabilitiesLink} target="_blank" rel="noopener noreferrer">
-                    <Button variant="outline" className="border-white/30 text-white hover:bg-white/10 gap-1.5">
-                      A3 Capabilities <ExternalLink className="h-3.5 w-3.5" />
-                    </Button>
-                  </a>
-                )}
-                {partner.partnerDeckFileUrl && (
-                  <a href={partner.partnerDeckFileUrl} target="_blank" rel="noopener noreferrer">
-                    <Button variant="outline" className="border-white/30 text-white hover:bg-white/10 gap-1.5">
-                      Partner Deck <Download className="h-3.5 w-3.5" />
-                    </Button>
-                  </a>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
+          </>
+        }
+      />
 
       {(partner.globalSizzleReelUrl || partner.partnerVideoUrl) && (
         <div className="max-w-4xl mx-auto px-4 sm:px-6 -mt-8 relative z-10">
-          <div className="aspect-video rounded-xl overflow-hidden shadow-2xl border-4 border-white/80">
+          <div className="aspect-video rounded-xl overflow-hidden shadow-2xl" style={{ border: `4px solid ${branding.isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.8)'}` }}>
             <iframe
               src={partner.partnerVideoUrl || partner.globalSizzleReelUrl || ""}
               className="w-full h-full"
@@ -386,7 +365,7 @@ export default function FullPortal({ slug }: { slug: string }) {
 
       {availableQuickActions.length > 0 && (
         <section className="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
-          <div className={`grid grid-cols-2 sm:grid-cols-3 ${availableQuickActions.length >= 5 ? "lg:grid-cols-5" : `lg:grid-cols-${Math.min(availableQuickActions.length, 4)}`} gap-3`}>
+          <div className={`grid grid-cols-2 sm:grid-cols-3 ${availableQuickActions.length >= 5 ? "lg:grid-cols-5" : availableQuickActions.length === 4 ? "lg:grid-cols-4" : availableQuickActions.length === 3 ? "lg:grid-cols-3" : availableQuickActions.length === 2 ? "lg:grid-cols-2" : "lg:grid-cols-1"} gap-3`}>
             {availableQuickActions.map(type => {
               const Icon = SECTION_ICONS[type] || Package;
               const sectionData = sectionMap.get(type);
@@ -395,14 +374,18 @@ export default function FullPortal({ slug }: { slug: string }) {
                 <button
                   key={type}
                   onClick={() => scrollToSection(type)}
-                  className="group p-4 rounded-xl border bg-white hover:shadow-lg transition-all text-left space-y-2"
-                  style={{ borderRadius }}
+                  className="group p-4 rounded-xl hover:shadow-lg transition-all text-left space-y-2"
+                  style={{
+                    borderRadius,
+                    backgroundColor: branding.isDark ? 'rgba(255,255,255,0.05)' : '#ffffff',
+                    border: `1px solid ${branding.isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+                  }}
                 >
                   <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${accentColor}20` }}>
                     <Icon className="h-5 w-5" style={{ color: accentColor }} />
                   </div>
-                  <p className="text-sm font-semibold leading-tight">{label}</p>
-                  <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+                  <p className="text-sm font-semibold leading-tight" style={{ color: branding.text }}>{label}</p>
+                  <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" style={{ color: branding.muted }} />
                 </button>
               );
             })}
@@ -431,27 +414,36 @@ export default function FullPortal({ slug }: { slug: string }) {
                     <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4 ml-1">{category}</h4>
                     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       {products.map(product => (
-                        <Card key={product.id} className="overflow-hidden hover:shadow-lg transition-shadow group cursor-pointer" style={{ borderRadius }} onClick={() => openProductDialog(product)}>
+                        <div
+                          key={product.id}
+                          className="overflow-hidden hover:shadow-lg transition-all group cursor-pointer hover:-translate-y-0.5"
+                          style={{
+                            borderRadius,
+                            backgroundColor: branding.isDark ? 'rgba(255,255,255,0.04)' : '#ffffff',
+                            border: `1px solid ${branding.isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+                          }}
+                          onClick={() => openProductDialog(product)}
+                        >
                           {product.imageUrl && (
-                            <div className="aspect-[4/3] overflow-hidden bg-muted">
+                            <div className="aspect-[4/3] overflow-hidden" style={{ backgroundColor: branding.isDark ? 'rgba(255,255,255,0.03)' : '#f1f5f9' }}>
                               <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                             </div>
                           )}
-                          <CardContent className="p-4 space-y-2">
+                          <div className="p-4 space-y-2">
                             <div className="flex items-start justify-between gap-2">
-                              <h5 className="font-semibold text-sm">{product.name}</h5>
+                              <h5 className="font-semibold text-sm" style={{ color: branding.text }}>{product.name}</h5>
                               {product.sizeOptionsJson && product.sizeOptionsJson.length > 0 && (
                                 <Badge variant="outline" className="text-[10px] shrink-0">{product.sizeOptionsJson.length} sizes</Badge>
                               )}
                             </div>
                             {product.description && (
-                              <p className="text-xs text-muted-foreground line-clamp-2">{product.description}</p>
+                              <p className="text-xs line-clamp-2" style={{ color: branding.muted }}>{product.description}</p>
                             )}
-                            <Button size="sm" className="w-full gap-1.5 mt-2" style={{ backgroundColor: buttonColor, color: "#fff" }}>
-                              <ShoppingBag className="h-3.5 w-3.5" /> Request Quote
-                            </Button>
-                          </CardContent>
-                        </Card>
+                            <PortalCTA branding={branding} size="sm" className="w-full mt-2">
+                              <ShoppingBag className="h-3.5 w-3.5 mr-1.5 inline" /> Request Quote
+                            </PortalCTA>
+                          </div>
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -477,40 +469,49 @@ export default function FullPortal({ slug }: { slug: string }) {
                     <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4 ml-1">{category}</h4>
                     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       {locations.map(loc => (
-                        <Card key={loc.id} className="overflow-hidden hover:shadow-lg transition-shadow group cursor-pointer" style={{ borderRadius }} onClick={() => openBrandingDialog(loc)}>
+                        <div
+                          key={loc.id}
+                          className="overflow-hidden hover:shadow-lg transition-all group cursor-pointer hover:-translate-y-0.5"
+                          style={{
+                            borderRadius,
+                            backgroundColor: branding.isDark ? 'rgba(255,255,255,0.04)' : '#ffffff',
+                            border: `1px solid ${branding.isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+                          }}
+                          onClick={() => openBrandingDialog(loc)}
+                        >
                           {loc.previewImageUrl ? (
-                            <div className="aspect-[4/3] overflow-hidden bg-muted">
+                            <div className="aspect-[4/3] overflow-hidden" style={{ backgroundColor: branding.isDark ? 'rgba(255,255,255,0.03)' : '#f1f5f9' }}>
                               <img src={loc.previewImageUrl} alt={loc.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                             </div>
                           ) : (
-                            <div className="aspect-[4/3] bg-muted flex items-center justify-center">
-                              <MapPin className="h-10 w-10 text-muted-foreground/30" />
+                            <div className="aspect-[4/3] flex items-center justify-center" style={{ backgroundColor: branding.isDark ? 'rgba(255,255,255,0.03)' : '#f1f5f9' }}>
+                              <MapPin className="h-10 w-10" style={{ color: branding.muted + '4d' }} />
                             </div>
                           )}
-                          <CardContent className="p-4 space-y-2">
-                            <h5 className="font-semibold text-sm">{loc.name}</h5>
+                          <div className="p-4 space-y-2">
+                            <h5 className="font-semibold text-sm" style={{ color: branding.text }}>{loc.name}</h5>
                             {loc.description && (
-                              <p className="text-xs text-muted-foreground line-clamp-2">{loc.description}</p>
+                              <p className="text-xs line-clamp-2" style={{ color: branding.muted }}>{loc.description}</p>
                             )}
                             {(loc.sizeWidth || loc.sizeHeight) && (
-                              <p className="text-xs text-muted-foreground">
+                              <p className="text-xs" style={{ color: branding.muted }}>
                                 {formatWxH(loc.sizeWidth, loc.sizeHeight, loc.sizeUnit, preferredSystem)}
                               </p>
                             )}
                             <div className="flex gap-2 mt-2">
                               {loc.templateFileUrl && (
                                 <a href={loc.templateFileUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>
-                                  <Button size="sm" variant="outline" className="gap-1 text-xs">
-                                    <Download className="h-3 w-3" /> Template
-                                  </Button>
+                                  <PortalCTA branding={branding} variant="outline" size="sm">
+                                    <Download className="h-3 w-3 mr-1 inline" /> Template
+                                  </PortalCTA>
                                 </a>
                               )}
-                              <Button size="sm" className="flex-1 gap-1.5" style={{ backgroundColor: buttonColor, color: "#fff" }}>
-                                <MapPin className="h-3.5 w-3.5" /> Submit Artwork
-                              </Button>
+                              <PortalCTA branding={branding} size="sm" className="flex-1">
+                                <MapPin className="h-3.5 w-3.5 mr-1.5 inline" /> Submit Artwork
+                              </PortalCTA>
                             </div>
-                          </CardContent>
-                        </Card>
+                          </div>
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -538,22 +539,27 @@ export default function FullPortal({ slug }: { slug: string }) {
           if (section.sectionType === "partner_deck" && partner.partnerDeckFileUrl) {
             return (
               <section key={section.id} id={`section-${section.sectionType}`} className="scroll-mt-20">
-                <Card style={{ borderRadius }}>
-                  <CardContent className="p-6 flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${primaryColor}10` }}>
-                      <FileText className="h-6 w-6" style={{ color: primaryColor }} />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold">{section.title || SECTION_LABELS.partner_deck}</h3>
-                      {section.description && <p className="text-sm text-muted-foreground">{section.description}</p>}
-                    </div>
-                    <a href={partner.partnerDeckFileUrl} target="_blank" rel="noopener noreferrer">
-                      <Button variant="outline" className="gap-1.5">
-                        <Download className="h-4 w-4" /> Download
-                      </Button>
-                    </a>
-                  </CardContent>
-                </Card>
+                <div
+                  className="p-6 flex items-center gap-4"
+                  style={{
+                    borderRadius,
+                    backgroundColor: branding.isDark ? 'rgba(255,255,255,0.04)' : '#ffffff',
+                    border: `1px solid ${branding.isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+                  }}
+                >
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${primaryColor}${branding.isDark ? '25' : '10'}` }}>
+                    <FileText className="h-6 w-6" style={{ color: branding.accent }} />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold" style={{ color: branding.text, fontFamily: headingFont }}>{section.title || SECTION_LABELS.partner_deck}</h3>
+                    {section.description && <p className="text-sm" style={{ color: branding.muted }}>{section.description}</p>}
+                  </div>
+                  <a href={partner.partnerDeckFileUrl} target="_blank" rel="noopener noreferrer">
+                    <PortalCTA branding={branding} variant="outline" size="md">
+                      <Download className="h-4 w-4 mr-1.5 inline" /> Download
+                    </PortalCTA>
+                  </a>
+                </div>
               </section>
             );
           }
@@ -561,22 +567,27 @@ export default function FullPortal({ slug }: { slug: string }) {
           if (section.sectionType === "capabilities" && partner.capabilitiesLink) {
             return (
               <section key={section.id} id={`section-${section.sectionType}`} className="scroll-mt-20">
-                <Card style={{ borderRadius }}>
-                  <CardContent className="p-6 flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${primaryColor}10` }}>
-                      <Layers className="h-6 w-6" style={{ color: primaryColor }} />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold">{section.title || SECTION_LABELS.capabilities}</h3>
-                      {section.description && <p className="text-sm text-muted-foreground">{section.description}</p>}
-                    </div>
-                    <a href={partner.capabilitiesLink} target="_blank" rel="noopener noreferrer">
-                      <Button variant="outline" className="gap-1.5">
-                        <ExternalLink className="h-4 w-4" /> View
-                      </Button>
-                    </a>
-                  </CardContent>
-                </Card>
+                <div
+                  className="p-6 flex items-center gap-4"
+                  style={{
+                    borderRadius,
+                    backgroundColor: branding.isDark ? 'rgba(255,255,255,0.04)' : '#ffffff',
+                    border: `1px solid ${branding.isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+                  }}
+                >
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${primaryColor}${branding.isDark ? '25' : '10'}` }}>
+                    <Layers className="h-6 w-6" style={{ color: branding.accent }} />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold" style={{ color: branding.text, fontFamily: headingFont }}>{section.title || SECTION_LABELS.capabilities}</h3>
+                    {section.description && <p className="text-sm" style={{ color: branding.muted }}>{section.description}</p>}
+                  </div>
+                  <a href={partner.capabilitiesLink} target="_blank" rel="noopener noreferrer">
+                    <PortalCTA branding={branding} variant="outline" size="md">
+                      <ExternalLink className="h-4 w-4 mr-1.5 inline" /> View
+                    </PortalCTA>
+                  </a>
+                </div>
               </section>
             );
           }
@@ -585,18 +596,7 @@ export default function FullPortal({ slug }: { slug: string }) {
         })}
       </div>
 
-      <footer className="border-t py-6" style={{ backgroundColor: `${primaryColor}05` }}>
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between text-xs text-muted-foreground">
-          <span>&copy; {new Date().getFullYear()} {partner.companyName}</span>
-          {partner.smallA3BadgeEnabled && (
-            <div className="flex items-center gap-1.5">
-              <span>Powered by</span>
-              <div className="h-4 w-4 rounded flex items-center justify-center text-[8px] font-bold" style={{ backgroundColor: primaryColor, color: "#fff" }}>A3</div>
-              <span>Visual</span>
-            </div>
-          )}
-        </div>
-      </footer>
+      <PortalFooter partnerName={partner.companyName} branding={branding} />
 
       {activeDialog && (
         <RequestFormDialog

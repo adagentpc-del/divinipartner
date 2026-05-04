@@ -1,9 +1,16 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import { eq } from "drizzle-orm";
 import { db, partnerThemesTable } from "@workspace/db";
 import { z } from "zod";
+import { getAuth } from "@clerk/express";
 
 const router: IRouter = Router();
+
+function requireAuth(req: Request, res: Response, next: NextFunction): void {
+  const { userId } = getAuth(req);
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  next();
+}
 
 const ThemeBody = z.object({
   primaryColor: z.string().optional(),
@@ -41,7 +48,7 @@ const ThemeBody = z.object({
   isPublished: z.boolean().optional(),
 });
 
-router.get("/partners/:id/theme", async (req, res): Promise<void> => {
+router.get("/partners/:id/theme", requireAuth, async (req, res): Promise<void> => {
   const partnerId = parseInt(req.params.id);
   if (isNaN(partnerId)) { res.status(400).json({ error: "Invalid partner id" }); return; }
 
@@ -50,7 +57,7 @@ router.get("/partners/:id/theme", async (req, res): Promise<void> => {
   res.json(theme);
 });
 
-router.put("/partners/:id/theme", async (req, res): Promise<void> => {
+router.put("/partners/:id/theme", requireAuth, async (req, res): Promise<void> => {
   const partnerId = parseInt(req.params.id);
   if (isNaN(partnerId)) { res.status(400).json({ error: "Invalid partner id" }); return; }
 

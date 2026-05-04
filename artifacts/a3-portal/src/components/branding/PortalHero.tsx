@@ -89,10 +89,10 @@ export function PortalHero({
     <section className="relative overflow-hidden" style={getHeroBackground(branding)}>
       {getGlowOverlay(branding)}
 
-      {branding.heroBackgroundStorageKey && (
+      {branding.heroBackgroundMode === "image" && branding.heroBackgroundStorageKey && (
         <div className="absolute inset-0">
           <img
-            src={`/api/storage/objects/${branding.heroBackgroundStorageKey.replace(/^\/objects\//, "")}`}
+            src={branding.heroBackgroundStorageKey.startsWith("/api/") ? branding.heroBackgroundStorageKey : `/api/storage/objects/${branding.heroBackgroundStorageKey.replace(/^\/objects\//, "")}`}
             alt=""
             className="w-full h-full object-cover"
           />

@@ -1,0 +1,318 @@
+REPLIT COST CONTROL PROMPT FOR A3 PARTNERSHIP PORTAL
+
+Use this prompt to audit and optimize the A3 Partnership Portal for minimal Replit AI token usage, minimal unnecessary API calls, and lower runtime cost.
+
+PASTE INTO REPLIT:
+
+Audit and optimize the A3 Partnership Portal for minimal Replit AI token usage, minimal unnecessary API calls, and lower runtime cost.
+
+Context:
+We are actively building the A3 Partnership Portal inside Replit and need to keep Replit AI usage, OpenAI/API calls, server calls, database calls, file processing, and frontend re-renders as low as possible. The app should only call AI or external APIs when clearly necessary. It should cache results, reuse stored outputs, and avoid repeated processing.
+
+Important:
+Do not remove existing functionality.
+Do not break partner portal, admin, quote, lead, upload, document center, theme editor, or customer intake flows.
+Do not make the app less accurate.
+Do not call AI just to style UI, load pages, display documents, or render templates.
+Prioritize deterministic code, cached results, and stored outputs.
+
+Primary goal:
+Reduce token usage and API usage by making AI calls explicit, intentional, cached, and trackable.
+
+Core rules:
+1. No AI call should run automatically on page load unless explicitly required.
+2. No AI call should run repeatedly for the same file, image, lead, quote, partner, or document unless the source data changed.
+3. No AI call should run for purely visual UI rendering.
+4. No AI call should run when database data already exists.
+5. No AI call should run when a deterministic rule can produce the same output.
+6. All AI calls must be logged with feature name, estimated input size, model, timestamp, and reason.
+7. All AI-generated outputs should be stored and reused.
+8. Add cache keys based on stable hashes of input data.
+9. Add admin visibility into AI usage.
+10. Add environment flags to disable expensive AI features.
+
+Add or confirm these environment variables:
+- ENABLE_AI_IMAGE_ANALYSIS=true/false
+- ENABLE_AI_QUOTE_SUMMARY=true/false
+- ENABLE_AI_DOCUMENT_PARSING=true/false
+- ENABLE_AI_EMAIL_DRAFTS=true/false
+- ENABLE_AI_THEME_SUGGESTIONS=true/false
+- ENABLE_AI_BLOG_GENERATION=true/false
+- AI_MAX_CALLS_PER_LEAD=3
+- AI_MAX_CALLS_PER_DAY=50
+- AI_CACHE_TTL_DAYS=90
+- AI_DEFAULT_MODEL=use_existing_default
+- AI_LOW_COST_MODEL=use_existing_low_cost_model_if_available
+
+If env vars are missing:
+- Default expensive AI features to disabled.
+- Show admin setup warning instead of failing.
+- Never crash the app.
+
+Create or update an AI usage settings page:
+Admin Dashboard > Settings > AI Usage
+
+Show:
+- AI features enabled or disabled
+- Daily AI call count
+- Monthly AI call count
+- Total estimated tokens if available
+- Last AI calls
+- Cache hit rate
+- Top features by usage
+- Warnings for repeated calls
+- Buttons to clear cache by feature if needed
+- Button to disable all AI features
+
+Create or update table ai_usage_logs:
+- id
+- feature_name
+- related_type nullable
+- related_id nullable
+- model nullable
+- prompt_hash nullable
+- input_hash nullable
+- cache_key nullable
+- cache_hit boolean default false
+- estimated_input_tokens nullable
+- estimated_output_tokens nullable
+- actual_input_tokens nullable
+- actual_output_tokens nullable
+- cost_estimate_usd nullable
+- status enum: skipped, cached, success, failed, disabled, rate_limited
+- reason nullable
+- error_message nullable
+- created_at
+
+Create or update table ai_cached_outputs:
+- id
+- feature_name
+- related_type nullable
+- related_id nullable
+- input_hash
+- prompt_hash nullable
+- cache_key unique
+- output_json jsonb nullable
+- output_text nullable
+- source_metadata jsonb nullable
+- expires_at nullable
+- created_at
+- updated_at
+
+Create shared AI utility layer:
+- isAiFeatureEnabled(featureName)
+- getAiFeatureLimit(featureName)
+- hashAiInput(input)
+- buildAiCacheKey(featureName, relatedType, relatedId, inputHash, promptHash)
+- getCachedAiOutput(cacheKey)
+- saveCachedAiOutput(cacheKey, output)
+- logAiUsage(event)
+- canRunAiCall(featureName, relatedType, relatedId)
+- estimateTokens(text)
+- runAiWithCache(options)
+
+runAiWithCache(options) should:
+1. Check feature flag.
+2. Check rate limit.
+3. Hash input.
+4. Check cache.
+5. Return cached output if available.
+6. Only call AI if cache miss and feature enabled.
+7. Save result to cache.
+8. Log status.
+9. Return structured output.
+10. Fail gracefully if AI provider is missing or disabled.
+
+AI image analysis optimization:
+- Generate file hash on upload.
+- Store hash with uploaded file.
+- Do not analyze the same image twice.
+- Do not analyze images until admin or customer explicitly requests AI estimate.
+- Do not reanalyze if AI inventory output already exists for the same file hash.
+- Reuse cached output if multiple leads upload the same image hash.
+- Add Run AI inventory button.
+- Add Re-run AI inventory button only for admins.
+- Add warning that rerun may create additional AI cost.
+- Add Use cached result when available.
+- Do not send full-resolution images to AI if a compressed or optimized version is acceptable.
+- Create an optimized analysis version of images if not already present.
+- Limit image count per analysis unless admin overrides.
+- Store AI output as structured JSON.
+- Pull quote builder from saved reviewed inventory, not new AI calls.
+
+Quote summary optimization:
+- Do not use AI to summarize quote if structured quote data already exists.
+- Use deterministic quote notes wherever possible.
+- Only use AI summary if admin clicks Generate AI summary.
+- Cache by quote ID plus quote updated_at timestamp or content hash.
+- If quote changes, invalidate only that quote cache.
+
+Document parsing optimization:
+- Do not parse documents automatically on upload.
+- Only parse when admin clicks Parse document.
+- Cache by file hash.
+- Store extracted text and structured fields.
+- Do not reparse unchanged files.
+- Use deterministic metadata from admin form instead of AI when possible.
+- Do not send W9, COI, ACT, or sensitive compliance docs to AI unless explicitly enabled and admin confirms.
+
+Email draft optimization:
+- Do not use AI to generate every email automatically.
+- Use static templates for common email types:
+  - document sent
+  - quote received
+  - quote approved
+  - request received
+  - upload reminder
+  - partner welcome
+- Only use AI email drafting if admin clicks Draft with AI.
+- Cache drafts by template type, customer type, partner type, and input hash.
+- Prefer merge fields over AI generation.
+
+Theme optimization:
+- Do not use AI to generate theme styling on page load.
+- Templates should be deterministic CSS/Tailwind mappings.
+- Theme preview should not call AI.
+- Theme editor should save static settings only.
+- If AI theme suggestions exist, hide behind explicit button: Suggest theme with AI.
+- Cache suggestions by partner ID and brand inputs.
+
+Blog/content agent optimization:
+- Do not generate blog posts automatically inside the main app runtime.
+- Use a scheduled or manual admin workflow.
+- Generate one article at a time.
+- Cache topic research and outlines.
+- Store full generated articles.
+- Never regenerate unless admin clicks rerun.
+- Add monthly cap.
+- Add draft status before publish.
+- Do not generate social captions until article is approved.
+- Cache social captions by article ID.
+
+Frontend optimization:
+- Avoid frontend calls that refetch the same data repeatedly.
+- Use React Query or existing query cache correctly.
+- Set sensible staleTime for stable resources:
+  - partner theme settings
+  - document library
+  - partner profile
+  - static portal settings
+- Avoid polling unless required.
+- Disable refetchOnWindowFocus for stable admin pages if already using React Query.
+- Memoize expensive derived views.
+- Avoid sending large objects to the frontend when summaries are enough.
+- Lazy load heavy admin tabs.
+- Lazy load theme previews if needed.
+- Lazy load document activity logs.
+
+Backend optimization:
+- Avoid N+1 database queries.
+- Batch fetch related records where possible.
+- Add indexes on:
+  - ai_usage_logs.feature_name
+  - ai_usage_logs.created_at
+  - ai_cached_outputs.cache_key
+  - ai_cached_outputs.input_hash
+  - document_events.created_at
+  - document_events.document_id
+  - document_customer_assignments.customer_email
+  - partner_theme_settings.partner_id
+- Add pagination to activity logs, document events, lead lists, and AI logs.
+- Do not load full event history by default.
+- Default admin tables to latest 25 or 50 rows.
+- Add Load more instead of fetching everything.
+
+File upload optimization:
+- Store files in object storage.
+- Store file metadata in database.
+- Generate content hash.
+- Avoid duplicate uploads where possible.
+- Use presigned uploads if the current architecture supports it.
+- Do not proxy large files through server unless necessary.
+- Generate thumbnails or compressed analysis copies only when needed.
+- Do not base64 encode large files unnecessarily.
+
+Observability:
+Add admin-visible AI cost guardrails:
+- Daily AI call cap
+- Per lead AI call cap
+- Per feature cap
+- AI disabled badge on features when disabled
+- Cached result used badge when cached
+- This action may use AI credits confirmation before expensive AI actions
+
+Buttons and UX copy:
+For AI actions, use explicit labels:
+- Run AI inventory
+- Use cached AI inventory
+- Re-run AI inventory
+- Generate AI quote summary
+- Draft with AI
+- Parse document with AI
+- Suggest theme with AI
+
+Do not use vague labels like Analyze, Improve, or Optimize unless the UI explains whether AI/API cost is involved.
+
+Acceptance criteria:
+- AI does not run on normal portal page loads.
+- AI does not run on theme preview.
+- AI does not run on document upload by default.
+- AI image analysis only runs by explicit action.
+- Repeated image, file, or quote analysis uses cached output.
+- AI usage is logged.
+- Admin can view AI usage.
+- Admin can disable expensive AI features.
+- Static templates replace unnecessary AI email generation.
+- Build runs without errors.
+- Existing workflows remain intact.
+
+
+FOLLOW-UP AUDIT PROMPT
+
+Run this after Replit completes the implementation.
+
+Audit the app for accidental AI calls, unnecessary API calls, and avoidable Replit/runtime cost.
+
+Check:
+1. Any AI call on page load
+2. Any AI call in theme preview
+3. Any AI call during document upload
+4. Any AI call during normal customer intake
+5. Any AI call during quote view rendering
+6. Any repeated AI call for the same file hash, image hash, lead, quote, or document
+7. Missing AI feature flags
+8. Missing AI usage logs
+9. Missing cache checks before AI calls
+10. Frontend refetching the same data repeatedly
+11. Admin tables loading too many rows
+12. Missing pagination on logs/events
+13. Full-size images being sent when optimized versions would work
+14. Large files being base64 encoded unnecessarily
+15. Sensitive documents being sent to AI without explicit admin action
+
+Fix everything found.
+
+Then give me:
+- AI calls removed or gated
+- Cache system added or updated
+- Feature flags added
+- Database tables added
+- Expensive workflows now requiring manual click
+- Any remaining cost risks
+- Any env vars I need to set
+
+
+UNIVERSAL COST-CONTROL RULE FOR FUTURE REPLIT PROMPTS
+
+Cost-control rule:
+Do not add automatic AI calls, background generation, polling, repeated analysis, or external API calls unless explicitly required. Any AI feature must be behind an explicit admin/user action, use caching by content hash, log usage, respect feature flags, and fail gracefully when disabled.
+
+
+OPERATING PRINCIPLE
+
+Use this priority order:
+1. Deterministic logic first
+2. Static templates second
+3. Cached outputs third
+4. AI only when explicitly clicked
+5. Expensive automation only after proven revenue need
