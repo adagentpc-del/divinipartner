@@ -1,0 +1,406 @@
+Redesign the partner portal UI into a premium, luxury, high-conversion brand experience with selectable partner design templates.
+
+Context:
+The current partner portal looks too plain, bland, and generic. It only asks for colors, but the output does not feel branded, elevated, modern, or visually differentiated. The partner logo is also not displaying correctly.
+
+Goal:
+Create a more premium visual system where each partner portal can select from 2 to 3 luxury templates, upload or assign a logo, choose brand colors, and preview the portal design before publishing.
+
+Important:
+Do not break existing partner portal functionality.
+Do not remove any existing partner, quote, document center, intake, upload, or admin features.
+This is a UI and theme system upgrade only.
+Use the existing data model where possible, but add fields as needed.
+Keep all routes and flows working.
+
+Primary design direction:
+The partner portals should feel like premium branded microsites, not plain forms.
+
+Visual inspiration:
+1. Dark luxury portfolio style
+2. Neon gradient creative studio style
+3. Premium tech recruitment / corporate campaign style
+4. Immersive event / experiential brand style
+5. Sleek responsive website mockup style
+
+The design should support:
+- large partner logo
+- premium hero section
+- branded gradient or image background
+- modern cards
+- glassmorphism where appropriate
+- soft shadows
+- strong CTA buttons
+- elevated typography
+- mobile responsive layouts
+- partner-specific color themes
+- branded document/download sections
+- branded quote/intake sections
+
+Fix logo issue:
+First inspect how partner logos are currently stored, uploaded, and rendered.
+Find why the logo is not showing.
+Fix the logo display across:
+- partner admin page
+- partner portal public page
+- customer intake page
+- quote page
+- document center customer view
+- email templates if logo is currently supported there
+
+Logo requirements:
+- Admin can upload or replace partner logo
+- Logo preview appears immediately after upload
+- Logo can be light, dark, or transparent PNG
+- Support horizontal and square logos
+- Add fallback if logo is missing
+- Do not stretch or distort logos
+- Use object-fit contain
+- Add optional logo placement controls:
+  - top left
+  - centered hero
+  - navbar only
+  - navbar and hero
+- Add optional logo background treatment:
+  - none
+  - white pill
+  - dark pill
+  - glass pill
+
+Add partner theme templates:
+
+Create three selectable templates.
+
+Template 1:
+Name: Luxe Dark
+Style:
+- black, charcoal, deep navy, graphite, or dark plum background
+- subtle radial gradient
+- soft glow accents
+- glass cards
+- thin border lines
+- elegant typography
+- high-end brand feel
+Best for:
+Luxury events, premium venues, VIP services, hospitality, private client portals
+
+Template 2:
+Name: Neon Creative
+Style:
+- dark base with magenta, violet, cyan, or electric blue glow
+- bold hero visuals
+- gradient overlays
+- animated light blobs or subtle motion background
+- creative agency feel
+- strong visual energy
+Best for:
+Experiential agencies, event activations, festivals, creator events, media brands
+
+Template 3:
+Name: Clean Premium
+Style:
+- light or soft neutral background
+- clean responsive website style
+- polished card grid
+- refined accent color
+- modern SaaS / corporate look
+- very readable and conversion-friendly
+Best for:
+Corporate clients, property managers, real estate groups, hotels, universities, vendor onboarding
+
+Admin theme controls:
+Add or upgrade the partner theme editor to include:
+
+Fields:
+- partner logo upload
+- portal template select:
+  - Luxe Dark
+  - Neon Creative
+  - Clean Premium
+- primary color
+- secondary color
+- accent color
+- background color
+- text color
+- button style
+- hero headline
+- hero subheadline
+- hero eyebrow text
+- hero background mode:
+  - gradient
+  - uploaded image
+  - solid
+  - pattern
+- hero background image upload
+- hero overlay intensity
+- card style:
+  - glass
+  - solid
+  - outlined
+  - elevated
+- border radius:
+  - sharp
+  - soft
+  - rounded
+  - pill
+- logo placement
+- logo background treatment
+- CTA label
+- secondary CTA label
+- show/hide A3 powered by branding
+- custom welcome message
+
+Preview:
+Add live preview cards inside the admin editor.
+When an admin selects a template, show a preview of:
+- navbar
+- hero
+- CTA button
+- intake card
+- document card
+- quote card
+- footer
+
+Save/publish:
+Admin can save a draft theme.
+Admin can publish theme.
+Public portal uses the published theme.
+
+Database changes:
+Add or update partner theme fields.
+
+If a partner_theme table exists, extend it.
+If not, create partner_theme_settings.
+
+Suggested fields:
+- id
+- partner_id
+- template_key enum: luxe_dark, neon_creative, clean_premium
+- logo_storage_key nullable
+- logo_url nullable if project uses public assets for non-sensitive images
+- logo_alt_text nullable
+- logo_placement enum: navbar_left, hero_center, navbar_and_hero
+- logo_background_treatment enum: none, white_pill, dark_pill, glass_pill
+- primary_color
+- secondary_color
+- accent_color
+- background_color
+- text_color
+- hero_eyebrow
+- hero_headline
+- hero_subheadline
+- hero_background_mode enum: gradient, image, solid, pattern
+- hero_background_storage_key nullable
+- hero_overlay_intensity number default 0.45
+- card_style enum: glass, solid, outlined, elevated
+- border_radius_style enum: sharp, soft, rounded, pill
+- button_style enum: solid, gradient, outline, glass
+- cta_label
+- secondary_cta_label
+- show_powered_by_a3 boolean default true
+- custom_welcome_message nullable
+- is_published boolean default false
+- created_at
+- updated_at
+
+Theme implementation:
+Create a reusable PartnerPortalThemeProvider or equivalent pattern.
+Create utility function:
+getPartnerTheme(partnerId)
+
+Create theme class mapping:
+- luxe_dark
+- neon_creative
+- clean_premium
+
+Do not hardcode one style into the components.
+Use template_key and saved colors to generate the final UI.
+
+Components to create or update:
+- PartnerPortalLayout
+- PartnerPortalNavbar
+- PartnerPortalHero
+- PartnerPortalCard
+- PartnerPortalCTA
+- PartnerPortalFooter
+- PartnerThemePreview
+- PartnerThemeEditor
+- PartnerLogoUploader
+
+Portal design requirements:
+
+Navbar:
+- show partner logo
+- show partner name if logo is missing
+- optional A3 Visual powered by badge
+- clean CTA button
+- sticky or floating navbar option if simple to implement
+- responsive mobile menu if needed
+
+Hero:
+- large branded hero section
+- partner logo or partner name
+- headline
+- subheadline
+- primary CTA
+- secondary CTA
+- optional background image or gradient
+- optional glow or pattern depending on template
+
+Main content:
+Use premium cards for:
+- Start a quote
+- Upload project files
+- Request A3 documents
+- View quote status
+- Contact A3
+- Partner resources
+
+Cards:
+- icon
+- title
+- short description
+- CTA
+- hover effect
+- template-aware styling
+
+Customer intake:
+Make the intake form feel more premium:
+- section headers
+- step cards
+- clearer spacing
+- better field grouping
+- progress indicator if the app already has multi-step logic
+- do not make forms harder to complete
+- prioritize readability and conversion
+
+Document center customer view:
+Make it visually branded:
+- premium document cards
+- clear lock/security indicator for private docs
+- download buttons
+- request document CTA
+- event/status badges
+
+Quote view:
+Make it visually branded:
+- quote summary card
+- status badge
+- timeline or next steps
+- requested services
+- document/action buttons
+
+Template style details:
+
+Luxe Dark:
+Use:
+- dark background
+- radial gradient glow behind hero
+- glass cards
+- thin translucent borders
+- white or off-white text
+- muted secondary text
+- elegant accent button
+- subtle animated gradient optional
+
+Neon Creative:
+Use:
+- dark background
+- large colorful gradient glow
+- magenta, violet, cyan, or partner accent color
+- bold hero text
+- energetic card hover states
+- subtle background blobs
+- optional animated glow with reduced motion support
+
+Clean Premium:
+Use:
+- light background
+- neutral gray sections
+- white cards
+- refined shadows
+- strong accent CTAs
+- clean SaaS-style layout
+- maximum readability
+
+Accessibility:
+- Maintain readable contrast
+- Do not use neon text on neon background
+- Add reduced motion support
+- Logo alt text required or fallback to partner name
+- Buttons must remain readable on all templates
+- Mobile responsiveness required
+
+Branding:
+Keep A3 Visual present but secondary.
+Partner brand should feel primary.
+Use “Powered by A3 Visual” in footer or badge if enabled.
+
+Public portal routes:
+Make sure the published partner portal pulls:
+- partner info
+- theme settings
+- logo
+- template key
+- colors
+- hero content
+- customer-facing modules
+
+If no theme exists:
+Use Clean Premium as default.
+If logo missing:
+Show partner name in text with a polished fallback mark.
+If colors missing:
+Use a professional default palette.
+
+Admin UX:
+In the partner admin detail page, add a section:
+Portal Design
+
+Inside it:
+- Template picker
+- Brand settings
+- Logo upload
+- Hero content
+- Preview
+- Save draft
+- Publish theme
+
+Template picker UI:
+Show 3 large selectable preview cards:
+1. Luxe Dark
+2. Neon Creative
+3. Clean Premium
+
+Each preview card should visually represent the style, not just text.
+
+Use sample preview cards with:
+- fake logo block
+- headline
+- CTA button
+- mini cards
+
+Important implementation instructions:
+1. Inspect the existing frontend styling system first.
+2. Reuse Tailwind classes and existing component library if present.
+3. Do not introduce heavy animation libraries unless already installed.
+4. If animations are added, use CSS only or existing lightweight utilities.
+5. Avoid increasing bundle size unnecessarily.
+6. Keep the design editable and maintainable.
+7. Do not use external image URLs.
+8. Use uploaded images or CSS gradients.
+9. Do not make all partners share the same theme unless no theme is saved.
+10. Preserve existing partner portal data and flows.
+
+Acceptance criteria:
+- Partner logo displays correctly
+- Admin can upload or replace partner logo
+- Admin can choose from 3 portal templates
+- Admin can customize colors and hero copy
+- Admin can preview the design before publishing
+- Public partner portal uses the published theme
+- Customer portal looks premium and branded
+- Intake, quote, upload, and document center flows still work
+- Internal admin pages remain functional
+- Mobile view looks polished
+- No TypeScript or build errors

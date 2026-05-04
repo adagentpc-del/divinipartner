@@ -39,3 +39,4 @@ export * from "./onboarding";
 export * from "./usage";
 export * from "./commercialization";
 export * from "./stabilization";
+export * from "./documents";

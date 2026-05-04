@@ -44,6 +44,7 @@ import PublicInvoice from "@/pages/Invoice";
 import Production from "@/pages/admin/Production";
 import SupplierPacket from "@/pages/admin/SupplierPacket";
 import Assets from "@/pages/admin/Assets";
+import DocumentCenter from "@/pages/admin/DocumentCenter";
 import WorkflowDashboard from "@/pages/admin/WorkflowDashboard";
 import Analytics from "@/pages/admin/Analytics";
 import LaunchWizard from "@/pages/admin/LaunchWizard";
@@ -71,6 +72,7 @@ import PublicLayout from "@/components/layout/PublicLayout";
 import PartnerPortal from "@/pages/public/PartnerPortal";
 import { PartnerPortalErrorBoundary } from "@/components/PartnerPortalErrorBoundary";
 import PartnerOnboarding from "@/pages/public/PartnerOnboarding";
+import DocumentAccess from "@/pages/public/DocumentAccess";
 import OnboardingSubmissions from "@/pages/admin/OnboardingSubmissions";
 import CommittedInventory from "@/pages/admin/CommittedInventory";
 import NotFound from "@/pages/not-found";
@@ -332,6 +334,9 @@ function ClerkProviderWithRoutes() {
             <Route path="/admin/assets">
               {() => <AdminRoute component={Assets} />}
             </Route>
+            <Route path="/admin/document-center">
+              {() => <AdminRoute component={DocumentCenter} />}
+            </Route>
             <Route path="/admin/vendor">
               {() => <AdminRoute component={VendorPortal} />}
             </Route>
@@ -345,6 +350,10 @@ function ClerkProviderWithRoutes() {
                   <PartnerOnboarding />
                 </PublicLayout>
               )}
+            </Route>
+
+            <Route path="/documents">
+              {() => <DocumentAccess />}
             </Route>
 
             <Route path="/partner/:slug">

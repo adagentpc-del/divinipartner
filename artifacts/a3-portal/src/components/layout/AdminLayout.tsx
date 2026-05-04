@@ -78,11 +78,12 @@ const NAV_GROUPS: NavGroup[] = [
     { name: "Quote Ingestion",  href: "/admin/quote-ingestion",   icon: Sparkles },
   ] },
   { name: "Operations", icon: Wrench, items: [
-    { name: "Workflow",    href: "/admin/workflow",   icon: Workflow },
-    { name: "Onboarding",  href: "/admin/onboarding", icon: Inbox },
-    { name: "Requests",    href: "/admin/requests",   icon: FileText },
-    { name: "Vendor View", href: "/admin/vendor",     icon: Truck },
-    { name: "Feedback",    href: "/admin/feedback",   icon: MessageSquare },
+    { name: "Workflow",        href: "/admin/workflow",        icon: Workflow },
+    { name: "Onboarding",     href: "/admin/onboarding",      icon: Inbox },
+    { name: "Requests",       href: "/admin/requests",        icon: FileText },
+    { name: "Document Center", href: "/admin/document-center", icon: FolderOpen },
+    { name: "Vendor View",    href: "/admin/vendor",          icon: Truck },
+    { name: "Feedback",       href: "/admin/feedback",        icon: MessageSquare },
   ] },
   { name: "Commerce", icon: Banknote, items: [
     { name: "Commercial",     href: "/admin/commercial",     icon: Crown },

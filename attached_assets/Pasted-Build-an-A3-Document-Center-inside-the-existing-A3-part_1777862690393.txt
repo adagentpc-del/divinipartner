@@ -1,0 +1,518 @@
+Build an A3 Document Center inside the existing A3 partnership portal.
+
+Goal:
+Create a secure document management and customer document delivery system where A3 admins can upload documents such as W9, ACT docs, COI, insurance certificates, capability sheets, vendor packets, and customer support documents. Admins should be able to press a button from a lead, quote, partner, or customer record to send selected documents to a customer. Customers should also be able to request or download approved documents, and every send, view, request, and download must be tracked.
+
+Important:
+Do not store uploaded documents in the codebase or public static folder.
+Use object storage.
+Use Replit Object Storage if it is already configured.
+If Supabase Storage is already configured and easier based on the current project structure, use Supabase Storage.
+Use signed URLs for private documents.
+Do not create permanent public links for W9, COI, ACT, insurance, compliance, or vendor setup documents.
+
+Branding:
+Keep the design consistent with the existing A3 partnership portal.
+Use the existing admin dashboard styling, cards, tables, buttons, modals, badges, and form patterns wherever possible.
+Do not redesign the portal.
+Add this as a clean operational module.
+
+Feature name:
+A3 Document Center
+
+Core document types:
+1. W9
+2. ACT docs
+3. Articles, registration, or corporate documents
+4. Certificate of Insurance
+5. Insurance certificate
+6. Capability sheet
+7. Vendor onboarding packet
+8. Product guide
+9. Artwork upload guide
+10. Installation guide
+11. Partner packet
+12. Customer support docs
+13. Internal only documents
+
+Document permission levels:
+Create three document visibility levels.
+
+1. public_sales
+Used for capability sheets, product guides, general sales documents.
+These can be customer downloadable if enabled.
+
+2. customer_requestable
+Used for W9, COI, ACT docs, insurance certificates, company registration docs, and vendor onboarding packets.
+Customers can request these, but they should not automatically see all of them unless assigned, approved, or configured as auto_send.
+
+3. internal_only
+Used for pricing sheets, supplier cost sheets, commission docs, internal routing docs, vendor notes, and documents that should never be customer-facing.
+
+Required database tables:
+
+Create table document_library with:
+- id
+- title
+- description
+- category
+- document_type
+- visibility_level
+- storage_key
+- original_filename
+- file_mime_type
+- file_size_bytes
+- version_label
+- expiration_date nullable
+- is_active boolean default true
+- is_customer_downloadable boolean default false
+- requires_admin_approval boolean default true
+- auto_send_when_requested boolean default false
+- internal_notes nullable
+- uploaded_by_user_id nullable
+- created_at
+- updated_at
+
+Create table document_customer_assignments with:
+- id
+- document_id
+- customer_id nullable
+- lead_id nullable
+- quote_id nullable
+- partner_id nullable
+- customer_email
+- customer_name nullable
+- assigned_by_user_id nullable
+- access_status enum: pending, available, expired, revoked
+- signed_url_expires_at nullable
+- created_at
+- updated_at
+
+Create table document_requests with:
+- id
+- customer_id nullable
+- lead_id nullable
+- quote_id nullable
+- partner_id nullable
+- requester_name
+- requester_email
+- requester_company nullable
+- requested_document_types jsonb
+- request_message nullable
+- status enum: pending, approved, denied, sent, fulfilled
+- reviewed_by_user_id nullable
+- reviewed_at nullable
+- created_at
+- updated_at
+
+Create table document_events with:
+- id
+- document_id nullable
+- request_id nullable
+- assignment_id nullable
+- customer_id nullable
+- lead_id nullable
+- quote_id nullable
+- partner_id nullable
+- customer_email nullable
+- customer_name nullable
+- event_type enum: uploaded, updated, assigned, requested, approved, denied, sent, email_opened, viewed, downloaded, expired, revoked
+- event_metadata jsonb nullable
+- ip_address nullable
+- user_agent nullable
+- performed_by_user_id nullable
+- created_at
+
+Admin dashboard requirements:
+
+Add a new admin navigation item:
+Document Center
+
+Inside Document Center, create tabs:
+1. Library
+2. Requests
+3. Send Documents
+4. Activity Log
+5. Settings
+
+Library tab:
+Show a table of all documents with:
+- title
+- category
+- document type
+- visibility level badge
+- version
+- expiration date
+- active/inactive status
+- downloadable status
+- requires approval status
+- file size
+- created date
+- actions
+
+Actions:
+- View details
+- Replace file
+- Edit metadata
+- Deactivate
+- Reactivate
+- Copy internal reference
+- Test signed download link
+- View activity
+
+Upload document modal:
+Fields:
+- document title
+- description
+- category
+- document type
+- visibility level
+- version label
+- expiration date
+- is active
+- is customer downloadable
+- requires admin approval
+- auto send when requested
+- internal notes
+- file upload
+
+Validation:
+- Require title
+- Require document type
+- Require visibility level
+- Require file
+- Allow PDF, DOC, DOCX, PNG, JPG, JPEG
+- Reject executable files
+- Add max file size using the project’s existing file size pattern or create a safe default of 25MB
+- Do not allow internal_only documents to be customer downloadable
+- Do not allow internal_only documents to be auto_send_when_requested
+
+Replace file:
+Allow admin to upload a new version of an existing document.
+Keep the existing document record but update:
+- storage_key
+- original_filename
+- file_mime_type
+- file_size_bytes
+- version_label
+- updated_at
+
+When replacing a file:
+- Log document_events event_type updated
+- Keep prior event history
+- Do not break existing records
+- Future sends should use the newest active version
+
+Requests tab:
+Show customer document requests.
+Columns:
+- requester name
+- requester email
+- requester company
+- requested documents
+- related lead or quote if available
+- partner if available
+- status
+- created date
+- actions
+
+Actions:
+- Review request
+- Approve and send
+- Deny
+- Attach documents manually
+- View customer/lead/quote
+- View request history
+
+Review request modal:
+Show requester details, requested docs, message, related lead/quote/partner.
+Admin can select which documents to send.
+Admin can approve and send.
+Admin can deny with internal reason.
+If approved and sent, create document assignments and document events.
+
+Send Documents tab:
+Create a manual send form for admins.
+
+Fields:
+- customer email
+- customer name
+- company
+- related lead optional
+- related quote optional
+- related partner optional
+- document selector
+- message/note optional
+- link expiration setting
+
+Document selector:
+Show only active documents.
+Group documents by category.
+Do not show internal_only documents unless admin toggles “show internal documents.”
+Even if shown, internal_only documents cannot be sent to customers.
+
+Send behavior:
+When admin clicks Send Selected Documents:
+1. Create document_customer_assignments records for each selected document
+2. Generate signed URLs for each document
+3. Send an email to the customer with the selected document links
+4. Log document_events for assigned and sent
+5. Show success message
+6. Add activity log entries to the related lead, quote, partner, or customer if those activity systems already exist
+
+Email requirements:
+Use the project’s existing email provider.
+If Resend is already configured, use Resend.
+If Outlook email sending is already configured, use the existing Outlook send pattern.
+Do not introduce a new email service if one already exists.
+
+Email subject:
+A3 Visual Documents Requested
+
+Email body:
+Use clean professional copy:
+
+Hi {{customer_name}},
+
+The A3 Visual documents you requested are ready below.
+
+{{document_links}}
+
+These links may expire for security purposes. If you need updated access, please reply to this email or request the documents again through the portal.
+
+Thank you,
+A3 Visual
+
+Each document link should show:
+- document title
+- version if available
+- expiration note if applicable
+
+Signed URL expiration defaults:
+- private/compliance docs: 7 days
+- customer_requestable docs: 7 days
+- public_sales docs: 30 days
+- custom expiration if admin selects it
+
+Activity Log tab:
+Show document_events.
+Filters:
+- event type
+- document
+- customer email
+- lead
+- quote
+- partner
+- date range
+
+Activity rows:
+- event type badge
+- document title
+- customer email
+- related lead/quote/partner
+- timestamp
+- details
+
+Events to log:
+- document uploaded
+- document updated
+- document assigned
+- document requested
+- document approved
+- document denied
+- document sent
+- document viewed
+- document downloaded
+- document expired
+- document revoked
+
+Settings tab:
+Allow admin to configure:
+- default signed URL expiration for public_sales
+- default signed URL expiration for customer_requestable
+- default signed URL expiration for private compliance docs
+- max upload size
+- allowed file types
+- email reply-to
+- default email note
+- whether customer self-service requests are enabled
+
+Customer-facing requirements:
+
+Add a customer-facing section called:
+Requested Documents
+
+This should appear on the relevant customer/quote/lead portal page if the customer has assigned documents or if document requests are enabled.
+
+Customer can:
+1. View available assigned documents
+2. Download documents
+3. Request additional vendor documents
+
+Available documents view:
+Show:
+- document title
+- description
+- category
+- version
+- expiration date if applicable
+- download button
+
+When customer clicks download:
+1. Generate or validate signed URL
+2. Log document_events event_type downloaded
+3. Include customer email, document_id, assignment_id, lead_id, quote_id, partner_id if available
+4. Redirect or stream the file securely
+
+Request vendor documents button:
+Label:
+Request A3 Vendor Documents
+
+Request form:
+Fields:
+- name
+- email
+- company
+- requested document checkboxes:
+  - W9
+  - Certificate of Insurance
+  - ACT / company documents
+  - Vendor onboarding packet
+  - Capabilities packet
+  - Other
+- message
+
+After submit:
+1. Create document_requests record
+2. Log document_events event_type requested
+3. Notify admin by email or admin dashboard notification
+4. Show confirmation message:
+“Your request has been received. The A3 team will review it and send the appropriate documents.”
+
+If auto_send_when_requested is enabled for matching active documents:
+1. Automatically send those documents
+2. Mark request as fulfilled or sent
+3. Log approved and sent events
+4. Still notify admin that auto-send occurred
+
+Security requirements:
+- Use signed URLs for private docs
+- Never expose storage keys directly to the frontend
+- Never make W9, COI, ACT, insurance, registration, or vendor docs publicly accessible
+- Validate file types server-side
+- Validate file size server-side
+- Restrict admin document management routes to authenticated admins only
+- Restrict customer document access to assigned documents or valid signed links
+- Prevent internal_only docs from being customer assigned or downloaded
+- Add server-side checks before every download
+- Log download attempts where possible
+- Do not leak private document URLs in logs
+
+Backend routes needed:
+
+Admin routes:
+GET /api/admin/documents
+POST /api/admin/documents/upload
+PATCH /api/admin/documents/:id
+POST /api/admin/documents/:id/replace
+POST /api/admin/documents/:id/deactivate
+POST /api/admin/documents/:id/reactivate
+GET /api/admin/document-requests
+POST /api/admin/document-requests/:id/approve-send
+POST /api/admin/document-requests/:id/deny
+POST /api/admin/documents/send
+GET /api/admin/document-events
+GET /api/admin/documents/:id/activity
+POST /api/admin/documents/:id/test-link
+
+Customer routes:
+GET /api/customer/documents
+POST /api/customer/document-requests
+GET /api/customer/documents/:assignmentId/download
+
+Shared utility functions:
+- uploadDocumentToStorage(file)
+- generateSignedDocumentUrl(storageKey, expiration)
+- sendDocumentEmail(customerEmail, customerName, documents, note)
+- logDocumentEvent(event)
+- canDocumentBeSentToCustomer(document)
+- getDefaultExpirationForDocument(document)
+- validateDocumentUpload(file)
+
+Storage:
+Create a clean folder/key structure:
+a3-documents/{visibility_level}/{document_type}/{document_id}/{filename}
+
+Examples:
+a3-documents/customer_requestable/w9/doc_123/a3-w9-2026.pdf
+a3-documents/customer_requestable/coi/doc_456/a3-coi-2026.pdf
+a3-documents/public_sales/capabilities/doc_789/a3-capabilities.pdf
+a3-documents/internal_only/pricing/doc_999/a3-internal-pricing.pdf
+
+UI details:
+Use badges:
+- Public Sales
+- Customer Requestable
+- Internal Only
+- Active
+- Inactive
+- Expired
+- Requires Approval
+- Auto Send
+- Downloadable
+
+Use clear admin warnings:
+For internal_only documents:
+“This document is internal only and cannot be sent to customers.”
+
+For expiring docs:
+“This document has an expiration date. Confirm it is current before sending.”
+
+For W9, COI, ACT, and insurance docs:
+“Use signed links only. Do not expose this document publicly.”
+
+Lead/quote integration:
+On existing lead detail, quote detail, customer detail, and partner detail pages, add a button:
+Send A3 Documents
+
+Clicking the button opens a modal with:
+- prefilled customer name
+- prefilled email
+- prefilled lead/quote/partner reference
+- document selector
+- optional message
+- send button
+
+After sending:
+- show toast confirmation
+- log activity
+- add an entry to document_events
+- refresh the page activity timeline if one exists
+
+Important implementation instructions:
+1. First inspect the existing database schema, auth system, email system, object storage setup, admin dashboard routes, and customer portal routes.
+2. Reuse existing patterns wherever possible.
+3. Do not duplicate authentication logic.
+4. Do not create a second admin dashboard.
+5. Do not break existing lead, quote, partner, customer, or upload flows.
+6. Add migrations safely.
+7. Add graceful fallbacks if object storage env vars are missing.
+8. If object storage is not configured, show a clear admin setup warning instead of crashing.
+9. Keep the module modular and easy to remove or extend.
+10. Make sure TypeScript types are clean and no new lint or build errors are introduced.
+
+Acceptance criteria:
+- Admin can upload A3 documents
+- Admin can categorize and permission documents
+- Admin can replace/update documents
+- Admin can send selected documents to a customer from the Document Center
+- Admin can send selected documents from a lead, quote, customer, or partner page
+- Customer receives an email with secure links
+- Customer can download assigned documents
+- Customer can request documents from the portal
+- Admin can review, approve, deny, or send requested documents
+- Downloads, sends, requests, approvals, denials, uploads, and updates are logged
+- Internal-only documents cannot be customer-facing
+- W9, COI, ACT, insurance, and vendor docs use signed URLs
+- Build runs without errors
+- Existing portal behavior remains unchanged

@@ -41,6 +41,7 @@ import postLaunchRouter from "./postLaunch";
 import commercializationRouter from "./commercialization";
 import salesEnablementRouter from "./salesEnablement";
 import stabilizationRouter from "./stabilization";
+import documentsRouter from "./documents";
 import deploymentRouter from "./deployment";
 import unitsRouter from "./units";
 import partnerInventoryRouter from "./partnerInventory";
@@ -144,6 +145,7 @@ router.use(postLaunchRouter);
 router.use(commercializationRouter);
 router.use(salesEnablementRouter);
 router.use(stabilizationRouter);
+router.use(documentsRouter);
 router.use(deploymentRouter);
 router.use(unitsRouter);
 

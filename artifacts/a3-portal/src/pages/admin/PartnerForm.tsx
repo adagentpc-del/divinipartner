@@ -22,6 +22,7 @@ import { apiUrl } from "@/lib/api";
 import { RecipientsManager } from "@/components/admin/RecipientsManager";
 import PartnerContactsPanel from "@/components/admin/PartnerContactsPanel";
 import EntityAlertsPanel from "@/components/admin/EntityAlertsPanel";
+import SendDocumentsModal from "@/components/documents/SendDocumentsModal";
 import PartnerStatusBadges from "@/components/admin/PartnerStatusBadges";
 import { FamilyStatusGrid, type FamilyAvailability } from "@/components/admin/FamilyStatusCard";
 import { RentableAssetsCard } from "@/components/admin/RentableAssetsCard";
@@ -294,6 +295,8 @@ export default function PartnerForm() {
     mutation();
   };
 
+  const [showSendDocs, setShowSendDocs] = useState(false);
+
   if (isEditing && isLoading) return (
     <div className="flex items-center justify-center py-24">
       <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -356,6 +359,9 @@ export default function PartnerForm() {
                 <Settings className="h-3.5 w-3.5" /> Add-Ons
               </Button>
             </Link>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShowSendDocs(true)}>
+              <FileText className="h-3.5 w-3.5" /> Send Docs
+            </Button>
             {(() => {
               // Use ONLY the saved slug from the loaded partner record. The
               // form's current value can be unsaved input that doesn't yet
@@ -824,6 +830,18 @@ export default function PartnerForm() {
           </div>
         </form>
       </Form>
+
+      {isEditing && id && (
+        <SendDocumentsModal
+          open={showSendDocs}
+          onClose={() => setShowSendDocs(false)}
+          partnerId={parseInt(id)}
+          partnerName={form.watch("companyName")}
+          prefillEmail={form.watch("contactEmail") || undefined}
+          prefillName={form.watch("contactName") || undefined}
+          prefillCompany={form.watch("companyName") || undefined}
+        />
+      )}
     </div>
   );
 }
