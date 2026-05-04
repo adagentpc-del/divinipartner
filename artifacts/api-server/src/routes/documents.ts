@@ -38,9 +38,16 @@ function getAdminUserId(req: any): string {
   return getAuth(req)!.userId!;
 }
 
+function getDocTokenSecret(): string {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) {
+    throw new Error("SESSION_SECRET must be set for document download token generation");
+  }
+  return secret;
+}
+
 function generateDownloadToken(assignmentId: number, email: string): string {
-  const secret = process.env.SESSION_SECRET || "doc-access-fallback-key";
-  return createHmac("sha256", secret)
+  return createHmac("sha256", getDocTokenSecret())
     .update(`doc-download:${assignmentId}:${email.toLowerCase().trim()}`)
     .digest("hex")
     .slice(0, 32);
@@ -511,8 +518,10 @@ adminRouter.post("/document-requests/:id/approve-send", async (req, res): Promis
     performedByUserId: userId,
   });
 
+  let emailSent = false;
   try {
     await sendDocumentEmail(request.requesterEmail, request.requesterName, docLinks, parsed.data.note);
+    emailSent = true;
     await db.update(documentRequestsTable).set({ status: "sent" }).where(eq(documentRequestsTable.id, id));
     await logDocumentEvent({
       requestId: id,
@@ -527,7 +536,7 @@ adminRouter.post("/document-requests/:id/approve-send", async (req, res): Promis
     logger.error({ err }, "Failed to send document email after approve — request stays in 'approved' state");
   }
 
-  res.json({ ok: true, assignmentCount: assignments.length });
+  res.json({ ok: true, assignmentCount: assignments.length, emailSent });
 });
 
 // ─── Admin: Deny document request ────────────────────────────────────────────
@@ -706,6 +715,7 @@ router.get("/customer/documents", async (req, res): Promise<void> => {
       eq(documentCustomerAssignmentsTable.customerEmail, email.toLowerCase().trim()),
       eq(documentCustomerAssignmentsTable.accessStatus, "available"),
       eq(documentLibraryTable.isActive, true),
+      sql`${documentLibraryTable.visibilityLevel} != 'internal_only'`,
       gt(documentCustomerAssignmentsTable.signedUrlExpiresAt, now),
     ))
     .orderBy(desc(documentCustomerAssignmentsTable.createdAt));
@@ -816,6 +826,7 @@ router.post("/customer/document-requests", async (req, res): Promise<void> => {
     data.requestedDocumentTypes.includes(d.documentType)
   );
 
+  let autoSentCount = 0;
   if (matchingAutoSend.length > 0) {
     const docLinks: Array<{ title: string; url: string; version?: string; expiresAt?: Date }> = [];
 
@@ -847,8 +858,10 @@ router.post("/customer/document-requests", async (req, res): Promise<void> => {
       });
     }
 
+    let autoSendEmailSucceeded = false;
     try {
       await sendDocumentEmail(data.email, data.name, docLinks);
+      autoSendEmailSucceeded = true;
       await db.update(documentRequestsTable).set({ status: "fulfilled" }).where(eq(documentRequestsTable.id, request.id));
       for (const doc of matchingAutoSend) {
         await logDocumentEvent({
@@ -863,9 +876,11 @@ router.post("/customer/document-requests", async (req, res): Promise<void> => {
     } catch (err) {
       logger.error({ err }, "Auto-send document email failed");
     }
+
+    autoSentCount = autoSendEmailSucceeded ? matchingAutoSend.length : 0;
   }
 
-  res.json({ ok: true, requestId: request.id, autoSentCount: matchingAutoSend.length });
+  res.json({ ok: true, requestId: request.id, autoSentCount });
 });
 
 // ─── Email helper ────────────────────────────────────────────────────────────
