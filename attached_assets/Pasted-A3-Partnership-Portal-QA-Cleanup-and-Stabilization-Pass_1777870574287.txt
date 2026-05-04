@@ -1,0 +1,184 @@
+A3 Partnership Portal QA, Cleanup, and Stabilization Pass
+
+Context:
+We have added or are adding several major modules to the A3 Partnership Portal:
+1. A3 Document Center
+2. Customer document request and download tracking
+3. Partner portal UI theme templates
+4. Partner logo upload and display
+5. AI and Replit cost-control safeguards
+
+Goal:
+Audit the entire app for broken flows, missing connections, confusing UI, unnecessary AI/API calls, and incomplete admin/customer functionality. Fix issues without adding new major features.
+
+Important:
+Do not redesign the app again.
+Do not add automatic AI calls.
+Do not create new background jobs.
+Do not add new third-party services.
+Do not remove existing features.
+Do not overwrite working logic.
+Prioritize stability, clean UX, working routes, and low-cost operation.
+
+Check the following areas:
+
+1. Partner Logo System
+- Partner logo uploads successfully
+- Logo stores in object storage or the existing safe file storage system
+- Logo appears in admin partner settings
+- Logo appears on public partner portal
+- Logo appears on customer intake pages
+- Logo appears on document/request pages if appropriate
+- Logo does not stretch or distort
+- Transparent PNGs display correctly
+- Missing logo fallback looks polished
+- Broken logo URLs do not crash the page
+
+2. Partner Theme System
+- Admin can choose Luxe Dark, Neon Creative, or Clean Premium
+- Admin can customize colors
+- Admin can customize hero headline, subheadline, CTA labels, and welcome message
+- Admin can preview theme before publishing
+- Published theme appears on public portal
+- Draft theme does not accidentally overwrite published theme unless admin publishes
+- Default fallback theme is Clean Premium
+- Theme preview does not call AI
+- Theme rendering uses deterministic CSS/Tailwind logic only
+- Mobile layout works for all three templates
+
+3. Customer Portal UX
+Check customer-facing pages for:
+- Clean branded layout
+- Clear CTA buttons
+- Good spacing
+- Readable contrast
+- Mobile responsiveness
+- Clear quote/request/upload/document actions
+- No admin-only data visible
+- No internal notes visible
+- No broken buttons
+- No dead links
+
+4. Intake Flow
+Verify:
+- Customer can start an intake
+- Customer can fill required fields
+- Customer can upload files/photos
+- Uploads do not trigger AI automatically
+- Uploaded files are associated with the correct lead/customer/partner
+- Confirmation message appears
+- Admin can view submitted intake
+- Admin can continue quote workflow from intake
+
+5. Document Center
+Verify:
+- Admin can upload documents
+- Admin can edit document metadata
+- Admin can replace documents
+- Admin can deactivate/reactivate documents
+- Internal-only documents cannot be sent to customers
+- Customer-requestable documents require approval unless auto-send is intentionally enabled
+- W9, COI, ACT, insurance, and vendor docs use signed URLs
+- Customer can request documents
+- Admin can approve and send requested documents
+- Admin can deny requests
+- Customer can download assigned documents
+- Downloads are logged
+- Sends are logged
+- Requests are logged
+- Expired links are handled gracefully
+
+6. Lead, Quote, Partner, and Customer Integration
+Verify:
+- Lead detail pages still load
+- Quote detail pages still load
+- Partner detail pages still load
+- Customer detail pages still load if customer records exist
+- “Send A3 Documents” button works from lead/quote/customer/partner pages
+- Sent documents link back to the correct lead, quote, partner, or customer
+- Activity timeline updates if the app has one
+- No N+1 query problems introduced
+
+7. Email Sending
+Verify:
+- Document email uses existing provider only
+- No new email provider was added
+- Email sends selected document links
+- Email includes customer name if available
+- Email includes expiration note
+- Email does not expose storage keys
+- Email does not include internal-only documents
+- Email failure shows admin-friendly error
+- Email success creates document event records
+
+8. AI and Cost-Control Audit
+Verify:
+- No AI call runs on page load
+- No AI call runs during theme preview
+- No AI call runs during document upload
+- No AI call runs during customer intake submission
+- No AI call runs during quote page rendering
+- AI image inventory only runs by explicit click
+- AI document parsing only runs by explicit click
+- AI email drafting only runs by explicit click
+- AI quote summary only runs by explicit click
+- AI theme suggestions only run by explicit click, if present
+- AI calls are feature-flagged
+- AI calls are logged
+- AI calls use cache where applicable
+- Repeated analysis uses cached output
+- Missing AI env vars do not crash the app
+- Expensive AI features default to disabled unless specifically configured
+
+9. Performance and Data Loading
+Optimize:
+- Admin tables default to 25 or 50 records
+- Logs and events are paginated
+- No full document event history loads by default
+- No full AI usage history loads by default
+- No repeated frontend refetch loops
+- Stable settings use sensible caching
+- Public portal does not fetch unnecessary admin-only data
+- Heavy admin tabs are lazy loaded where simple to do
+- File downloads use signed links or streaming safely
+
+10. Security
+Verify:
+- Admin routes require admin auth
+- Customer routes only expose assigned or customer-allowed data
+- Internal-only documents never appear in customer responses
+- Storage keys are not exposed to the frontend
+- Signed URLs expire
+- Server validates document access before download
+- Server validates file upload type and size
+- Executable files are rejected
+- Sensitive documents are not sent to AI without explicit admin action and enabled feature flag
+
+11. Build Health
+Run or inspect:
+- TypeScript checks
+- Build command
+- Lint if configured
+- Database migration status
+- Console errors
+- Network errors
+- Broken imports
+- Missing env var warnings
+- Broken routes
+
+Fix all issues found.
+
+Do not add major new features unless required to fix a broken requirement.
+
+After fixes, give me a concise implementation report with:
+
+1. Files changed
+2. Bugs fixed
+3. Routes verified
+4. Database tables or fields added
+5. Storage provider used
+6. Email provider used
+7. AI calls removed, gated, or cached
+8. Any remaining manual setup required
+9. Any remaining cost risks
+10. Exact commands I should run to verify the build

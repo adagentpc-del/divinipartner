@@ -36,7 +36,7 @@ import { productionRouter } from "./production";
 import workflowRouter from "./workflow";
 import analyticsRouter from "./analytics";
 import importsRouter from "./imports";
-import onboardingRouter from "./onboarding";
+import onboardingRouter, { launchRouter } from "./onboarding";
 import postLaunchRouter from "./postLaunch";
 import commercializationRouter from "./commercialization";
 import salesEnablementRouter from "./salesEnablement";
@@ -59,6 +59,8 @@ import {
   publicReadLimiter,
   aiTriggerLimiter,
 } from "../middlewares/rateLimit";
+import { getAuth } from "@clerk/express";
+import type { Request, Response, NextFunction } from "express";
 
 const router: IRouter = Router();
 
@@ -95,8 +97,32 @@ router.use(/^\/storage\/public-objects(\/|$)/, (req, res, next) =>
 router.use(/^\/partners\/[^/]+\/(deck|package)-extractions$/, aiTriggerLimiter);
 router.use(/^\/(deck|package)-extractions\/[^/]+\/rerun$/, aiTriggerLimiter);
 
+// ── Public / unauthenticated routers ───────────────────────────────────
+// These routers serve public portal pages, health checks, customer document
+// access, onboarding forms, and public storage — no auth required.
 router.use(healthRouter);
 router.use(publicConfigRouter);
+router.use(publicPortalRouter);
+router.use(storageRouter);
+router.use(documentsRouter);
+router.use(onboardingRouter);
+
+// ── Auth boundary ──────────────────────────────────────────────────────
+// Every route registered AFTER this middleware requires a valid Clerk session.
+// Routes above (public/*, customer/*, healthz, storage/*, onboarding/*) are
+// intentionally excluded. Individual routers that already have their own
+// requireAuth/requireAdmin guards will still work — this is a safety net.
+// NOTE: /launch/* is NOT public — it is mounted after this boundary.
+const PUBLIC_PATH_RE = /^\/(public|customer|healthz|storage|onboarding|public-config)(\/|$)/;
+router.use((req: Request, res: Response, next: NextFunction) => {
+  if (PUBLIC_PATH_RE.test(req.path)) { next(); return; }
+  const { userId } = getAuth(req);
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  next();
+});
+
+// ── Authenticated admin routers ────────────────────────────────────────
+router.use(launchRouter);
 router.use(securityReadinessRouter);
 router.use(addonsRouter);
 router.use(partnersRouter);
@@ -105,11 +131,9 @@ router.use(partnerContactsRouter);
 router.use(emailReadinessRouter);
 router.use(liveReadinessRouter);
 router.use(alertsRouter);
-router.use(publicPortalRouter);
 router.use(requestsRouter);
 router.use(pricingRouter);
 router.use(dashboardRouter);
-router.use(storageRouter);
 router.use(partnerThemesRouter);
 router.use(partnerSectionsRouter);
 router.use(productCatalogRouter);
@@ -140,12 +164,10 @@ router.use(productionRouter);
 router.use(workflowRouter);
 router.use(analyticsRouter);
 router.use(importsRouter);
-router.use(onboardingRouter);
 router.use(postLaunchRouter);
 router.use(commercializationRouter);
 router.use(salesEnablementRouter);
 router.use(stabilizationRouter);
-router.use(documentsRouter);
 router.use(deploymentRouter);
 router.use(unitsRouter);
 

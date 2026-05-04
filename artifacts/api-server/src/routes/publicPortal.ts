@@ -19,6 +19,13 @@ import { sendRequestNotification } from "../lib/resend";
 
 const router: IRouter = Router();
 
+function safePublicTheme(theme: any): any {
+  if (!theme) return null;
+  if (!theme.isPublished) return { templateKey: theme.templateKey };
+  const { id: _id, partnerId: _pid, themeNotes: _tn, aiSuggestedJson: _ai, isApproved: _ia, createdAt: _ca, updatedAt: _ua, ...publicFields } = theme;
+  return publicFields;
+}
+
 router.get("/public/partners/:slug", async (req, res): Promise<void> => {
   const params = GetPublicPartnerParams.safeParse(req.params);
   if (!params.success) {
@@ -56,7 +63,27 @@ router.get("/public/partners/:slug", async (req, res): Promise<void> => {
   const [theme] = await db.select().from(partnerThemesTable)
     .where(eq(partnerThemesTable.partnerId, partner.id));
 
-  res.json({ ...partner, pricingRules, theme: theme || null, previewMode: partner.launchStatus === "preview" });
+  const safePartner = {
+    id: partner.id,
+    companyName: partner.companyName,
+    slug: partner.slug,
+    logoUrl: partner.logoUrl,
+    secondaryLogoUrl: partner.secondaryLogoUrl,
+    websiteUrl: partner.websiteUrl,
+    smallA3BadgeEnabled: partner.smallA3BadgeEnabled,
+    introHeadline: partner.introHeadline,
+    introText: partner.introText,
+    thankYouText: partner.thankYouText,
+    portalMode: partner.portalMode,
+    partnerType: partner.partnerType,
+    pricingDisplayEnabled: partner.pricingDisplayEnabled,
+    capabilitiesLink: partner.capabilitiesLink,
+    partnerDeckFileUrl: partner.partnerDeckFileUrl,
+    globalSizzleReelUrl: partner.globalSizzleReelUrl,
+    partnerVideoUrl: partner.partnerVideoUrl,
+  };
+
+  res.json({ ...safePartner, pricingRules, theme: safePublicTheme(theme), previewMode: partner.launchStatus === "preview" });
 });
 
 router.get("/public/partners/:slug/portal", async (req, res): Promise<void> => {
@@ -141,7 +168,7 @@ router.get("/public/partners/:slug/portal", async (req, res): Promise<void> => {
       partnerVideoUrl: partner.partnerVideoUrl,
       portalMode: partner.portalMode,
     },
-    theme: theme || null,
+    theme: safePublicTheme(theme),
     sections,
     products,
     brandingLocations,
@@ -333,30 +360,9 @@ router.post("/public/partners/:slug/requests", async (req, res): Promise<void> =
     );
   }
 
-  generateAiSummary({
-    companyName: data.companyName,
-    contactName: data.contactName,
-    eventName: data.eventName,
-    eventDate: data.eventDate || null,
-    venueName: data.venueName || null,
-    venueAddress: data.venueAddress || null,
-    items: items.map((i) => ({ category: i.category, itemName: i.itemName })),
-    designAssistanceRequested: data.designAssistanceRequested || false,
-    customFabricationRequested: data.customFabricationRequested || false,
-    immersiveRequested: data.immersiveRequested || false,
-    promotionalItemsRequested: data.promotionalItemsRequested || false,
-    additionalNotes: data.additionalNotes || null,
-    uploads: uploads.map((u) => ({ uploadType: u.uploadType, fileName: u.fileName })),
-  }, { requestId: request.id, partnerId: partner.id }).then(async ({ text, inputHash, usedAi }) => {
-    // Persist the composed text always; persist the input hash ONLY when AI
-    // actually ran successfully — a deterministic fallback (usedAi=false)
-    // stores hash=null so the next regenerate-ai click will retry instead of
-    // permanently reusing the fallback text.
-    await db
-      .update(requestsTable)
-      .set({ aiSummary: text, aiSummaryInputHash: usedAi ? inputHash : null })
-      .where(eq(requestsTable.id, request.id));
-  }).catch(() => {});
+  // AI summary is deferred — admin triggers it explicitly from the request
+  // detail page ("Generate AI Summary" button). This avoids automatic AI
+  // costs on every customer submission.
 
   const categories = [...new Set(items.map((i) => i.category))];
   sendRequestNotification({
@@ -405,9 +411,36 @@ router.get("/public/partners/:slug/ordering", async (req, res): Promise<void> =>
     sortOrder: packageItemsTable.sortOrder,
   }).from(packageItemsTable).leftJoin(productCatalogTable, eq(packageItemsTable.productId, productCatalogTable.id)) : [];
 
-  const products = await db.select().from(productCatalogTable)
+  const allProducts = await db.select().from(productCatalogTable)
     .where(eq(productCatalogTable.isActive, true))
     .orderBy(productCatalogTable.category, productCatalogTable.name);
+
+  const products = allProducts.map(p => ({
+    id: p.id,
+    name: p.name,
+    displayName: p.displayName,
+    slug: p.slug,
+    category: p.category,
+    description: p.description,
+    imageUrl: p.imageUrl,
+    galleryImagesJson: p.galleryImagesJson,
+    visibleDimensions: p.visibleDimensions,
+    sizeWidth: p.sizeWidth,
+    sizeHeight: p.sizeHeight,
+    sizeUnit: p.sizeUnit,
+    isOrderable: p.isOrderable,
+    allowsDesignRequest: p.allowsDesignRequest,
+    sizeOptionsJson: p.sizeOptionsJson,
+    sortOrder: p.sortOrder,
+    pricingModel: p.pricingModel,
+    pricingUnit: p.pricingUnit,
+    unitRate: p.unitRate,
+    allowsCustomSize: p.allowsCustomSize,
+    hardwareIncluded: p.hardwareIncluded,
+    printOnlyAvailable: p.printOnlyAvailable,
+    rentalEligible: p.rentalEligible,
+    featureBadgesJson: p.featureBadgesJson,
+  }));
 
   const packagesWithItems = packages.map(p => ({ ...p, items: allPkgItems.filter(it => it.packageId === p.id) }));
 
@@ -422,7 +455,23 @@ router.get("/public/partners/:slug/ordering", async (req, res): Promise<void> =>
     events.map(async (e) => ({ eventId: e.id, ...(await resolveEventAddons(e.id)) })),
   );
 
-  res.json({ partner, theme: theme || null, cities, venues, events, packages: packagesWithItems, products, eventAddons });
+  const safeOrderingPartner = {
+    id: partner.id,
+    companyName: partner.companyName,
+    slug: partner.slug,
+    logoUrl: partner.logoUrl,
+    secondaryLogoUrl: partner.secondaryLogoUrl,
+    websiteUrl: partner.websiteUrl,
+    smallA3BadgeEnabled: partner.smallA3BadgeEnabled,
+    introHeadline: partner.introHeadline,
+    introText: partner.introText,
+    thankYouText: partner.thankYouText,
+    portalMode: partner.portalMode,
+    partnerType: partner.partnerType,
+    pricingDisplayEnabled: partner.pricingDisplayEnabled,
+  };
+
+  res.json({ partner: safeOrderingPartner, theme: safePublicTheme(theme), cities, venues, events, packages: packagesWithItems, products, eventAddons });
 });
 
 import { z } from "zod";

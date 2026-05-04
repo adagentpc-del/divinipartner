@@ -49,7 +49,7 @@ const ThemeBody = z.object({
 });
 
 router.get("/partners/:id/theme", requireAuth, async (req, res): Promise<void> => {
-  const partnerId = parseInt(req.params.id);
+  const partnerId = parseInt(String(req.params.id));
   if (isNaN(partnerId)) { res.status(400).json({ error: "Invalid partner id" }); return; }
 
   const [theme] = await db.select().from(partnerThemesTable).where(eq(partnerThemesTable.partnerId, partnerId));
@@ -58,7 +58,7 @@ router.get("/partners/:id/theme", requireAuth, async (req, res): Promise<void> =
 });
 
 router.put("/partners/:id/theme", requireAuth, async (req, res): Promise<void> => {
-  const partnerId = parseInt(req.params.id);
+  const partnerId = parseInt(String(req.params.id));
   if (isNaN(partnerId)) { res.status(400).json({ error: "Invalid partner id" }); return; }
 
   const parsed = ThemeBody.safeParse(req.body);

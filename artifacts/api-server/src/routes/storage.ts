@@ -25,7 +25,7 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
   }
 
   const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
-  const ALLOWED_PREFIXES = ["image/", "application/pdf", "application/zip", "application/octet-stream"];
+  const ALLOWED_PREFIXES = ["image/", "application/pdf", "application/zip"];
   const sizeNum = Number(parsed.data.size);
   if (!Number.isFinite(sizeNum) || sizeNum <= 0 || sizeNum > MAX_UPLOAD_BYTES) {
     res.status(413).json({ error: `File too large. Max ${MAX_UPLOAD_BYTES} bytes.` });
@@ -94,30 +94,17 @@ router.get("/storage/public-objects/*filePath", async (req: Request, res: Respon
  * GET /storage/objects/*
  *
  * Serve object entities from PRIVATE_OBJECT_DIR.
- * These are served from a separate path from /public-objects and can optionally
- * be protected with authentication or ACL checks based on the use case.
+ * Requires a valid Clerk session — private objects are not publicly accessible.
  */
 router.get("/storage/objects/*path", async (req: Request, res: Response) => {
   try {
+    const { getAuth } = await import("@clerk/express");
+    const { userId } = getAuth(req);
+    if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
     const raw = req.params.path;
     const wildcardPath = Array.isArray(raw) ? raw.join("/") : raw;
     const objectPath = `/objects/${wildcardPath}`;
     const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
-
-    // --- Protected route example (uncomment when using replit-auth) ---
-    // if (!req.isAuthenticated()) {
-    //   res.status(401).json({ error: "Unauthorized" });
-    //   return;
-    // }
-    // const canAccess = await objectStorageService.canAccessObjectEntity({
-    //   userId: req.user.id,
-    //   objectFile,
-    //   requestedPermission: ObjectPermission.READ,
-    // });
-    // if (!canAccess) {
-    //   res.status(403).json({ error: "Forbidden" });
-    //   return;
-    // }
 
     const response = await objectStorageService.downloadObject(objectFile);
 

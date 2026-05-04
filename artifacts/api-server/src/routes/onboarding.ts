@@ -5,26 +5,9 @@ import { and, eq, sql } from "drizzle-orm";
 import { readinessForPartner, platformReadiness, setLaunchStatus } from "../services/launchReadiness";
 
 const router: IRouter = Router();
+const launchRouter: IRouter = Router();
 
-// ---- Launch readiness ----
-router.get("/launch/platform", async (_req, res) => {
-  res.json(await platformReadiness());
-});
-router.get("/launch/partner/:id", async (req, res) => {
-  try { res.json(await readinessForPartner(parseInt(req.params.id))); }
-  catch (e: any) { res.status(404).json({ error: e?.message || "Not found" }); }
-});
-router.post("/launch/partner/:id/activate", async (req, res) => {
-  const { status, overrideNote } = req.body || {};
-  if (!["draft", "preview", "internal_only", "live", "paused"].includes(status)) return res.status(400).json({ error: "Invalid status" });
-  const r = await readinessForPartner(parseInt(req.params.id));
-  if (status === "live" && r.blockerCount > 0 && !overrideNote) {
-    return res.status(409).json({ error: "Partner has unresolved blockers", blockers: r.items.filter(i => i.severity === "blocker" && i.status !== "complete"), requiresOverride: true });
-  }
-  res.json(await setLaunchStatus(parseInt(req.params.id), status, overrideNote));
-});
-
-// ---- Onboarding progress (per user / flow / step) ----
+// ---- Onboarding progress (per user / flow / step) — PUBLIC ----
 router.get("/onboarding/progress", async (req, res) => {
   const userId = String(req.query.userId || "");
   const flow = req.query.flow ? String(req.query.flow) : null;
@@ -52,4 +35,23 @@ router.post("/onboarding/dismiss", async (req, res) => {
   res.json({ ok: true });
 });
 
+// ---- Launch readiness — ADMIN ONLY (mounted behind auth boundary) ----
+launchRouter.get("/launch/platform", async (_req, res) => {
+  res.json(await platformReadiness());
+});
+launchRouter.get("/launch/partner/:id", async (req, res) => {
+  try { res.json(await readinessForPartner(parseInt(req.params.id))); }
+  catch (e: any) { res.status(404).json({ error: e?.message || "Not found" }); }
+});
+launchRouter.post("/launch/partner/:id/activate", async (req, res) => {
+  const { status, overrideNote } = req.body || {};
+  if (!["draft", "preview", "internal_only", "live", "paused"].includes(status)) return res.status(400).json({ error: "Invalid status" });
+  const r = await readinessForPartner(parseInt(req.params.id));
+  if (status === "live" && r.blockerCount > 0 && !overrideNote) {
+    return res.status(409).json({ error: "Partner has unresolved blockers", blockers: r.items.filter(i => i.severity === "blocker" && i.status !== "complete"), requiresOverride: true });
+  }
+  res.json(await setLaunchStatus(parseInt(req.params.id), status, overrideNote));
+});
+
+export { launchRouter };
 export default router;
