@@ -23,6 +23,7 @@ import { RecipientsManager } from "@/components/admin/RecipientsManager";
 import PartnerContactsPanel from "@/components/admin/PartnerContactsPanel";
 import EntityAlertsPanel from "@/components/admin/EntityAlertsPanel";
 import SendDocumentsModal from "@/components/documents/SendDocumentsModal";
+import { LogoUploader } from "@/components/admin/LogoUploader";
 import PartnerStatusBadges from "@/components/admin/PartnerStatusBadges";
 import { FamilyStatusGrid, type FamilyAvailability } from "@/components/admin/FamilyStatusCard";
 import { RentableAssetsCard } from "@/components/admin/RentableAssetsCard";
@@ -454,14 +455,18 @@ export default function PartnerForm() {
               <div className="grid sm:grid-cols-2 gap-4">
                 <FormField control={form.control} name="logoUrl" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Primary Logo URL</FormLabel>
-                    <FormControl><Input placeholder="https://..." {...field} /></FormControl>
+                    <FormLabel>Primary Logo</FormLabel>
+                    <FormControl>
+                      <LogoUploader value={field.value || ""} onChange={field.onChange} label="Primary Logo" />
+                    </FormControl>
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="secondaryLogoUrl" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Secondary Logo URL</FormLabel>
-                    <FormControl><Input placeholder="https://..." {...field} /></FormControl>
+                    <FormLabel>Secondary Logo</FormLabel>
+                    <FormControl>
+                      <LogoUploader value={field.value || ""} onChange={field.onChange} label="Secondary Logo" />
+                    </FormControl>
                   </FormItem>
                 )} />
               </div>

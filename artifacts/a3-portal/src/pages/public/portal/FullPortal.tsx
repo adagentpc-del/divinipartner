@@ -308,14 +308,14 @@ export default function FullPortal({ slug }: { slug: string }) {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-4">
             {partner.logoUrl ? (
-              <img src={partner.logoUrl} alt={partner.companyName} className="h-9 sm:h-10 object-contain brightness-0 invert" />
+              <img src={partner.logoUrl} alt={partner.companyName} className="h-9 sm:h-10 object-contain" />
             ) : (
               <h1 className="text-lg sm:text-xl font-bold text-white">{partner.companyName}</h1>
             )}
             {partner.secondaryLogoUrl && (
               <>
                 <div className="w-px h-6 bg-white/20" />
-                <img src={partner.secondaryLogoUrl} alt="Secondary logo" className="h-7 sm:h-8 object-contain brightness-0 invert opacity-80" />
+                <img src={partner.secondaryLogoUrl} alt="Secondary logo" className="h-7 sm:h-8 object-contain opacity-80" />
               </>
             )}
             {partner.smallA3BadgeEnabled && (
