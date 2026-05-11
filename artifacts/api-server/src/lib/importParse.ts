@@ -1,5 +1,5 @@
 import Papa from "papaparse";
-import * as XLSX from "xlsx";
+import * as XLSX from "@e965/xlsx";
 
 export type ParsedSheet = { headers: string[]; rows: Record<string, unknown>[]; rowCount: number };
 

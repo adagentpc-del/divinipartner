@@ -259,7 +259,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="ml-auto flex items-center gap-3 shrink-0">
             <AlertsBadge />
             <DemoModeToggle />
-            <UserButton afterSignOutUrl="/login" />
+            <UserButton />
           </div>
         </div>
       </header>
