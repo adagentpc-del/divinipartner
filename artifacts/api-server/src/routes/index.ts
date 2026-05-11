@@ -50,6 +50,7 @@ import reconciliationRouter from "./reconciliation";
 import invoicesRouter from "./invoices";
 import billingRouter from "./billing";
 import publicConfigRouter from "./publicConfig";
+import publicHomepageRouter from "./publicHomepage";
 import securityReadinessRouter from "./securityReadiness";
 import addonsRouter from "./addons";
 import {
@@ -70,6 +71,7 @@ router.use("/storage/uploads/request-url", uploadLimiter);
 router.use(/^\/public\/partners\/[^/]+\/orders$/, orderSubmitLimiter);
 router.use(/^\/public\/partners\/[^/]+\/(requests|orders)$/, publicWriteLimiter);
 router.use("/onboarding/submit", publicWriteLimiter);
+router.use("/public/partnership-requests", publicWriteLimiter);
 
 // Public READ traffic — partner portal pages, pricing, ordering, addons, etc.
 // Loose 120/min/ip lets normal portal browsing through but stops scrapers.
@@ -102,6 +104,7 @@ router.use(/^\/(deck|package)-extractions\/[^/]+\/rerun$/, aiTriggerLimiter);
 // access, onboarding forms, and public storage — no auth required.
 router.use(healthRouter);
 router.use(publicConfigRouter);
+router.use(publicHomepageRouter);
 router.use(publicPortalRouter);
 router.use(storageRouter);
 router.use(documentsRouter);

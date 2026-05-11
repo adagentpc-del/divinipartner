@@ -13,6 +13,7 @@ export * from "./requests";
 export * from "./requestItems";
 export * from "./requestUploads";
 export * from "./portalRequests";
+export * from "./partnershipRequests";
 export * from "./productRequests";
 export * from "./brandingLocationRequests";
 export * from "./requestFiles";

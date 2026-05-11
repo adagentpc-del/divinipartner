@@ -70,6 +70,7 @@ import WorkflowRules from "@/pages/admin/WorkflowRules";
 
 import PublicLayout from "@/components/layout/PublicLayout";
 import PartnerPortal from "@/pages/public/PartnerPortal";
+import PartnerHomePage from "@/pages/public/PartnerHomePage";
 import { PartnerPortalErrorBoundary } from "@/components/PartnerPortalErrorBoundary";
 import PartnerOnboarding from "@/pages/public/PartnerOnboarding";
 import DocumentAccess from "@/pages/public/DocumentAccess";
@@ -123,10 +124,10 @@ function ClerkQueryClientCacheInvalidator() {
 }
 
 function HomeRedirect() {
-  const { isSignedIn, isLoaded } = useAuth();
-  if (!isLoaded) return null;
-  if (isSignedIn) return <Redirect to="/admin" />;
-  return <Redirect to="/login" />;
+  // Public marketing homepage. Signed-in admins see an "Admin" link in the
+  // header rather than being auto-redirected, so the homepage is reachable to
+  // everyone for review and sharing.
+  return <PartnerHomePage />;
 }
 
 function AdminRoute({ component: Component }: { component: React.ComponentType }) {
