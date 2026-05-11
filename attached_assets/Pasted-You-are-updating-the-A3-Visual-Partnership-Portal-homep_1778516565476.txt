@@ -1,0 +1,451 @@
+You are updating the A3 Visual Partnership Portal homepage.
+
+IMPORTANT BRANDING REQUIREMENT:
+Use A3 Visual’s branding, design direction, language, and visual style from the live website:
+https://www.a3visual.com
+
+This homepage should feel like an extension of A3 Visual, not a generic SaaS portal.
+
+A3 Visual brand references to follow:
+1. Main positioning:
+   Integrated Visual Solutions & Event Resource Management
+
+2. Core brand phrase:
+   Imagine. Create. Activate.
+
+3. Core services:
+   Print
+   Creative
+   Immersive
+   Project Management
+   Fabrication
+   Installation
+
+4. Brand language:
+   A3 Visual is a single source partner helping clients solve marketing challenges through design, event production services, large-format printing, immersive experiences, fabrication, and in-house installation crews trained, certified, and insured for nationwide on-site support.
+
+5. Visual style:
+   Bold, high-impact, event-production focused
+   Strong A3 Visual logo presence
+   Large image and video moments
+   Blue branded texture or gradient areas
+   Clean white sections mixed with deep blue branded sections
+   Interactive card/tile layout inspired by the website’s “TOUCH” case study/product cards
+   Premium but practical visual production feel
+   Not overly corporate
+   Not generic tech/SaaS
+   Not bland
+
+6. Use the A3 website styling cues:
+   Large uppercase section titles
+   Bold service/category labels
+   Big rectangular image cards
+   Blue texture or blue gradient footer area
+   Clean grid layouts
+   High contrast white, deep blue, black, and light gray
+   Strong CTA buttons similar to “Request Quote”
+   Case-study-style tiles for partners
+
+Do not invent a totally new luxury brand style. Match A3 Visual.
+
+TECHNICAL BUILD RULES:
+1. Keep this lightweight and cost controlled.
+2. Do not use AI calls for this homepage.
+3. Do not rebuild the entire app unless necessary.
+4. Do not use Replit Database.
+5. If backend data is needed, use Supabase.
+6. Preserve existing partner portal functionality.
+7. Do not break existing partner routes.
+8. Use responsive design for desktop, tablet, and mobile.
+9. Use static content and reusable components.
+10. Do not add unnecessary packages unless already installed.
+
+MAIN GOAL:
+Create a public homepage for the A3 Visual Partnership Portal at route:
+
+/
+
+The homepage should explain:
+1. What the portal is
+2. Who it is for
+3. How vendors, venues, hotels, event producers, toured events, and partners use it
+4. How to request a new partnership portal
+5. How to access current partner portals
+
+MAIN WEBSITE LINK:
+Include a clear button/link to:
+https://www.a3visual.com
+
+SIZZLE REEL:
+Embed this Vimeo sizzle reel:
+https://vimeo.com/1091974311?fl=pl&fe=vl
+
+If Vimeo embed does not work from that exact URL, create a reusable VideoEmbed component that supports:
+1. Vimeo embed URL
+2. Local uploaded video URL
+3. Fallback thumbnail with external video button
+
+Also add a simple code comment showing where to replace the Vimeo link with a local uploaded video file later.
+
+HOMEPAGE STRUCTURE:
+
+SECTION 1: HERO
+
+Create a high-impact A3 Visual branded hero section.
+
+Suggested layout:
+Left side:
+Headline and copy
+
+Right side:
+Embedded sizzle reel or large visual/video card
+
+Hero eyebrow:
+A3 Visual Partnership Portal
+
+Headline:
+Integrated Partner Portals for Visual Production, Events & Activations
+
+Subheadline:
+A streamlined portal system for venues, hotels, event producers, toured events, festivals, markets, brands, and strategic partners who need faster access to A3 Visual’s print, creative, immersive, fabrication, installation, and project management support.
+
+Supporting copy:
+A3 Visual helps partners imagine, create, and activate unforgettable visual experiences. As a single source partner, A3 supports design, event production, large-format printing, immersive experiences, fabrication, and certified nationwide installation.
+
+Primary CTA:
+Become a Partner
+
+Secondary CTA:
+Visit A3Visual.com
+
+Hero visual requirements:
+Use A3 logo prominently.
+Use deep blue, black, white, and light gray.
+Use a blue branded texture, gradient, or image overlay inspired by the A3 site.
+Use large visual cards, not small generic icons.
+Make the section feel like an event production and visual activation company.
+
+SECTION 2: SIZZLE REEL
+
+Title:
+See What A3 Visual Can Activate
+
+Copy:
+From branded environments and large-format print to immersive installations, fabrication, projection mapping, and nationwide event support, A3 Visual brings brands, spaces, and experiences to life.
+
+Embed:
+https://vimeo.com/1091974311?fl=pl&fe=vl
+
+Design:
+Large full-width video block.
+Use a dark blue or black section background.
+Add subtle A3 style accent line or texture.
+Keep video framed in a premium rectangular container.
+
+SECTION 3: WHAT THIS PORTAL IS
+
+Title:
+One Portal. Multiple Partner Experiences.
+
+Copy:
+The A3 Visual Partnership Portal gives approved partners a branded, organized, and easier way to collect project requests, guide customers through available visual production options, route details to the right team, and reduce back and forth during event planning.
+
+Feature cards:
+Use A3 service-inspired cards with large uppercase labels.
+
+Card 1:
+PARTNER-SPECIFIC PORTALS
+Each partner can receive a custom portal designed around their event, venue, hotel, market, festival, tour, or recurring program.
+
+Card 2:
+VISUAL PRODUCTION INTAKE
+Collect project details, event dates, install windows, artwork, specifications, product selections, and customer information in one place.
+
+Card 3:
+PRINT & SIGNAGE REQUESTS
+Support requests for banners, decals, step and repeats, wall graphics, wayfinding, branded structures, sponsor signage, and event collateral.
+
+Card 4:
+FABRICATION & IMMERSIVE SUPPORT
+Route needs for custom builds, branded environments, projection mapping, interactive LED, experiential elements, and activation concepts.
+
+Card 5:
+PUBLIC OR PROTECTED ACCESS
+Create open public portals or private password-protected partner experiences depending on the event or use case.
+
+Card 6:
+FASTER QUOTE READINESS
+Capture better information upfront so the A3 team can review, price, route, and execute more efficiently.
+
+SECTION 4: WHAT A3 VISUAL SUPPORTS
+
+Title:
+Built Around A3 Visual’s Core Capabilities
+
+Create six service cards using the A3 website service categories:
+
+PRINT
+Wide-format digital print, branded graphics, banners, decals, signage, wraps, displays, and visual production.
+
+CREATIVE
+Concept development, design support, file preparation, adaptation, brand alignment, and production-ready creative.
+
+IMMERSIVE
+Projection mapping, interactive LED, sound design, experiential environments, and audience engagement moments.
+
+PROJECT MANAGEMENT
+Support for single-day events, multi-day festivals, conferences, tours, and complex production schedules.
+
+FABRICATION
+Custom display systems, branded structures, POP displays, dimensional signage, and live event experiential builds.
+
+INSTALLATION
+Certified, insured, and trained installation crews for local and nationwide on-site support.
+
+Design:
+This section should visually mirror the A3 “What We Do” style.
+Use image-card or icon-card layout.
+Use uppercase labels.
+Use strong spacing and clean grid.
+
+SECTION 5: WHO THIS IS FOR
+
+Title:
+For Partners Managing Repeat Visual Production
+
+Create large rectangular tiles for:
+
+Hotels & Resorts
+Event Venues
+Toured Events
+Festivals & Markets
+Event Producers
+Sports & Entertainment Properties
+Corporate Event Teams
+Brand Activation Agencies
+Retail & Pop-Up Programs
+Strategic Print & Production Partners
+
+Each tile should feel like an A3 website product or case study tile.
+Use uppercase titles.
+Use hover states.
+Use image placeholder backgrounds or gradients.
+Do not use tiny bland icons.
+
+SECTION 6: WHY CREATE A PARTNERSHIP PORTAL
+
+Title:
+Make Visual Production Easier to Request, Route & Execute
+
+Benefits:
+1. Reduce repetitive email back and forth
+2. Give customers, vendors, exhibitors, or sponsors a branded place to submit requests
+3. Collect artwork, deadlines, quantities, install details, and event logistics upfront
+4. Route requests to the right A3 contact or production team
+5. Promote preferred packages, products, and add-ons
+6. Support repeat events, recurring activations, and multi-city programs
+7. Improve quote accuracy and production readiness
+8. Create a cleaner partner and customer experience
+9. Keep partner branding visible while powering fulfillment through A3 Visual
+10. Support public, private, or password-protected portal access
+
+Design:
+Use a clean alternating layout.
+Include one large A3-branded callout card:
+Imagine. Create. Activate.
+Partner portals built for faster visual production workflows.
+
+SECTION 7: BECOME A PARTNER FORM
+
+Title:
+Create a Partnership Portal With A3 Visual
+
+Copy:
+Interested in giving your customers, vendors, exhibitors, sponsors, tenants, or event team a branded portal for print, signage, fabrication, immersive activation, or event production requests? Submit your information and the A3 team will review the best portal structure for your organization.
+
+Form fields:
+Company or Organization Name
+Contact Name
+Email
+Phone
+
+Partner Type dropdown:
+Hotel or Resort
+Venue
+Event
+Toured Event
+Festival or Market
+Sports or Entertainment
+Agency or Producer
+Corporate Brand
+Retail or Pop-Up Program
+Other
+
+Portal Use Case dropdown:
+Public customer-facing portal
+Private password-protected portal
+Vendor or exhibitor ordering portal
+Internal event team portal
+Multi-location or toured event portal
+Not sure yet
+
+Estimated Volume dropdown:
+One-time event
+Recurring monthly
+Seasonal
+Annual event
+Multi-city or national program
+Ongoing partnership
+
+Message field:
+Tell us what you want the portal to help with
+
+Submit button:
+Request Partnership Portal
+
+On submit:
+If Supabase is already configured, save to a table called partnership_requests.
+
+If table does not exist, create a migration for:
+
+partnership_requests:
+id uuid primary key default gen_random_uuid()
+company_name text not null
+contact_name text not null
+email text not null
+phone text
+partner_type text
+portal_use_case text
+estimated_volume text
+message text
+status text default 'new'
+created_at timestamp with time zone default now()
+
+If email sending already exists, send an internal notification using the current email provider.
+Do not add a new paid email provider.
+Do not create unnecessary AI workflows.
+
+SECTION 8: CURRENT PARTNER PORTALS
+
+Title:
+Current Partner Portals
+
+Copy:
+Select a partner below to access their dedicated A3 Visual portal. Some portals are public, while others require approved login or password access.
+
+Create large horizontal or rectangular partner tiles.
+The partner logo should be large and centered.
+Use an A3-style case study card layout.
+Each tile should have:
+Logo
+Partner name
+Access badge
+Short description
+CTA: Open Portal
+
+Initial partner tiles:
+
+1. Social Commerce Festival
+Access Type:
+Password Protected
+Route:
+ /partners/social-commerce-festival
+Description:
+Private portal for Social Commerce Festival partner and event production requests.
+
+2. Wynwood Marketplace
+Access Type:
+Public
+Route:
+ /partners/wynwood-marketplace
+Description:
+Public partner portal for Wynwood Marketplace visual production and event requests.
+
+3. The Move Miami
+Access Type:
+Public
+Route:
+ /partners/the-move-miami
+Description:
+Public partner portal for The Move Miami podcast and event studio partnership requests.
+
+IMPORTANT NAMING RULE:
+The Move Miami is the podcast and event studio partner context for A3.
+Do not confuse this with Move Mi, which is a separate moving platform brand.
+Do not use “Move Mi” on this A3 partnership portal unless explicitly added later as a separate non-A3 project.
+
+Partner tile config:
+Create a simple partner array with:
+name
+logoPath
+route
+accessType
+description
+isPasswordProtected
+
+Store logos in:
+public/partners/logos/
+
+If logos are not available yet, create polished placeholder logo cards using the partner name.
+
+Access logic:
+If isPasswordProtected is true, send the user to the existing password/login screen before showing that partner portal.
+If public, open the portal directly.
+
+SECTION 9: FOOTER
+
+Footer should match the A3 website footer feel.
+
+Include:
+A3 Visual logo
+Imagine. Create. Activate.
+
+Links:
+A3Visual.com
+Request Partnership Portal
+Current Partners
+
+Optional small text:
+A3 Visual and A3 Graphics are registered trademarks of AAA Flag & Banner Mfg. Co., Inc.
+
+Use a deep A3 blue background or blue texture-inspired footer.
+Use white logo if available.
+Use clean footer columns.
+
+COMPONENTS TO CREATE OR UPDATE:
+PartnerHomePage
+VideoEmbed
+PartnerTile
+PartnershipRequestForm
+FeatureCard
+ServiceCard
+AudienceTile
+
+SEO METADATA:
+Title:
+A3 Visual Partnership Portal | Integrated Visual Solutions & Event Resource Management
+
+Description:
+A3 Visual partner portal system for venues, hotels, event producers, festivals, toured events, markets, brands, and strategic partners managing print, signage, fabrication, immersive activations, and event production requests.
+
+Keywords:
+A3 Visual, partnership portal, integrated visual solutions, event resource management, large format printing, event signage, fabrication, immersive experiences, projection mapping, event production, venue signage, hotel event signage, festival signage, partner portal, brand activation
+
+FINAL QA REQUIREMENTS:
+After implementation, confirm:
+1. Homepage route is live at /
+2. Vimeo sizzle reel is embedded or fallback is working
+3. A3Visual.com button opens https://www.a3visual.com
+4. Become a Partner form is visible and functional
+5. Partner tiles are visible
+6. Social Commerce Festival route is password protected
+7. Wynwood Marketplace route is public
+8. The Move Miami route is public
+9. Mobile layout works
+10. Existing partner portal pages were not broken
+11. Supabase save works, or clearly state if the form is frontend-only
+12. List all files changed
+
+Do not run unnecessary AI tasks.
+Do not add unnecessary packages.
+Keep the build scoped and cost controlled.
