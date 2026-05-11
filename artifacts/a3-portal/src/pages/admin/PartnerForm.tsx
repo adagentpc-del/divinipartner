@@ -1139,7 +1139,7 @@ function ReusableAssetsCard({ partnerId }: { partnerId: number }) {
       <CardContent>
         {isLoading
           ? <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" />Loading…</div>
-          : <FamilyStatusGrid families={families} partnerId={pid} />}
+          : <FamilyStatusGrid families={families} partnerId={partnerId} />}
       </CardContent>
     </Card>
   );
