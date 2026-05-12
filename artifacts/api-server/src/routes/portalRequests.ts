@@ -6,6 +6,19 @@ import {
   partnersTable, partnerBrandingLocationsTable, productCatalogTable
 } from "@workspace/db";
 import { z } from "zod";
+import {
+  ListPortalRequestsResponse,
+  GetPortalRequestResponse,
+  UpdatePortalRequestResponse,
+  ListProductRequestsResponse,
+  GetProductRequestResponse,
+  UpdateProductRequestResponse,
+  ListBrandingRequestsResponse,
+  GetBrandingRequestResponse,
+  UpdateBrandingRequestResponse,
+  GetAllRequestsSummaryResponse,
+} from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 
 const router: IRouter = Router();
 
@@ -287,7 +300,7 @@ router.get("/portal-requests", async (req, res): Promise<void> => {
   if (offset) query = query.offset(parseInt(offset as string));
 
   const results = await query;
-  res.json(results);
+  sendValidated(req, res, ListPortalRequestsResponse, results, "ListPortalRequests");
 });
 
 router.get("/portal-requests/:id", async (req, res): Promise<void> => {
@@ -300,7 +313,7 @@ router.get("/portal-requests/:id", async (req, res): Promise<void> => {
   const files = await db.select().from(requestFilesTable)
     .where(and(eq(requestFilesTable.requestType, "portal"), eq(requestFilesTable.requestId, id)));
 
-  res.json({ ...request, files });
+  sendValidated(req, res, GetPortalRequestResponse, { ...request, files }, "GetPortalRequest");
 });
 
 router.patch("/portal-requests/:id", async (req, res): Promise<void> => {
@@ -315,7 +328,7 @@ router.patch("/portal-requests/:id", async (req, res): Promise<void> => {
 
   const [request] = await db.update(portalRequestsTable).set(updateData).where(eq(portalRequestsTable.id, id)).returning();
   if (!request) { res.status(404).json({ error: "Request not found" }); return; }
-  res.json(request);
+  sendValidated(req, res, UpdatePortalRequestResponse, request, "UpdatePortalRequest");
 });
 
 router.get("/product-requests", async (req, res): Promise<void> => {
@@ -347,7 +360,7 @@ router.get("/product-requests", async (req, res): Promise<void> => {
   if (conditions.length > 0) query = query.where(and(...conditions));
 
   const results = await query;
-  res.json(results);
+  sendValidated(req, res, ListProductRequestsResponse, results, "ListProductRequests");
 });
 
 router.get("/product-requests/:id", async (req, res): Promise<void> => {
@@ -371,7 +384,7 @@ router.get("/product-requests/:id", async (req, res): Promise<void> => {
     product = p || null;
   }
 
-  res.json({ ...request, files, product });
+  sendValidated(req, res, GetProductRequestResponse, { ...request, files, product }, "GetProductRequest");
 });
 
 router.patch("/product-requests/:id", async (req, res): Promise<void> => {
@@ -386,7 +399,7 @@ router.patch("/product-requests/:id", async (req, res): Promise<void> => {
 
   const [request] = await db.update(productRequestsTable).set(updateData).where(eq(productRequestsTable.id, id)).returning();
   if (!request) { res.status(404).json({ error: "Request not found" }); return; }
-  res.json(request);
+  sendValidated(req, res, UpdateProductRequestResponse, request, "UpdateProductRequest");
 });
 
 router.get("/branding-requests", async (req, res): Promise<void> => {
@@ -416,7 +429,7 @@ router.get("/branding-requests", async (req, res): Promise<void> => {
   if (conditions.length > 0) query = query.where(and(...conditions));
 
   const results = await query;
-  res.json(results);
+  sendValidated(req, res, ListBrandingRequestsResponse, results, "List branding requests");
 });
 
 router.get("/branding-requests/:id", async (req, res): Promise<void> => {
@@ -444,7 +457,7 @@ router.get("/branding-requests/:id", async (req, res): Promise<void> => {
     location = loc || null;
   }
 
-  res.json({ ...request, files, location });
+  sendValidated(req, res, GetBrandingRequestResponse, { ...request, files, location }, "Get branding request");
 });
 
 router.patch("/branding-requests/:id", async (req, res): Promise<void> => {
@@ -459,20 +472,20 @@ router.patch("/branding-requests/:id", async (req, res): Promise<void> => {
 
   const [request] = await db.update(brandingLocationRequestsTable).set(updateData).where(eq(brandingLocationRequestsTable.id, id)).returning();
   if (!request) { res.status(404).json({ error: "Request not found" }); return; }
-  res.json(request);
+  sendValidated(req, res, UpdateBrandingRequestResponse, request, "Update branding request");
 });
 
-router.get("/all-requests/summary", async (_req, res): Promise<void> => {
+router.get("/all-requests/summary", async (req, res): Promise<void> => {
   const [portalCount] = await db.select({ count: sql<number>`count(*)` }).from(portalRequestsTable);
   const [productCount] = await db.select({ count: sql<number>`count(*)` }).from(productRequestsTable);
   const [brandingCount] = await db.select({ count: sql<number>`count(*)` }).from(brandingLocationRequestsTable);
 
-  res.json({
+  sendValidated(req, res, GetAllRequestsSummaryResponse, {
     portal: Number(portalCount.count),
     product: Number(productCount.count),
     branding: Number(brandingCount.count),
     total: Number(portalCount.count) + Number(productCount.count) + Number(brandingCount.count),
-  });
+  }, "All requests summary");
 });
 
 export default router;

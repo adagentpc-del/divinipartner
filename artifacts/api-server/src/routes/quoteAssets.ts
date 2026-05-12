@@ -13,6 +13,16 @@ import {
 import { z } from "zod";
 import crypto from "crypto";
 import { parseBillingSignalsFromPdf } from "../lib/billingSignals";
+import {
+  ListQuoteAssetsResponse, GetQuoteIngestionStatsResponse,
+  UpdateQuoteAssetResponse, DeleteQuoteAssetResponse, BulkUpdateQuoteAssetsResponse,
+  ListQuoteAssetMappingsResponse, DeleteQuoteAssetMappingResponse,
+  ListSpecStandardsResponse, UpdateSpecStandardResponse, DeleteSpecStandardResponse, SetCurrentSpecStandardResponse,
+  GetCatalogIntelligenceOverviewResponse,
+  ApproveBillingSignalsResponse, DismissBillingSignalsResponse, RerunBillingSignalsResponse,
+  CreateQuoteAssetMappingExistingResponse,
+} from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 
 const SOURCE_TYPES = ["quote", "spec_sheet", "screenshot", "website_reference", "erp_export", "manual_note", "prior_job_reference"] as const;
 const PROCESSING_STATUSES = ["new", "needs_review", "needs_clarification", "mapped", "approved", "superseded", "archived"] as const;
@@ -81,7 +91,7 @@ router.get("/quote-assets", async (req, res) => {
     : await db.select().from(quoteAssetsTable).orderBy(quoteAssetsTable.createdAt);
 
   // Decorate with mappings count
-  if (rows.length === 0) { res.json([]); return; }
+  if (rows.length === 0) { sendValidated(req, res, ListQuoteAssetsResponse, [], "Quote assets"); return; }
   const ids = rows.map(r => r.id);
   const allMappings = await db.select().from(quoteAssetMappingsTable).where(inArray(quoteAssetMappingsTable.quoteAssetId, ids));
   const byId = new Map<number, any[]>();
@@ -116,11 +126,11 @@ router.get("/quote-assets", async (req, res) => {
     );
   }
 
-  res.json(decorated);
+  sendValidated(req, res, ListQuoteAssetsResponse, decorated, "Quote assets");
 });
 
 // ===== Ingestion stats overview =====
-router.get("/quote-ingestion/stats", async (_req, res) => {
+router.get("/quote-ingestion/stats", async (req, res) => {
   const all = await db.select().from(quoteAssetsTable);
   const today = new Date().toISOString().slice(0, 10);
   const allMappings = await db.select().from(quoteAssetMappingsTable);
@@ -138,7 +148,7 @@ router.get("/quote-ingestion/stats", async (_req, res) => {
     unmapped: all.filter(r => !mappedIds.has(r.id)).length,
     bySourceType: SOURCE_TYPES.reduce((acc, t) => ({ ...acc, [t]: all.filter(r => r.sourceType === t).length }), {} as Record<string, number>),
   };
-  res.json(stats);
+  sendValidated(req, res, GetQuoteIngestionStatsResponse, stats, "Quote ingestion stats");
 });
 
 router.post("/quote-assets", async (req, res): Promise<void> => {
@@ -314,7 +324,7 @@ router.post("/quote-assets/:id/billing-signals/approve", async (req, res): Promi
     .set({ parsedReviewStatus: "approved" })
     .where(eq(quoteAssetsTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
-  res.json(row);
+  sendValidated(req, res, ApproveBillingSignalsResponse, row, "approveBillingSignals");
 });
 router.post("/quote-assets/:id/billing-signals/dismiss", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id);
@@ -323,7 +333,7 @@ router.post("/quote-assets/:id/billing-signals/dismiss", async (req, res): Promi
     .set({ parsedReviewStatus: "dismissed" })
     .where(eq(quoteAssetsTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
-  res.json(row);
+  sendValidated(req, res, DismissBillingSignalsResponse, row, "dismissBillingSignals");
 });
 router.post("/quote-assets/:id/billing-signals/rerun", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id);
@@ -334,7 +344,7 @@ router.post("/quote-assets/:id/billing-signals/rerun", async (req, res): Promise
     res.status(400).json({ error: "Not a PDF" }); return;
   }
   triggerBillingSignalsParse(id, row.fileUrl, { forceRerun: true }).catch(e => console.error("rerun failed", e));
-  res.json({ ok: true });
+  sendValidated(req, res, RerunBillingSignalsResponse, { ok: true }, "rerunBillingSignals");
 });
 
 router.patch("/quote-assets/:id", async (req, res): Promise<void> => {
@@ -345,7 +355,7 @@ router.patch("/quote-assets/:id", async (req, res): Promise<void> => {
   if (parsed.data.fileUrl && !isValidStoragePath(parsed.data.fileUrl)) { res.status(400).json({ error: "Invalid file URL" }); return; }
   const [row] = await db.update(quoteAssetsTable).set(parsed.data).where(eq(quoteAssetsTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
-  res.json(row);
+  sendValidated(req, res, UpdateQuoteAssetResponse, row, "Quote asset update");
 });
 
 router.delete("/quote-assets/:id", async (req, res): Promise<void> => {
@@ -353,7 +363,7 @@ router.delete("/quote-assets/:id", async (req, res): Promise<void> => {
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   await db.delete(quoteAssetMappingsTable).where(eq(quoteAssetMappingsTable.quoteAssetId, id));
   await db.delete(quoteAssetsTable).where(eq(quoteAssetsTable.id, id));
-  res.json({ success: true });
+  sendValidated(req, res, DeleteQuoteAssetResponse, { success: true }, "Quote asset delete");
 });
 
 // ===== Bulk update =====
@@ -370,7 +380,7 @@ router.post("/quote-assets/bulk-update", async (req, res): Promise<void> => {
   const parsed = BulkBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   await db.update(quoteAssetsTable).set(parsed.data.patch).where(inArray(quoteAssetsTable.id, parsed.data.ids));
-  res.json({ success: true, count: parsed.data.ids.length });
+  sendValidated(req, res, BulkUpdateQuoteAssetsResponse, { success: true, count: parsed.data.ids.length }, "Quote assets bulk update");
 });
 
 // ===== Mappings (m2m) =====
@@ -395,7 +405,7 @@ router.get("/quote-assets/:id/mappings", async (req, res): Promise<void> => {
     if (type === "supplier") return suppliers.find(x => x.id === id)?.name || `#${id}`;
     return `#${id}`;
   };
-  res.json(rows.map(r => ({ ...r, label: nameOf(r.mappingType, r.mappingId) })));
+  sendValidated(req, res, ListQuoteAssetMappingsResponse, rows.map(r => ({ ...r, label: nameOf(r.mappingType, r.mappingId) })), "Quote asset mappings");
 });
 
 const MappingBody = z.object({
@@ -414,7 +424,7 @@ router.post("/quote-assets/:id/mappings", async (req, res): Promise<void> => {
     eq(quoteAssetMappingsTable.mappingType, parsed.data.mappingType),
     eq(quoteAssetMappingsTable.mappingId, parsed.data.mappingId),
   ));
-  if (existing.length > 0) { res.json(existing[0]); return; }
+  if (existing.length > 0) { sendValidated(req, res, CreateQuoteAssetMappingExistingResponse, existing[0], "Quote asset mapping existing"); return; }
   const [row] = await db.insert(quoteAssetMappingsTable).values({ quoteAssetId: id, ...parsed.data }).returning();
   // Auto-bump processingStatus from new → mapped
   await db.update(quoteAssetsTable).set({ processingStatus: "mapped" }).where(and(eq(quoteAssetsTable.id, id), eq(quoteAssetsTable.processingStatus, "new")));
@@ -426,7 +436,7 @@ router.delete("/quote-assets/:id/mappings/:mappingId", async (req, res): Promise
   const mid = parseInt(req.params.mappingId);
   if (isNaN(id) || isNaN(mid)) { res.status(400).json({ error: "Invalid id" }); return; }
   await db.delete(quoteAssetMappingsTable).where(and(eq(quoteAssetMappingsTable.id, mid), eq(quoteAssetMappingsTable.quoteAssetId, id)));
-  res.json({ success: true });
+  sendValidated(req, res, DeleteQuoteAssetMappingResponse, { success: true }, "Quote asset mapping delete");
 });
 
 // ===== Promote source → new product =====
@@ -518,7 +528,7 @@ router.get("/products/:productId/spec-standards", async (req, res): Promise<void
   const productId = parseInt(req.params.productId);
   if (isNaN(productId)) { res.status(400).json({ error: "Invalid productId" }); return; }
   const rows = await db.select().from(productSpecStandardsTable).where(eq(productSpecStandardsTable.productId, productId)).orderBy(productSpecStandardsTable.createdAt);
-  res.json(rows);
+  sendValidated(req, res, ListSpecStandardsResponse, rows, "Spec standards");
 });
 
 const SpecStandardBody = z.object({
@@ -564,7 +574,7 @@ router.patch("/products/:productId/spec-standards/:id", async (req, res): Promis
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const [row] = await db.update(productSpecStandardsTable).set(parsed.data).where(and(eq(productSpecStandardsTable.id, id), eq(productSpecStandardsTable.productId, productId))).returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
-  res.json(row);
+  sendValidated(req, res, UpdateSpecStandardResponse, row, "Spec standard update");
 });
 
 router.delete("/products/:productId/spec-standards/:id", async (req, res): Promise<void> => {
@@ -572,7 +582,7 @@ router.delete("/products/:productId/spec-standards/:id", async (req, res): Promi
   const id = parseInt(req.params.id);
   if (isNaN(productId) || isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   await db.delete(productSpecStandardsTable).where(and(eq(productSpecStandardsTable.id, id), eq(productSpecStandardsTable.productId, productId)));
-  res.json({ success: true });
+  sendValidated(req, res, DeleteSpecStandardResponse, { success: true }, "Spec standard delete");
 });
 
 // Set one standard as current preferred — clears flag on siblings
@@ -584,11 +594,11 @@ router.post("/products/:productId/spec-standards/:id/set-current", async (req, r
     await tx.update(productSpecStandardsTable).set({ isCurrent: false }).where(eq(productSpecStandardsTable.productId, productId));
     await tx.update(productSpecStandardsTable).set({ isCurrent: true, standardType: "preferred", isApproved: true, reviewStatus: "approved" }).where(and(eq(productSpecStandardsTable.id, id), eq(productSpecStandardsTable.productId, productId)));
   });
-  res.json({ success: true });
+  sendValidated(req, res, SetCurrentSpecStandardResponse, { success: true }, "Set current spec standard");
 });
 
 // ===== Catalog intelligence overview =====
-router.get("/catalog-intelligence/overview", async (_req, res) => {
+router.get("/catalog-intelligence/overview", async (req, res) => {
   const products = await db.select().from(productCatalogTable);
   const standards = await db.select().from(productSpecStandardsTable);
   const sources = await db.select().from(quoteAssetsTable);
@@ -611,7 +621,7 @@ router.get("/catalog-intelligence/overview", async (_req, res) => {
   }).filter(x => x.supplierCount > 1);
   const expiredSources = sources.filter(s => s.expirationDate && s.expirationDate < today).map(s => ({ id: s.id, name: s.name, supplierName: s.supplierName, expirationDate: s.expirationDate }));
 
-  res.json({
+  sendValidated(req, res, GetCatalogIntelligenceOverviewResponse, {
     counts: {
       products: products.length,
       standards: standards.length,
@@ -625,7 +635,7 @@ router.get("/catalog-intelligence/overview", async (_req, res) => {
     productsWithoutApprovedStandard,
     productsMultiSupplier,
     expiredSources,
-  });
+  }, "Catalog intelligence overview");
 });
 
 export default router;

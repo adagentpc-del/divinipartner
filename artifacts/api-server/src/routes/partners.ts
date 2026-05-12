@@ -15,6 +15,7 @@ import {
   CreatePartnerAssetBody,
   DeletePartnerAssetParams,
 } from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 
 // Top-level path segments the SPA already routes to. A partner slug equal to
 // any of these would shadow the real route at `/<slug>` and silently break
@@ -130,14 +131,7 @@ router.get("/partners", async (req, res): Promise<void> => {
     params.success && params.data.active !== undefined
       ? await db.select().from(partnersTable).where(eq(partnersTable.isActive, params.data.active)).orderBy(partnersTable.createdAt)
       : await db.select().from(partnersTable).orderBy(partnersTable.createdAt);
-  const parsed = ListPartnersResponse.safeParse(results);
-  if (!parsed.success) {
-    req.log.error({ err: parsed.error.flatten() }, "List partners response failed schema validation");
-    res.status(500).json({ error: "List partners response failed schema validation", details: parsed.error.issues });
-    return;
-  }
-  // Send the original results so any extra DB columns are preserved on the wire.
-  res.json(results);
+  sendValidated(req, res, ListPartnersResponse, results, "List partners");
 });
 
 router.post("/partners", async (req, res): Promise<void> => {
@@ -166,13 +160,7 @@ router.get("/partners/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  const parsed = GetPartnerResponse.safeParse(partner);
-  if (!parsed.success) {
-    req.log.error({ err: parsed.error.flatten(), partnerId: id }, "Get partner response failed schema validation");
-    res.status(500).json({ error: "Get partner response failed schema validation", details: parsed.error.issues });
-    return;
-  }
-  res.json(partner);
+  sendValidated(req, res, GetPartnerResponse, partner, "Get partner");
 });
 
 router.patch("/partners/:id", async (req, res): Promise<void> => {
@@ -223,13 +211,7 @@ router.patch("/partners/:id", async (req, res): Promise<void> => {
   // stripped above), there is nothing to update — just return the existing
   // partner so the client treats this as a successful no-op save.
   if (Object.keys(updateData).length === 0) {
-    const noopParsed = UpdatePartnerResponse.safeParse(existing);
-    if (!noopParsed.success) {
-      req.log.error({ err: noopParsed.error.flatten(), partnerId: id }, "Update partner (no-op) response failed schema validation");
-      res.status(500).json({ error: "Update partner response failed schema validation", details: noopParsed.error.issues });
-      return;
-    }
-    res.json(existing);
+    sendValidated(req, res, UpdatePartnerResponse, existing, "Update partner (no-op)");
     return;
   }
 
@@ -244,13 +226,7 @@ router.patch("/partners/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  const parsed2 = UpdatePartnerResponse.safeParse(partner);
-  if (!parsed2.success) {
-    req.log.error({ err: parsed2.error.flatten(), partnerId: id }, "Update partner response failed schema validation");
-    res.status(500).json({ error: "Update partner response failed schema validation", details: parsed2.error.issues });
-    return;
-  }
-  res.json(partner);
+  sendValidated(req, res, UpdatePartnerResponse, partner, "Update partner");
 });
 
 // Test the customer-confirmation email template using a sample order shape.
@@ -416,13 +392,7 @@ router.get("/partners/:id/assets", async (req, res): Promise<void> => {
     .where(eq(partnerAssetsTable.partnerId, params.data.id))
     .orderBy(partnerAssetsTable.createdAt);
 
-  const parsed = ListPartnerAssetsResponse.safeParse(assets);
-  if (!parsed.success) {
-    req.log.error({ err: parsed.error.flatten(), partnerId: params.data.id }, "List partner assets response failed schema validation");
-    res.status(500).json({ error: "List partner assets response failed schema validation", details: parsed.error.issues });
-    return;
-  }
-  res.json(assets);
+  sendValidated(req, res, ListPartnerAssetsResponse, assets, "List partner assets");
 });
 
 router.post("/partners/:id/assets", async (req, res): Promise<void> => {

@@ -10,17 +10,32 @@ import {
   seedActivationChecklist, getActivationProgress, advanceActivationStatus,
   buildPlanComparisonMatrix, getSalesPipelineSummary, listShowcasePresets,
 } from "../services/salesEnablement";
+import {
+  GetSalesDashboardResponse,
+  GetSalesShowcaseResponse,
+  ListSalesProposalsResponse,
+  GetSalesProposalResponse,
+  UpdateSalesProposalResponse,
+  DeleteSalesProposalResponse,
+  BuildSalesComparisonMatrixResponse,
+  GetSalesAccountActivationResponse,
+  SeedSalesAccountActivationResponse,
+  UpdateSalesActivationItemResponse,
+  AdvanceSalesAccountActivationResponse,
+  GetSalesConstantsResponse,
+} from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 
 const router = Router();
 
 // ===== Pipeline summary =====
-router.get("/sales/dashboard", async (_req, res) => {
-  res.json(await getSalesPipelineSummary());
+router.get("/sales/dashboard", async (req, res) => {
+  sendValidated(req, res, GetSalesDashboardResponse, await getSalesPipelineSummary(), "Get sales dashboard");
 });
 
 // ===== Showcase presets =====
-router.get("/sales/showcase", (_req, res) => {
-  res.json({ presets: listShowcasePresets() });
+router.get("/sales/showcase", (req, res) => {
+  sendValidated(req, res, GetSalesShowcaseResponse, { presets: listShowcasePresets() }, "Get sales showcase");
 });
 
 // ===== Proposals =====
@@ -37,9 +52,9 @@ const ProposalBody = z.object({
   createdBy: z.string().nullable().optional(),
 });
 
-router.get("/sales/proposals", async (_req, res) => {
+router.get("/sales/proposals", async (req, res) => {
   const rows = await db.select().from(proposalsTable).orderBy(desc(proposalsTable.createdAt));
-  res.json(rows);
+  sendValidated(req, res, ListSalesProposalsResponse, rows, "List sales proposals");
 });
 
 router.post("/sales/proposals", async (req, res) => {
@@ -64,7 +79,7 @@ router.get("/sales/proposals/:id", async (req, res) => {
   if (row.accountId) {
     [account] = await db.select().from(commercialAccountsTable).where(eq(commercialAccountsTable.id, row.accountId));
   }
-  res.json({ proposal: row, matrix, recommended, account });
+  sendValidated(req, res, GetSalesProposalResponse, { proposal: row, matrix, recommended, account }, "Get sales proposal");
 });
 
 router.patch("/sales/proposals/:id", async (req, res) => {
@@ -77,21 +92,21 @@ router.patch("/sales/proposals/:id", async (req, res) => {
   if (parsed.data.status === "sent") patch.sentAt = new Date();
   if (parsed.data.status === "accepted" || parsed.data.status === "declined") patch.decidedAt = new Date();
   const [row] = await db.update(proposalsTable).set(patch).where(eq(proposalsTable.id, id)).returning();
-  res.json(row);
+  sendValidated(req, res, UpdateSalesProposalResponse, row, "Update sales proposal");
 });
 
 router.delete("/sales/proposals/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "bad id" }); return; }
   await db.delete(proposalsTable).where(eq(proposalsTable.id, id));
-  res.json({ ok: true });
+  sendValidated(req, res, DeleteSalesProposalResponse, { ok: true }, "Delete sales proposal");
 });
 
 // Comparison matrix without saving a proposal (ad-hoc)
 router.post("/sales/comparison-matrix", async (req, res) => {
   const planIds = z.array(z.number().int()).safeParse(req.body?.planIds);
   if (!planIds.success) { res.status(400).json({ error: planIds.error.message }); return; }
-  res.json(await buildPlanComparisonMatrix(planIds.data));
+  sendValidated(req, res, BuildSalesComparisonMatrixResponse, await buildPlanComparisonMatrix(planIds.data), "Build sales comparison matrix");
 });
 
 // ===== Activation =====
@@ -101,14 +116,14 @@ router.get("/sales/accounts/:id/activation", async (req, res) => {
   const [account] = await db.select().from(commercialAccountsTable).where(eq(commercialAccountsTable.id, id));
   if (!account) { res.status(404).json({ error: "not found" }); return; }
   const progress = await getActivationProgress(id);
-  res.json({ account, progress, template: DEFAULT_CHECKLIST_TEMPLATE });
+  sendValidated(req, res, GetSalesAccountActivationResponse, { account, progress, template: DEFAULT_CHECKLIST_TEMPLATE }, "Get sales account activation");
 });
 
 router.post("/sales/accounts/:id/activation/seed", async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "bad id" }); return; }
   await seedActivationChecklist(id);
-  res.json(await getActivationProgress(id));
+  sendValidated(req, res, SeedSalesAccountActivationResponse, await getActivationProgress(id), "Seed sales account activation");
 });
 
 const ItemPatchBody = z.object({
@@ -126,7 +141,7 @@ router.patch("/sales/activation-items/:itemId", async (req, res) => {
   if (parsed.data.status === "done" || parsed.data.status === "skipped") patch.completedAt = new Date();
   if (parsed.data.status === "pending" || parsed.data.status === "in_progress") patch.completedAt = null;
   const [row] = await db.update(activationChecklistItemsTable).set(patch).where(eq(activationChecklistItemsTable.id, itemId)).returning();
-  res.json(row);
+  sendValidated(req, res, UpdateSalesActivationItemResponse, row, "Update sales activation item");
 });
 
 router.post("/sales/accounts/:id/activation/advance", async (req, res) => {
@@ -136,12 +151,12 @@ router.post("/sales/accounts/:id/activation/advance", async (req, res) => {
   if (!target.success) { res.status(400).json({ error: "invalid status" }); return; }
   const result = await advanceActivationStatus(id, target.data);
   if (!result.ok) { res.status(400).json({ error: result.error }); return; }
-  res.json(result.account);
+  sendValidated(req, res, AdvanceSalesAccountActivationResponse, result.account, "Advance sales account activation");
 });
 
 // Demo-mode toggle is purely client-side (localStorage), but we expose the constants
-router.get("/sales/constants", (_req, res) => {
-  res.json({ activationStatuses: ACTIVATION_STATUSES, proposalStatuses: PROPOSAL_STATUSES });
+router.get("/sales/constants", (req, res) => {
+  sendValidated(req, res, GetSalesConstantsResponse, { activationStatuses: ACTIVATION_STATUSES, proposalStatuses: PROPOSAL_STATUSES }, "Get sales constants");
 });
 
 export default router;

@@ -2592,3 +2592,1481 @@ export const ListAssetEventsResponseItem = zod.record(
   zod.unknown(),
 );
 export const ListAssetEventsResponse = zod.array(ListAssetEventsResponseItem);
+
+export const GetUsageSummaryResponse = zod.record(zod.string(), zod.unknown());
+
+export const GetUsageTimelineResponseItem = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+export const GetUsageTimelineResponse = zod.array(GetUsageTimelineResponseItem);
+
+export const EmitUsageResponse = zod.record(zod.string(), zod.unknown());
+
+export const ListFeedbackResponseItem = zod.record(zod.string(), zod.unknown());
+export const ListFeedbackResponse = zod.array(ListFeedbackResponseItem);
+
+export const UpdateFeedbackParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateFeedbackResponse = zod.record(zod.string(), zod.unknown());
+
+export const DeleteFeedbackParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteFeedbackResponse = zod.record(zod.string(), zod.unknown());
+
+export const ListPartnerHealthResponseItem = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+export const ListPartnerHealthResponse = zod.array(
+  ListPartnerHealthResponseItem,
+);
+
+export const GetPartnerHealthParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetPartnerHealthResponse = zod.record(zod.string(), zod.unknown());
+
+export const GetPostLaunchDashboardResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const ListObjectionsResponseItem = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+export const ListObjectionsResponse = zod.array(ListObjectionsResponseItem);
+
+export const CreateObjectionResponse = zod.record(zod.string(), zod.unknown());
+
+export const GetObjectionsSummaryResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const GetObjectionsConstantsResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const GetObjectionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetObjectionResponse = zod.record(zod.string(), zod.unknown());
+
+export const UpdateObjectionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateObjectionResponse = zod.record(zod.string(), zod.unknown());
+
+export const DeleteObjectionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteObjectionResponse = zod.record(zod.string(), zod.unknown());
+
+export const ListDemoFollowupsResponseItem = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+export const ListDemoFollowupsResponse = zod.array(
+  ListDemoFollowupsResponseItem,
+);
+
+export const CreateDemoFollowupResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const GetDemoFollowupParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetDemoFollowupResponse = zod.record(zod.string(), zod.unknown());
+
+export const UpdateDemoFollowupParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateDemoFollowupResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const DeleteDemoFollowupParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteDemoFollowupResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const ListFaqResponseItem = zod.record(zod.string(), zod.unknown());
+export const ListFaqResponse = zod.array(ListFaqResponseItem);
+
+export const CreateFaqResponse = zod.record(zod.string(), zod.unknown());
+
+export const GetFaqConstantsResponse = zod.record(zod.string(), zod.unknown());
+
+export const UpdateFaqParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateFaqResponse = zod.record(zod.string(), zod.unknown());
+
+export const DeleteFaqParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteFaqResponse = zod.record(zod.string(), zod.unknown());
+
+export const GetStabilizationRolloutResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const GetAccountBlockersParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetAccountBlockersResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const GetReconciliationSummaryResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const ListReconciliationOrdersResponseItem = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+export const ListReconciliationOrdersResponse = zod.array(
+  ListReconciliationOrdersResponseItem,
+);
+
+export const UpdateReconciliationOrderParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateReconciliationOrderResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const AutoFlagReconciliationParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const AutoFlagReconciliationResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const ListDiscrepanciesResponseItem = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+export const ListDiscrepanciesResponse = zod.array(
+  ListDiscrepanciesResponseItem,
+);
+
+export const UpdateDiscrepancyParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateDiscrepancyResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const DeleteDiscrepancyParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteDiscrepancyResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const ListCommissionPayoutsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListCommissionPayoutsResponseItem = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+export const ListCommissionPayoutsResponse = zod.array(
+  ListCommissionPayoutsResponseItem,
+);
+
+export const DeleteCommissionPayoutParams = zod.object({
+  id: zod.coerce.number(),
+  payoutId: zod.coerce.number(),
+});
+
+export const DeleteCommissionPayoutResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const BulkUpdateReconciliationResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const ListProductsResponseItem = zod.record(zod.string(), zod.unknown());
+export const ListProductsResponse = zod.array(ListProductsResponseItem);
+
+export const GetProductParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetProductResponse = zod.record(zod.string(), zod.unknown());
+
+export const UpdateProductParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateProductResponse = zod.record(zod.string(), zod.unknown());
+
+export const ListProductFamiliesResponseItem = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+export const ListProductFamiliesResponse = zod.array(
+  ListProductFamiliesResponseItem,
+);
+
+export const GetProductFamilyParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetProductFamilyResponse = zod.record(zod.string(), zod.unknown());
+
+export const UpdateProductFamilyParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateProductFamilyResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const DeleteProductFamilyParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteProductFamilyResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const UpdateProductFamilyMemberParams = zod.object({
+  id: zod.coerce.number(),
+  memberId: zod.coerce.number(),
+});
+
+export const UpdateProductFamilyMemberResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const DeleteProductFamilyMemberParams = zod.object({
+  id: zod.coerce.number(),
+  memberId: zod.coerce.number(),
+});
+
+export const DeleteProductFamilyMemberResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const GetPartnerFamilyAvailabilityParams = zod.object({
+  partnerId: zod.coerce.number(),
+});
+
+export const GetPartnerFamilyAvailabilityResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const GetProductFamilyContextParams = zod.object({
+  productId: zod.coerce.number(),
+});
+
+export const GetProductFamilyContextResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const SeedEasyUpFamilyResponse = zod.record(zod.string(), zod.unknown());
+
+export const ListPartnerRentableAssetsParams = zod.object({
+  partnerId: zod.coerce.number(),
+});
+
+export const ListPartnerRentableAssetsResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const UpdateRentalInventoryParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateRentalInventoryResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const ListInventoryBlackoutsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListInventoryBlackoutsResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const UpdateInventoryBlackoutParams = zod.object({
+  id: zod.coerce.number(),
+  blackoutId: zod.coerce.number(),
+});
+
+export const UpdateInventoryBlackoutResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const DeleteInventoryBlackoutParams = zod.object({
+  id: zod.coerce.number(),
+  blackoutId: zod.coerce.number(),
+});
+
+export const DeleteInventoryBlackoutResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const GetInventoryBookingsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetInventoryBookingsResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const GetInventoryAvailabilityParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetInventoryAvailabilityResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const ListQuoteAssetsResponseItem = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+export const ListQuoteAssetsResponse = zod.array(ListQuoteAssetsResponseItem);
+
+export const GetQuoteIngestionStatsResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const ApproveBillingSignalsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ApproveBillingSignalsResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const DismissBillingSignalsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DismissBillingSignalsResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const RerunBillingSignalsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const RerunBillingSignalsResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const UpdateQuoteAssetParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateQuoteAssetResponse = zod.record(zod.string(), zod.unknown());
+
+export const DeleteQuoteAssetParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteQuoteAssetResponse = zod.record(zod.string(), zod.unknown());
+
+export const BulkUpdateQuoteAssetsResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const ListQuoteAssetMappingsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListQuoteAssetMappingsResponseItem = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+export const ListQuoteAssetMappingsResponse = zod.array(
+  ListQuoteAssetMappingsResponseItem,
+);
+
+export const CreateQuoteAssetMappingExistingParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const CreateQuoteAssetMappingExistingResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const DeleteQuoteAssetMappingParams = zod.object({
+  id: zod.coerce.number(),
+  mappingId: zod.coerce.number(),
+});
+
+export const DeleteQuoteAssetMappingResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const ListSpecStandardsParams = zod.object({
+  productId: zod.coerce.number(),
+});
+
+export const ListSpecStandardsResponseItem = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+export const ListSpecStandardsResponse = zod.array(
+  ListSpecStandardsResponseItem,
+);
+
+export const UpdateSpecStandardParams = zod.object({
+  productId: zod.coerce.number(),
+  id: zod.coerce.number(),
+});
+
+export const UpdateSpecStandardResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const DeleteSpecStandardParams = zod.object({
+  productId: zod.coerce.number(),
+  id: zod.coerce.number(),
+});
+
+export const DeleteSpecStandardResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const SetCurrentSpecStandardParams = zod.object({
+  productId: zod.coerce.number(),
+  id: zod.coerce.number(),
+});
+
+export const SetCurrentSpecStandardResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const GetCatalogIntelligenceOverviewResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const ListDeckExtractionsParams = zod.object({
+  partnerId: zod.coerce.number(),
+});
+
+export const ListDeckExtractionsResponseItem = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+export const ListDeckExtractionsResponse = zod.array(
+  ListDeckExtractionsResponseItem,
+);
+
+export const GetDeckExtractionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetDeckExtractionResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const UpdateDeckExtractionItemParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateDeckExtractionItemResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const DeleteDeckExtractionItemParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteDeckExtractionItemResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const CheckDeckExtractionDuplicateParams = zod.object({
+  partnerId: zod.coerce.number(),
+});
+
+export const CheckDeckExtractionDuplicateResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const RerunDeckExtractionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const RerunDeckExtractionResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const ApproveDeckExtractionItemsResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const ListPackageExtractionsParams = zod.object({
+  partnerId: zod.coerce.number(),
+});
+
+export const ListPackageExtractionsResponseItem = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+export const ListPackageExtractionsResponse = zod.array(
+  ListPackageExtractionsResponseItem,
+);
+
+export const GetPackageExtractionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetPackageExtractionResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const UpdatePackageExtractionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdatePackageExtractionResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const DeletePackageExtractionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeletePackageExtractionResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const CheckPackageExtractionDuplicateParams = zod.object({
+  partnerId: zod.coerce.number(),
+});
+
+export const CheckPackageExtractionDuplicateResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const RerunPackageExtractionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const RerunPackageExtractionResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const CommitPackageExtractionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const CommitPackageExtractionResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const ListAdminDocumentsResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const UploadAdminDocumentResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const GetAdminDocumentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetAdminDocumentResponse = zod.record(zod.string(), zod.unknown());
+
+export const UpdateAdminDocumentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateAdminDocumentResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const ReplaceAdminDocumentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ReplaceAdminDocumentResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const DeactivateAdminDocumentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeactivateAdminDocumentResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const ReactivateAdminDocumentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ReactivateAdminDocumentResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const TestAdminDocumentLinkParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const TestAdminDocumentLinkResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const GetAdminDocumentActivityParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetAdminDocumentActivityResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const ListAdminDocumentEventsResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const ListAdminDocumentRequestsResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const ApproveDocumentRequestSendParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ApproveDocumentRequestSendResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const DenyDocumentRequestParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DenyDocumentRequestResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const SendAdminDocumentsResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const ListAdminDocumentAssignmentsResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const GetAdminDocumentSettingsResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const ListPortalRequestsResponseItem = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+export const ListPortalRequestsResponse = zod.array(
+  ListPortalRequestsResponseItem,
+);
+
+export const GetPortalRequestParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetPortalRequestResponse = zod.record(zod.string(), zod.unknown());
+
+export const UpdatePortalRequestParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdatePortalRequestResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const ListProductRequestsResponseItem = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+export const ListProductRequestsResponse = zod.array(
+  ListProductRequestsResponseItem,
+);
+
+export const GetProductRequestParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetProductRequestResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const UpdateProductRequestParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateProductRequestResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const ListBrandingRequestsResponseItem = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+export const ListBrandingRequestsResponse = zod.array(
+  ListBrandingRequestsResponseItem,
+);
+
+export const GetBrandingRequestParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetBrandingRequestResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const UpdateBrandingRequestParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateBrandingRequestResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const GetAllRequestsSummaryResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const GetEmailReadinessResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const GetEmailReadinessDnsResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const ListOrdersResponseItem = zod.record(zod.string(), zod.unknown());
+export const ListOrdersResponse = zod.array(ListOrdersResponseItem);
+
+export const GetOrderParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetOrderResponse = zod.record(zod.string(), zod.unknown());
+
+export const UpdateOrderParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateOrderResponse = zod.record(zod.string(), zod.unknown());
+
+export const DeleteOrderParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteOrderResponse = zod.record(zod.string(), zod.unknown());
+
+export const AssignOrderItemSupplierParams = zod.object({
+  orderId: zod.coerce.number(),
+  itemId: zod.coerce.number(),
+});
+
+export const AssignOrderItemSupplierResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const BulkAssignOrderItemSupplierParams = zod.object({
+  orderId: zod.coerce.number(),
+});
+
+export const BulkAssignOrderItemSupplierResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const UpdateOrderItemStatusParams = zod.object({
+  orderId: zod.coerce.number(),
+  itemId: zod.coerce.number(),
+});
+
+export const UpdateOrderItemStatusResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const SetOrderItemExceptionParams = zod.object({
+  orderId: zod.coerce.number(),
+  itemId: zod.coerce.number(),
+});
+
+export const SetOrderItemExceptionResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const UpdateOrderItemDatesParams = zod.object({
+  orderId: zod.coerce.number(),
+  itemId: zod.coerce.number(),
+});
+
+export const UpdateOrderItemDatesResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const GetOrderItemHistoryParams = zod.object({
+  orderId: zod.coerce.number(),
+  itemId: zod.coerce.number(),
+});
+
+export const GetOrderItemHistoryResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const GetOrderItemSupplierRecommendationsParams = zod.object({
+  orderId: zod.coerce.number(),
+  itemId: zod.coerce.number(),
+});
+
+export const GetOrderItemSupplierRecommendationsResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const GetFulfillmentCommandCenterResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const ListVendorOrdersResponseItem = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+export const ListVendorOrdersResponse = zod.array(ListVendorOrdersResponseItem);
+
+export const ListVendorItemsResponse = zod.record(zod.string(), zod.unknown());
+
+export const GetVendorOrderPacketParams = zod.object({
+  orderId: zod.coerce.number(),
+});
+
+export const GetVendorOrderPacketResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const GetOrderIntakeAnalysisParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetOrderIntakeAnalysisResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const GetOrderEmailEventsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetOrderEmailEventsResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const SetOrderExceptionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const SetOrderExceptionResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const SetOrderArtworkNeededParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const SetOrderArtworkNeededResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const ListWorkflowRulesResponseItem = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+export const ListWorkflowRulesResponse = zod.array(
+  ListWorkflowRulesResponseItem,
+);
+
+export const GetWorkflowRuleParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetWorkflowRuleResponse = zod.record(zod.string(), zod.unknown());
+
+export const UpdateWorkflowRuleParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateWorkflowRuleResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const CreateWorkflowRuleResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const ToggleWorkflowRuleParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ToggleWorkflowRuleResponse = zod.union([
+  zod.record(zod.string(), zod.unknown()),
+  zod.null(),
+]);
+
+export const DuplicateWorkflowRuleParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DuplicateWorkflowRuleResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const DeleteWorkflowRuleParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteWorkflowRuleResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const ListWorkflowTasksResponseItem = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+export const ListWorkflowTasksResponse = zod.array(
+  ListWorkflowTasksResponseItem,
+);
+
+export const CreateWorkflowTaskResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const UpdateWorkflowTaskParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateWorkflowTaskResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const CompleteWorkflowTaskParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const CompleteWorkflowTaskResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const SnoozeWorkflowTaskParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const SnoozeWorkflowTaskResponse = zod.union([
+  zod.record(zod.string(), zod.unknown()),
+  zod.null(),
+]);
+
+export const ListWorkflowAlertsResponseItem = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+export const ListWorkflowAlertsResponse = zod.array(
+  ListWorkflowAlertsResponseItem,
+);
+
+export const MarkWorkflowAlertReadParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const MarkWorkflowAlertReadResponse = zod.union([
+  zod.record(zod.string(), zod.unknown()),
+  zod.null(),
+]);
+
+export const ResolveWorkflowAlertParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ResolveWorkflowAlertResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const ListWorkflowAuditResponseItem = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+export const ListWorkflowAuditResponse = zod.array(
+  ListWorkflowAuditResponseItem,
+);
+
+export const ApplyWorkflowOverrideResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const GetWorkflowQueueResponse = zod.record(zod.string(), zod.unknown());
+
+export const FireWorkflowTriggerResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const TickWorkflowDeadlinesResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const SeedWorkflowDefaultsResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const ListCommercialPlansResponseItem = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+export const ListCommercialPlansResponse = zod.array(
+  ListCommercialPlansResponseItem,
+);
+
+export const SeedCommercialPlansResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const UpdateCommercialPlanParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateCommercialPlanResponse = zod.union([
+  zod.record(zod.string(), zod.unknown()),
+  zod.null(),
+]);
+
+export const ListCommercialBrandingPackagesResponseItem = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+export const ListCommercialBrandingPackagesResponse = zod.array(
+  ListCommercialBrandingPackagesResponseItem,
+);
+
+export const UpdateCommercialBrandingPackageParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateCommercialBrandingPackageResponse = zod.union([
+  zod.record(zod.string(), zod.unknown()),
+  zod.null(),
+]);
+
+export const ListCommercialAccountsResponseItem = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+export const ListCommercialAccountsResponse = zod.array(
+  ListCommercialAccountsResponseItem,
+);
+
+export const GetCommercialAccountParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetCommercialAccountResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const UpdateCommercialAccountParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateCommercialAccountResponse = zod.union([
+  zod.record(zod.string(), zod.unknown()),
+  zod.null(),
+]);
+
+export const RecomputeCommercialAccountUsageParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const RecomputeCommercialAccountUsageResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const LinkCommercialAccountPartnersParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const LinkCommercialAccountPartnersResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const GetCommercialAccountEntitlementsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetCommercialAccountEntitlementsResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const GetCommercialPartnerEntitlementsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetCommercialPartnerEntitlementsResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const GetCommercialDashboardResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const GetCommercialFeatureKeysResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const GetSalesDashboardResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const GetSalesShowcaseResponse = zod.record(zod.string(), zod.unknown());
+
+export const ListSalesProposalsResponseItem = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+export const ListSalesProposalsResponse = zod.array(
+  ListSalesProposalsResponseItem,
+);
+
+export const GetSalesProposalParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetSalesProposalResponse = zod.record(zod.string(), zod.unknown());
+
+export const UpdateSalesProposalParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateSalesProposalResponse = zod.union([
+  zod.record(zod.string(), zod.unknown()),
+  zod.null(),
+]);
+
+export const DeleteSalesProposalParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteSalesProposalResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const BuildSalesComparisonMatrixResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const GetSalesAccountActivationParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetSalesAccountActivationResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const SeedSalesAccountActivationParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const SeedSalesAccountActivationResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const UpdateSalesActivationItemParams = zod.object({
+  itemId: zod.coerce.number(),
+});
+
+export const UpdateSalesActivationItemResponse = zod.union([
+  zod.record(zod.string(), zod.unknown()),
+  zod.null(),
+]);
+
+export const AdvanceSalesAccountActivationParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const AdvanceSalesAccountActivationResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const GetSalesConstantsResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const PullSurveyAssetsParams = zod.object({
+  partnerId: zod.coerce.number(),
+});
+
+export const PullSurveyAssetsResponse = zod.record(zod.string(), zod.unknown());
+
+export const ListAdminSurveyAssetsResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const GetAdminSurveyAssetParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetAdminSurveyAssetResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const UpdateAdminSurveyAssetParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateAdminSurveyAssetResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const DeleteAdminSurveyAssetParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteAdminSurveyAssetResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const ListApprovedMaterialsResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const UpdateApprovedMaterialParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateApprovedMaterialResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const DeleteApprovedMaterialParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteApprovedMaterialResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const GetPartnerSurveyIntegrationParams = zod.object({
+  partnerId: zod.coerce.number(),
+});
+
+export const GetPartnerSurveyIntegrationResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const UpsertPartnerSurveyIntegrationParams = zod.object({
+  partnerId: zod.coerce.number(),
+});
+
+export const UpsertPartnerSurveyIntegrationResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const ListVenuesResponseItem = zod.record(zod.string(), zod.unknown());
+export const ListVenuesResponse = zod.array(ListVenuesResponseItem);
+
+export const UpdateVenueParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateVenueResponse = zod.record(zod.string(), zod.unknown());
+
+export const DeleteVenueParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteVenueResponse = zod.record(zod.string(), zod.unknown());
+
+export const CreateAssetResponse = zod.record(zod.string(), zod.unknown());
+
+export const ApproveAssetParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ApproveAssetResponse = zod.record(zod.string(), zod.unknown());
+
+export const RequestAssetRevisionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const RequestAssetRevisionResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const CreateAssetVersionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const CreateAssetVersionResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
+export const CreateAssetLinkParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const CreateAssetLinkResponse = zod.record(zod.string(), zod.unknown());
+
+export const DeleteAssetLinkParams = zod.object({
+  id: zod.coerce.number(),
+  linkId: zod.coerce.number(),
+});
+
+export const DeleteAssetLinkResponse = zod.record(zod.string(), zod.unknown());

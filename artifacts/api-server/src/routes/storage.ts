@@ -4,6 +4,7 @@ import {
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
 } from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 import { ObjectPermission } from "../lib/objectAcl";
 
@@ -43,13 +44,11 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
     const uploadURL = await objectStorageService.getObjectEntityUploadURL();
     const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
 
-    res.json(
-      RequestUploadUrlResponse.parse({
-        uploadURL,
-        objectPath,
-        metadata: { name, size, contentType },
-      }),
-    );
+    sendValidated(req, res, RequestUploadUrlResponse, {
+      uploadURL,
+      objectPath,
+      metadata: { name, size, contentType },
+    }, "Request upload URL");
   } catch (error) {
     req.log.error({ err: error }, "Error generating upload URL");
     res.status(500).json({ error: "Failed to generate upload URL" });

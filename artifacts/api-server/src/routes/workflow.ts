@@ -12,6 +12,30 @@ import { and, desc, eq, sql, inArray } from "drizzle-orm";
 import { fire, logAudit, deadlineHealth, DEFAULT_RULES } from "../services/workflowEngine";
 import { tick as runTick } from "../services/deadlineMonitor";
 import { z } from "zod";
+import {
+  ListWorkflowRulesResponse,
+  GetWorkflowRuleResponse,
+  CreateWorkflowRuleResponse,
+  UpdateWorkflowRuleResponse,
+  ToggleWorkflowRuleResponse,
+  DuplicateWorkflowRuleResponse,
+  DeleteWorkflowRuleResponse,
+  ListWorkflowTasksResponse,
+  CreateWorkflowTaskResponse,
+  UpdateWorkflowTaskResponse,
+  CompleteWorkflowTaskResponse,
+  SnoozeWorkflowTaskResponse,
+  ListWorkflowAlertsResponse,
+  MarkWorkflowAlertReadResponse,
+  ResolveWorkflowAlertResponse,
+  ListWorkflowAuditResponse,
+  ApplyWorkflowOverrideResponse,
+  GetWorkflowQueueResponse,
+  FireWorkflowTriggerResponse,
+  TickWorkflowDeadlinesResponse,
+  SeedWorkflowDefaultsResponse,
+} from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 
 const router = Router();
 
@@ -24,13 +48,13 @@ router.get("/workflow/rules", async (req, res) => {
   if (triggerType) conds.push(eq(workflowRulesTable.triggerType, String(triggerType)));
   if (isActive != null) conds.push(eq(workflowRulesTable.isActive, isActive === "true"));
   const rows = await db.select().from(workflowRulesTable).where(conds.length ? and(...conds) : (sql`TRUE` as any)).orderBy(desc(workflowRulesTable.updatedAt));
-  res.json(rows);
+  sendValidated(req, res, ListWorkflowRulesResponse, rows, "List workflow rules");
 });
 router.get("/workflow/rules/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   const [row] = await db.select().from(workflowRulesTable).where(eq(workflowRulesTable.id, id));
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
-  res.json(row);
+  sendValidated(req, res, GetWorkflowRuleResponse, row, "Get workflow rule");
 });
 const RuleBody = z.object({
   name: z.string().min(1),
@@ -50,7 +74,7 @@ router.post("/workflow/rules", async (req, res) => {
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const [row] = await db.insert(workflowRulesTable).values(parsed.data as any).returning();
   await logAudit({ eventType: "rule_fired", summary: `Rule created: ${row.name}`, details: { ruleId: row.id }, isAutomated: false });
-  res.json(row);
+  sendValidated(req, res, CreateWorkflowRuleResponse, row, "Create workflow rule");
 });
 router.patch("/workflow/rules/:id", async (req, res) => {
   const id = parseInt(req.params.id);
@@ -58,14 +82,14 @@ router.patch("/workflow/rules/:id", async (req, res) => {
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const [row] = await db.update(workflowRulesTable).set({ ...parsed.data, updatedAt: new Date() } as any).where(eq(workflowRulesTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
-  res.json(row);
+  sendValidated(req, res, UpdateWorkflowRuleResponse, row, "Update workflow rule");
 });
 router.post("/workflow/rules/:id/toggle", async (req, res) => {
   const id = parseInt(req.params.id);
   const [prev] = await db.select().from(workflowRulesTable).where(eq(workflowRulesTable.id, id));
   if (!prev) { res.status(404).json({ error: "Not found" }); return; }
   const [row] = await db.update(workflowRulesTable).set({ isActive: !prev.isActive, updatedAt: new Date() }).where(eq(workflowRulesTable.id, id)).returning();
-  res.json(row);
+  sendValidated(req, res, ToggleWorkflowRuleResponse, row, "Toggle workflow rule");
 });
 router.post("/workflow/rules/:id/duplicate", async (req, res) => {
   const id = parseInt(req.params.id);
@@ -73,12 +97,12 @@ router.post("/workflow/rules/:id/duplicate", async (req, res) => {
   if (!src) { res.status(404).json({ error: "Not found" }); return; }
   const { id: _ignore, createdAt, updatedAt, ...rest } = src as any;
   const [row] = await db.insert(workflowRulesTable).values({ ...rest, name: `${src.name} (copy)`, isSystem: false, isActive: false } as any).returning();
-  res.json(row);
+  sendValidated(req, res, DuplicateWorkflowRuleResponse, row, "Duplicate workflow rule");
 });
 router.delete("/workflow/rules/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   await db.delete(workflowRulesTable).where(eq(workflowRulesTable.id, id));
-  res.json({ success: true });
+  sendValidated(req, res, DeleteWorkflowRuleResponse, { success: true }, "Delete workflow rule");
 });
 
 // =====================================================================
@@ -106,7 +130,7 @@ router.get("/workflow/tasks", async (req, res) => {
   // recompute deadline health on the fly so it's always fresh
   rows = rows.map(r => ({ ...r, deadlineHealth: r.dueDate ? deadlineHealth(r.dueDate) : r.deadlineHealth })) as any;
   if (dh) rows = rows.filter(r => r.deadlineHealth === dh);
-  res.json(rows);
+  sendValidated(req, res, ListWorkflowTasksResponse, rows, "List workflow tasks");
 });
 const TaskBody = z.object({
   title: z.string().min(1),
@@ -134,7 +158,7 @@ router.post("/workflow/tasks", async (req, res) => {
   const data = { ...parsed.data, dueDate: parsed.data.dueDate ? new Date(parsed.data.dueDate) : null, autoCreated: false } as any;
   const [row] = await db.insert(workflowTasksTable).values(data).returning();
   await logAudit({ eventType: "task_created", summary: `Manual task: ${row.title}`, details: { taskId: row.id }, isAutomated: false, objectType: row.linkedObjectType ?? undefined, objectId: row.linkedObjectId ?? undefined });
-  res.json(row);
+  sendValidated(req, res, CreateWorkflowTaskResponse, row, "Create workflow task");
 });
 router.patch("/workflow/tasks/:id", async (req, res) => {
   const id = parseInt(req.params.id);
@@ -144,7 +168,7 @@ router.patch("/workflow/tasks/:id", async (req, res) => {
   if (parsed.data.dueDate !== undefined) data.dueDate = parsed.data.dueDate ? new Date(parsed.data.dueDate) : null;
   const [row] = await db.update(workflowTasksTable).set(data).where(eq(workflowTasksTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
-  res.json(row);
+  sendValidated(req, res, UpdateWorkflowTaskResponse, row, "Update workflow task");
 });
 router.post("/workflow/tasks/:id/complete", async (req, res) => {
   const id = parseInt(req.params.id);
@@ -152,7 +176,7 @@ router.post("/workflow/tasks/:id/complete", async (req, res) => {
   const [row] = await db.update(workflowTasksTable).set({ status: "done", completedAt: new Date(), completedByUserId: userId ?? null, notes: notes ?? undefined, updatedAt: new Date() } as any).where(eq(workflowTasksTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
   await logAudit({ eventType: "task_created", summary: `Task completed: ${row.title}`, details: { taskId: id }, isAutomated: false, actorUserId: userId });
-  res.json(row);
+  sendValidated(req, res, CompleteWorkflowTaskResponse, row, "Complete workflow task");
 });
 router.post("/workflow/tasks/:id/snooze", async (req, res) => {
   const id = parseInt(req.params.id);
@@ -162,7 +186,7 @@ router.post("/workflow/tasks/:id/snooze", async (req, res) => {
   const base = prev.dueDate ? new Date(prev.dueDate).getTime() : Date.now();
   const newDue = new Date(base + Number(days) * 86400_000);
   const [row] = await db.update(workflowTasksTable).set({ dueDate: newDue, status: "waiting", updatedAt: new Date() }).where(eq(workflowTasksTable.id, id)).returning();
-  res.json(row);
+  sendValidated(req, res, SnoozeWorkflowTaskResponse, row, "Snooze workflow task");
 });
 
 // =====================================================================
@@ -177,12 +201,12 @@ router.get("/workflow/alerts", async (req, res) => {
   if (orderId) conds.push(eq(workflowAlertsTable.orderId, parseInt(String(orderId))));
   if (invoiceId) conds.push(eq(workflowAlertsTable.invoiceId, parseInt(String(invoiceId))));
   const rows = await db.select().from(workflowAlertsTable).where(conds.length ? and(...conds) : (sql`TRUE` as any)).orderBy(desc(workflowAlertsTable.createdAt)).limit(300);
-  res.json(rows);
+  sendValidated(req, res, ListWorkflowAlertsResponse, rows, "List workflow alerts");
 });
 router.post("/workflow/alerts/:id/read", async (req, res) => {
   const id = parseInt(req.params.id);
   const [row] = await db.update(workflowAlertsTable).set({ isRead: true }).where(eq(workflowAlertsTable.id, id)).returning();
-  res.json(row);
+  sendValidated(req, res, MarkWorkflowAlertReadResponse, row, "Mark workflow alert read");
 });
 router.post("/workflow/alerts/:id/resolve", async (req, res) => {
   const id = parseInt(req.params.id);
@@ -190,7 +214,7 @@ router.post("/workflow/alerts/:id/resolve", async (req, res) => {
   const [row] = await db.update(workflowAlertsTable).set({ isResolved: true, isRead: true, resolvedAt: new Date(), resolvedByUserId: userId ?? null }).where(eq(workflowAlertsTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
   await logAudit({ eventType: "alert_created", summary: `Alert resolved: ${row.title}`, details: { alertId: id, note }, isAutomated: false, actorUserId: userId });
-  res.json(row);
+  sendValidated(req, res, ResolveWorkflowAlertResponse, row, "Resolve workflow alert");
 });
 
 // =====================================================================
@@ -204,7 +228,7 @@ router.get("/workflow/audit", async (req, res) => {
   if (sourceRuleId) conds.push(eq(workflowAuditTable.sourceRuleId, parseInt(String(sourceRuleId))));
   if (isAutomated != null) conds.push(eq(workflowAuditTable.isAutomated, isAutomated === "true"));
   const rows = await db.select().from(workflowAuditTable).where(conds.length ? and(...conds) : (sql`TRUE` as any)).orderBy(desc(workflowAuditTable.createdAt)).limit(200);
-  res.json(rows);
+  sendValidated(req, res, ListWorkflowAuditResponse, rows, "List workflow audit");
 });
 
 // =====================================================================
@@ -214,13 +238,13 @@ router.post("/workflow/override", async (req, res) => {
   const { objectType, objectId, action, note, userId, ctx } = req.body || {};
   if (!objectType || !objectId || !action || !note) { res.status(400).json({ error: "objectType, objectId, action, and note are required" }); return; }
   await logAudit({ eventType: "override_applied", summary: `Override: ${action} on ${objectType} #${objectId}`, details: { action, ctx }, isAutomated: false, actorUserId: userId, objectType, objectId, overrideNote: note });
-  res.json({ success: true });
+  sendValidated(req, res, ApplyWorkflowOverrideResponse, { success: true }, "Apply workflow override");
 });
 
 // =====================================================================
 // Queue dashboard rollup
 // =====================================================================
-router.get("/workflow/queue", async (_req, res) => {
+router.get("/workflow/queue", async (req, res) => {
   const tasks = await db.select().from(workflowTasksTable).where(sql`${workflowTasksTable.status} IN ('open','in_progress','waiting')`).orderBy(desc(workflowTasksTable.createdAt));
   const alerts = await db.select().from(workflowAlertsTable).where(eq(workflowAlertsTable.isResolved, false)).orderBy(desc(workflowAlertsTable.createdAt));
   const tasksWithHealth = tasks.map(t => ({ ...t, deadlineHealth: t.dueDate ? deadlineHealth(t.dueDate) : null }));
@@ -239,12 +263,12 @@ router.get("/workflow/queue", async (_req, res) => {
   const byCategory: Record<string, number> = {};
   for (const t of tasksWithHealth) byCategory[t.category] = (byCategory[t.category] || 0) + 1;
 
-  res.json({
+  sendValidated(req, res, GetWorkflowQueueResponse, {
     counters,
     byCategory,
     tasks: tasksWithHealth.slice(0, 100),
     alerts: alerts.slice(0, 50),
-  });
+  }, "Get workflow queue");
 });
 
 // =====================================================================
@@ -254,15 +278,15 @@ router.post("/workflow/fire", async (req, res) => {
   const { triggerType, ctx } = req.body || {};
   if (!triggerType) { res.status(400).json({ error: "triggerType required" }); return; }
   const r = await fire(triggerType, ctx || {});
-  res.json(r);
+  sendValidated(req, res, FireWorkflowTriggerResponse, r, "Fire workflow trigger");
 });
-router.post("/workflow/tick", async (_req, res) => {
+router.post("/workflow/tick", async (req, res) => {
   await runTick();
-  res.json({ success: true });
+  sendValidated(req, res, TickWorkflowDeadlinesResponse, { success: true }, "Tick workflow deadlines");
 });
 // Re-seed defaults (idempotent: only seeds if table empty)
-router.post("/workflow/seed-defaults", async (_req, res) => {
-  res.json({ defaults: DEFAULT_RULES.length });
+router.post("/workflow/seed-defaults", async (req, res) => {
+  sendValidated(req, res, SeedWorkflowDefaultsResponse, { defaults: DEFAULT_RULES.length }, "Seed workflow defaults");
 });
 
 export default router;

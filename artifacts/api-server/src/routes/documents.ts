@@ -20,6 +20,25 @@ import {
 import { ObjectStorageService, signObjectURL, parseObjectPath } from "../lib/objectStorage";
 import { requireAdmin } from "../middlewares/requireAdmin";
 import { logger } from "../lib/logger";
+import {
+  ListAdminDocumentsResponse,
+  GetAdminDocumentResponse,
+  UploadAdminDocumentResponse,
+  UpdateAdminDocumentResponse,
+  ReplaceAdminDocumentResponse,
+  DeactivateAdminDocumentResponse,
+  ReactivateAdminDocumentResponse,
+  TestAdminDocumentLinkResponse,
+  GetAdminDocumentActivityResponse,
+  ListAdminDocumentEventsResponse,
+  ListAdminDocumentRequestsResponse,
+  ApproveDocumentRequestSendResponse,
+  DenyDocumentRequestResponse,
+  SendAdminDocumentsResponse,
+  ListAdminDocumentAssignmentsResponse,
+  GetAdminDocumentSettingsResponse,
+} from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -133,7 +152,7 @@ adminRouter.get("/documents", async (req, res): Promise<void> => {
   }
 
   const docs = await query.orderBy(desc(documentLibraryTable.updatedAt)).limit(500);
-  res.json({ documents: docs });
+  sendValidated(req, res, ListAdminDocumentsResponse, { documents: docs }, "ListAdminDocuments");
 });
 
 // ─── Admin: Get single document ──────────────────────────────────────────────
@@ -142,7 +161,7 @@ adminRouter.get("/documents/:id", async (req, res): Promise<void> => {
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const [doc] = await db.select().from(documentLibraryTable).where(eq(documentLibraryTable.id, id));
   if (!doc) { res.status(404).json({ error: "Document not found" }); return; }
-  res.json({ document: doc });
+  sendValidated(req, res, GetAdminDocumentResponse, { document: doc }, "GetAdminDocument");
 });
 
 // ─── Admin: Upload document (metadata + presigned URL) ───────────────────────
@@ -230,7 +249,7 @@ adminRouter.post("/documents/upload", async (req, res): Promise<void> => {
     eventMetadata: { filename: data.originalFilename, size: data.fileSizeBytes },
   });
 
-  res.json({ document: doc, uploadUrl });
+  sendValidated(req, res, UploadAdminDocumentResponse, { document: doc, uploadUrl }, "UploadAdminDocument");
 });
 
 // ─── Admin: Update document metadata ─────────────────────────────────────────
@@ -290,7 +309,7 @@ adminRouter.patch("/documents/:id", async (req, res): Promise<void> => {
     eventMetadata: { fields: Object.keys(data) },
   });
 
-  res.json({ document: updated });
+  sendValidated(req, res, UpdateAdminDocumentResponse, { document: updated }, "UpdateAdminDocument");
 });
 
 // ─── Admin: Replace file ─────────────────────────────────────────────────────
@@ -349,7 +368,7 @@ adminRouter.post("/documents/:id/replace", async (req, res): Promise<void> => {
     eventMetadata: { action: "file_replaced", newFilename: data.originalFilename, newSize: data.fileSizeBytes },
   });
 
-  res.json({ document: updated, uploadUrl });
+  sendValidated(req, res, ReplaceAdminDocumentResponse, { document: updated, uploadUrl }, "ReplaceAdminDocument");
 });
 
 // ─── Admin: Deactivate / Reactivate ──────────────────────────────────────────
@@ -360,7 +379,7 @@ adminRouter.post("/documents/:id/deactivate", async (req, res): Promise<void> =>
   const [doc] = await db.update(documentLibraryTable).set({ isActive: false }).where(eq(documentLibraryTable.id, id)).returning();
   if (!doc) { res.status(404).json({ error: "Document not found" }); return; }
   await logDocumentEvent({ documentId: id, eventType: "updated", performedByUserId: userId, eventMetadata: { action: "deactivated" } });
-  res.json({ document: doc });
+  sendValidated(req, res, DeactivateAdminDocumentResponse, { document: doc }, "DeactivateAdminDocument");
 });
 
 adminRouter.post("/documents/:id/reactivate", async (req, res): Promise<void> => {
@@ -370,7 +389,7 @@ adminRouter.post("/documents/:id/reactivate", async (req, res): Promise<void> =>
   const [doc] = await db.update(documentLibraryTable).set({ isActive: true }).where(eq(documentLibraryTable.id, id)).returning();
   if (!doc) { res.status(404).json({ error: "Document not found" }); return; }
   await logDocumentEvent({ documentId: id, eventType: "updated", performedByUserId: userId, eventMetadata: { action: "reactivated" } });
-  res.json({ document: doc });
+  sendValidated(req, res, ReactivateAdminDocumentResponse, { document: doc }, "ReactivateAdminDocument");
 });
 
 // ─── Admin: Test signed download link ────────────────────────────────────────
@@ -383,7 +402,7 @@ adminRouter.post("/documents/:id/test-link", async (req, res): Promise<void> => 
   try {
     const ttl = getDefaultExpiration(doc.visibilityLevel);
     const url = await generateSignedDownloadUrl(doc.storageKey, ttl);
-    res.json({ url, expiresInSeconds: ttl });
+    sendValidated(req, res, TestAdminDocumentLinkResponse, { url, expiresInSeconds: ttl }, "TestAdminDocumentLink");
   } catch (err: any) {
     logger.error({ err }, "Failed to generate test link");
     res.status(500).json({ error: "Failed to generate signed URL. Object storage may not be configured." });
@@ -398,7 +417,7 @@ adminRouter.get("/documents/:id/activity", async (req, res): Promise<void> => {
     .where(eq(documentEventsTable.documentId, id))
     .orderBy(desc(documentEventsTable.createdAt))
     .limit(200);
-  res.json({ events });
+  sendValidated(req, res, GetAdminDocumentActivityResponse, { events }, "GetAdminDocumentActivity");
 });
 
 // ─── Admin: All document events (Activity Log tab) ───────────────────────────
@@ -417,7 +436,7 @@ adminRouter.get("/document-events", async (req, res): Promise<void> => {
   if (conditions.length > 0) query = query.where(and(...conditions));
 
   const events = await query.orderBy(desc(documentEventsTable.createdAt)).limit(500);
-  res.json({ events });
+  sendValidated(req, res, ListAdminDocumentEventsResponse, { events }, "ListAdminDocumentEvents");
 });
 
 // ─── Admin: List document requests ───────────────────────────────────────────
@@ -430,7 +449,7 @@ adminRouter.get("/document-requests", async (req, res): Promise<void> => {
   if (conditions.length > 0) query = query.where(and(...conditions));
 
   const requests = await query.orderBy(desc(documentRequestsTable.createdAt)).limit(500);
-  res.json({ requests });
+  sendValidated(req, res, ListAdminDocumentRequestsResponse, { requests }, "ListAdminDocumentRequests");
 });
 
 // ─── Admin: Approve & send document request ──────────────────────────────────
@@ -536,7 +555,7 @@ adminRouter.post("/document-requests/:id/approve-send", async (req, res): Promis
     logger.error({ err }, "Failed to send document email after approve — request stays in 'approved' state");
   }
 
-  res.json({ ok: true, assignmentCount: assignments.length, emailSent });
+  sendValidated(req, res, ApproveDocumentRequestSendResponse, { ok: true, assignmentCount: assignments.length, emailSent }, "ApproveDocumentRequestSend");
 });
 
 // ─── Admin: Deny document request ────────────────────────────────────────────
@@ -570,7 +589,7 @@ adminRouter.post("/document-requests/:id/deny", async (req, res): Promise<void> 
     eventMetadata: { reason: parsed.data?.reason },
   });
 
-  res.json({ ok: true });
+  sendValidated(req, res, DenyDocumentRequestResponse, { ok: true }, "DenyDocumentRequest");
 });
 
 // ─── Admin: Send documents manually ──────────────────────────────────────────
@@ -654,7 +673,7 @@ adminRouter.post("/documents/send", async (req, res): Promise<void> => {
     return;
   }
 
-  res.json({ ok: true, sentCount: sendableDocs.length });
+  sendValidated(req, res, SendAdminDocumentsResponse, { ok: true, sentCount: sendableDocs.length }, "SendAdminDocuments");
 });
 
 // ─── Admin: Document assignment stats ────────────────────────────────────────
@@ -669,12 +688,12 @@ adminRouter.get("/document-assignments", async (req, res): Promise<void> => {
   if (conditions.length > 0) query = query.where(and(...conditions));
 
   const assignments = await query.orderBy(desc(documentCustomerAssignmentsTable.createdAt)).limit(500);
-  res.json({ assignments });
+  sendValidated(req, res, ListAdminDocumentAssignmentsResponse, { assignments }, "ListAdminDocumentAssignments");
 });
 
 // ─── Admin: Settings (document center config) ────────────────────────────────
 adminRouter.get("/document-settings", async (req, res): Promise<void> => {
-  res.json({
+  sendValidated(req, res, GetAdminDocumentSettingsResponse, {
     settings: {
       publicSalesExpirationDays: 30,
       customerRequestableExpirationDays: 7,
@@ -683,7 +702,7 @@ adminRouter.get("/document-settings", async (req, res): Promise<void> => {
       allowedFileTypes: ALLOWED_MIME_TYPES,
       customerSelfServiceEnabled: true,
     },
-  });
+  }, "GetAdminDocumentSettings");
 });
 
 router.use("/admin", adminRouter);

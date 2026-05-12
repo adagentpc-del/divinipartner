@@ -2,6 +2,12 @@ import { Router, type IRouter } from "express";
 import { eq, and, inArray, sql, or, isNotNull } from "drizzle-orm";
 import { db, ordersTable, partnersTable, eventsTable, suppliersTable, discrepanciesTable, commissionPayoutsTable } from "@workspace/db";
 import { z } from "zod";
+import {
+  GetReconciliationSummaryResponse, ListReconciliationOrdersResponse, UpdateReconciliationOrderResponse,
+  AutoFlagReconciliationResponse, ListDiscrepanciesResponse, UpdateDiscrepancyResponse, DeleteDiscrepancyResponse,
+  ListCommissionPayoutsResponse, DeleteCommissionPayoutResponse, BulkUpdateReconciliationResponse,
+} from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 
 const router: IRouter = Router();
 
@@ -12,7 +18,7 @@ function num(v: any): number {
 }
 
 // ===== Reconciliation summary cards =====
-router.get("/reconciliation/summary", async (_req, res) => {
+router.get("/reconciliation/summary", async (req, res) => {
   const orders = await db.select().from(ordersTable);
   const discr = await db.select().from(discrepanciesTable);
   const totals = orders.reduce((a, o) => {
@@ -37,7 +43,7 @@ router.get("/reconciliation/summary", async (_req, res) => {
     return a;
   }, 0);
   const commissionVarianceTotal = totals.paidCom - totals.expCom;
-  res.json({
+  sendValidated(req, res, GetReconciliationSummaryResponse, {
     totalRetailBooked: totals.retail,
     totalEstimatedSupplierCost: totals.estCost,
     totalFinalSupplierCost: totals.finalCost,
@@ -50,7 +56,7 @@ router.get("/reconciliation/summary", async (_req, res) => {
     byBillingModel: byBilling,
     byReconciliationStatus: byRecon,
     ordersTotal: orders.length,
-  });
+  }, "Reconciliation summary");
 });
 
 // ===== Reconciliation orders list =====
@@ -107,7 +113,7 @@ router.get("/reconciliation/orders", async (req, res) => {
   });
 
   decorated.sort((a, b) => (b.id - a.id));
-  res.json(decorated);
+  sendValidated(req, res, ListReconciliationOrdersResponse, decorated, "Reconciliation orders");
 });
 
 // ===== Update reconciliation fields on an order =====
@@ -135,7 +141,7 @@ router.patch("/reconciliation/orders/:id", async (req, res) => {
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const [updated] = await db.update(ordersTable).set(parsed.data as any).where(eq(ordersTable.id, id)).returning();
   if (!updated) { res.status(404).json({ error: "Not found" }); return; }
-  res.json(updated);
+  sendValidated(req, res, UpdateReconciliationOrderResponse, updated, "Reconciliation order update");
 });
 
 // ===== Auto-flag discrepancies for an order =====
@@ -164,7 +170,7 @@ router.post("/reconciliation/orders/:id/auto-flag", async (req, res) => {
   const existingKey = new Set(existing.filter(e => e.status === "open" || e.status === "in_review").map(e => `${e.type}:${e.autoFlagged}`));
   const toInsert = flagged.filter(f => !existingKey.has(`${f.type}:${f.autoFlagged}`));
   if (toInsert.length > 0) await db.insert(discrepanciesTable).values(toInsert);
-  res.json({ flaggedCount: toInsert.length, items: toInsert });
+  sendValidated(req, res, AutoFlagReconciliationResponse, { flaggedCount: toInsert.length, items: toInsert }, "Auto-flag");
 });
 
 // ===== Discrepancies CRUD =====
@@ -186,7 +192,7 @@ router.get("/discrepancies", async (req, res) => {
     const o = oById.get(r.orderId);
     return { ...r, orderNumber: o?.orderNumber || null, partnerName: o ? partnerById.get(o.partnerId)?.companyName : null };
   }).sort((a, b) => b.id - a.id);
-  res.json(decorated);
+  sendValidated(req, res, ListDiscrepanciesResponse, decorated, "Discrepancies");
 });
 
 const DiscrepancyBody = z.object({
@@ -217,13 +223,13 @@ router.patch("/discrepancies/:id", async (req, res) => {
   if (patch.status === "resolved" || patch.status === "wont_fix") patch.resolvedAt = new Date();
   const [row] = await db.update(discrepanciesTable).set(patch).where(eq(discrepanciesTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
-  res.json(row);
+  sendValidated(req, res, UpdateDiscrepancyResponse, row, "Discrepancy update");
 });
 router.delete("/discrepancies/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   await db.delete(discrepanciesTable).where(eq(discrepanciesTable.id, id));
-  res.json({ success: true });
+  sendValidated(req, res, DeleteDiscrepancyResponse, { success: true }, "Discrepancy delete");
 });
 
 // ===== Commission payouts =====
@@ -231,7 +237,7 @@ router.get("/orders/:id/commission-payouts", async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const rows = await db.select().from(commissionPayoutsTable).where(eq(commissionPayoutsTable.orderId, id)).orderBy(commissionPayoutsTable.createdAt);
-  res.json(rows);
+  sendValidated(req, res, ListCommissionPayoutsResponse, rows, "Commission payouts");
 });
 const PayoutBody = z.object({
   amount: z.string(),
@@ -282,7 +288,7 @@ router.delete("/orders/:id/commission-payouts/:payoutId", async (req, res) => {
     status = "paid";
   }
   await db.update(ordersTable).set({ paidCommission: totalPaid.toFixed(2), commissionStatus: status } as any).where(eq(ordersTable.id, id));
-  res.json({ success: true });
+  sendValidated(req, res, DeleteCommissionPayoutResponse, { success: true }, "Commission payout delete");
 });
 
 
@@ -297,7 +303,7 @@ router.post("/reconciliation/bulk-update", async (req, res) => {
   const { ids, patch } = parsed.data;
   if (Object.keys(patch).length === 0) { res.status(400).json({ error: "Empty patch" }); return; }
   await db.update(ordersTable).set(patch as any).where(inArray(ordersTable.id, ids));
-  res.json({ success: true, count: ids.length });
+  sendValidated(req, res, BulkUpdateReconciliationResponse, { success: true, count: ids.length }, "Reconciliation bulk update");
 });
 
 export default router;

@@ -28,6 +28,7 @@ import {
   SetOrderItemProductionBlockResponse,
   GetProductionDashboardResponse,
 } from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 
 const router: IRouter = Router();
 
@@ -115,14 +116,7 @@ router.get("/orders/:id/readiness", async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const payload = await readinessForOrder(id);
-  const parsed = GetOrderReadinessResponse.safeParse(payload);
-  if (!parsed.success) {
-    req.log.error({ err: parsed.error.flatten(), orderId: id }, "Order readiness response failed schema validation");
-    res.status(500).json({ error: "Order readiness response failed schema validation", details: parsed.error.issues }); return;
-  }
-  // Send the original payload so additionalProperties on nested objects
-  // (asset rows, item passthroughs) are preserved — generated zod schemas strip unknowns.
-  res.json(payload);
+  sendValidated(req, res, GetOrderReadinessResponse, payload, "Order readiness");
 });
 
 // Mark/clear blocked reason on a line item
@@ -148,14 +142,7 @@ router.patch("/order-items/:id/production-block", async (req, res) => {
   } else if (!reason && prev.productionBlockedReason) {
     fire("production.unblocked", { objectType: "order_item", objectId: id, orderItemId: id, orderId: row.orderId, orderNumber: ord?.orderNumber, overrideNote }).catch(() => {});
   }
-  const parsed = SetOrderItemProductionBlockResponse.safeParse(row);
-  if (!parsed.success) {
-    req.log.error({ err: parsed.error.flatten(), orderItemId: id }, "Production-block response failed schema validation");
-    res.status(500).json({ error: "Production-block response failed schema validation", details: parsed.error.issues }); return;
-  }
-  // Send the original row so additional DB columns (additionalProperties: true)
-  // are preserved on the wire — generated zod object schemas strip unknowns.
-  res.json(row);
+  sendValidated(req, res, SetOrderItemProductionBlockResponse, row, "Set production block");
 });
 
 // ===== Production review dashboard =====
@@ -188,14 +175,7 @@ router.get("/production/dashboard", async (req, res) => {
     }
   }
   const payload = { counters, latest, byEvent, bySupplier, orderIssues };
-  const parsed = GetProductionDashboardResponse.safeParse(payload);
-  if (!parsed.success) {
-    req.log.error({ err: parsed.error.flatten() }, "Production dashboard response failed schema validation");
-    res.status(500).json({ error: "Production dashboard response failed schema validation", details: parsed.error.issues }); return;
-  }
-  // Send the original payload so additionalProperties on nested objects
-  // (asset rows, order-issue passthroughs) are preserved — generated zod schemas strip unknowns.
-  res.json(payload);
+  sendValidated(req, res, GetProductionDashboardResponse, payload, "Production dashboard");
 });
 
 // ===== Supplier packet (production handoff) =====
@@ -365,12 +345,7 @@ router.get("/orders/:orderId/supplier-packet/:supplierId", async (req, res) => {
       blocked: packetItems.filter(i => !i.ready).length,
     },
   };
-  const parsed = GetSupplierPacketResponse.safeParse(payload);
-  if (!parsed.success) {
-    req.log.error({ err: parsed.error.flatten(), orderId, supplierId }, "Supplier packet response failed schema validation");
-    res.status(500).json({ error: "Supplier packet response failed schema validation", details: parsed.error.issues }); return;
-  }
-  res.json(parsed.data);
+  sendValidated(req, res, GetSupplierPacketResponse, payload, "Supplier packet");
 });
 
 export { router as productionRouter };

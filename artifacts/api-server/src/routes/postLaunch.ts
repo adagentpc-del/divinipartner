@@ -4,6 +4,12 @@ import { db, feedbackItems, usageEvents, partnersTable } from "@workspace/db";
 import { and, desc, eq, gte, count, ne } from "drizzle-orm";
 import { emit, summary as usageSummary, timeline as usageTimeline } from "../services/usageTracking";
 import { computePartnerHealth, listAllPartnerHealth } from "../services/partnerHealth";
+import {
+  GetUsageSummaryResponse, GetUsageTimelineResponse, EmitUsageResponse,
+  ListFeedbackResponse, UpdateFeedbackResponse, DeleteFeedbackResponse,
+  ListPartnerHealthResponse, GetPartnerHealthResponse, GetPostLaunchDashboardResponse,
+} from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 
 const router = Router();
 
@@ -13,13 +19,13 @@ router.get("/usage/summary", async (req, res) => {
   const role = req.query.role ? String(req.query.role) : undefined;
   const since = req.query.since ? new Date(String(req.query.since)) : undefined;
   const until = req.query.until ? new Date(String(req.query.until)) : undefined;
-  res.json(await usageSummary({ partnerId, role, since, until }));
+  sendValidated(req, res, GetUsageSummaryResponse, await usageSummary({ partnerId, role, since, until }), "Usage summary");
 });
 
 router.get("/usage/timeline", async (req, res) => {
   const partnerId = req.query.partnerId ? parseInt(String(req.query.partnerId)) : undefined;
   const limit = req.query.limit ? parseInt(String(req.query.limit)) : 100;
-  res.json(await usageTimeline(limit, partnerId));
+  sendValidated(req, res, GetUsageTimelineResponse, await usageTimeline(limit, partnerId), "Usage timeline");
 });
 
 router.post("/usage/emit", async (req, res) => {
@@ -35,7 +41,7 @@ router.post("/usage/emit", async (req, res) => {
   const parsed = Body.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   await emit(parsed.data.eventType, parsed.data);
-  res.json({ ok: true });
+  sendValidated(req, res, EmitUsageResponse, { ok: true }, "Usage emit");
 });
 
 // ---- Feedback ----
@@ -46,7 +52,7 @@ router.get("/feedback", async (req, res) => {
   if (req.query.category) conds.push(eq(feedbackItems.category, String(req.query.category)));
   const where = conds.length ? and(...conds) : undefined;
   const rows = await db.select().from(feedbackItems).where(where as any).orderBy(desc(feedbackItems.createdAt)).limit(200);
-  res.json(rows);
+  sendValidated(req, res, ListFeedbackResponse, rows, "Feedback list");
 });
 
 router.post("/feedback", async (req, res) => {
@@ -86,29 +92,29 @@ router.patch("/feedback/:id", async (req, res) => {
   const update: any = { ...parsed.data, updatedAt: new Date() };
   if (parsed.data.status === "resolved") update.resolvedAt = new Date();
   const [row] = await db.update(feedbackItems).set(update).where(eq(feedbackItems.id, id)).returning();
-  res.json(row);
+  sendValidated(req, res, UpdateFeedbackResponse, row, "Feedback update");
 });
 
 router.delete("/feedback/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   await db.delete(feedbackItems).where(eq(feedbackItems.id, id));
-  res.json({ ok: true });
+  sendValidated(req, res, DeleteFeedbackResponse, { ok: true }, "Feedback delete");
 });
 
 // ---- Partner Health ----
-router.get("/partner-health", async (_req, res) => {
-  res.json(await listAllPartnerHealth());
+router.get("/partner-health", async (req, res) => {
+  sendValidated(req, res, ListPartnerHealthResponse, await listAllPartnerHealth(), "Partner health list");
 });
 
 router.get("/partner-health/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   const h = await computePartnerHealth(id);
   if (!h) { res.status(404).json({ error: "Not found" }); return; }
-  res.json(h);
+  sendValidated(req, res, GetPartnerHealthResponse, h, "Partner health");
 });
 
 // ---- Post-Launch Dashboard ----
-router.get("/post-launch/dashboard", async (_req, res) => {
+router.get("/post-launch/dashboard", async (req, res) => {
   const allPartners = await db.select().from(partnersTable);
   const launchedCount = allPartners.filter(p => p.launchStatus === "live").length;
   const draftCount = allPartners.filter(p => !p.launchStatus || p.launchStatus === "draft").length;
@@ -146,7 +152,7 @@ router.get("/post-launch/dashboard", async (_req, res) => {
     c: count(),
   }).from(usageEvents).where(gte(usageEvents.occurredAt, since)).groupBy(usageEvents.eventType).orderBy(desc(count())).limit(15);
 
-  res.json({
+  sendValidated(req, res, GetPostLaunchDashboardResponse, {
     partners: {
       total: allPartners.length,
       launched: launchedCount,
@@ -167,7 +173,7 @@ router.get("/post-launch/dashboard", async (_req, res) => {
     },
     recentActivity: recentByType,
     health: health.slice(0, 50),
-  });
+  }, "Post-launch dashboard");
 });
 
 export default router;

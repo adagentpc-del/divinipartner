@@ -18,6 +18,7 @@ import {
   RegeneratePdfParams,
   RegeneratePdfResponse,
 } from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 import { generateAiSummary } from "../lib/aiSummary";
 import { generatePdfHtml } from "../lib/pdfGenerator";
 
@@ -75,13 +76,7 @@ router.get("/requests", async (req, res): Promise<void> => {
     requests,
     total: totalResult?.count || 0,
   };
-  const parsed = ListRequestsResponse.safeParse(payload);
-  if (!parsed.success) {
-    req.log.error({ err: parsed.error.flatten() }, "List requests response failed schema validation");
-    res.status(500).json({ error: "List requests response failed schema validation", details: parsed.error.issues });
-    return;
-  }
-  res.json(payload);
+  sendValidated(req, res, ListRequestsResponse, payload, "List requests");
 });
 
 router.get("/requests/:id", async (req, res): Promise<void> => {
@@ -149,13 +144,7 @@ router.get("/requests/:id", async (req, res): Promise<void> => {
     .orderBy(desc(adminNotesTable.createdAt));
 
   const payload = { ...request, items, uploads, notes };
-  const parsed = GetRequestResponse.safeParse(payload);
-  if (!parsed.success) {
-    req.log.error({ err: parsed.error.flatten(), requestId: params.data.id }, "Get request response failed schema validation");
-    res.status(500).json({ error: "Get request response failed schema validation", details: parsed.error.issues });
-    return;
-  }
-  res.json(payload);
+  sendValidated(req, res, GetRequestResponse, payload, "Get request");
 });
 
 router.patch("/requests/:id", async (req, res): Promise<void> => {
@@ -188,13 +177,7 @@ router.patch("/requests/:id", async (req, res): Promise<void> => {
   const [partner] = await db.select().from(partnersTable).where(eq(partnersTable.id, updated.partnerId));
 
   const payload = { ...updated, partnerName: partner?.companyName || "Unknown", items, uploads, notes };
-  const parsedRes = UpdateRequestResponse.safeParse(payload);
-  if (!parsedRes.success) {
-    req.log.error({ err: parsedRes.error.flatten(), requestId: params.data.id }, "Update request response failed schema validation");
-    res.status(500).json({ error: "Update request response failed schema validation", details: parsedRes.error.issues });
-    return;
-  }
-  res.json(payload);
+  sendValidated(req, res, UpdateRequestResponse, payload, "Update request");
 });
 
 router.get("/requests/:id/notes", async (req, res): Promise<void> => {
@@ -210,13 +193,7 @@ router.get("/requests/:id/notes", async (req, res): Promise<void> => {
     .where(eq(adminNotesTable.requestId, params.data.id))
     .orderBy(desc(adminNotesTable.createdAt));
 
-  const parsed = ListRequestNotesResponse.safeParse(notes);
-  if (!parsed.success) {
-    req.log.error({ err: parsed.error.flatten(), requestId: params.data.id }, "List request notes response failed schema validation");
-    res.status(500).json({ error: "List request notes response failed schema validation", details: parsed.error.issues });
-    return;
-  }
-  res.json(notes);
+  sendValidated(req, res, ListRequestNotesResponse, notes, "List request notes");
 });
 
 router.post("/requests/:id/notes", async (req, res): Promise<void> => {
@@ -293,13 +270,7 @@ router.post("/requests/:id/regenerate-ai", async (req, res): Promise<void> => {
   const [partner] = await db.select().from(partnersTable).where(eq(partnersTable.id, updated.partnerId));
 
   const payload = { ...updated, partnerName: partner?.companyName || "Unknown", items, uploads, notes };
-  const parsedRes = RegenerateAiSummaryResponse.safeParse(payload);
-  if (!parsedRes.success) {
-    req.log.error({ err: parsedRes.error.flatten(), requestId: params.data.id }, "Regenerate AI summary response failed schema validation");
-    res.status(500).json({ error: "Regenerate AI summary response failed schema validation", details: parsedRes.error.issues });
-    return;
-  }
-  res.json(payload);
+  sendValidated(req, res, RegenerateAiSummaryResponse, payload, "Regenerate AI summary");
 });
 
 router.post("/requests/:id/regenerate-pdf", async (req, res): Promise<void> => {
@@ -345,13 +316,7 @@ router.post("/requests/:id/regenerate-pdf", async (req, res): Promise<void> => {
     .where(eq(requestsTable.id, params.data.id));
 
   const payload = { pdfUrl: pdfDataUrl };
-  const parsedRes = RegeneratePdfResponse.safeParse(payload);
-  if (!parsedRes.success) {
-    req.log.error({ err: parsedRes.error.flatten(), requestId: params.data.id }, "Regenerate PDF response failed schema validation");
-    res.status(500).json({ error: "Regenerate PDF response failed schema validation", details: parsedRes.error.issues });
-    return;
-  }
-  res.json(payload);
+  sendValidated(req, res, RegeneratePdfResponse, payload, "Regenerate PDF");
 });
 
 export default router;

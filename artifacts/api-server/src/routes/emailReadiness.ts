@@ -15,6 +15,11 @@ import {
   sendGenericBrandedTest,
 } from "../lib/email";
 import { getUncachableResendClient } from "../lib/resend";
+import {
+  GetEmailReadinessResponse,
+  GetEmailReadinessDnsResponse,
+} from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 
 const router: IRouter = Router();
 
@@ -37,7 +42,7 @@ function statusFor(missing: string[], warnings: string[]): PartnerStatus {
 //  - system-level config (Resend key, public app URL source, default from)
 //  - per-partner config status with missing/warnings details
 //  - recent email failures (last 25)
-router.get("/admin/email-readiness", async (_req, res): Promise<void> => {
+router.get("/admin/email-readiness", async (req, res): Promise<void> => {
   // System config
   const publicUrl = getPublicUrlInfo();
   let resendKeyConfigured = false;
@@ -118,7 +123,7 @@ router.get("/admin/email-readiness", async (_req, res): Promise<void> => {
     acc[r.status]++; return acc;
   }, { ready: 0, warning: 0, incomplete: 0 });
 
-  res.json({
+  sendValidated(req, res, GetEmailReadinessResponse, {
     system: {
       resendKeyConfigured,
       resendError,
@@ -128,7 +133,7 @@ router.get("/admin/email-readiness", async (_req, res): Promise<void> => {
     summary,
     partners: partnerRows,
     recentFailures,
-  });
+  }, "GetEmailReadiness");
 });
 
 const TestBody = z.object({
@@ -263,7 +268,7 @@ async function lookupCname(hostname: string): Promise<{ values: string[]; error:
   }
 }
 
-router.get("/admin/email-readiness/dns", async (_req, res): Promise<void> => {
+router.get("/admin/email-readiness/dns", async (req, res): Promise<void> => {
   const publicUrl = getPublicUrlInfo();
   let defaultFromAddress: string | null = null;
   try {
@@ -290,7 +295,7 @@ router.get("/admin/email-readiness/dns", async (_req, res): Promise<void> => {
   const checks: DnsCheck[] = [];
 
   if (!senderDomain || senderDomain === "resend.dev") {
-    res.json({
+    sendValidated(req, res, GetEmailReadinessDnsResponse, {
       senderDomain,
       canonicalHost,
       alignment,
@@ -298,7 +303,7 @@ router.get("/admin/email-readiness/dns", async (_req, res): Promise<void> => {
       note: senderDomain === "resend.dev"
         ? "Default Resend sandbox sender in use. Configure RESEND_FROM_EMAIL with an address on a domain you own and verify it in the Resend dashboard before relying on inbox placement."
         : "No sender domain detected. Set RESEND_FROM_EMAIL to enable Domain Authentication checks.",
-    });
+    }, "GetEmailReadinessDns");
     return;
   }
 
@@ -364,7 +369,7 @@ router.get("/admin/email-readiness/dns", async (_req, res): Promise<void> => {
     error: dkim.error,
   });
 
-  res.json({
+  sendValidated(req, res, GetEmailReadinessDnsResponse, {
     senderDomain,
     canonicalHost,
     alignment,
@@ -372,7 +377,7 @@ router.get("/admin/email-readiness/dns", async (_req, res): Promise<void> => {
     note: alignment === false
       ? "Your sender domain and your public app URL are on different root domains. Branded links and sender identity won't share a domain — this is allowed but reduces brand consistency."
       : null,
-  });
+  }, "GetEmailReadinessDns");
 });
 
 // ---------------------------------------------------------------------------

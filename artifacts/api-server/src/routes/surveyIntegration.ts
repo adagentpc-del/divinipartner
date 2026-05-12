@@ -38,6 +38,20 @@ import {
 } from "@workspace/db";
 import { z } from "zod";
 import { getAuth } from "@clerk/express";
+import {
+  PullSurveyAssetsResponse,
+  ListAdminSurveyAssetsResponse,
+  GetAdminSurveyAssetResponse,
+  UpdateAdminSurveyAssetResponse,
+  DeleteAdminSurveyAssetResponse,
+  ListApprovedMaterialsResponse,
+  UpdateApprovedMaterialResponse,
+  DeleteApprovedMaterialResponse,
+  GetPartnerSurveyIntegrationResponse,
+  UpsertPartnerSurveyIntegrationResponse,
+  SurveyTestConnectionResponse,
+} from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 import { objectStorageClient, parseObjectPath } from "../lib/objectStorage";
 import dns from "node:dns/promises";
 import net from "node:net";
@@ -505,7 +519,7 @@ router.post("/admin/integrations/asset-survey/pull/:partnerId", async (req, res)
     await db.update(partnerIntegrationsTable)
       .set({ lastPullAt: new Date(), lastPullStatus: "ok", lastPullError: null })
       .where(eq(partnerIntegrationsTable.id, integ.id));
-    res.json({ ok: true, ...result });
+    sendValidated(req, res, PullSurveyAssetsResponse, { ok: true, ...result }, "Pull survey assets");
   } catch (err) {
     await db.update(partnerIntegrationsTable)
       .set({ lastPullAt: new Date(), lastPullStatus: "error", lastPullError: String(err instanceof Error ? err.message : String(err)).slice(0, 500) })
@@ -530,7 +544,7 @@ router.get("/admin/survey-assets", async (req, res): Promise<void> => {
     .where(conds.length ? and(...conds) : undefined)
     .orderBy(desc(surveyAssetsTable.ingestedAt))
     .limit(500);
-  res.json({ assets: rows });
+  sendValidated(req, res, ListAdminSurveyAssetsResponse, { assets: rows }, "List admin survey assets");
 });
 
 router.get("/admin/survey-assets/:id", async (req, res): Promise<void> => {
@@ -539,7 +553,7 @@ router.get("/admin/survey-assets/:id", async (req, res): Promise<void> => {
   const id = Number(req.params.id);
   const [a] = await db.select().from(surveyAssetsTable).where(eq(surveyAssetsTable.id, id));
   if (!a) { res.status(404).json({ error: "Not found" }); return; }
-  res.json({ asset: a });
+  sendValidated(req, res, GetAdminSurveyAssetResponse, { asset: a }, "Get admin survey asset");
 });
 
 const PatchAssetBody = z.object({
@@ -595,7 +609,7 @@ router.patch("/admin/survey-assets/:id", async (req, res): Promise<void> => {
         eq(partnerAddonsTable.surveyAssetId, row.id),
       ));
   }
-  res.json({ asset: row });
+  sendValidated(req, res, UpdateAdminSurveyAssetResponse, { asset: row }, "Update admin survey asset");
 });
 
 router.delete("/admin/survey-assets/:id", async (req, res): Promise<void> => {
@@ -603,7 +617,7 @@ router.delete("/admin/survey-assets/:id", async (req, res): Promise<void> => {
   if (!auth?.userId) { res.status(401).json({ error: "Authentication required" }); return; }
   const id = Number(req.params.id);
   await db.delete(surveyAssetsTable).where(eq(surveyAssetsTable.id, id));
-  res.json({ ok: true });
+  sendValidated(req, res, DeleteAdminSurveyAssetResponse, { ok: true }, "Delete admin survey asset");
 });
 
 // ----- approved materials (global) -----
@@ -613,7 +627,7 @@ router.get("/admin/approved-materials", async (req, res): Promise<void> => {
   if (!auth?.userId) { res.status(401).json({ error: "Authentication required" }); return; }
   await ensureGlobalMaterialsSeeded();
   const rows = await db.select().from(approvedMaterialsTable).orderBy(approvedMaterialsTable.sortOrder);
-  res.json({ materials: rows });
+  sendValidated(req, res, ListApprovedMaterialsResponse, { materials: rows }, "List approved materials");
 });
 
 const UpsertMaterialBody = z.object({
@@ -654,14 +668,14 @@ router.patch("/admin/approved-materials/:id", async (req, res): Promise<void> =>
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   await db.update(approvedMaterialsTable).set(parsed.data).where(eq(approvedMaterialsTable.id, id));
   const [row] = await db.select().from(approvedMaterialsTable).where(eq(approvedMaterialsTable.id, id));
-  res.json({ material: row });
+  sendValidated(req, res, UpdateApprovedMaterialResponse, { material: row }, "Update approved material");
 });
 
 router.delete("/admin/approved-materials/:id", async (req, res): Promise<void> => {
   const auth = getAuth(req);
   if (!auth?.userId) { res.status(401).json({ error: "Authentication required" }); return; }
   await db.delete(approvedMaterialsTable).where(eq(approvedMaterialsTable.id, Number(req.params.id)));
-  res.json({ ok: true });
+  sendValidated(req, res, DeleteApprovedMaterialResponse, { ok: true }, "Delete approved material");
 });
 
 /**
@@ -694,13 +708,13 @@ router.post("/admin/integrations/asset-survey/test/:partnerId", async (req, res)
       redirect: "error",
       headers: apiKey ? { "Authorization": `Bearer ${apiKey}` } : undefined,
     });
-    res.json({
+    sendValidated(req, res, SurveyTestConnectionResponse, {
       ok: r.ok,
       status: r.status,
       probedUrl: probeUrl,
       apiKeyPresent: Boolean(apiKey),
       message: r.ok ? "Survey app reachable." : `Survey app returned HTTP ${r.status}.`,
-    });
+    }, "Survey test connection");
   } catch (e) {
     res.status(502).json({ ok: false, error: e instanceof Error ? e.message : "Request failed", probedUrl: probeUrl });
   }
@@ -718,7 +732,7 @@ router.get("/admin/partners/:partnerId/integrations/asset-survey", async (req, r
   // reference (env var name); the actual value is never sent to the browser.
   const [partnerRow] = await db.select({ slug: partnersTable.slug }).from(partnersTable).where(eq(partnersTable.id, partnerId));
   const apiKeyPresent = row?.apiKeySecretName ? Boolean(process.env[row.apiKeySecretName]) : false;
-  res.json({
+  sendValidated(req, res, GetPartnerSurveyIntegrationResponse, {
     integration: row ? {
       id: row.id,
       partnerId: row.partnerId,
@@ -739,7 +753,7 @@ router.get("/admin/partners/:partnerId/integrations/asset-survey", async (req, r
       updatedAt: row.updatedAt,
     } : null,
     webhookUrl: partnerRow ? `/api/public/integrations/asset-survey/${partnerRow.slug}` : null,
-  });
+  }, "Get partner survey integration");
 });
 
 const UpsertIntegrationBody = z.object({
@@ -792,7 +806,7 @@ router.put("/admin/partners/:partnerId/integrations/asset-survey", async (req, r
     });
   }
   // Return the secret ONCE on rotate so admin can copy it.
-  res.json({ ok: true, ...(parsed.data.rotateSecret || !existing ? { newWebhookSecret: newSecret } : {}) });
+  sendValidated(req, res, UpsertPartnerSurveyIntegrationResponse, { ok: true, ...(parsed.data.rotateSecret || !existing ? { newWebhookSecret: newSecret } : {}) }, "Upsert partner survey integration");
 });
 
 export default router;

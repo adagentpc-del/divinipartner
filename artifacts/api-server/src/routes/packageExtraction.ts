@@ -6,6 +6,13 @@ import { getAuth } from "@clerk/express";
 import { processPackageExtraction, findPriorParsedPackageExtraction } from "../lib/packageExtraction";
 import { commitPackages } from "./imports";
 import { logger } from "../lib/logger";
+import {
+  ListPackageExtractionsResponse, GetPackageExtractionResponse,
+  UpdatePackageExtractionResponse, DeletePackageExtractionResponse,
+  CheckPackageExtractionDuplicateResponse, RerunPackageExtractionResponse,
+  CommitPackageExtractionResponse,
+} from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 
 const router: IRouter = Router();
 
@@ -77,7 +84,7 @@ router.get("/partners/:partnerId/package-extractions", async (req, res): Promise
   const rows = await db.select().from(packageExtractionsTable)
     .where(eq(packageExtractionsTable.partnerId, partnerId))
     .orderBy(desc(packageExtractionsTable.createdAt));
-  res.json(rows);
+  sendValidated(req, res, ListPackageExtractionsResponse, rows, "Package extractions");
 });
 
 router.get("/package-extractions/:id", async (req, res): Promise<void> => {
@@ -85,7 +92,7 @@ router.get("/package-extractions/:id", async (req, res): Promise<void> => {
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const [row] = await db.select().from(packageExtractionsTable).where(eq(packageExtractionsTable.id, id));
   if (!row) { res.status(404).json({ error: "Extraction not found" }); return; }
-  res.json(row);
+  sendValidated(req, res, GetPackageExtractionResponse, row, "Package extraction");
 });
 
 // Pre-flight duplicate check by file hash.
@@ -94,7 +101,7 @@ router.get("/partners/:partnerId/package-extractions/check-duplicate", async (re
   const hash = String(req.query.hash || "");
   if (isNaN(partnerId) || !hash) { res.status(400).json({ error: "partnerId and hash required" }); return; }
   const prior = await findPriorParsedPackageExtraction(partnerId, hash);
-  res.json({
+  sendValidated(req, res, CheckPackageExtractionDuplicateResponse, {
     duplicate: !!prior,
     extractionId: prior?.id || null,
     sourceFileName: prior?.sourceFileName || null,
@@ -102,7 +109,7 @@ router.get("/partners/:partnerId/package-extractions/check-duplicate", async (re
     parseSource: prior?.parseSource || null,
     totalPages: prior?.totalPages || null,
     rowCount: (prior?.parsedRows as any[] | null)?.length || 0,
-  });
+  }, "Package extraction duplicate check");
 });
 
 // ----- Create + kick off background processing ------------------------------
@@ -184,7 +191,7 @@ router.patch("/package-extractions/:id", async (req, res): Promise<void> => {
     })
     .where(eq(packageExtractionsTable.id, id))
     .returning();
-  res.json(updated);
+  sendValidated(req, res, UpdatePackageExtractionResponse, updated, "Package extraction update");
 });
 
 // ----- Commit through existing import pipeline ------------------------------
@@ -234,7 +241,7 @@ router.post("/package-extractions/:id/commit", async (req, res): Promise<void> =
       ...(body.data.rows ? { parsedRows: sourceRows as any } : {}),
       commitResult: result as any,
     }).where(eq(packageExtractionsTable.id, id));
-    res.json(result);
+    sendValidated(req, res, CommitPackageExtractionResponse, result as unknown as Record<string, unknown>, "Package extraction commit");
   } catch (e: any) {
     logger.error({ err: e, extractionId: id }, "Package extraction commit failed");
     res.status(500).json({ error: e.message || "Commit failed" });
@@ -277,7 +284,7 @@ router.post("/package-extractions/:id/rerun", async (req, res): Promise<void> =>
       fileBuffer, extraction.sourceFileName,
       { forceRerun: true },
     ).catch(err => logger.error({ err, extractionId: id }, "Background package rerun failed"));
-    res.json({ ok: true, id, status: "processing" });
+    sendValidated(req, res, RerunPackageExtractionResponse, { ok: true, id, status: "processing" }, "Package extraction rerun");
   } catch (err: any) {
     await db.update(packageExtractionsTable)
       .set({ status: "parse_failed", errorMessage: err.message || "Storage fetch failed" })
@@ -290,7 +297,7 @@ router.delete("/package-extractions/:id", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   await db.delete(packageExtractionsTable).where(eq(packageExtractionsTable.id, id));
-  res.json({ ok: true });
+  sendValidated(req, res, DeletePackageExtractionResponse, { ok: true }, "Package extraction delete");
 });
 
 export default router;

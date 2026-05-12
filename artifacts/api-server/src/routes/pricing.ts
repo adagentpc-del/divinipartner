@@ -10,6 +10,7 @@ import {
   UpdatePricingRuleResponse,
   DeletePricingRuleParams,
 } from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 
 const router: IRouter = Router();
 
@@ -28,13 +29,7 @@ router.get("/pricing-rules", async (req, res): Promise<void> => {
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
   const rules = await db.select().from(pricingRulesTable).where(whereClause).orderBy(pricingRulesTable.category, pricingRulesTable.itemName);
-  const parsed = ListPricingRulesResponse.safeParse(rules);
-  if (!parsed.success) {
-    req.log.error({ err: parsed.error.flatten() }, "List pricing rules response failed schema validation");
-    res.status(500).json({ error: "List pricing rules response failed schema validation", details: parsed.error.issues });
-    return;
-  }
-  res.json(rules);
+  sendValidated(req, res, ListPricingRulesResponse, rules, "List pricing rules");
 });
 
 router.post("/pricing-rules", async (req, res): Promise<void> => {
@@ -72,13 +67,7 @@ router.patch("/pricing-rules/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  const parsedRes = UpdatePricingRuleResponse.safeParse(rule);
-  if (!parsedRes.success) {
-    req.log.error({ err: parsedRes.error.flatten(), pricingRuleId: params.data.id }, "Update pricing rule response failed schema validation");
-    res.status(500).json({ error: "Update pricing rule response failed schema validation", details: parsedRes.error.issues });
-    return;
-  }
-  res.json(rule);
+  sendValidated(req, res, UpdatePricingRuleResponse, rule, "Update pricing rule");
 });
 
 router.delete("/pricing-rules/:id", async (req, res): Promise<void> => {

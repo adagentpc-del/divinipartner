@@ -2,6 +2,8 @@ import { Router, type IRouter } from "express";
 import { eq, and, sql } from "drizzle-orm";
 import { db, venuesTable, citiesTable } from "@workspace/db";
 import { z } from "zod";
+import { ListVenuesResponse, UpdateVenueResponse, DeleteVenueResponse } from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 
 const VenueBody = z.object({
   partnerId: z.number().int().nullable().optional(),
@@ -53,7 +55,7 @@ router.get("/venues", async (req, res) => {
   }).from(venuesTable).leftJoin(citiesTable, eq(venuesTable.cityId, citiesTable.id))
     .where(conditions.length ? and(...conditions) : sql`true`)
     .orderBy(venuesTable.sortOrder, venuesTable.name);
-  res.json(rows);
+  sendValidated(req, res, ListVenuesResponse, rows, "List venues");
 });
 
 router.post("/venues", async (req, res): Promise<void> => {
@@ -80,14 +82,14 @@ router.patch("/venues/:id", async (req, res): Promise<void> => {
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const [row] = await db.update(venuesTable).set(parsed.data).where(eq(venuesTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
-  res.json(row);
+  sendValidated(req, res, UpdateVenueResponse, row, "Update venue");
 });
 
 router.delete("/venues/:id", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   await db.delete(venuesTable).where(eq(venuesTable.id, id));
-  res.json({ success: true });
+  sendValidated(req, res, DeleteVenueResponse, { success: true }, "Delete venue");
 });
 
 export default router;

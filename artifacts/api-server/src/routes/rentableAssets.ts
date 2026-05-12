@@ -3,6 +3,12 @@ import { db, inventoryTable, inventoryBlackoutsTable, inventoryReservationsTable
 import { and, eq, asc, desc, sql, isNull, or, lte, gte } from "drizzle-orm";
 import { z } from "zod/v4";
 import { getInventoryAvailabilityForRange, isEligibleForEvent, parseDateRange } from "../lib/rentalAvailability";
+import {
+  ListPartnerRentableAssetsResponse, UpdateRentalInventoryResponse,
+  ListInventoryBlackoutsResponse, UpdateInventoryBlackoutResponse, DeleteInventoryBlackoutResponse,
+  GetInventoryBookingsResponse, GetInventoryAvailabilityResponse,
+} from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 
 const router: Router = Router();
 
@@ -54,7 +60,7 @@ router.get("/partners/:partnerId/rentable-assets", async (req, res): Promise<voi
     return { ...r, availability: avail };
   }));
 
-  res.json({ rows: enriched, window: { startDate, endDate } });
+  sendValidated(req, res, ListPartnerRentableAssetsResponse, { rows: enriched, window: { startDate, endDate } }, "Rentable assets");
 });
 
 /**
@@ -82,7 +88,7 @@ router.patch("/inventory/:id/rental", async (req, res): Promise<void> => {
   if (patch.archivedAt) patch.archivedAt = new Date(patch.archivedAt);
   const [updated] = await db.update(inventoryTable).set(patch).where(eq(inventoryTable.id, id)).returning();
   if (!updated) { res.status(404).json({ error: "not found" }); return; }
-  res.json({ row: updated });
+  sendValidated(req, res, UpdateRentalInventoryResponse, { row: updated }, "Rental inventory update");
 });
 
 /**
@@ -101,7 +107,7 @@ router.get("/inventory/:id/blackouts", async (req, res): Promise<void> => {
   const rows = await db.select().from(inventoryBlackoutsTable)
     .where(and(...conditions))
     .orderBy(asc(inventoryBlackoutsTable.startDate));
-  res.json({ rows });
+  sendValidated(req, res, ListInventoryBlackoutsResponse, { rows }, "Inventory blackouts");
 });
 
 router.post("/inventory/:id/blackouts", async (req, res): Promise<void> => {
@@ -137,7 +143,7 @@ router.patch("/inventory/:id/blackouts/:blackoutId", async (req, res): Promise<v
     .where(and(eq(inventoryBlackoutsTable.id, blackoutId), eq(inventoryBlackoutsTable.inventoryId, id)))
     .returning();
   if (!row) { res.status(404).json({ error: "not found" }); return; }
-  res.json({ row });
+  sendValidated(req, res, UpdateInventoryBlackoutResponse, { row }, "Blackout update");
 });
 
 router.delete("/inventory/:id/blackouts/:blackoutId", async (req, res): Promise<void> => {
@@ -147,7 +153,7 @@ router.delete("/inventory/:id/blackouts/:blackoutId", async (req, res): Promise<
     .where(and(eq(inventoryBlackoutsTable.id, blackoutId), eq(inventoryBlackoutsTable.inventoryId, id)))
     .returning();
   if (!result.length) { res.status(404).json({ error: "not found" }); return; }
-  res.json({ ok: true });
+  sendValidated(req, res, DeleteInventoryBlackoutResponse, { ok: true }, "Blackout delete");
 });
 
 /**
@@ -190,7 +196,7 @@ router.get("/inventory/:id/bookings", async (req, res): Promise<void> => {
     .where(eq(inventoryBlackoutsTable.inventoryId, id))
     .orderBy(asc(inventoryBlackoutsTable.startDate));
 
-  res.json({ reservations, blackouts });
+  sendValidated(req, res, GetInventoryBookingsResponse, { reservations, blackouts }, "Inventory bookings");
 });
 
 /**
@@ -213,7 +219,7 @@ router.get("/inventory/:id/availability", async (req, res): Promise<void> => {
     cityId: inventoryTable.cityId,
   }).from(inventoryTable).where(eq(inventoryTable.id, id));
   const eligible = row ? isEligibleForEvent(row as any, eventId, eventCityId) : false;
-  res.json({ availability: avail, eligible });
+  sendValidated(req, res, GetInventoryAvailabilityResponse, { availability: avail, eligible }, "Inventory availability");
 });
 
 export default router;

@@ -2,6 +2,28 @@ import { Router, type IRouter } from "express";
 import { eq, and, sql, desc, inArray, type SQL } from "drizzle-orm";
 import { db, ordersTable, orderItemsTable, partnersTable, eventsTable, packagesTable, suppliersTable, venuesTable, productCatalogTable, partnerBrandingLocationsTable, citiesTable, inventoryTable, inventoryReservationsTable, supplierAssignmentHistoryTable, supplierStatusEventsTable, quoteAssetsTable, usageEvents, partnerContactsTable, withMmColumns, withWeightColumns } from "@workspace/db";
 import { z } from "zod";
+import {
+  ListOrdersResponse,
+  GetOrderResponse,
+  UpdateOrderResponse,
+  DeleteOrderResponse,
+  AssignOrderItemSupplierResponse,
+  BulkAssignOrderItemSupplierResponse,
+  UpdateOrderItemStatusResponse,
+  SetOrderItemExceptionResponse,
+  UpdateOrderItemDatesResponse,
+  GetOrderItemHistoryResponse,
+  GetOrderItemSupplierRecommendationsResponse,
+  GetFulfillmentCommandCenterResponse,
+  ListVendorOrdersResponse,
+  GetVendorOrderPacketResponse,
+  GetOrderIntakeAnalysisResponse,
+  GetOrderEmailEventsResponse,
+  SetOrderExceptionResponse,
+  SetOrderArtworkNeededResponse,
+  ListVendorItemsResponse,
+} from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 
 const FULFILLMENT_MODES = [
   "full",
@@ -418,7 +440,7 @@ router.get("/orders", async (req, res) => {
     const set = new Set<number>(ids.rows?.map((r: any) => r.order_id) || []);
     filtered = filtered.filter(r => set.has(r.id));
   }
-  res.json(filtered);
+  sendValidated(req, res, ListOrdersResponse, filtered, "ListOrders");
 });
 
 router.get("/orders/:id", async (req, res): Promise<void> => {
@@ -501,7 +523,7 @@ router.get("/orders/:id", async (req, res): Promise<void> => {
   const partnerContacts = order.partnerId ? await db.select().from(partnerContactsTable)
     .where(eq(partnerContactsTable.partnerId, order.partnerId)) : [];
 
-  res.json({ ...order, items, partner, event, venue, supplier, partnerContacts });
+  sendValidated(req, res, GetOrderResponse, { ...order, items, partner, event, venue, supplier, partnerContacts }, "GetOrder");
 });
 
 import { fire } from "../services/workflowEngine";
@@ -739,7 +761,7 @@ router.patch("/orders/:id", async (req, res): Promise<void> => {
         fire("order.in_production", { objectType: "order", objectId: id, orderId: id, partnerId: updated.partnerId ?? null, orderNumber: updated.orderNumber }).catch(() => {});
       }
     }
-    res.json(updated);
+    sendValidated(req, res, UpdateOrderResponse, updated, "UpdateOrder");
   } catch (e: any) {
     res.status(400).json({ error: e?.message ?? "Update failed" });
   }
@@ -753,7 +775,7 @@ router.delete("/orders/:id", async (req, res): Promise<void> => {
     for (const ex of existing) if (ex.inventoryReservationId) await releaseReservation(tx, ex.inventoryReservationId);
     await tx.delete(ordersTable).where(eq(ordersTable.id, id));
   });
-  res.json({ success: true });
+  sendValidated(req, res, DeleteOrderResponse, { success: true }, "DeleteOrder");
 });
 
 // ----- Per-item assignment / status / exception endpoints -----
@@ -787,7 +809,7 @@ router.post("/orders/:orderId/items/:itemId/assign-supplier", async (req, res): 
   });
   if (!updated) { res.status(404).json({ error: "Item not found" }); return; }
   fire("supplier.assigned", { objectType: "order_item", objectId: itemId, orderItemId: itemId, orderId: parseInt(req.params.orderId), supplierId, source }).catch(() => {});
-  res.json(updated);
+  sendValidated(req, res, AssignOrderItemSupplierResponse, updated, "AssignOrderItemSupplier");
 });
 
 router.post("/orders/:orderId/bulk-assign-supplier", async (req, res): Promise<void> => {
@@ -808,7 +830,7 @@ router.post("/orders/:orderId/bulk-assign-supplier", async (req, res): Promise<v
     }
     return items.length;
   });
-  res.json({ updated: updatedCount });
+  sendValidated(req, res, BulkAssignOrderItemSupplierResponse, { updated: updatedCount }, "BulkAssignOrderItemSupplier");
 });
 
 const StatusBody = z.object({
@@ -846,7 +868,7 @@ router.post("/orders/:orderId/items/:itemId/status", async (req, res): Promise<v
   }).catch(e => { if (e.code === 403) { res.status(403).json({ error: e.message }); return null; } throw e; });
   if (res.headersSent) return;
   if (!updated) { res.status(404).json({ error: "Item not found" }); return; }
-  res.json(updated);
+  sendValidated(req, res, UpdateOrderItemStatusResponse, updated, "UpdateOrderItemStatus");
 });
 
 const ExceptionBody = z.object({ flag: z.boolean(), reason: z.string().nullable().optional(), notes: z.string().nullable().optional(), changedByUserId: z.string().nullable().optional(), role: z.enum(["admin", "vendor", "system"]).optional() });
@@ -865,7 +887,7 @@ router.post("/orders/:orderId/items/:itemId/exception", async (req, res): Promis
     if (patch.supplierStatus) await tx.insert(supplierStatusEventsTable).values({ orderItemId: itemId, fromStatus: item.supplierStatus, toStatus: "issue_flagged", changedByUserId: changedByUserId ?? null, changedByRole: role, note: reason ?? null });
   });
   const [row] = await db.select().from(orderItemsTable).where(eq(orderItemsTable.id, itemId));
-  res.json(row);
+  sendValidated(req, res, SetOrderItemExceptionResponse, row, "SetOrderItemException");
 });
 
 const DatesBody = z.object({ supplierDueDate: z.string().nullable().optional(), supplierShipDate: z.string().nullable().optional(), supplierDeliveryDate: z.string().nullable().optional(), supplierInstallDate: z.string().nullable().optional(), supplierReference: z.string().nullable().optional(), supplierNotes: z.string().nullable().optional() });
@@ -884,7 +906,7 @@ router.post("/orders/:orderId/items/:itemId/dates", async (req, res): Promise<vo
   if ("supplierNotes" in d) patch.supplierNotes = d.supplierNotes ?? null;
   const [row] = await db.update(orderItemsTable).set(patch).where(eq(orderItemsTable.id, itemId)).returning();
   if (!row) { res.status(404).json({ error: "Item not found" }); return; }
-  res.json(row);
+  sendValidated(req, res, UpdateOrderItemDatesResponse, row, "UpdateOrderItemDates");
 });
 
 router.get("/orders/:orderId/items/:itemId/history", async (req, res) => {
@@ -900,7 +922,7 @@ router.get("/orders/:orderId/items/:itemId/history", async (req, res) => {
     }).from(supplierAssignmentHistoryTable).where(eq(supplierAssignmentHistoryTable.orderItemId, itemId)).orderBy(desc(supplierAssignmentHistoryTable.createdAt)),
     db.select().from(supplierStatusEventsTable).where(eq(supplierStatusEventsTable.orderItemId, itemId)).orderBy(desc(supplierStatusEventsTable.createdAt)),
   ]);
-  res.json({ assignments, statuses });
+  sendValidated(req, res, GetOrderItemHistoryResponse, { assignments, statuses }, "GetOrderItemHistory");
 });
 
 // ----- Recommended suppliers for an item -----
@@ -926,7 +948,7 @@ router.get("/orders/:orderId/items/:itemId/supplier-recommendations", async (req
   // Active suppliers as fallback options
   const others = await db.select().from(suppliersTable).where(eq(suppliersTable.isActive, true));
   for (const s of others) if (!seen.has(s.id)) recs.push({ supplierId: s.id, name: s.name, reason: "Active supplier" });
-  res.json(recs);
+  sendValidated(req, res, GetOrderItemSupplierRecommendationsResponse, recs, "GetOrderItemSupplierRecommendations");
 });
 
 // ----- Internal Fulfillment Command Center -----
@@ -1010,7 +1032,7 @@ router.get("/fulfillment/command-center", async (req, res) => {
     missingQuoteSpec: items.filter(i => !i.hasQuoteSpec).length,
     withShortage: items.filter(i => (i.shortageQuantity || 0) > 0).length,
   };
-  res.json({ items: filtered, stats });
+  sendValidated(req, res, GetFulfillmentCommandCenterResponse, { items: filtered, stats }, "GetFulfillmentCommandCenter");
 });
 
 // ----- Vendor (supplier-scoped) endpoints -----
@@ -1061,7 +1083,7 @@ router.get("/vendor/orders", async (req, res): Promise<void> => {
     if (it.exceptionFlag) o.issues++;
     if (it.supplierDueDate && new Date(it.supplierDueDate).getTime() - Date.now() < 7 * 86400000) o.dueSoon++;
   }
-  res.json(Array.from(orderMap.values()));
+  sendValidated(req, res, ListVendorOrdersResponse, Array.from(orderMap.values()), "ListVendorOrders");
 });
 
 router.get("/vendor/items", async (req, res): Promise<void> => {
@@ -1088,7 +1110,7 @@ router.get("/vendor/items", async (req, res): Promise<void> => {
     if (i.supplierStatus === "in_production") buckets.in_production++;
     if (i.exceptionFlag) buckets.issues++;
   }
-  res.json({ items: filtered, buckets });
+  sendValidated(req, res, ListVendorItemsResponse, { items: filtered, buckets }, "List vendor items");
 });
 
 router.get("/vendor/orders/:orderId/packet", async (req, res): Promise<void> => {
@@ -1123,7 +1145,7 @@ router.get("/vendor/orders/:orderId/packet", async (req, res): Promise<void> => 
   const products = productIds.length ? await db.select().from(productCatalogTable).where(inArray(productCatalogTable.id, productIds)) : [];
   const quoteAssets = productIds.length ? await db.select().from(quoteAssetsTable).where(and(eq(quoteAssetsTable.attachableType, "product"), inArray(quoteAssetsTable.attachableId, productIds), eq(quoteAssetsTable.vendorVisible, true))) : [];
   const supplier = (await db.select().from(suppliersTable).where(eq(suppliersTable.id, supplierId)))[0];
-  res.json({ order, supplier, items, products, quoteAssets });
+  sendValidated(req, res, GetVendorOrderPacketResponse, { order, supplier, items, products, quoteAssets }, "GetVendorOrderPacket");
 });
 
 // ---------------------------------------------------------------------------
@@ -1150,7 +1172,7 @@ router.get("/orders/:id/intake-analysis", async (req, res): Promise<void> => {
     if (!ctx) { res.status(404).json({ error: "Order not found" }); return; }
     const { buildA3IntakeAnalysis } = await import("../lib/internalIntakeEmail");
     const analysis = await buildA3IntakeAnalysis(ctx);
-    res.json({ analysis });
+    sendValidated(req, res, GetOrderIntakeAnalysisResponse, { analysis }, "GetOrderIntakeAnalysis");
   } catch (err: any) {
     res.status(500).json({ error: err?.message || "Failed to build intake analysis" });
   }
@@ -1172,7 +1194,7 @@ router.get("/orders/:id/email-events", async (req, res): Promise<void> => {
     ))
     .orderBy(desc(usageEvents.occurredAt))
     .limit(200);
-  res.json({ events: rows });
+  sendValidated(req, res, GetOrderEmailEventsResponse, { events: rows }, "GetOrderEmailEvents");
 });
 
 // ----- Section 29: order-level exception + artwork-needed workflow -----
@@ -1218,7 +1240,7 @@ router.post("/orders/:id/exception", async (req, res): Promise<void> => {
     exceptionUpdatedBy: auth.userId,
   }).where(eq(ordersTable.id, id)).returning();
   if (!updated) { res.status(404).json({ error: "Order not found" }); return; }
-  res.json({ ok: true, order: updated });
+  sendValidated(req, res, SetOrderExceptionResponse, { ok: true, order: updated }, "SetOrderException");
 });
 
 const ArtworkNeededPatch = z.object({
@@ -1256,7 +1278,7 @@ router.post("/orders/:id/artwork-needed", async (req, res): Promise<void> => {
   }
   const [updated] = await db.update(ordersTable).set(patch).where(eq(ordersTable.id, id)).returning();
   if (!updated) { res.status(404).json({ error: "Order not found" }); return; }
-  res.json({ ok: true, order: updated });
+  sendValidated(req, res, SetOrderArtworkNeededResponse, { ok: true, order: updated }, "SetOrderArtworkNeeded");
 });
 
 // Branded order summary PDF download/preview. Audience flag picks which

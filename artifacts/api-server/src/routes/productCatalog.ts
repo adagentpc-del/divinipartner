@@ -2,6 +2,8 @@ import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
 import { db, productCatalogTable, withMmColumns, withWeightColumns } from "@workspace/db";
 import { z } from "zod";
+import { ListProductsResponse, GetProductResponse, UpdateProductResponse } from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 
 const router: IRouter = Router();
 
@@ -78,9 +80,9 @@ const ProductBody = z.object({
 
 const UpdateProductBody = ProductBody.partial();
 
-router.get("/products", async (_req, res): Promise<void> => {
+router.get("/products", async (req, res): Promise<void> => {
   const products = await db.select().from(productCatalogTable).orderBy(productCatalogTable.category, productCatalogTable.name);
-  res.json(products);
+  sendValidated(req, res, ListProductsResponse, products, "Products list");
 });
 
 router.post("/products", async (req, res): Promise<void> => {
@@ -97,7 +99,7 @@ router.get("/products/:id", async (req, res): Promise<void> => {
 
   const [product] = await db.select().from(productCatalogTable).where(eq(productCatalogTable.id, id));
   if (!product) { res.status(404).json({ error: "Product not found" }); return; }
-  res.json(product);
+  sendValidated(req, res, GetProductResponse, product, "Product");
 });
 
 router.patch("/products/:id", async (req, res): Promise<void> => {
@@ -111,7 +113,7 @@ router.patch("/products/:id", async (req, res): Promise<void> => {
   if (!existing) { res.status(404).json({ error: "Product not found" }); return; }
   const [product] = await db.update(productCatalogTable).set(withWeightColumns(withMmColumns(parsed.data, { sizeUnit: existing.sizeUnit, artworkUnit: existing.artworkUnit, packedSizeUnit: existing.packedSizeUnit }), { shippingWeightUnit: existing.shippingWeightUnit })).where(eq(productCatalogTable.id, id)).returning();
   if (!product) { res.status(404).json({ error: "Product not found" }); return; }
-  res.json(product);
+  sendValidated(req, res, UpdateProductResponse, product, "Product update");
 });
 
 router.delete("/products/:id", async (req, res): Promise<void> => {

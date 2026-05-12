@@ -13,6 +13,12 @@ import {
   getPartnerFamilyAvailability,
   getFamilyContextForProduct,
 } from "../lib/familyAvailability";
+import {
+  ListProductFamiliesResponse, GetProductFamilyResponse, UpdateProductFamilyResponse, DeleteProductFamilyResponse,
+  UpdateProductFamilyMemberResponse, DeleteProductFamilyMemberResponse,
+  GetPartnerFamilyAvailabilityResponse, GetProductFamilyContextResponse, SeedEasyUpFamilyResponse,
+} from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 
 const router: IRouter = Router();
 
@@ -30,9 +36,9 @@ router.use([
 
 // ----- Family CRUD -----------------------------------------------------------
 
-router.get("/product-families", async (_req, res) => {
+router.get("/product-families", async (req, res) => {
   const families = await db.select().from(productFamiliesTable).orderBy(asc(productFamiliesTable.name));
-  if (families.length === 0) { res.json([]); return; }
+  if (families.length === 0) { sendValidated(req, res, ListProductFamiliesResponse, [], "Product families"); return; }
   // Eager-load members + product display info so the admin UI can render
   // everything in a single round trip.
   const ids = families.map(f => f.id);
@@ -57,7 +63,7 @@ router.get("/product-families", async (_req, res) => {
     arr.push(m);
     byFamily.set(m.familyId, arr);
   }
-  res.json(families.map(f => ({ ...f, members: byFamily.get(f.id) ?? [] })));
+  sendValidated(req, res, ListProductFamiliesResponse, families.map(f => ({ ...f, members: byFamily.get(f.id) ?? [] })), "Product families");
 });
 
 router.get("/product-families/:id", async (req, res): Promise<void> => {
@@ -68,7 +74,7 @@ router.get("/product-families/:id", async (req, res): Promise<void> => {
   const members = await db.select().from(productFamilyMembersTable)
     .where(eq(productFamilyMembersTable.familyId, id))
     .orderBy(asc(productFamilyMembersTable.sortOrder));
-  res.json({ ...family, members });
+  sendValidated(req, res, GetProductFamilyResponse, { ...family, members }, "Product family");
 });
 
 const FamilyBody = z.object({
@@ -115,14 +121,14 @@ router.patch("/product-families/:id", async (req, res): Promise<void> => {
   const [updated] = await db.update(productFamiliesTable).set(parsed.data)
     .where(eq(productFamiliesTable.id, id)).returning();
   if (!updated) { res.status(404).json({ error: "Family not found" }); return; }
-  res.json(updated);
+  sendValidated(req, res, UpdateProductFamilyResponse, updated, "Family update");
 });
 
 router.delete("/product-families/:id", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   await db.delete(productFamiliesTable).where(eq(productFamiliesTable.id, id));
-  res.json({ ok: true });
+  sendValidated(req, res, DeleteProductFamilyResponse, { ok: true }, "Family delete");
 });
 
 // ----- Family member management ---------------------------------------------
@@ -162,14 +168,14 @@ router.patch("/product-families/:id/members/:memberId", async (req, res): Promis
   const [m] = await db.update(productFamilyMembersTable).set(parsed.data)
     .where(eq(productFamilyMembersTable.id, memberId)).returning();
   if (!m) { res.status(404).json({ error: "Member not found" }); return; }
-  res.json(m);
+  sendValidated(req, res, UpdateProductFamilyMemberResponse, m, "Family member update");
 });
 
 router.delete("/product-families/:id/members/:memberId", async (req, res): Promise<void> => {
   const memberId = parseInt(req.params.memberId);
   if (isNaN(memberId)) { res.status(400).json({ error: "Invalid memberId" }); return; }
   await db.delete(productFamilyMembersTable).where(eq(productFamilyMembersTable.id, memberId));
-  res.json({ ok: true });
+  sendValidated(req, res, DeleteProductFamilyMemberResponse, { ok: true }, "Family member delete");
 });
 
 // ----- Availability views ---------------------------------------------------
@@ -179,14 +185,14 @@ router.get("/partners/:partnerId/family-availability", async (req, res): Promise
   if (isNaN(partnerId)) { res.status(400).json({ error: "Invalid partnerId" }); return; }
   const familyId = req.query.familyId ? parseInt(String(req.query.familyId)) : undefined;
   const data = await getPartnerFamilyAvailability(partnerId, familyId);
-  res.json(data);
+  sendValidated(req, res, GetPartnerFamilyAvailabilityResponse, data, "Partner family availability");
 });
 
 router.get("/products/:productId/family-context", async (req, res): Promise<void> => {
   const productId = parseInt(req.params.productId);
   if (isNaN(productId)) { res.status(400).json({ error: "Invalid productId" }); return; }
   const ctx = await getFamilyContextForProduct(productId);
-  if (!ctx) { res.json({ inFamily: false }); return; }
+  if (!ctx) { sendValidated(req, res, GetProductFamilyContextResponse, { inFamily: false }, "Product family context"); return; }
   // If the caller passed a partnerId, also return that partner's current
   // availability so the UI can render the right messaging in one round trip.
   const partnerId = req.query.partnerId ? parseInt(String(req.query.partnerId)) : NaN;
@@ -195,12 +201,12 @@ router.get("/products/:productId/family-context", async (req, res): Promise<void
     const all = await getPartnerFamilyAvailability(partnerId, ctx.family.id);
     availability = all[0] || null;
   }
-  res.json({
+  sendValidated(req, res, GetProductFamilyContextResponse, {
     inFamily: true,
     family: ctx.family,
     member: ctx.member,
     availability,
-  });
+  }, "Product family context");
 });
 
 // ----- One-shot seed: Easy Up tent family -----------------------------------
@@ -480,7 +486,7 @@ router.post("/dev/seed-easy-up-family", async (req, res): Promise<void> => {
     }
   }
 
-  res.json({
+  sendValidated(req, res, SeedEasyUpFamilyResponse, {
     exceptionDemosApplied,
     ok: true,
     familyId: family.id, slug: family.slug,
@@ -490,7 +496,7 @@ router.post("/dev/seed-easy-up-family", async (req, res): Promise<void> => {
     rentableInventoryIds,
     routingRecipientsCreated,
     sampleEmailEvents,
-  });
+  }, "Seed Easy-Up family");
 });
 
 export default router;

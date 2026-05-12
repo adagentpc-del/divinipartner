@@ -8,6 +8,7 @@ import {
   GetRequestsByStatusResponse,
   GetAssetsLibraryResponse,
 } from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 
 const router: IRouter = Router();
 
@@ -109,13 +110,7 @@ router.get("/dashboard/summary", async (req, res): Promise<void> => {
     totalShortageUnits: Number(fb.total_shortage_units) || 0,
     productsMissingQuote: Number(productsWithoutQuote.rows?.[0]?.missing) || 0,
   };
-  const parsed = GetDashboardSummaryResponse.safeParse(payload);
-  if (!parsed.success) {
-    req.log.error({ err: parsed.error.flatten() }, "Dashboard summary response failed schema validation");
-    res.status(500).json({ error: "Dashboard summary response failed schema validation", details: parsed.error.issues });
-    return;
-  }
-  res.json(payload);
+  sendValidated(req, res, GetDashboardSummaryResponse, payload, "Dashboard summary");
 });
 
 router.get("/dashboard/recent-requests", async (req, res): Promise<void> => {
@@ -141,13 +136,7 @@ router.get("/dashboard/recent-requests", async (req, res): Promise<void> => {
     .orderBy(desc(requestsTable.createdAt))
     .limit(limit);
 
-  const parsed = GetRecentRequestsResponse.safeParse(requests);
-  if (!parsed.success) {
-    req.log.error({ err: parsed.error.flatten() }, "Recent requests response failed schema validation");
-    res.status(500).json({ error: "Recent requests response failed schema validation", details: parsed.error.issues });
-    return;
-  }
-  res.json(requests);
+  sendValidated(req, res, GetRecentRequestsResponse, requests, "Recent requests");
 });
 
 router.get("/dashboard/requests-by-status", async (req, res): Promise<void> => {
@@ -159,13 +148,7 @@ router.get("/dashboard/requests-by-status", async (req, res): Promise<void> => {
     .from(requestsTable)
     .groupBy(requestsTable.status);
 
-  const parsed = GetRequestsByStatusResponse.safeParse(statusCounts);
-  if (!parsed.success) {
-    req.log.error({ err: parsed.error.flatten() }, "Requests-by-status response failed schema validation");
-    res.status(500).json({ error: "Requests-by-status response failed schema validation", details: parsed.error.issues });
-    return;
-  }
-  res.json(statusCounts);
+  sendValidated(req, res, GetRequestsByStatusResponse, statusCounts, "Requests by status");
 });
 
 router.get("/assets/library", async (req, res): Promise<void> => {
@@ -219,13 +202,7 @@ router.get("/assets/library", async (req, res): Promise<void> => {
     partnerAssets: partnerAssetGroups,
     requestUploads: Array.from(requestUploadMap.values()),
   };
-  const parsed = GetAssetsLibraryResponse.safeParse(payload);
-  if (!parsed.success) {
-    req.log.error({ err: parsed.error.flatten() }, "Assets library response failed schema validation");
-    res.status(500).json({ error: "Assets library response failed schema validation", details: parsed.error.issues });
-    return;
-  }
-  res.json(payload);
+  sendValidated(req, res, GetAssetsLibraryResponse, payload, "Assets library");
 });
 
 export default router;

@@ -6,6 +6,13 @@ import {
 } from "@workspace/db";
 import { z } from "zod";
 import { processDeckExtraction, findPriorParsedExtraction, fingerprintBuffer, PDF_LIMITS } from "../lib/deckExtraction";
+import {
+  ListDeckExtractionsResponse, GetDeckExtractionResponse,
+  UpdateDeckExtractionItemResponse, DeleteDeckExtractionItemResponse,
+  CheckDeckExtractionDuplicateResponse, RerunDeckExtractionResponse,
+  ApproveDeckExtractionItemsResponse,
+} from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 
 const router: IRouter = Router();
 
@@ -17,7 +24,7 @@ router.get("/partners/:partnerId/deck-extractions", async (req, res): Promise<vo
     .where(eq(deckExtractionsTable.partnerId, partnerId))
     .orderBy(desc(deckExtractionsTable.createdAt));
 
-  res.json(extractions);
+  sendValidated(req, res, ListDeckExtractionsResponse, extractions, "Deck extractions");
 });
 
 router.post("/partners/:partnerId/deck-extractions", async (req, res): Promise<void> => {
@@ -87,7 +94,7 @@ router.get("/deck-extractions/:id", async (req, res): Promise<void> => {
     .where(eq(deckExtractionItemsTable.extractionId, id))
     .orderBy(deckExtractionItemsTable.sourcePageNumber);
 
-  res.json({ ...extraction, items });
+  sendValidated(req, res, GetDeckExtractionResponse, { ...extraction, items }, "Deck extraction");
 });
 
 router.patch("/deck-extraction-items/:id", async (req, res): Promise<void> => {
@@ -115,7 +122,7 @@ router.patch("/deck-extraction-items/:id", async (req, res): Promise<void> => {
     .returning();
 
   if (!item) { res.status(404).json({ error: "Item not found" }); return; }
-  res.json(item);
+  sendValidated(req, res, UpdateDeckExtractionItemResponse, item, "Deck extraction item update");
 });
 
 router.delete("/deck-extraction-items/:id", async (req, res): Promise<void> => {
@@ -123,7 +130,7 @@ router.delete("/deck-extraction-items/:id", async (req, res): Promise<void> => {
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
   await db.delete(deckExtractionItemsTable).where(eq(deckExtractionItemsTable.id, id));
-  res.json({ ok: true });
+  sendValidated(req, res, DeleteDeckExtractionItemResponse, { ok: true }, "Deck extraction item delete");
 });
 
 router.post("/deck-extraction-items/:id/duplicate", async (req, res): Promise<void> => {
@@ -153,14 +160,14 @@ router.get("/partners/:partnerId/deck-extractions/check-duplicate", async (req, 
   const hash = String(req.query.hash || "");
   if (isNaN(partnerId) || !hash) { res.status(400).json({ error: "partnerId and hash required" }); return; }
   const prior = await findPriorParsedExtraction(partnerId, hash);
-  res.json({
+  sendValidated(req, res, CheckDeckExtractionDuplicateResponse, {
     duplicate: !!prior,
     extractionId: prior?.id || null,
     sourceFileName: prior?.sourceFileName || null,
     processedAt: prior?.processedAt || null,
     parseSource: prior?.parseSource || null,
     totalPages: prior?.totalPages || null,
-  });
+  }, "Deck extraction duplicate check");
 });
 
 // Explicit re-run: bypass dedup cache and re-extract. Required when admin
@@ -201,7 +208,7 @@ router.post("/deck-extractions/:id/rerun", async (req, res): Promise<void> => {
   await db.delete(deckExtractionItemsTable).where(eq(deckExtractionItemsTable.extractionId, id));
   processDeckExtraction(id, extraction.partnerId, fileBuffer, extraction.sourceFileName, { forceRerun: true })
     .catch(e => console.error("Background rerun failed:", e));
-  res.json({ ok: true, id, status: "processing" });
+  sendValidated(req, res, RerunDeckExtractionResponse, { ok: true, id, status: "processing" }, "Deck extraction rerun");
 });
 
 router.post("/deck-extraction-items/approve", async (req, res): Promise<void> => {
@@ -248,7 +255,7 @@ router.post("/deck-extraction-items/approve", async (req, res): Promise<void> =>
     created.push(loc.id);
   }
 
-  res.json({ approved: created.length, locationIds: created });
+  sendValidated(req, res, ApproveDeckExtractionItemsResponse, { approved: created.length, locationIds: created }, "Approve deck extraction items");
 });
 
 export default router;

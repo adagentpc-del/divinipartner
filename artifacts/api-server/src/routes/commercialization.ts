@@ -11,6 +11,23 @@ import {
   getEntitlements, recomputeUsage, getAccountWithDetail,
   listAccountsWithRollup, getDashboardSummary, wouldCreateCycle,
 } from "../services/commercialization";
+import {
+  ListCommercialPlansResponse,
+  UpdateCommercialPlanResponse,
+  SeedCommercialPlansResponse,
+  ListCommercialBrandingPackagesResponse,
+  UpdateCommercialBrandingPackageResponse,
+  ListCommercialAccountsResponse,
+  GetCommercialAccountResponse,
+  UpdateCommercialAccountResponse,
+  RecomputeCommercialAccountUsageResponse,
+  LinkCommercialAccountPartnersResponse,
+  GetCommercialAccountEntitlementsResponse,
+  GetCommercialPartnerEntitlementsResponse,
+  GetCommercialDashboardResponse,
+  GetCommercialFeatureKeysResponse,
+} from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 
 const PriceAmount = z.union([
   z.number(),
@@ -20,9 +37,9 @@ const PriceAmount = z.union([
 const router = Router();
 
 // ===== Plans =====
-router.get("/commercial/plans", async (_req, res) => {
+router.get("/commercial/plans", async (req, res) => {
   const rows = await db.select().from(commercialPlansTable).orderBy(commercialPlansTable.tier);
-  res.json(rows);
+  sendValidated(req, res, ListCommercialPlansResponse, rows, "List commercial plans");
 });
 
 const PlanBody = z.object({
@@ -55,10 +72,10 @@ router.patch("/commercial/plans/:id", async (req, res) => {
   const data: any = { ...parsed.data };
   if (data.priceAmount != null) data.priceAmount = String(data.priceAmount);
   const [row] = await db.update(commercialPlansTable).set(data).where(eq(commercialPlansTable.id, id)).returning();
-  res.json(row);
+  sendValidated(req, res, UpdateCommercialPlanResponse, row, "Update commercial plan");
 });
 
-router.post("/commercial/plans/seed-defaults", async (_req, res) => {
+router.post("/commercial/plans/seed-defaults", async (req, res) => {
   const created: any[] = [];
   for (const [code, preset] of Object.entries(DEFAULT_PLAN_PRESETS)) {
     const existing = await db.select().from(commercialPlansTable).where(eq(commercialPlansTable.code, code));
@@ -71,13 +88,13 @@ router.post("/commercial/plans/seed-defaults", async (_req, res) => {
     }).returning();
     created.push(row);
   }
-  res.json({ created });
+  sendValidated(req, res, SeedCommercialPlansResponse, { created }, "Seed commercial plans");
 });
 
 // ===== Branding packages =====
-router.get("/commercial/branding-packages", async (_req, res) => {
+router.get("/commercial/branding-packages", async (req, res) => {
   const rows = await db.select().from(brandingPackagesTable).orderBy(brandingPackagesTable.level);
-  res.json(rows);
+  sendValidated(req, res, ListCommercialBrandingPackagesResponse, rows, "List branding packages");
 });
 
 const BrandingBody = z.object({
@@ -104,12 +121,12 @@ router.patch("/commercial/branding-packages/:id", async (req, res) => {
   const parsed = BrandingBody.partial().safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const [row] = await db.update(brandingPackagesTable).set(parsed.data).where(eq(brandingPackagesTable.id, id)).returning();
-  res.json(row);
+  sendValidated(req, res, UpdateCommercialBrandingPackageResponse, row, "Update branding package");
 });
 
 // ===== Accounts =====
-router.get("/commercial/accounts", async (_req, res) => {
-  res.json(await listAccountsWithRollup());
+router.get("/commercial/accounts", async (req, res) => {
+  sendValidated(req, res, ListCommercialAccountsResponse, await listAccountsWithRollup(), "List commercial accounts");
 });
 
 router.get("/commercial/accounts/:id", async (req, res) => {
@@ -117,7 +134,7 @@ router.get("/commercial/accounts/:id", async (req, res) => {
   if (isNaN(id)) { res.status(400).json({ error: "bad id" }); return; }
   const detail = await getAccountWithDetail(id);
   if (!detail) { res.status(404).json({ error: "not found" }); return; }
-  res.json(detail);
+  sendValidated(req, res, GetCommercialAccountResponse, detail, "Get commercial account");
 });
 
 const AccountBody = z.object({
@@ -174,7 +191,7 @@ router.patch("/commercial/accounts/:id", async (req, res) => {
   }
   const [row] = await db.update(commercialAccountsTable).set(coerceDates({ ...parsed.data })).where(eq(commercialAccountsTable.id, id)).returning();
   await recomputeUsage(id).catch(() => {});
-  res.json(row);
+  sendValidated(req, res, UpdateCommercialAccountResponse, row, "Update commercial account");
 });
 
 router.delete("/commercial/accounts/:id", async (req, res) => {
@@ -187,7 +204,7 @@ router.delete("/commercial/accounts/:id", async (req, res) => {
 router.post("/commercial/accounts/:id/recompute-usage", async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "bad id" }); return; }
-  res.json(await recomputeUsage(id));
+  sendValidated(req, res, RecomputeCommercialAccountUsageResponse, await recomputeUsage(id), "Recompute commercial account usage");
 });
 
 router.post("/commercial/accounts/:id/link-partners", async (req, res) => {
@@ -199,14 +216,14 @@ router.post("/commercial/accounts/:id/link-partners", async (req, res) => {
     await db.update(partnersTable).set({ commercialAccountId: id }).where(eq(partnersTable.id, pid));
   }
   await recomputeUsage(id).catch(() => {});
-  res.json({ ok: true, linked: parsed.data.partnerIds.length });
+  sendValidated(req, res, LinkCommercialAccountPartnersResponse, { ok: true, linked: parsed.data.partnerIds.length }, "Link commercial account partners");
 });
 
 // ===== Entitlements =====
 router.get("/commercial/entitlements/account/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "bad id" }); return; }
-  res.json({ entitlements: await getEntitlements(id), featureKeys: FEATURE_KEYS });
+  sendValidated(req, res, GetCommercialAccountEntitlementsResponse, { entitlements: await getEntitlements(id), featureKeys: FEATURE_KEYS }, "Get commercial account entitlements");
 });
 
 router.get("/commercial/entitlements/partner/:id", async (req, res) => {
@@ -214,17 +231,20 @@ router.get("/commercial/entitlements/partner/:id", async (req, res) => {
   if (isNaN(pid)) { res.status(400).json({ error: "bad id" }); return; }
   const [p] = await db.select().from(partnersTable).where(eq(partnersTable.id, pid));
   if (!p) { res.status(404).json({ error: "not found" }); return; }
-  if (!p.commercialAccountId) { res.json({ entitlements: Object.fromEntries(FEATURE_KEYS.map(k => [k, true])), reason: "no_account_full_access" }); return; }
-  res.json({ entitlements: await getEntitlements(p.commercialAccountId), accountId: p.commercialAccountId });
+  if (!p.commercialAccountId) {
+    sendValidated(req, res, GetCommercialPartnerEntitlementsResponse, { entitlements: Object.fromEntries(FEATURE_KEYS.map(k => [k, true])), reason: "no_account_full_access" }, "Get commercial partner entitlements");
+    return;
+  }
+  sendValidated(req, res, GetCommercialPartnerEntitlementsResponse, { entitlements: await getEntitlements(p.commercialAccountId), accountId: p.commercialAccountId }, "Get commercial partner entitlements");
 });
 
 // ===== Dashboard =====
-router.get("/commercial/dashboard", async (_req, res) => {
-  res.json(await getDashboardSummary());
+router.get("/commercial/dashboard", async (req, res) => {
+  sendValidated(req, res, GetCommercialDashboardResponse, await getDashboardSummary(), "Get commercial dashboard");
 });
 
-router.get("/commercial/feature-keys", (_req, res) => {
-  res.json({ features: FEATURE_KEYS, limits: LIMIT_KEYS });
+router.get("/commercial/feature-keys", (req, res) => {
+  sendValidated(req, res, GetCommercialFeatureKeysResponse, { features: FEATURE_KEYS, limits: LIMIT_KEYS }, "Get commercial feature keys");
 });
 
 export default router;
