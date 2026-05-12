@@ -20,77 +20,22 @@ import type { WeightUnit } from "@/lib/units";
 import { ArtworkSpecInput } from "@/components/units/ArtworkSpecInput";
 import { PricingModelInput } from "@/components/units/PricingModelInput";
 import { convert, type LengthUnit, type PricingModel, type PricingUnit } from "@/lib/units";
+import type { ProductCatalog } from "@workspace/db/schema";
 
 function toMm(v: number, unit: string): number { return convert(v, unit, "mm"); }
 
-interface Product {
-  id: number;
-  name: string;
-  displayName: string | null;
-  slug: string;
-  sku: string | null;
-  category: string;
-  description: string | null;
-  imageUrl: string | null;
-  galleryImagesJson: string[] | null;
-  visibleDimensions: string | null;
-  sizeWidth: number | null;
-  sizeHeight: number | null;
-  sizeDepth: number | null;
-  sizeDiameter: number | null;
-  sizeUnit: string | null;
-  artworkUnit: string | null;
-  artworkWidth: number | null;
-  artworkHeight: number | null;
-  bleed: number | null;
-  safeArea: number | null;
-  visibleWidth: number | null;
-  visibleHeight: number | null;
-  backendProductionNotes: string | null;
-  installNotes: string | null;
-  internalOpsSummary: string | null;
-  featureBadgesJson: string[] | null;
-  hardwareIncluded: boolean;
-  printOnlyAvailable: boolean;
-  rentalEligible: boolean;
-  usePartnerInventoryEligible: boolean;
-  reusableHardwareCompatible: boolean;
-  inventoryTracked: boolean;
-  requiresAttachmentSelection: boolean;
-  requiresMaterialSelection: boolean;
-  attachmentMethod: string | null;
-  material: string | null;
-  finishing: string | null;
-  supplierId: number | null;
-  leadTimeDays: number | null;
-  isOrderable: boolean;
-  allowsDesignRequest: boolean;
-  sizeOptionsJson: string[] | null;
-  isActive: boolean;
-  customerFacingSummary: string | null;
-  reviewStatus: string;
-  missingDataFlagsJson: string[] | null;
-  pricingModel: string | null;
+// Source the editor's Product type from the shared Drizzle schema so renamed
+// or removed columns surface as type errors instead of silently breaking the
+// editor (see the historic sizeWidthMm/sizeHeightMm typo). Numeric DB columns
+// are exposed as `string | null` by Drizzle, but the form inputs round-trip
+// them as numbers, so we widen those two fields to accept either.
+type Product = Omit<ProductCatalog, "unitRate" | "minCharge" | "pricingModel"> & {
   unitRate: number | string | null;
-  pricingUnit: string | null;
-  minBillableSize: number | null;
   minCharge: number | string | null;
-  allowsCustomSize: boolean;
-  // Shipping & packing defaults (April 2026 logistics extension).
-  packedWidth: number | null;
-  packedHeight: number | null;
-  packedDepth: number | null;
-  packedSizeUnit: string | null;
-  shippingWeight: number | null;
-  shippingWeightUnit: string | null;
-  cartonCount: number | null;
-  packingMode: string | null;
-  crateRequired: boolean;
-  palletRequired: boolean;
-  oversizeFlag: boolean;
-  freightClass: string | null;
-  installKitNotes: string | null;
-}
+  // Schema marks pricingModel non-null with a default, but the form
+  // round-trips it through a nullable picker.
+  pricingModel: string | null;
+};
 
 interface SpecStandard {
   id: number;
