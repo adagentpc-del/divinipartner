@@ -22,6 +22,7 @@ import {
   type PricingUnit,
 } from "@workspace/db";
 import { fire } from "../services/workflowEngine";
+import { GetSupplierPacketResponse } from "@workspace/api-zod";
 
 const router: IRouter = Router();
 
@@ -306,7 +307,7 @@ router.get("/orders/:orderId/supplier-packet/:supplierId", async (req, res) => {
   const orderLevelAssets = (await db.select().from(assetsTable).where(and(eq(assetsTable.orderId, orderId), eq(assetsTable.isCurrent, true))))
     .filter(a => a.visibility === "vendor_visible" && a.approvalStatus === "approved");
 
-  res.json({
+  const payload = {
     order: {
       id: order.id, orderNumber: order.orderNumber, status: order.status,
       internalNotes: order.internalNotes, vendorNotes: order.vendorNotes,
@@ -335,7 +336,13 @@ router.get("/orders/:orderId/supplier-packet/:supplierId", async (req, res) => {
       ready: packetItems.filter(i => i.ready).length,
       blocked: packetItems.filter(i => !i.ready).length,
     },
-  });
+  };
+  const parsed = GetSupplierPacketResponse.safeParse(payload);
+  if (!parsed.success) {
+    req.log.error({ err: parsed.error.flatten(), orderId, supplierId }, "Supplier packet response failed schema validation");
+    return res.status(500).json({ error: "Supplier packet response failed schema validation", details: parsed.error.issues });
+  }
+  res.json(parsed.data);
 });
 
 export { router as productionRouter };
