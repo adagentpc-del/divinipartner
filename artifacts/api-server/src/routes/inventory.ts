@@ -10,6 +10,16 @@ import {
   eventsTable,
 } from "@workspace/db";
 import { z } from "zod";
+import { sendValidated } from "../lib/validateResponse.js";
+import {
+  ListInventoryResponse,
+  GetInventoryShortagesResponse,
+  UpdateInventoryResponse,
+  DeleteInventoryResponse,
+  ListInventoryReservationsResponse,
+  UpdateInventoryReservationResponse,
+  DeleteInventoryReservationResponse,
+} from "@workspace/api-zod";
 
 const InventoryBody = z.object({
   partnerId: z.number().int().nullable().optional(),
@@ -100,10 +110,10 @@ router.get("/inventory", async (req, res) => {
     .leftJoin(partnersTable, eq(inventoryTable.partnerId, partnersTable.id))
     .where(conditions.length ? and(...conditions) : sql`true`)
     .orderBy(citiesTable.name, inventoryTable.name, productCatalogTable.name);
-  res.json(rows.map(shapeInventoryRow));
+  sendValidated(req, res, ListInventoryResponse, rows.map(shapeInventoryRow), "listInventory");
 });
 
-router.get("/inventory/shortages", async (_req, res) => {
+router.get("/inventory/shortages", async (req, res) => {
   const rows = await db.select({
     id: inventoryTable.id,
     partnerId: inventoryTable.partnerId,
@@ -134,7 +144,7 @@ router.get("/inventory/shortages", async (_req, res) => {
     .leftJoin(productCatalogTable, eq(inventoryTable.productId, productCatalogTable.id))
     .leftJoin(partnersTable, eq(inventoryTable.partnerId, partnersTable.id));
   const shaped = rows.map(shapeInventoryRow).filter((r: any) => r.isLow || r.overcommitted);
-  res.json(shaped);
+  sendValidated(req, res, GetInventoryShortagesResponse, shaped, "getInventoryShortages");
 });
 
 router.post("/inventory", async (req, res): Promise<void> => {
@@ -161,7 +171,7 @@ router.patch("/inventory/:id", async (req, res): Promise<void> => {
   if (data.reorderThreshold != null && data.lowInventoryThreshold == null) data.lowInventoryThreshold = data.reorderThreshold;
   const [row] = await db.update(inventoryTable).set(data).where(eq(inventoryTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
-  res.json(row);
+  sendValidated(req, res, UpdateInventoryResponse, row, "updateInventory");
 });
 
 router.delete("/inventory/:id", async (req, res): Promise<void> => {
@@ -169,7 +179,7 @@ router.delete("/inventory/:id", async (req, res): Promise<void> => {
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const result = await db.delete(inventoryTable).where(eq(inventoryTable.id, id)).returning({ id: inventoryTable.id });
   if (result.length === 0) { res.status(404).json({ error: "Not found" }); return; }
-  res.json({ success: true });
+  sendValidated(req, res, DeleteInventoryResponse, { success: true }, "deleteInventory");
 });
 
 // ---- Reservations ----
@@ -200,7 +210,7 @@ router.get("/inventory/reservations", async (req, res) => {
     .leftJoin(citiesTable, eq(inventoryTable.cityId, citiesTable.id))
     .where(conditions.length ? and(...conditions) : sql`true`)
     .orderBy(desc(inventoryReservationsTable.createdAt));
-  res.json(rows);
+  sendValidated(req, res, ListInventoryReservationsResponse, rows, "listInventoryReservations");
 });
 
 router.post("/inventory/reservations", async (req, res): Promise<void> => {
@@ -273,7 +283,7 @@ router.patch("/inventory/reservations/:id", async (req, res): Promise<void> => {
       return { reservation: updated };
     });
     if ("error" in result) { res.status(404).json({ error: result.error }); return; }
-    res.json(result.reservation);
+    sendValidated(req, res, UpdateInventoryReservationResponse, result.reservation, "updateInventoryReservation");
   } catch (e: any) {
     res.status(400).json({ error: e?.message ?? "Update failed" });
   }
@@ -302,7 +312,7 @@ router.delete("/inventory/reservations/:id", async (req, res): Promise<void> => 
     return true;
   });
   if (!found) { res.status(404).json({ error: "Not found" }); return; }
-  res.json({ success: true });
+  sendValidated(req, res, DeleteInventoryReservationResponse, { success: true }, "deleteInventoryReservation");
 });
 
 export default router;

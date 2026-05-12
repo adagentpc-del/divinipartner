@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { GetSecurityReadinessResponse } from "@workspace/api-zod";
 import { requireAdmin } from "../middlewares/requireAdmin";
 import {
   getSecretReports,
@@ -6,10 +7,11 @@ import {
   isAdminAllowlistEnforced,
   getAdminAllowedEmails,
 } from "../lib/securityConfig";
+import { sendValidated } from "../lib/validateResponse";
 
 const router: IRouter = Router();
 
-router.get("/security/readiness", requireAdmin(), (_req, res) => {
+router.get("/security/readiness", requireAdmin(), (req, res) => {
   const secrets = getSecretReports();
   const missingRequired = secrets.filter((s) => s.requirement === "required" && s.status === "missing").map((s) => s.key);
   const recommended = secrets.filter((s) => s.requirement === "recommended" && s.status === "missing").map((s) => s.key);
@@ -19,7 +21,7 @@ router.get("/security/readiness", requireAdmin(), (_req, res) => {
   const adminAllowlistOn = isAdminAllowlistEnforced();
   const adminAllowlistCount = getAdminAllowedEmails().length;
 
-  res.json({
+  const payload = {
     generatedAt: new Date().toISOString(),
     environment: process.env.NODE_ENV || "development",
 
@@ -78,7 +80,8 @@ router.get("/security/readiness", requireAdmin(), (_req, res) => {
       productionSanitization: process.env.NODE_ENV === "production",
       detail: "Stack traces and Error.message are stripped in production responses; full details remain in structured logs (cookies + Authorization redacted).",
     },
-  });
+  };
+  sendValidated(req, res, GetSecurityReadinessResponse, payload, "Get security readiness");
 });
 
 export default router;

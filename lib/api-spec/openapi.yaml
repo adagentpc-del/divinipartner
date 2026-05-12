@@ -25,6 +25,10 @@ tags:
     description: Object storage upload and serving endpoints.
   - name: production
     description: Production handoff and supplier packets.
+  - name: admin
+    description: Internal admin endpoints (response-shape guards only).
+  - name: units
+    description: Measurement-unit metadata and resolution.
 
 paths:
   /healthz:
@@ -971,8 +975,791 @@ paths:
                     type: array
                     items: { $ref: "#/components/schemas/PublicSurveyAsset" }
 
+  # ── Permissive admin endpoints (response-shape guards only) ───────────
+  # The handlers in this section already validate inputs strictly. The
+  # response schemas here exist so that the generated *Response zod schemas
+  # let us safeParse the outgoing payload and surface a logged 500 if a
+  # handler accidentally returns the wrong shape (string/null/array vs the
+  # expected envelope). Schemas are intentionally permissive
+  # (additionalProperties: true, no required fields) so they only catch
+  # outright shape regressions, not field-level drift.
+
+  /public-config:
+    get:
+      operationId: getPublicConfig
+      tags: [public]
+      responses:
+        "200": { description: Public config, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /units/meta:
+    get:
+      operationId: getUnitsMeta
+      tags: [units]
+      responses:
+        "200": { description: Units metadata, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /units/resolve:
+    get:
+      operationId: getUnitsResolve
+      tags: [units]
+      responses:
+        "200": { description: Resolved unit preference, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /security/readiness:
+    get:
+      operationId: getSecurityReadiness
+      tags: [admin]
+      responses:
+        "200": { description: Security readiness report, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /deployment/readiness:
+    get:
+      operationId: getDeploymentReadiness
+      tags: [admin]
+      responses:
+        "200": { description: Deployment readiness report, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /cities:
+    get:
+      operationId: listCities
+      tags: [admin]
+      responses:
+        "200": { description: List of cities, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericArray" } } } }
+    post:
+      operationId: createCity
+      tags: [admin]
+      responses:
+        "201": { description: Created city, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /cities/{id}:
+    patch:
+      operationId: updateCity
+      tags: [admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Updated city, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+    delete:
+      operationId: deleteCity
+      tags: [admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Delete acknowledgement, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /suppliers:
+    get:
+      operationId: listSuppliers
+      tags: [admin]
+      responses:
+        "200": { description: List of suppliers, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericArray" } } } }
+    post:
+      operationId: createSupplier
+      tags: [admin]
+      responses:
+        "201": { description: Created supplier, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /suppliers/{id}:
+    get:
+      operationId: getSupplier
+      tags: [admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Supplier, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+    patch:
+      operationId: updateSupplier
+      tags: [admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Updated supplier, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+    delete:
+      operationId: deleteSupplier
+      tags: [admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Delete acknowledgement, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /user-roles:
+    get:
+      operationId: listUserRoles
+      tags: [admin]
+      responses:
+        "200": { description: List of user roles, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericArray" } } } }
+    post:
+      operationId: createUserRole
+      tags: [admin]
+      responses:
+        "201": { description: Created role, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /user-roles/{id}:
+    patch:
+      operationId: updateUserRole
+      tags: [admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Updated role, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+    delete:
+      operationId: deleteUserRole
+      tags: [admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Delete acknowledgement, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /saved-addresses:
+    get:
+      operationId: listSavedAddresses
+      tags: [admin]
+      responses:
+        "200": { description: Addresses, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericArray" } } } }
+    post:
+      operationId: createSavedAddress
+      tags: [admin]
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /saved-addresses/{id}:
+    patch:
+      operationId: updateSavedAddress
+      tags: [admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+    delete:
+      operationId: deleteSavedAddress
+      tags: [admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Delete acknowledgement, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /saved-contacts:
+    get:
+      operationId: listSavedContacts
+      tags: [admin]
+      responses:
+        "200": { description: Contacts, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericArray" } } } }
+    post:
+      operationId: createSavedContact
+      tags: [admin]
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /saved-contacts/{id}:
+    patch:
+      operationId: updateSavedContact
+      tags: [admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+    delete:
+      operationId: deleteSavedContact
+      tags: [admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Delete acknowledgement, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /partners/{id}/theme:
+    get:
+      operationId: getPartnerTheme
+      tags: [admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Theme or null, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObjectOrNull" } } } }
+    put:
+      operationId: upsertPartnerTheme
+      tags: [admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Updated theme, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+        "201": { description: Created theme, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /partners/{id}/inventory-summary:
+    get:
+      operationId: getPartnerInventorySummary
+      tags: [admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Partner inventory summary, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /partners/{id}/sections:
+    get:
+      operationId: listPartnerSections
+      tags: [admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Sections, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericArray" } } } }
+    post:
+      operationId: createPartnerSection
+      tags: [admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "201": { description: Created section, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /partners/{id}/sections/{sectionId}:
+    patch:
+      operationId: updatePartnerSection
+      tags: [admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+        - { name: sectionId, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Updated section, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /partners/{id}/sections/bulk:
+    put:
+      operationId: bulkReplacePartnerSections
+      tags: [admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Replaced sections, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericArray" } } } }
+
+  /partners/{id}/branding-locations:
+    get:
+      operationId: listBrandingLocations
+      tags: [admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Locations, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericArray" } } } }
+    post:
+      operationId: createBrandingLocation
+      tags: [admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "201": { description: Created location, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /partners/{id}/branding-locations/bulk:
+    post:
+      operationId: bulkCreateBrandingLocations
+      tags: [admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "201": { description: Created locations, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericArray" } } } }
+
+  /partners/{id}/branding-locations/{locationId}:
+    patch:
+      operationId: updateBrandingLocation
+      tags: [admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+        - { name: locationId, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Updated location, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /partners/{id}/branding-locations/bulk-update:
+    post:
+      operationId: bulkUpdateBrandingLocations
+      tags: [admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Updated locations, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericArray" } } } }
+
+  /partners/{id}/email-recipients:
+    get:
+      operationId: listEmailRecipients
+      tags: [admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Recipients, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericArray" } } } }
+    post:
+      operationId: createEmailRecipient
+      tags: [admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "201": { description: Created recipient, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /partners/{id}/email-recipients/{rid}:
+    put:
+      operationId: updateEmailRecipient
+      tags: [admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+        - { name: rid, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Updated recipient, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+    delete:
+      operationId: deleteEmailRecipient
+      tags: [admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+        - { name: rid, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Delete acknowledgement, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /partners/{id}/test-role-email:
+    post:
+      operationId: testRoleEmail
+      tags: [admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Email send result, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+        "500": { description: Email send result (failure), content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /onboarding/progress:
+    get:
+      operationId: getOnboardingProgress
+      tags: [public]
+      responses:
+        "200": { description: Onboarding progress rows, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericArray" } } } }
+    post:
+      operationId: upsertOnboardingProgress
+      tags: [public]
+      responses:
+        "200": { description: Upserted progress row, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /onboarding/dismiss:
+    post:
+      operationId: dismissOnboarding
+      tags: [public]
+      responses:
+        "200": { description: Dismiss acknowledgement, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /launch/platform:
+    get:
+      operationId: getLaunchPlatform
+      tags: [admin]
+      responses:
+        "200": { description: Platform launch readiness, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /launch/partner/{id}:
+    get:
+      operationId: getLaunchPartner
+      tags: [admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Partner launch readiness, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /launch/partner/{id}/activate:
+    post:
+      operationId: activateLaunch
+      tags: [admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: New launch status, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /public/partnership-requests:
+    post:
+      operationId: submitPartnershipRequest
+      tags: [public]
+      responses:
+        "201": { description: Submitted, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /events:
+    get:
+      operationId: listEvents
+      tags: [admin]
+      responses:
+        "200": { description: Events, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericArray" } } } }
+  /events/{id}:
+    get:
+      operationId: getEvent
+      tags: [admin]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Event, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+    patch:
+      operationId: updateEvent
+      tags: [admin]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+    delete:
+      operationId: deleteEvent
+      tags: [admin]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Deleted, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /partners/{id}/addons:
+    get:
+      operationId: listPartnerAddons
+      tags: [admin]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Addons, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericArray" } } } }
+    put:
+      operationId: replacePartnerAddons
+      tags: [admin]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Replaced, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericArray" } } } }
+  /events/{id}/addons/effective:
+    get:
+      operationId: getEventEffectiveAddons
+      tags: [admin]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Effective addons, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+  /public/partners/{slug}/events/{eventId}/addons:
+    get:
+      operationId: getPublicEventAddons
+      tags: [public]
+      parameters:
+        - { name: slug, in: path, required: true, schema: { type: string } }
+        - { name: eventId, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Public addons, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /analytics/kpis:
+    get: { operationId: getAnalyticsKpis, tags: [admin], responses: { "200": { description: KPIs, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } } } }
+  /analytics/profitability:
+    get: { operationId: getAnalyticsProfitability, tags: [admin], responses: { "200": { description: Profitability, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericArray" } } } } } }
+  /analytics/suppliers:
+    get: { operationId: getAnalyticsSuppliers, tags: [admin], responses: { "200": { description: Supplier perf, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericArray" } } } } } }
+  /analytics/packages:
+    get: { operationId: getAnalyticsPackages, tags: [admin], responses: { "200": { description: Packages, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericArray" } } } } } }
+  /analytics/zones:
+    get: { operationId: getAnalyticsZones, tags: [admin], responses: { "200": { description: Zones, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericArray" } } } } } }
+  /analytics/products:
+    get: { operationId: getAnalyticsProducts, tags: [admin], responses: { "200": { description: Products, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericArray" } } } } } }
+  /analytics/forecast:
+    get: { operationId: getAnalyticsForecast, tags: [admin], responses: { "200": { description: Forecast, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } } } }
+  /analytics/risk:
+    get: { operationId: getAnalyticsRisk, tags: [admin], responses: { "200": { description: Risk, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } } } }
+  /analytics/trends:
+    get: { operationId: getAnalyticsTrends, tags: [admin], responses: { "200": { description: Trends, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericArray" } } } } } }
+
+  /imports/fields/{resource}:
+    get:
+      operationId: getImportFields
+      tags: [admin]
+      parameters: [{ name: resource, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Fields, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+  /imports/parse:
+    post:
+      operationId: parseImport
+      tags: [admin]
+      responses:
+        "200": { description: Parse result, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+  /imports/commit:
+    post:
+      operationId: commitImport
+      tags: [admin]
+      responses:
+        "200": { description: Commit result, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /billing/orders/{id}/resolve:
+    get:
+      operationId: resolveBilling
+      tags: [admin]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Resolved, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+  /billing/orders/{id}/override:
+    post:
+      operationId: overrideBilling
+      tags: [admin]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Updated order, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+  /billing/summary:
+    get:
+      operationId: getBillingSummary
+      tags: [admin]
+      responses:
+        "200": { description: Summary, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+  /billing/orders:
+    get:
+      operationId: listBillingOrders
+      tags: [admin]
+      responses:
+        "200": { description: Billing orders, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericArray" } } } }
+  /billing/bulk:
+    post:
+      operationId: billingBulk
+      tags: [admin]
+      responses:
+        "200": { description: Bulk result, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /admin/live-readiness:
+    get:
+      operationId: getLiveReadiness
+      tags: [admin]
+      responses:
+        "200": { description: Readiness probe, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /packages:
+    get: { operationId: listPackages, tags: [admin], responses: { "200": { description: Packages, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericArray" } } } } } }
+  /packages/{id}:
+    get:
+      operationId: getPackage
+      tags: [admin]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Package, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+    patch:
+      operationId: updatePackage
+      tags: [admin]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+    delete:
+      operationId: deletePackage
+      tags: [admin]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Deleted, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+  /packages/reorder:
+    post: { operationId: reorderPackages, tags: [admin], responses: { "200": { description: Reordered, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } } } }
+  /package-items/{itemId}:
+    patch:
+      operationId: updatePackageItem
+      tags: [admin]
+      parameters: [{ name: itemId, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+    delete:
+      operationId: deletePackageItem
+      tags: [admin]
+      parameters: [{ name: itemId, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Deleted, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /partners/{partnerId}/contacts:
+    get:
+      operationId: listPartnerContacts
+      tags: [admin]
+      parameters: [{ name: partnerId, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Contacts, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericArray" } } } }
+  /partner-contacts/{id}:
+    patch:
+      operationId: updatePartnerContact
+      tags: [admin]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+    delete:
+      operationId: deletePartnerContact
+      tags: [admin]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Deleted, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+  /partner-contacts/{id}/make-primary:
+    post:
+      operationId: makePrimaryPartnerContact
+      tags: [admin]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Primary, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /onboarding/submissions:
+    get: { operationId: listOnboardingSubmissions, tags: [admin], responses: { "200": { description: Submissions, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericArray" } } } } } }
+  /onboarding/submissions/{id}:
+    get:
+      operationId: getOnboardingSubmission
+      tags: [admin]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Submission, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+    patch:
+      operationId: updateOnboardingSubmission
+      tags: [admin]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /admin/alerts:
+    get: { operationId: listAdminAlerts, tags: [admin], responses: { "200": { description: Alerts, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } } } }
+  /admin/alerts/summary:
+    get: { operationId: getAdminAlertsSummary, tags: [admin], responses: { "200": { description: Summary, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } } } }
+  /admin/alerts/partner/{partnerId}:
+    get:
+      operationId: getPartnerAlerts
+      tags: [admin]
+      parameters: [{ name: partnerId, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Alerts, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+  /admin/alerts/order/{orderId}:
+    get:
+      operationId: getOrderAlerts
+      tags: [admin]
+      parameters: [{ name: orderId, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Alerts, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+  /admin/alerts/manual-followup/{id}/resolve:
+    post:
+      operationId: resolveManualFollowup
+      tags: [admin]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Resolved, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+  /admin/support-issues/{issueId}/resolve:
+    post:
+      operationId: resolveSupportIssue
+      tags: [admin]
+      parameters: [{ name: issueId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Resolved, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+  /admin/partners/{id}/archive:
+    post:
+      operationId: archivePartner
+      tags: [admin]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Archived, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+  /admin/partners/{id}/unarchive:
+    post:
+      operationId: unarchivePartner
+      tags: [admin]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Unarchived, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+  /admin/assets/{id}/archive:
+    post:
+      operationId: archiveAsset
+      tags: [admin]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Archived, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+  /admin/assets/{id}/unarchive:
+    post:
+      operationId: unarchiveAsset
+      tags: [admin]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Unarchived, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /invoices:
+    get: { operationId: listInvoices, tags: [admin], responses: { "200": { description: Invoices, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericArray" } } } } } }
+  /invoices/{id}:
+    get:
+      operationId: getInvoice
+      tags: [admin]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Invoice, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+    patch:
+      operationId: updateInvoice
+      tags: [admin]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+  /invoices/public/{token}:
+    get:
+      operationId: getPublicInvoice
+      tags: [public]
+      parameters: [{ name: token, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Invoice, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+  /invoices/{id}/regenerate:
+    post:
+      operationId: regenerateInvoice
+      tags: [admin]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Regenerated, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+  /invoices/{id}/payments/{pid}:
+    delete:
+      operationId: deleteInvoicePayment
+      tags: [admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+        - { name: pid, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Deleted, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+  /invoices/scan-overdue:
+    post: { operationId: scanOverdueInvoices, tags: [admin], responses: { "200": { description: Scanned, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } } } }
+
+  /inventory:
+    get: { operationId: listInventory, tags: [admin], responses: { "200": { description: Inventory, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericArray" } } } } } }
+  /inventory/shortages:
+    get: { operationId: getInventoryShortages, tags: [admin], responses: { "200": { description: Shortages, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericArray" } } } } } }
+  /inventory/{id}:
+    patch:
+      operationId: updateInventory
+      tags: [admin]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+    delete:
+      operationId: deleteInventory
+      tags: [admin]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Deleted, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+  /inventory/reservations:
+    get: { operationId: listInventoryReservations, tags: [admin], responses: { "200": { description: Reservations, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericArray" } } } } } }
+  /inventory/reservations/{id}:
+    patch:
+      operationId: updateInventoryReservation
+      tags: [admin]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+    delete:
+      operationId: deleteInventoryReservation
+      tags: [admin]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Deleted, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+
+  /assets:
+    get: { operationId: listAssets, tags: [admin], responses: { "200": { description: Assets, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericArray" } } } } } }
+  /assets/{id}:
+    get:
+      operationId: getAsset
+      tags: [admin]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Asset, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+    patch:
+      operationId: updateAsset
+      tags: [admin]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+    delete:
+      operationId: deleteAsset
+      tags: [admin]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Deleted, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+  /asset-events:
+    get: { operationId: listAssetEvents, tags: [admin], responses: { "200": { description: Asset events, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericArray" } } } } } }
+
 components:
   schemas:
+    # Permissive passthrough envelopes used by the response-shape-only
+    # admin endpoints. They only assert the top-level JSON type
+    # (object / array / nullable object) and are NOT meant to lock down
+    # field-level shape — the handlers themselves still own that.
+    AdminGenericObject:
+      type: object
+      additionalProperties: true
+    AdminGenericObjectOrNull:
+      oneOf:
+        - { type: object, additionalProperties: true }
+        - { type: "null" }
+    AdminGenericArray:
+      type: array
+      items:
+        type: object
+        additionalProperties: true
+
     SurveyAssetPhoto:
       type: object
       required: [url]

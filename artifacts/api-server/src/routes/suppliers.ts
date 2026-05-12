@@ -2,6 +2,13 @@ import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
 import { db, suppliersTable } from "@workspace/db";
 import { z } from "zod";
+import {
+  ListSuppliersResponse,
+  GetSupplierResponse,
+  UpdateSupplierResponse,
+  DeleteSupplierResponse,
+} from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 
 const SupplierBody = z.object({
   name: z.string().min(1),
@@ -30,9 +37,9 @@ const SupplierBody = z.object({
 
 const router: IRouter = Router();
 
-router.get("/suppliers", async (_req, res) => {
+router.get("/suppliers", async (req, res) => {
   const rows = await db.select().from(suppliersTable).orderBy(suppliersTable.name);
-  res.json(rows);
+  sendValidated(req, res, ListSuppliersResponse, rows, "List suppliers");
 });
 
 router.post("/suppliers", async (req, res): Promise<void> => {
@@ -47,7 +54,7 @@ router.get("/suppliers/:id", async (req, res): Promise<void> => {
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const [row] = await db.select().from(suppliersTable).where(eq(suppliersTable.id, id));
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
-  res.json(row);
+  sendValidated(req, res, GetSupplierResponse, row, "Get supplier");
 });
 
 router.patch("/suppliers/:id", async (req, res): Promise<void> => {
@@ -57,14 +64,14 @@ router.patch("/suppliers/:id", async (req, res): Promise<void> => {
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const [row] = await db.update(suppliersTable).set(parsed.data).where(eq(suppliersTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
-  res.json(row);
+  sendValidated(req, res, UpdateSupplierResponse, row, "Update supplier");
 });
 
 router.delete("/suppliers/:id", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   await db.delete(suppliersTable).where(eq(suppliersTable.id, id));
-  res.json({ success: true });
+  sendValidated(req, res, DeleteSupplierResponse, { success: true }, "Delete supplier");
 });
 
 export default router;

@@ -1,6 +1,8 @@
 import { Router, type IRouter } from "express";
 import { eq, and, sql, desc, gte } from "drizzle-orm";
 import { db, inventoryTable, inventoryReservationsTable, citiesTable, eventsTable, partnersTable, productCatalogTable } from "@workspace/db";
+import { GetPartnerInventorySummaryResponse } from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 
 const router: IRouter = Router();
 
@@ -92,7 +94,7 @@ router.get("/partners/:id/inventory-summary", async (req, res): Promise<void> =>
     e.statuses[r.status] = (e.statuses[r.status] || 0) + 1;
   }
 
-  res.json({
+  const payload = {
     partnerId,
     partnerName: partner.companyName,
     cities: Array.from(cityMap.values()),
@@ -109,7 +111,8 @@ router.get("/partners/:id/inventory-summary", async (req, res): Promise<void> =>
       lowCount: enriched.filter(x => x.isLow).length,
       overcommittedCount: enriched.filter(x => x.overcommitted).length,
     },
-  });
+  };
+  sendValidated(req, res, GetPartnerInventorySummaryResponse, payload, "Get partner inventory summary");
 });
 
 export default router;

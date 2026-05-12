@@ -2,6 +2,15 @@ import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
 import { db, savedAddressesTable, savedContactsTable } from "@workspace/db";
 import { z } from "zod";
+import {
+  ListSavedAddressesResponse,
+  UpdateSavedAddressResponse,
+  DeleteSavedAddressResponse,
+  ListSavedContactsResponse,
+  UpdateSavedContactResponse,
+  DeleteSavedContactResponse,
+} from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 
 const AddressBody = z.object({
   partnerId: z.number().int(),
@@ -35,7 +44,7 @@ router.get("/saved-addresses", async (req, res) => {
   const rows = partnerId
     ? await db.select().from(savedAddressesTable).where(eq(savedAddressesTable.partnerId, partnerId))
     : await db.select().from(savedAddressesTable);
-  res.json(rows);
+  sendValidated(req, res, ListSavedAddressesResponse, rows, "List saved addresses");
 });
 
 router.post("/saved-addresses", async (req, res): Promise<void> => {
@@ -52,14 +61,14 @@ router.patch("/saved-addresses/:id", async (req, res): Promise<void> => {
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const [row] = await db.update(savedAddressesTable).set(parsed.data).where(eq(savedAddressesTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
-  res.json(row);
+  sendValidated(req, res, UpdateSavedAddressResponse, row, "Update saved address");
 });
 
 router.delete("/saved-addresses/:id", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   await db.delete(savedAddressesTable).where(eq(savedAddressesTable.id, id));
-  res.json({ success: true });
+  sendValidated(req, res, DeleteSavedAddressResponse, { success: true }, "Delete saved address");
 });
 
 router.get("/saved-contacts", async (req, res) => {
@@ -67,7 +76,7 @@ router.get("/saved-contacts", async (req, res) => {
   const rows = partnerId
     ? await db.select().from(savedContactsTable).where(eq(savedContactsTable.partnerId, partnerId))
     : await db.select().from(savedContactsTable);
-  res.json(rows);
+  sendValidated(req, res, ListSavedContactsResponse, rows, "List saved contacts");
 });
 
 router.post("/saved-contacts", async (req, res): Promise<void> => {
@@ -84,14 +93,14 @@ router.patch("/saved-contacts/:id", async (req, res): Promise<void> => {
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const [row] = await db.update(savedContactsTable).set(parsed.data).where(eq(savedContactsTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
-  res.json(row);
+  sendValidated(req, res, UpdateSavedContactResponse, row, "Update saved contact");
 });
 
 router.delete("/saved-contacts/:id", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   await db.delete(savedContactsTable).where(eq(savedContactsTable.id, id));
-  res.json({ success: true });
+  sendValidated(req, res, DeleteSavedContactResponse, { success: true }, "Delete saved contact");
 });
 
 export default router;

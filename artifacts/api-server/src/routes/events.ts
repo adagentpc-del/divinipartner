@@ -3,6 +3,13 @@ import { eq, and, sql } from "drizzle-orm";
 import { db, eventsTable, citiesTable, venuesTable } from "@workspace/db";
 import { z } from "zod";
 import { emit as usageEmit, emitFirst as usageEmitFirst } from "../services/usageTracking";
+import {
+  ListEventsResponse,
+  GetEventResponse,
+  UpdateEventResponse,
+  DeleteEventResponse,
+} from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 
 const EventBody = z.object({
   partnerId: z.number().int(),
@@ -89,7 +96,7 @@ router.get("/events", async (req, res) => {
     .leftJoin(venuesTable, eq(eventsTable.venueId, venuesTable.id))
     .where(conditions.length ? and(...conditions) : sql`true`)
     .orderBy(eventsTable.eventStartDate);
-  res.json(rows);
+  sendValidated(req, res, ListEventsResponse, rows, "List events");
 });
 
 router.get("/events/:id", async (req, res): Promise<void> => {
@@ -97,7 +104,7 @@ router.get("/events/:id", async (req, res): Promise<void> => {
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const [row] = await db.select().from(eventsTable).where(eq(eventsTable.id, id));
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
-  res.json(row);
+  sendValidated(req, res, GetEventResponse, row, "Get event");
 });
 
 router.post("/events", async (req, res): Promise<void> => {
@@ -139,14 +146,14 @@ router.patch("/events/:id", async (req, res): Promise<void> => {
   };
   const [row] = await db.update(eventsTable).set(updateValues).where(eq(eventsTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
-  res.json(row);
+  sendValidated(req, res, UpdateEventResponse, row, "Update event");
 });
 
 router.delete("/events/:id", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   await db.delete(eventsTable).where(eq(eventsTable.id, id));
-  res.json({ success: true });
+  sendValidated(req, res, DeleteEventResponse, { success: true }, "Delete event");
 });
 
 export default router;

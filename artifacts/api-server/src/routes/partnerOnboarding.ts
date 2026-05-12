@@ -2,6 +2,12 @@ import { Router, type IRouter } from "express";
 import { db, partnerOnboardingSubmissionsTable, partnersTable } from "@workspace/db";
 import { eq, desc, sql } from "drizzle-orm";
 import { z } from "zod";
+import { sendValidated } from "../lib/validateResponse.js";
+import {
+  ListOnboardingSubmissionsResponse,
+  GetOnboardingSubmissionResponse,
+  UpdateOnboardingSubmissionResponse,
+} from "@workspace/api-zod";
 
 const optStr = (max: number) => z.string().max(max).optional().nullable();
 const SubmissionBody = z.object({
@@ -54,9 +60,9 @@ router.post("/onboarding/submit", async (req, res): Promise<void> => {
 });
 
 // ADMIN list
-router.get("/onboarding/submissions", async (_req, res): Promise<void> => {
+router.get("/onboarding/submissions", async (req, res): Promise<void> => {
   const rows = await db.select().from(partnerOnboardingSubmissionsTable).orderBy(desc(partnerOnboardingSubmissionsTable.createdAt));
-  res.json(rows);
+  sendValidated(req, res, ListOnboardingSubmissionsResponse, rows, "listOnboardingSubmissions");
 });
 
 // ADMIN single
@@ -65,7 +71,7 @@ router.get("/onboarding/submissions/:id", async (req, res): Promise<void> => {
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const [row] = await db.select().from(partnerOnboardingSubmissionsTable).where(eq(partnerOnboardingSubmissionsTable.id, id));
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
-  res.json(row);
+  sendValidated(req, res, GetOnboardingSubmissionResponse, row, "getOnboardingSubmission");
 });
 
 // ADMIN status / notes
@@ -82,7 +88,7 @@ router.patch("/onboarding/submissions/:id", async (req, res): Promise<void> => {
   if (parsed.data.status && parsed.data.status !== "new") updates.reviewedAt = new Date();
   const [updated] = await db.update(partnerOnboardingSubmissionsTable).set(updates).where(eq(partnerOnboardingSubmissionsTable.id, id)).returning();
   if (!updated) { res.status(404).json({ error: "Not found" }); return; }
-  res.json(updated);
+  sendValidated(req, res, UpdateOnboardingSubmissionResponse, updated, "updateOnboardingSubmission");
 });
 
 // ADMIN convert -> creates partner from submission (transactional)

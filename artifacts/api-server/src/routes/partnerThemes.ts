@@ -3,6 +3,11 @@ import { eq } from "drizzle-orm";
 import { db, partnerThemesTable } from "@workspace/db";
 import { z } from "zod";
 import { getAuth } from "@clerk/express";
+import {
+  GetPartnerThemeResponse,
+  UpsertPartnerThemeResponse,
+} from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 
 const router: IRouter = Router();
 
@@ -53,8 +58,7 @@ router.get("/partners/:id/theme", requireAuth, async (req, res): Promise<void> =
   if (isNaN(partnerId)) { res.status(400).json({ error: "Invalid partner id" }); return; }
 
   const [theme] = await db.select().from(partnerThemesTable).where(eq(partnerThemesTable.partnerId, partnerId));
-  if (!theme) { res.json(null); return; }
-  res.json(theme);
+  sendValidated(req, res, GetPartnerThemeResponse, theme ?? null, "Get partner theme");
 });
 
 router.put("/partners/:id/theme", requireAuth, async (req, res): Promise<void> => {
@@ -68,10 +72,10 @@ router.put("/partners/:id/theme", requireAuth, async (req, res): Promise<void> =
 
   if (existing.length > 0) {
     const [theme] = await db.update(partnerThemesTable).set(parsed.data).where(eq(partnerThemesTable.partnerId, partnerId)).returning();
-    res.json(theme);
+    sendValidated(req, res, UpsertPartnerThemeResponse, theme, "Upsert partner theme");
   } else {
     const [theme] = await db.insert(partnerThemesTable).values({ ...parsed.data, partnerId }).returning();
-    res.status(201).json(theme);
+    sendValidated(req, res, UpsertPartnerThemeResponse, theme, "Upsert partner theme", 201);
   }
 });
 

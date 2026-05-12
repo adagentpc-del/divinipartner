@@ -3,6 +3,13 @@ import { and, eq, asc } from "drizzle-orm";
 import { getAuth } from "@clerk/express";
 import { db, partnerEmailRecipientsTable, partnersTable, RECIPIENT_ROLES } from "@workspace/db";
 import { z } from "zod";
+import {
+  ListEmailRecipientsResponse,
+  UpdateEmailRecipientResponse,
+  DeleteEmailRecipientResponse,
+  TestRoleEmailResponse,
+} from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 
 // Recipient role allow-list mirrors the schema enum so the API can never
 // persist an unrecognized role that the email router wouldn't know how to handle.
@@ -27,10 +34,6 @@ function requireAuth(req: Request, res: Response, next: NextFunction): void {
 
 const router: IRouter = Router();
 
-// List all recipients for a partner. Auth-gated because the response
-// contains operational/billing/vendor email addresses — these are internal
-// contacts and partner IDs are enumerable, so a public endpoint would let any
-// caller harvest the routing book.
 router.get("/partners/:id/email-recipients", requireAuth, async (req, res): Promise<void> => {
   const partnerId = parseInt(String(req.params.id));
   if (isNaN(partnerId)) { res.status(400).json({ error: "Invalid partner id" }); return; }
@@ -39,7 +42,7 @@ router.get("/partners/:id/email-recipients", requireAuth, async (req, res): Prom
     .from(partnerEmailRecipientsTable)
     .where(eq(partnerEmailRecipientsTable.partnerId, partnerId))
     .orderBy(asc(partnerEmailRecipientsTable.role), asc(partnerEmailRecipientsTable.sortOrder), asc(partnerEmailRecipientsTable.id));
-  res.json(rows);
+  sendValidated(req, res, ListEmailRecipientsResponse, rows, "List email recipients");
 });
 
 router.post("/partners/:id/email-recipients", requireAuth, async (req, res): Promise<void> => {
@@ -47,7 +50,6 @@ router.post("/partners/:id/email-recipients", requireAuth, async (req, res): Pro
   if (isNaN(partnerId)) { res.status(400).json({ error: "Invalid partner id" }); return; }
   const parsed = RecipientCreateBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() }); return; }
-  // Validate the partner exists so we never insert orphaned rows.
   const [partner] = await db.select({ id: partnersTable.id }).from(partnersTable).where(eq(partnersTable.id, partnerId));
   if (!partner) { res.status(404).json({ error: "Partner not found" }); return; }
   const [created] = await db.insert(partnerEmailRecipientsTable).values({
@@ -81,7 +83,7 @@ router.put("/partners/:id/email-recipients/:rid", requireAuth, async (req, res):
     .where(and(eq(partnerEmailRecipientsTable.id, rid), eq(partnerEmailRecipientsTable.partnerId, partnerId)))
     .returning();
   if (!updated) { res.status(404).json({ error: "Recipient not found" }); return; }
-  res.json(updated);
+  sendValidated(req, res, UpdateEmailRecipientResponse, updated, "Update email recipient");
 });
 
 router.delete("/partners/:id/email-recipients/:rid", requireAuth, async (req, res): Promise<void> => {
@@ -92,7 +94,7 @@ router.delete("/partners/:id/email-recipients/:rid", requireAuth, async (req, re
     .where(and(eq(partnerEmailRecipientsTable.id, rid), eq(partnerEmailRecipientsTable.partnerId, partnerId)))
     .returning({ id: partnerEmailRecipientsTable.id });
   if (result.length === 0) { res.status(404).json({ error: "Recipient not found" }); return; }
-  res.json({ ok: true });
+  sendValidated(req, res, DeleteEmailRecipientResponse, { ok: true }, "Delete email recipient");
 });
 
 // Test send to a single role: assembles a sample order context and routes
@@ -115,8 +117,6 @@ router.post("/partners/:id/test-role-email", requireAuth, async (req, res): Prom
     const overrideTo = parsed.data.to || null;
     let result;
     if (role === "customer") {
-      // For the customer template we override the order's contactEmail so the
-      // confirmation actually goes to the test address.
       if (overrideTo) ctx.order = { ...ctx.order, contactEmail: overrideTo };
       result = await email.sendOrderConfirmation(ctx);
     } else if (role === "ops") {
@@ -128,10 +128,9 @@ router.post("/partners/:id/test-role-email", requireAuth, async (req, res): Prom
     } else if (role === "vendor") {
       result = await email.sendVendorNotification(ctx, overrideTo ? [overrideTo] : undefined);
     } else {
-      // cc / bcc roles are only meaningful in the context of an ops send.
       result = await email.sendOpsForward(ctx, overrideTo ? [overrideTo] : undefined);
     }
-    res.status(result.ok ? 200 : 500).json(result);
+    sendValidated(req, res, TestRoleEmailResponse, result, "Test role email", result.ok ? 200 : 500);
   } catch (err: any) {
     res.status(500).json({ ok: false, error: err?.message || String(err) });
   }

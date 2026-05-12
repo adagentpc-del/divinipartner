@@ -4,6 +4,19 @@ import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { db, partnersTable, assetsTable, usageEvents } from "@workspace/db";
 import { computeAlerts, summarizeAlerts, routeAlertToSms } from "../lib/alerts";
+import { sendValidated } from "../lib/validateResponse.js";
+import {
+  ListAdminAlertsResponse,
+  GetAdminAlertsSummaryResponse,
+  GetPartnerAlertsResponse,
+  GetOrderAlertsResponse,
+  ResolveManualFollowupResponse,
+  ResolveSupportIssueResponse,
+  ArchivePartnerResponse,
+  UnarchivePartnerResponse,
+  ArchiveAssetResponse,
+  UnarchiveAssetResponse,
+} from "@workspace/api-zod";
 
 const router: IRouter = Router();
 
@@ -24,13 +37,13 @@ router.get("/admin/alerts", async (req, res): Promise<void> => {
   const partnerId = req.query.partnerId ? Number(req.query.partnerId) : undefined;
   const orderId = req.query.orderId ? Number(req.query.orderId) : undefined;
   const alerts = await computeAlerts({ partnerId, orderId });
-  res.json({ alerts, summary: summarizeAlerts(alerts) });
+  sendValidated(req, res, ListAdminAlertsResponse, { alerts, summary: summarizeAlerts(alerts) }, "listAdminAlerts");
 });
 
 // Lightweight summary for badges/banners — same compute, smaller payload.
-router.get("/admin/alerts/summary", async (_req, res): Promise<void> => {
+router.get("/admin/alerts/summary", async (req, res): Promise<void> => {
   const alerts = await computeAlerts();
-  res.json({ summary: summarizeAlerts(alerts), top: alerts.slice(0, 5) });
+  sendValidated(req, res, GetAdminAlertsSummaryResponse, { summary: summarizeAlerts(alerts), top: alerts.slice(0, 5) }, "getAdminAlertsSummary");
 });
 
 // Per-partner alerts shortcut — also surfaces inactive/archive context.
@@ -38,7 +51,7 @@ router.get("/admin/alerts/partner/:partnerId", async (req, res): Promise<void> =
   const partnerId = Number(req.params.partnerId);
   if (!Number.isFinite(partnerId)) { res.status(400).json({ error: "Invalid partnerId" }); return; }
   const alerts = await computeAlerts({ partnerId });
-  res.json({ alerts, summary: summarizeAlerts(alerts) });
+  sendValidated(req, res, GetPartnerAlertsResponse, { alerts, summary: summarizeAlerts(alerts) }, "getPartnerAlerts");
 });
 
 // Per-order alerts shortcut — used by OrderDetail.
@@ -46,7 +59,7 @@ router.get("/admin/alerts/order/:orderId", async (req, res): Promise<void> => {
   const orderId = Number(req.params.orderId);
   if (!Number.isFinite(orderId)) { res.status(400).json({ error: "Invalid orderId" }); return; }
   const alerts = await computeAlerts({ orderId });
-  res.json({ alerts, summary: summarizeAlerts(alerts) });
+  sendValidated(req, res, GetOrderAlertsResponse, { alerts, summary: summarizeAlerts(alerts) }, "getOrderAlerts");
 });
 
 // ---- Manual follow-up flag (sticky reminder) ---------------------------
@@ -76,7 +89,7 @@ router.post("/admin/alerts/manual-followup/:id/resolve", async (req, res): Promi
   const [existing] = await db.select().from(usageEvents).where(eq(usageEvents.id, id));
   if (!existing || existing.eventType !== "alert.manual_followup") { res.status(404).json({ error: "Not found" }); return; }
   await db.update(usageEvents).set({ meta: { ...((existing.meta as any) || {}), resolved: true, resolvedBy: getAuth(req).userId, resolvedAt: new Date().toISOString() } as any }).where(eq(usageEvents.id, id));
-  res.json({ ok: true });
+  sendValidated(req, res, ResolveManualFollowupResponse, { ok: true }, "resolveManualFollowup");
 });
 
 // ---- Support issue submission (lightweight prep for chatbot/issue handoff)
@@ -128,7 +141,7 @@ router.post("/admin/support-issues/:issueId/resolve", async (req, res): Promise<
     partnerId: null, objectType: null, objectId: null,
     meta: { issueId, resolvedBy: getAuth(req).userId } as any,
   });
-  res.json({ ok: true });
+  sendValidated(req, res, ResolveSupportIssueResponse, { ok: true }, "resolveSupportIssue");
 });
 
 // ---- Partner archive / unarchive ---------------------------------------
@@ -143,7 +156,7 @@ router.post("/admin/partners/:id/archive", async (req, res): Promise<void> => {
     archivedReason: reason,
   }).where(eq(partnersTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
-  res.json({ ok: true, partner: row });
+  sendValidated(req, res, ArchivePartnerResponse, { ok: true, partner: row }, "archivePartner");
 });
 router.post("/admin/partners/:id/unarchive", async (req, res): Promise<void> => {
   const id = Number(req.params.id);
@@ -153,7 +166,7 @@ router.post("/admin/partners/:id/unarchive", async (req, res): Promise<void> => 
     archivedReason: null,
   }).where(eq(partnersTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
-  res.json({ ok: true, partner: row });
+  sendValidated(req, res, UnarchivePartnerResponse, { ok: true, partner: row }, "unarchivePartner");
 });
 
 // ---- Asset archive / unarchive (uses existing assets.status) -----------
@@ -162,14 +175,14 @@ router.post("/admin/assets/:id/archive", async (req, res): Promise<void> => {
   if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const [row] = await db.update(assetsTable).set({ status: "archived", isCurrent: false }).where(eq(assetsTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
-  res.json({ ok: true, asset: row });
+  sendValidated(req, res, ArchiveAssetResponse, { ok: true, asset: row }, "archiveAsset");
 });
 router.post("/admin/assets/:id/unarchive", async (req, res): Promise<void> => {
   const id = Number(req.params.id);
   if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const [row] = await db.update(assetsTable).set({ status: "uploaded" }).where(eq(assetsTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
-  res.json({ ok: true, asset: row });
+  sendValidated(req, res, UnarchiveAssetResponse, { ok: true, asset: row }, "unarchiveAsset");
 });
 
 export default router;

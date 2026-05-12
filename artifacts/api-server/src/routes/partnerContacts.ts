@@ -3,6 +3,13 @@ import { eq, and, asc, ne } from "drizzle-orm";
 import { z } from "zod";
 import { getAuth } from "@clerk/express";
 import { db, partnerContactsTable, partnersTable, PARTNER_CONTACT_ROLES } from "@workspace/db";
+import { sendValidated } from "../lib/validateResponse.js";
+import {
+  ListPartnerContactsResponse,
+  UpdatePartnerContactResponse,
+  DeletePartnerContactResponse,
+  MakePrimaryPartnerContactResponse,
+} from "@workspace/api-zod";
 
 const router: IRouter = Router();
 
@@ -32,7 +39,7 @@ router.get("/partners/:partnerId/contacts", async (req, res): Promise<void> => {
   const rows = await db.select().from(partnerContactsTable)
     .where(eq(partnerContactsTable.partnerId, partnerId))
     .orderBy(asc(partnerContactsTable.sortOrder), asc(partnerContactsTable.id));
-  res.json(rows);
+  sendValidated(req, res, ListPartnerContactsResponse, rows, "listPartnerContacts");
 });
 
 router.post("/partners/:partnerId/contacts", async (req, res): Promise<void> => {
@@ -102,7 +109,7 @@ router.patch("/partner-contacts/:id", async (req, res): Promise<void> => {
       return updated;
     });
     if (!row) { res.status(404).json({ error: "Contact not found" }); return; }
-    res.json(row);
+    sendValidated(req, res, UpdatePartnerContactResponse, row, "updatePartnerContact");
   } catch (e: any) {
     if (e?.code === "23505") { res.status(409).json({ error: "Another primary contact exists for this role" }); return; }
     throw e;
@@ -114,7 +121,7 @@ router.delete("/partner-contacts/:id", async (req, res): Promise<void> => {
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const [deleted] = await db.delete(partnerContactsTable).where(eq(partnerContactsTable.id, id)).returning({ id: partnerContactsTable.id });
   if (!deleted) { res.status(404).json({ error: "Contact not found" }); return; }
-  res.json({ ok: true });
+  sendValidated(req, res, DeletePartnerContactResponse, { ok: true }, "deletePartnerContact");
 });
 
 router.post("/partner-contacts/:id/make-primary", async (req, res): Promise<void> => {
@@ -135,7 +142,7 @@ router.post("/partner-contacts/:id/make-primary", async (req, res): Promise<void
       return updated;
     });
     if (!row) { res.status(404).json({ error: "Contact not found" }); return; }
-    res.json(row);
+    sendValidated(req, res, MakePrimaryPartnerContactResponse, row, "makePrimaryPartnerContact");
   } catch (e: any) {
     if (e?.code === "23505") { res.status(409).json({ error: "Another primary contact exists for this role" }); return; }
     throw e;

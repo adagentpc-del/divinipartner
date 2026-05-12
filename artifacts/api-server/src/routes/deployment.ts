@@ -3,6 +3,8 @@ import { Router } from "express";
 import { getAuth } from "@clerk/express";
 import { eq } from "drizzle-orm";
 import { db, commercialAccountsTable, partnersTable, suppliersTable, userRolesTable } from "@workspace/db";
+import { GetDeploymentReadinessResponse } from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 
 const router = Router();
 
@@ -95,7 +97,7 @@ router.get("/deployment/readiness", async (req, res) => {
       { ok: liveAccounts.length > 0, label: "At least one non-demo commercial account" },
     ];
 
-    res.json({
+    const payload = {
       env,
       integrations,
       counts: {
@@ -107,7 +109,8 @@ router.get("/deployment/readiness", async (req, res) => {
       },
       checklist,
       readyToDeploy: checklist.every(c => c.ok),
-    });
+    };
+    sendValidated(req, res, GetDeploymentReadinessResponse, payload, "Get deployment readiness");
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }

@@ -18,6 +18,12 @@ import {
   type Resource,
   type ImportField,
 } from "../lib/importSchemas";
+import {
+  GetImportFieldsResponse,
+  ParseImportResponse,
+  CommitImportResponse,
+} from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 
 // Upload restrictions for the importer:
 //  - 10 MB hard cap (multer rejects past this point)
@@ -63,7 +69,7 @@ function slugify(s: string): string {
 router.get("/imports/fields/:resource", (req: Request, res: Response): void => {
   const r = ResourceParam.safeParse(req.params.resource);
   if (!r.success) { res.status(400).json({ error: "Invalid resource" }); return; }
-  res.json({ fields: FIELDS_BY_RESOURCE[r.data] });
+  sendValidated(req, res, GetImportFieldsResponse, { fields: FIELDS_BY_RESOURCE[r.data] }, "Import fields");
 });
 
 router.get("/imports/template/:resource", (req: Request, res: Response): void => {
@@ -90,7 +96,7 @@ router.post("/imports/parse", upload.single("file"), async (req: Request, res: R
     const sheet = parseBuffer(req.file.buffer, req.file.originalname);
     const fields = FIELDS_BY_RESOURCE[r.data];
     const suggestedMap = autoMapHeaders(sheet.headers, fields);
-    res.json({ ...sheet, suggestedMap, sample: sheet.rows.slice(0, 25) });
+    sendValidated(req, res, ParseImportResponse, { ...sheet, suggestedMap, sample: sheet.rows.slice(0, 25) }, "Import parse");
   } catch (e: any) {
     req.log.error({ err: e }, "Import parse failed");
     res.status(400).json({ error: `Parse failed: ${e.message}` });
@@ -120,7 +126,7 @@ router.post("/imports/commit", async (req: Request, res: Response): Promise<void
       : resource === "branding-locations" ? await commitBrandingLocations(rows, mode, context)
       : resource === "zone-measurements" ? await commitZoneMeasurements(rows, mode, context)
       : await commitPackages(rows, mode, context);
-    res.json(result);
+    sendValidated(req, res, CommitImportResponse, result, "Import commit");
   } catch (e: any) {
     req.log.error({ err: e }, "Import commit failed");
     res.status(500).json({ error: e.message });

@@ -2,6 +2,16 @@ import { Router, type IRouter } from "express";
 import { eq, and, sql, inArray } from "drizzle-orm";
 import { db, packagesTable, packageItemsTable, productCatalogTable, withMmColumns } from "@workspace/db";
 import { z } from "zod";
+import { sendValidated } from "../lib/validateResponse.js";
+import {
+  ListPackagesResponse,
+  GetPackageResponse,
+  ReorderPackagesResponse,
+  UpdatePackageResponse,
+  DeletePackageResponse,
+  UpdatePackageItemResponse,
+  DeletePackageItemResponse,
+} from "@workspace/api-zod";
 
 const PackageBody = z.object({
   partnerId: z.number().int().nullable().optional(),
@@ -39,7 +49,7 @@ router.get("/packages", async (req, res) => {
   const rows = await db.select().from(packagesTable)
     .where(conditions.length ? and(...conditions) : sql`true`)
     .orderBy(packagesTable.tier, packagesTable.sortOrder);
-  res.json(rows);
+  sendValidated(req, res, ListPackagesResponse, rows, "listPackages");
 });
 
 router.get("/packages/:id", async (req, res): Promise<void> => {
@@ -62,7 +72,7 @@ router.get("/packages/:id", async (req, res): Promise<void> => {
     .leftJoin(productCatalogTable, eq(packageItemsTable.productId, productCatalogTable.id))
     .where(eq(packageItemsTable.packageId, id))
     .orderBy(packageItemsTable.sortOrder);
-  res.json({ ...pkg, items });
+  sendValidated(req, res, GetPackageResponse, { ...pkg, items }, "getPackage");
 });
 
 router.post("/packages/reorder", async (req, res): Promise<void> => {
@@ -73,7 +83,7 @@ router.post("/packages/reorder", async (req, res): Promise<void> => {
   const parsed = Body.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const { partnerId, items } = parsed.data;
-  if (items.length === 0) { res.json({ ok: true, count: 0 }); return; }
+  if (items.length === 0) { sendValidated(req, res, ReorderPackagesResponse, { ok: true, count: 0 }, "reorderPackages"); return; }
   const ids = items.map(i => i.id);
   const owned = await db.select({ id: packagesTable.id }).from(packagesTable)
     .where(and(eq(packagesTable.partnerId, partnerId), inArray(packagesTable.id, ids)));
@@ -84,7 +94,7 @@ router.post("/packages/reorder", async (req, res): Promise<void> => {
         .where(and(eq(packagesTable.id, it.id), eq(packagesTable.partnerId, partnerId)));
     }
   });
-  res.json({ ok: true, count: items.length });
+  sendValidated(req, res, ReorderPackagesResponse, { ok: true, count: items.length }, "reorderPackages");
 });
 
 router.post("/packages", async (req, res): Promise<void> => {
@@ -115,14 +125,14 @@ router.patch("/packages/:id", async (req, res): Promise<void> => {
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const [row] = await db.update(packagesTable).set(withMmColumns(parsed.data)).where(eq(packagesTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
-  res.json(row);
+  sendValidated(req, res, UpdatePackageResponse, row, "updatePackage");
 });
 
 router.delete("/packages/:id", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   await db.delete(packagesTable).where(eq(packagesTable.id, id));
-  res.json({ success: true });
+  sendValidated(req, res, DeletePackageResponse, { success: true }, "deletePackage");
 });
 
 router.post("/packages/:id/items", async (req, res): Promise<void> => {
@@ -141,14 +151,14 @@ router.patch("/package-items/:itemId", async (req, res): Promise<void> => {
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const [row] = await db.update(packageItemsTable).set(parsed.data).where(eq(packageItemsTable.id, itemId)).returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
-  res.json(row);
+  sendValidated(req, res, UpdatePackageItemResponse, row, "updatePackageItem");
 });
 
 router.delete("/package-items/:itemId", async (req, res): Promise<void> => {
   const itemId = parseInt(req.params.itemId);
   if (isNaN(itemId)) { res.status(400).json({ error: "Invalid id" }); return; }
   await db.delete(packageItemsTable).where(eq(packageItemsTable.id, itemId));
-  res.json({ success: true });
+  sendValidated(req, res, DeletePackageItemResponse, { success: true }, "deletePackageItem");
 });
 
 export default router;

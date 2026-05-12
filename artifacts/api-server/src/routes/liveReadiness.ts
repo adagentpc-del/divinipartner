@@ -34,6 +34,8 @@ import {
 } from "@workspace/db";
 import { getPublicUrlInfo } from "../lib/publicUrl";
 import { requireAdmin } from "../middlewares/requireAdmin";
+import { GetLiveReadinessResponse } from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 
 const router: IRouter = Router();
 
@@ -126,7 +128,7 @@ function fmtAge(d: Date | null): string {
   return `${day}d ago`;
 }
 
-router.get("/admin/live-readiness", async (_req, res): Promise<void> => {
+router.get("/admin/live-readiness", async (req, res): Promise<void> => {
   const checks: Check[] = [];
 
   // -- 1. Database -----------------------------------------------------------
@@ -384,14 +386,14 @@ router.get("/admin/live-readiness", async (_req, res): Promise<void> => {
     "Edit a partner's profile, save, navigate away, reopen, and confirm every saved field is still populated.",
   ];
 
-  res.json({
+  sendValidated(req, res, GetLiveReadinessResponse, {
     overall,
     summary,
     checks,
     blockers,
     manualVerification,
     generatedAt: new Date().toISOString(),
-  });
+  }, "Live readiness");
 });
 
 export default router;

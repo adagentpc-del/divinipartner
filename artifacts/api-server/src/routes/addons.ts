@@ -15,6 +15,13 @@ import { getAuth } from "@clerk/express";
 import {
   db, partnerAddonsTable, productCatalogTable, partnersTable, eventsTable,
 } from "@workspace/db";
+import {
+  ListPartnerAddonsResponse,
+  ReplacePartnerAddonsResponse,
+  GetEventEffectiveAddonsResponse,
+  GetPublicEventAddonsResponse,
+} from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 
 const router: IRouter = Router();
 
@@ -74,7 +81,7 @@ async function listPartnerAddons(partnerId: number) {
 router.get("/partners/:id/addons", requireAuth, async (req, res): Promise<void> => {
   const id = Number(req.params.id);
   if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
-  res.json(await listPartnerAddons(id));
+  sendValidated(req, res, ListPartnerAddonsResponse, await listPartnerAddons(id), "List partner addons");
 });
 
 router.put("/partners/:id/addons", requireAuth, async (req, res): Promise<void> => {
@@ -106,7 +113,7 @@ router.put("/partners/:id/addons", requireAuth, async (req, res): Promise<void> 
     }
   });
 
-  res.json(await listPartnerAddons(id));
+  sendValidated(req, res, ReplacePartnerAddonsResponse, await listPartnerAddons(id), "Replace partner addons");
 });
 
 /**
@@ -197,7 +204,7 @@ router.get("/events/:id/addons/effective", requireAuth, async (req, res): Promis
   if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const out = await resolveEventAddons(id);
   if (!out) { res.status(404).json({ error: "Event not found" }); return; }
-  res.json(out);
+  sendValidated(req, res, GetEventEffectiveAddonsResponse, out, "Effective event addons");
 });
 
 // Public ordering helper — keeps the admin endpoint behind auth (when the
@@ -221,7 +228,7 @@ router.get("/public/partners/:slug/events/:eventId/addons", async (req, res): Pr
     .from(eventsTable).where(eq(eventsTable.id, eventId));
   if (!ev || ev.partnerId !== partner.id || !ev.isActive) { res.status(404).json({ error: "Event not found" }); return; }
   const out = await resolveEventAddons(eventId);
-  res.json(out);
+  sendValidated(req, res, GetPublicEventAddonsResponse, out, "Public event addons");
 });
 
 export { resolveEventAddons };

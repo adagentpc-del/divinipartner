@@ -11,17 +11,20 @@ import {
   ALL_UNITS,
   UNIT_LABELS,
 } from "@workspace/db";
+import { GetUnitsMetaResponse, GetUnitsResolveResponse } from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 
 const router = Router();
 
-router.get("/units/meta", (_req, res) => {
-  res.json({
+router.get("/units/meta", (req, res) => {
+  const payload = {
     units: ALL_UNITS.map(u => ({ value: u, label: UNIT_LABELS[u] })),
     systems: [
       { value: "imperial", label: "Imperial (in / ft)" },
       { value: "metric", label: "Metric (cm / m)" },
     ],
-  });
+  };
+  sendValidated(req, res, GetUnitsMetaResponse, payload, "Get units meta");
 });
 
 router.get("/units/resolve", async (req, res) => {
@@ -68,7 +71,7 @@ router.get("/units/resolve", async (req, res) => {
     }
 
     const resolution = resolvePreference({ event, venue, partner, account });
-    res.json({
+    const payload = {
       ...resolution,
       context: {
         eventPreference: event?.unitPreference ?? null,
@@ -77,7 +80,8 @@ router.get("/units/resolve", async (req, res) => {
         partnerPreference: partner?.unitPreference ?? null,
         accountPreference: account?.unitPreference ?? null,
       },
-    });
+    };
+    sendValidated(req, res, GetUnitsResolveResponse, payload, "Resolve units");
   } catch (e: any) {
     res.status(500).json({ error: e?.message || "resolve_failed" });
   }

@@ -2,6 +2,12 @@ import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
 import { db, userRolesTable } from "@workspace/db";
 import { z } from "zod";
+import {
+  ListUserRolesResponse,
+  UpdateUserRoleResponse,
+  DeleteUserRoleResponse,
+} from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 
 const UserRoleBody = z.object({
   userId: z.string().nullable().optional(),
@@ -16,9 +22,9 @@ const UserRoleBody = z.object({
 
 const router: IRouter = Router();
 
-router.get("/user-roles", async (_req, res) => {
+router.get("/user-roles", async (req, res) => {
   const rows = await db.select().from(userRolesTable).orderBy(userRolesTable.email);
-  res.json(rows);
+  sendValidated(req, res, ListUserRolesResponse, rows, "List user roles");
 });
 
 router.post("/user-roles", async (req, res): Promise<void> => {
@@ -39,14 +45,14 @@ router.patch("/user-roles/:id", async (req, res): Promise<void> => {
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const [row] = await db.update(userRolesTable).set(parsed.data).where(eq(userRolesTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
-  res.json(row);
+  sendValidated(req, res, UpdateUserRoleResponse, row, "Update user role");
 });
 
 router.delete("/user-roles/:id", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   await db.delete(userRolesTable).where(eq(userRolesTable.id, id));
-  res.json({ success: true });
+  sendValidated(req, res, DeleteUserRoleResponse, { success: true }, "Delete user role");
 });
 
 export default router;

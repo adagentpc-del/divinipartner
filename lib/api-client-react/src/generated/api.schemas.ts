@@ -5,6 +5,16 @@
  * A3 Partner Portal API
  * OpenAPI spec version: 0.1.0
  */
+export interface AdminGenericObject {
+  [key: string]: unknown;
+}
+
+export type AdminGenericObjectOrNull = { [key: string]: unknown } | null;
+
+export type AdminGenericArrayItem = { [key: string]: unknown };
+
+export type AdminGenericArray = AdminGenericArrayItem[];
+
 export interface SurveyAssetPhoto {
   url: string;
   caption?: string;

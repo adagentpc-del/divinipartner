@@ -10,6 +10,14 @@ import {
 } from "@workspace/db";
 import { z } from "zod";
 import { resolveBillingExecModel } from "./billingResolver";
+import {
+  ResolveBillingResponse,
+  OverrideBillingResponse,
+  GetBillingSummaryResponse,
+  ListBillingOrdersResponse,
+  BillingBulkResponse,
+} from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 
 const router: IRouter = Router();
 
@@ -27,13 +35,13 @@ router.get("/billing/orders/:id/resolve", async (req, res) => {
   if (!order) { res.status(404).json({ error: "Not found" }); return; }
   const [partner] = await db.select().from(partnersTable).where(eq(partnersTable.id, order.partnerId));
   const [event] = order.eventId ? await db.select().from(eventsTable).where(eq(eventsTable.id, order.eventId)) : [null];
-  res.json({
+  sendValidated(req, res, ResolveBillingResponse, {
     resolved: resolveBillingExecModel({ order, event, partner }),
     partnerDefault: partner?.defaultBillingExecModel,
     eventOverride: event?.billingExecModelOverride,
     orderOverride: order.billingExecModelSource === "order" ? order.billingExecModel : null,
     allowOrderOverride: partner?.allowOrderOverride ?? true,
-  });
+  }, "Resolve billing");
 });
 
 // ===== Override billing model on an order =====
@@ -65,11 +73,11 @@ router.post("/billing/orders/:id/override", async (req, res) => {
     await db.update(ordersTable).set({ billingExecModel: parsed.data.billingExecModel, billingExecModelSource: "order" } as any).where(eq(ordersTable.id, id));
   }
   const [fresh] = await db.select().from(ordersTable).where(eq(ordersTable.id, id));
-  res.json(fresh);
+  sendValidated(req, res, OverrideBillingResponse, fresh, "Override billing");
 });
 
 // ===== Billing command center summary =====
-router.get("/billing/summary", async (_req, res) => {
+router.get("/billing/summary", async (req, res) => {
   const invoices = await db.select().from(invoicesTable);
   const orders = await db.select().from(ordersTable);
   const today = new Date().toISOString().slice(0, 10);
@@ -99,7 +107,7 @@ router.get("/billing/summary", async (_req, res) => {
     return (!c || (!c.email && !c.name));
   }).length;
 
-  res.json({
+  sendValidated(req, res, GetBillingSummaryResponse, {
     totalInvoiced,
     totalPaid,
     totalBalance,
@@ -109,7 +117,7 @@ router.get("/billing/summary", async (_req, res) => {
     byStatus,
     byBilling,
     invoicesCount: invoices.length,
-  });
+  }, "Billing summary");
 });
 
 // ===== Billing list of orders w/ invoice context =====
@@ -182,7 +190,7 @@ router.get("/billing/orders", async (req, res) => {
   if (q.missingBillingContact === "true") rows = rows.filter(r => r.missingBillingContact);
   if (q.invoiceStatus) rows = rows.filter(r => r.invoice?.status === q.invoiceStatus);
   if (q.billingExecModel) rows = rows.filter(r => r.billingExecModel === q.billingExecModel);
-  res.json(rows);
+  sendValidated(req, res, ListBillingOrdersResponse, rows, "List billing orders");
 });
 
 // ===== Bulk actions =====
@@ -215,7 +223,7 @@ router.post("/billing/bulk", async (req, res) => {
       count = parsed.data.invoiceIds.length;
     }
   }
-  res.json({ success: true, count });
+  sendValidated(req, res, BillingBulkResponse, { success: true, count }, "Billing bulk");
 });
 
 export default router;

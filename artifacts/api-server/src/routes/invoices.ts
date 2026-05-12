@@ -15,6 +15,16 @@ import { resolveBillingExecModel } from "./billingResolver";
 import { computeOrderTotals } from "../lib/billing";
 import { fire } from "../services/workflowEngine";
 import { emit as usageEmit, emitFirst as usageEmitFirst } from "../services/usageTracking";
+import { sendValidated } from "../lib/validateResponse.js";
+import {
+  ListInvoicesResponse,
+  GetInvoiceResponse,
+  GetPublicInvoiceResponse,
+  UpdateInvoiceResponse,
+  RegenerateInvoiceResponse,
+  DeleteInvoicePaymentResponse,
+  ScanOverdueInvoicesResponse,
+} from "@workspace/api-zod";
 
 const router: IRouter = Router();
 
@@ -101,7 +111,7 @@ router.get("/invoices", async (req, res) => {
     partnerName: pById.get(r.partnerId)?.companyName || null,
     isOverdue: r.status === "sent" && r.dueDate && r.dueDate < today,
   }));
-  res.json(decorated);
+  return sendValidated(req, res, ListInvoicesResponse, decorated, "listInvoices");
 });
 
 // ===== Get one invoice (with payments) =====
@@ -114,7 +124,7 @@ router.get("/invoices/:id", async (req, res) => {
   const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, inv.orderId));
   const [partner] = await db.select().from(partnersTable).where(eq(partnersTable.id, inv.partnerId));
   const [event] = inv.eventId ? await db.select().from(eventsTable).where(eq(eventsTable.id, inv.eventId)) : [null];
-  res.json({ ...inv, payments, order, partner, event });
+  return sendValidated(req, res, GetInvoiceResponse, { ...inv, payments, order, partner, event }, "getInvoice");
 });
 
 // ===== Get invoice by public token (client-facing) =====
@@ -123,7 +133,7 @@ router.get("/invoices/public/:token", async (req, res) => {
   if (!inv) { res.status(404).json({ error: "Not found" }); return; }
   const [partner] = await db.select().from(partnersTable).where(eq(partnersTable.id, inv.partnerId));
   // Trim sensitive internal fields
-  res.json({
+  return sendValidated(req, res, GetPublicInvoiceResponse, {
     invoiceNumber: inv.invoiceNumber,
     status: inv.status,
     issueDate: inv.issueDate,
@@ -148,7 +158,7 @@ router.get("/invoices/public/:token", async (req, res) => {
     notes: inv.notes,
     partnerName: partner?.companyName,
     partnerLogoUrl: partner?.logoUrl,
-  });
+  }, "getPublicInvoice");
 });
 
 // ===== Create invoice from order =====
@@ -230,7 +240,7 @@ router.post("/invoices/from-order/:orderId", async (req, res) => {
     invoiceRequired: true,
   } as any).where(eq(ordersTable.id, orderId));
 
-  res.status(201).json(inv);
+  return res.status(201).json(inv);
 });
 
 // ===== Patch invoice (incl. status transitions) =====
@@ -291,7 +301,7 @@ router.patch("/invoices/:id", async (req, res) => {
     usageEmitFirst("first_invoice_sent", { partnerId: row.partnerId ?? null, objectType: "invoice", objectId: id }).catch(() => {});
   }
   const [fresh] = await db.select().from(invoicesTable).where(eq(invoicesTable.id, id));
-  res.json(fresh);
+  return sendValidated(req, res, UpdateInvoiceResponse, fresh, "updateInvoice");
 });
 
 // ===== Regenerate from order =====
@@ -338,7 +348,7 @@ router.post("/invoices/:id/regenerate", async (req, res) => {
     taxInclusive: !!orderTaxIncl,
   } as any).where(eq(invoicesTable.id, id));
   const [fresh] = await db.select().from(invoicesTable).where(eq(invoicesTable.id, id));
-  res.json(fresh);
+  return sendValidated(req, res, RegenerateInvoiceResponse, fresh, "regenerateInvoice");
 });
 
 // ===== Payments =====
@@ -358,18 +368,18 @@ router.post("/invoices/:id/payments", async (req, res) => {
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const [row] = await db.insert(invoicePaymentsTable).values({ invoiceId: id, ...parsed.data } as any).returning();
   await recomputeInvoiceTotals(id);
-  res.status(201).json(row);
+  return res.status(201).json(row);
 });
 router.delete("/invoices/:id/payments/:pid", async (req, res) => {
   const id = parseInt(req.params.id);
   const pid = parseInt(req.params.pid);
   await db.delete(invoicePaymentsTable).where(and(eq(invoicePaymentsTable.id, pid), eq(invoicePaymentsTable.invoiceId, id)));
   await recomputeInvoiceTotals(id);
-  res.json({ success: true });
+  return sendValidated(req, res, DeleteInvoicePaymentResponse, { success: true }, "deleteInvoicePayment");
 });
 
 // ===== Mark overdue scan (manual trigger) =====
-router.post("/invoices/scan-overdue", async (_req, res) => {
+router.post("/invoices/scan-overdue", async (req, res) => {
   const today = new Date().toISOString().slice(0, 10);
   const candidates = await db.select().from(invoicesTable).where(eq(invoicesTable.status, "sent"));
   const toMark = candidates.filter(c => c.dueDate && c.dueDate < today);
@@ -380,7 +390,7 @@ router.post("/invoices/scan-overdue", async (_req, res) => {
       fire("invoice.overdue", { objectType: "invoice", objectId: inv.id, invoiceId: inv.id, orderId: inv.orderId, partnerId: inv.partnerId ?? null, invoiceNumber: inv.invoiceNumber, daysOverdue: days }).catch(() => {});
     }
   }
-  res.json({ markedOverdue: toMark.length });
+  return sendValidated(req, res, ScanOverdueInvoicesResponse, { markedOverdue: toMark.length }, "scanOverdueInvoices");
 });
 
 export default router;

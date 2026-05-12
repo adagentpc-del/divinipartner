@@ -6,6 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./adminGenericArray";
+export * from "./adminGenericArrayItem";
+export * from "./adminGenericObject";
+export * from "./adminGenericObjectOrNull";
 export * from "./adminNote";
 export * from "./assetsLibrary";
 export * from "./createNoteBody";

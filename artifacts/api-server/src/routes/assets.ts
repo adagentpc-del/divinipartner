@@ -15,6 +15,14 @@ import {
 } from "@workspace/db";
 import { fire } from "../services/workflowEngine";
 import { emit as usageEmit, emitFirst as usageEmitFirst } from "../services/usageTracking";
+import { sendValidated } from "../lib/validateResponse.js";
+import {
+  ListAssetsResponse,
+  GetAssetResponse,
+  UpdateAssetResponse,
+  DeleteAssetResponse,
+  ListAssetEventsResponse,
+} from "@workspace/api-zod";
 
 const router: IRouter = Router();
 
@@ -66,13 +74,13 @@ router.get("/assets", async (req, res) => {
   if (q.orderItemId) {
     const links = await db.select().from(assetLinksTable).where(eq(assetLinksTable.orderItemId, parseInt(q.orderItemId)));
     const ids = links.map(l => l.assetId);
-    if (!ids.length) { res.json([]); return; }
+    if (!ids.length) { sendValidated(req, res, ListAssetsResponse, [], "listAssets"); return; }
     conds.push(inArray(assetsTable.id, ids));
   }
   const rows = conds.length
     ? await db.select().from(assetsTable).where(and(...conds)).orderBy(desc(assetsTable.createdAt))
     : await db.select().from(assetsTable).orderBy(desc(assetsTable.createdAt));
-  res.json(await withLinks(rows));
+  return sendValidated(req, res, ListAssetsResponse, await withLinks(rows), "listAssets");
 });
 
 // ===== Get one (with links + event history + version siblings) =====
@@ -86,7 +94,7 @@ router.get("/assets/:id", async (req, res) => {
   // Version family: same parentAssetId chain
   const rootId = asset.parentAssetId || asset.id;
   const versions = await db.select().from(assetsTable).where(or(eq(assetsTable.id, rootId), eq(assetsTable.parentAssetId, rootId)));
-  res.json({ ...asset, links, events, versions: versions.sort((a, b) => a.version - b.version) });
+  return sendValidated(req, res, GetAssetResponse, { ...asset, links, events, versions: versions.sort((a, b) => a.version - b.version) }, "getAsset");
 });
 
 // ===== Create asset (after upload) =====
@@ -127,7 +135,7 @@ router.post("/assets", async (req, res) => {
   }
   await logEvent({ assetId: row.id, orderId: row.orderId ?? undefined, eventType: "uploaded", toValue: row.title, actorUserId: data.uploadedByUserId ?? null });
   fire("asset.uploaded", { objectType: "asset", objectId: row.id, assetId: row.id, orderId: row.orderId ?? null, partnerId: row.partnerId ?? null, eventId: row.eventId ?? null, assetTitle: row.title }).catch(() => {});
-  res.json(row);
+  return res.json(row);
 });
 
 // ===== Patch (status, visibility, notes, etc.) =====
@@ -166,7 +174,7 @@ router.patch("/assets/:id", async (req, res) => {
   if (parsed.data.visibility && parsed.data.visibility !== prev.visibility) {
     await logEvent({ assetId: id, orderId: prev.orderId ?? undefined, eventType: "visibility_change", fromValue: prev.visibility, toValue: parsed.data.visibility });
   }
-  res.json(row);
+  return sendValidated(req, res, UpdateAssetResponse, row, "updateAsset");
 });
 
 // ===== Approve =====
@@ -194,7 +202,7 @@ router.post("/assets/:id/approve", async (req, res) => {
   fire("asset.approved", { objectType: "asset", objectId: id, assetId: id, orderId: row.orderId ?? null, partnerId: row.partnerId ?? null, eventId: row.eventId ?? null, assetTitle: row.title, releasedToVendor: releaseToVendor }).catch(() => {});
   usageEmit("asset.approved", { partnerId: row.partnerId ?? null, objectType: "asset", objectId: id }).catch(() => {});
   usageEmitFirst("first_asset_approved", { partnerId: row.partnerId ?? null, objectType: "asset", objectId: id }).catch(() => {});
-  res.json(row);
+  return res.json(row);
 });
 
 // ===== Request revision =====
@@ -206,7 +214,7 @@ router.post("/assets/:id/request-revision", async (req, res) => {
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
   await logEvent({ assetId: id, orderId: row.orderId ?? undefined, eventType: "revision_requested", actorUserId: userId, notes: note });
   fire("asset.revision_requested", { objectType: "asset", objectId: id, assetId: id, orderId: row.orderId ?? null, partnerId: row.partnerId ?? null, eventId: row.eventId ?? null, assetTitle: row.title, note }).catch(() => {});
-  res.json(row);
+  return res.json(row);
 });
 
 // ===== Upload new version =====
@@ -273,9 +281,9 @@ router.post("/assets/:id/new-version", async (req, res) => {
       return { row, headVersion: head.version };
     });
     await logEvent({ assetId: result.row.id, orderId: result.row.orderId ?? undefined, eventType: "new_version", fromValue: String(result.headVersion), toValue: String(result.row.version), actorUserId: parsed.data.uploadedByUserId ?? null });
-    res.json(result.row);
+    return res.json(result.row);
   } catch (e: any) {
-    res.status(500).json({ error: e.message || "new-version failed" });
+    return res.status(500).json({ error: e.message || "new-version failed" });
   }
 });
 
@@ -289,7 +297,7 @@ router.post("/assets/:id/links", async (req, res) => {
   if (existing.length) { res.json(existing[0]); return; }
   const [row] = await db.insert(assetLinksTable).values({ assetId: id, orderItemId, role, isRequiredFor } as any).returning();
   await logEvent({ assetId: id, orderItemId, eventType: "linked", toValue: role });
-  res.json(row);
+  return res.json(row);
 });
 router.delete("/assets/:id/links/:linkId", async (req, res) => {
   const id = parseInt(req.params.id);
@@ -298,7 +306,7 @@ router.delete("/assets/:id/links/:linkId", async (req, res) => {
   if (!link) { res.status(404).json({ error: "Link not found for this asset" }); return; }
   await db.delete(assetLinksTable).where(eq(assetLinksTable.id, linkId));
   await logEvent({ assetId: id, orderItemId: link.orderItemId, eventType: "unlinked" });
-  res.json({ success: true });
+  return res.json({ success: true });
 });
 
 // ===== Delete =====
@@ -308,14 +316,14 @@ router.delete("/assets/:id", async (req, res) => {
   if (!prev) { res.status(404).json({ error: "Not found" }); return; }
   await db.delete(assetsTable).where(eq(assetsTable.id, id));
   await logEvent({ orderId: prev.orderId ?? undefined, eventType: "archived", fromValue: prev.title });
-  res.json({ success: true });
+  return sendValidated(req, res, DeleteAssetResponse, { success: true }, "deleteAsset");
 });
 
 // ===== Recent events feed =====
 router.get("/asset-events", async (req, res) => {
   const limit = Math.min(parseInt((req.query.limit as string) || "50"), 200);
   const rows = await db.select().from(assetEventsTable).orderBy(desc(assetEventsTable.createdAt)).limit(limit);
-  res.json(rows);
+  return sendValidated(req, res, ListAssetEventsResponse, rows, "listAssetEvents");
 });
 
 export { router as assetsRouter };

@@ -2,6 +2,12 @@ import { Router, type IRouter } from "express";
 import { eq, and } from "drizzle-orm";
 import { db, partnerBrandingLocationsTable, withMmColumns } from "@workspace/db";
 import { z } from "zod";
+import {
+  ListBrandingLocationsResponse,
+  UpdateBrandingLocationResponse,
+  BulkUpdateBrandingLocationsResponse,
+} from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 
 const router: IRouter = Router();
 
@@ -50,7 +56,7 @@ router.get("/partners/:id/branding-locations", async (req, res): Promise<void> =
   const locations = await db.select().from(partnerBrandingLocationsTable)
     .where(eq(partnerBrandingLocationsTable.partnerId, partnerId))
     .orderBy(partnerBrandingLocationsTable.sortOrder);
-  res.json(locations);
+  sendValidated(req, res, ListBrandingLocationsResponse, locations, "List branding locations");
 });
 
 router.post("/partners/:id/branding-locations", async (req, res): Promise<void> => {
@@ -97,7 +103,7 @@ router.patch("/partners/:id/branding-locations/:locationId", async (req, res): P
     .returning();
 
   if (!location) { res.status(404).json({ error: "Location not found" }); return; }
-  res.json(location);
+  sendValidated(req, res, UpdateBrandingLocationResponse, location, "Update branding location");
 });
 
 router.delete("/partners/:id/branding-locations/:locationId", async (req, res): Promise<void> => {
@@ -133,7 +139,7 @@ router.post("/partners/:id/branding-locations/bulk-update", async (req, res): Pr
       .returning();
     if (updated) results.push(updated);
   }
-  res.json(results);
+  sendValidated(req, res, BulkUpdateBrandingLocationsResponse, results, "Bulk update branding locations");
 });
 
 export default router;

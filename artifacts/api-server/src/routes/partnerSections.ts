@@ -2,6 +2,12 @@ import { Router, type IRouter } from "express";
 import { eq, and } from "drizzle-orm";
 import { db, partnerSectionsTable } from "@workspace/db";
 import { z } from "zod";
+import {
+  ListPartnerSectionsResponse,
+  UpdatePartnerSectionResponse,
+  BulkReplacePartnerSectionsResponse,
+} from "@workspace/api-zod";
+import { sendValidated } from "../lib/validateResponse";
 
 const router: IRouter = Router();
 
@@ -25,7 +31,7 @@ router.get("/partners/:id/sections", async (req, res): Promise<void> => {
   const sections = await db.select().from(partnerSectionsTable)
     .where(eq(partnerSectionsTable.partnerId, partnerId))
     .orderBy(partnerSectionsTable.sortOrder);
-  res.json(sections);
+  sendValidated(req, res, ListPartnerSectionsResponse, sections, "List partner sections");
 });
 
 router.post("/partners/:id/sections", async (req, res): Promise<void> => {
@@ -53,7 +59,7 @@ router.patch("/partners/:id/sections/:sectionId", async (req, res): Promise<void
     .returning();
 
   if (!section) { res.status(404).json({ error: "Section not found" }); return; }
-  res.json(section);
+  sendValidated(req, res, UpdatePartnerSectionResponse, section, "Update partner section");
 });
 
 router.delete("/partners/:id/sections/:sectionId", async (req, res): Promise<void> => {
@@ -95,9 +101,9 @@ router.put("/partners/:id/sections/bulk", async (req, res): Promise<void> => {
       }
       return inserted;
     });
-    res.json(results);
+    sendValidated(req, res, BulkReplacePartnerSectionsResponse, results, "Bulk replace partner sections");
   } catch (e: any) {
-    console.error("[partnerSections.bulk] transaction failed:", e?.message || e);
+    req.log.error({ err: e }, "[partnerSections.bulk] transaction failed");
     res.status(500).json({ error: "Failed to save sections; existing sections were not modified." });
   }
 });
