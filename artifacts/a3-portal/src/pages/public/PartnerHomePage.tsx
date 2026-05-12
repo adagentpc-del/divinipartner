@@ -109,10 +109,10 @@ const PARTNERS: PartnerTileData[] = [
   {
     name: "Social Commerce Festival",
     route: "/partner/social-commerce-festival",
-    accessType: "Password Protected",
+    accessType: "Public",
     description:
-      "Private portal for Social Commerce Festival partner and event production requests.",
-    isPasswordProtected: true,
+      "Public partner portal for Social Commerce Festival event production and ordering requests.",
+    isPasswordProtected: false,
   },
   {
     name: "Wynwood Marketplace",
