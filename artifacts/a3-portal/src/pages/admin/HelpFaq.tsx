@@ -12,7 +12,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-type Faq = { id: number; audience: string; category: string; question: string; answer: string; sortOrder: number; isActive: boolean };
+import type { FaqEntry as Faq } from "@workspace/db/schema";
 type Constants = { audiences: string[]; categories: { key: string; label: string }[] };
 
 const AUDIENCE_LABEL: Record<string, string> = {

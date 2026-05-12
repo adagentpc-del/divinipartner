@@ -14,20 +14,13 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, Package, Loader2, Layers } from "lucide-react";
 import { FamilyStatusGrid, type FamilyAvailability } from "@/components/admin/FamilyStatusCard";
 
-type Product = { id: number; name: string; displayName: string | null; sku: string | null };
+import type { ProductCatalog, ProductFamily, ProductFamilyMember } from "@workspace/db/schema";
+type Product = Pick<ProductCatalog, "id" | "name" | "displayName" | "sku">;
 type Partner = { id: number; name: string; slug: string };
-type Member = {
-  id: number; familyId: number; productId: number; role: "hardware" | "component" | "accessory";
-  requiresHardwareUnits: number; isOptional: boolean; sortOrder: number;
+type Member = ProductFamilyMember & {
   productName?: string | null; productDisplayName?: string | null;
 };
-type Family = {
-  id: number; slug: string; name: string; description: string | null;
-  hardwareProductId: number | null; requiresHardwareDefault: boolean;
-  lowStockThreshold: number | null;
-  isActive: boolean;
-  members: Member[];
-};
+type Family = ProductFamily & { members: Member[] };
 
 export default function ProductFamilies() {
   const { toast } = useToast();

@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2, Plus } from "lucide-react";
 
-type Material = { id: number; name: string; category: string | null; isActive: boolean; sortOrder: number; description: string | null };
+import type { ApprovedMaterial as Material } from "@workspace/db/schema";
 
 export default function ApprovedMaterials() {
   const { toast } = useToast();

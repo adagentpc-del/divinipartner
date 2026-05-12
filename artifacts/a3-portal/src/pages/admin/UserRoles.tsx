@@ -12,9 +12,11 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Loader2, Pencil, Trash2, UserCog } from "lucide-react";
 
-type Role = { id: number; userId: string | null; email: string; fullName: string | null; role: string; partnerId: number | null; supplierId: number | null; isActive: boolean; invitedAt: string | null; acceptedAt: string | null };
-type Partner = { id: number; companyName: string };
-type Supplier = { id: number; name: string };
+import type { UserRole, Partner as SchemaPartner, Supplier as SchemaSupplier } from "@workspace/db/schema";
+import type { SerializedRow } from "@/lib/schemaRow";
+type Role = SerializedRow<UserRole>;
+type Partner = Pick<SchemaPartner, "id" | "companyName">;
+type Supplier = Pick<SchemaSupplier, "id" | "name">;
 
 const ROLES = [
   { value: "super_admin", label: "Super Admin" },

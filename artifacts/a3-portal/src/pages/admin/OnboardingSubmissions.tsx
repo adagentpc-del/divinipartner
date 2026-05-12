@@ -10,19 +10,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, UserPlus, Eye, Mail, Phone, Globe, Building2, Receipt, Palette, FileText, ExternalLink, Inbox, CheckCircle2, Clock, X } from "lucide-react";
 
-type Submission = {
-  id: number; companyName: string; websiteUrl: string | null; industryFocus: string | null;
-  partnerType: string | null; portalMode: string | null; hasTours: string | null;
-  introHeadline: string | null; introText: string | null; thankYouText: string | null;
-  brandColors: string | null; logoUrl: string | null; secondaryLogoUrl: string | null;
-  brandAssetsJson: { name: string; url: string }[] | null;
-  contactName: string; contactEmail: string; contactPhone: string | null; contactRole: string | null;
-  billingContactName: string | null; billingEmail: string | null; billingPhone: string | null; billingAddress: string | null;
-  taxId: string | null; paymentTerms: string | null; billingNotes: string | null;
-  whatWeNeed: string | null; timeline: string | null; budgetRange: string | null; referenceUrls: string | null;
-  status: string; internalNotes: string | null; reviewedAt: string | null; convertedPartnerId: number | null;
-  createdAt: string;
-};
+import type { PartnerOnboardingSubmission } from "@workspace/db/schema";
+import type { SerializedRow } from "@/lib/schemaRow";
+type Submission = SerializedRow<PartnerOnboardingSubmission>;
 
 const STATUS_BADGE: Record<string, string> = {
   new: "bg-blue-50 text-blue-700 border-blue-200",

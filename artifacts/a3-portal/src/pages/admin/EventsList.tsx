@@ -16,12 +16,13 @@ import { Plus, Loader2, Pencil, Trash2, Calendar, Copy, ChevronLeft, MapPin, Box
 import { EventInventoryDialog } from "@/components/admin/EventInventoryDialog";
 import { UnitPreferenceSelect } from "@/components/units/DimensionInput";
 
+import type { Event as SchemaEvent, PartnerAddon as SchemaPartnerAddon, City as SchemaCity, Venue as SchemaVenue, Package as SchemaPackage } from "@workspace/db/schema";
 type AddonOverride = { mode: "inherit" | "override"; productIds?: number[]; categories?: string[] } | null;
-type EventRow = { id: number; partnerId: number; cityId: number | null; cityName?: string | null; venueId: number | null; venueName?: string | null; name: string; eventStartDate: string | null; eventEndDate: string | null; installDate: string | null; teardownDate: string | null; shippingDeadline: string | null; status: string; notes: string | null; isActive: boolean; availablePackageIdsJson: number[] | null; addonOverrideJson?: AddonOverride };
-type PartnerAddon = { id: number; productId: number; sortOrder: number; isFeatured: boolean; isActive: boolean; productName: string | null; productCategory: string | null };
-type City = { id: number; name: string };
-type Venue = { id: number; name: string; cityId: number | null };
-type Pkg = { id: number; name: string; tier: number };
+type EventRow = SchemaEvent & { cityName?: string | null; venueName?: string | null };
+type PartnerAddon = Omit<SchemaPartnerAddon, "productId"> & { productId: number; productName: string | null; productCategory: string | null };
+type City = Pick<SchemaCity, "id" | "name">;
+type Venue = Pick<SchemaVenue, "id" | "name" | "cityId">;
+type Pkg = Pick<SchemaPackage, "id" | "name" | "tier">;
 
 const STATUS_OPTIONS = ["draft", "upcoming", "live", "completed", "archived"];
 const STATUS_COLORS: Record<string, string> = {

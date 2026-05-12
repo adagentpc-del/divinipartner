@@ -14,12 +14,7 @@ import { Plus, Loader2, Pencil, Trash2, Truck, Upload } from "lucide-react";
 import { ImportDialog } from "@/components/imports/ImportDialog";
 import { EmptyStateCard } from "@/components/admin/EmptyStateCard";
 
-type Supplier = {
-  id: number; name: string; slug: string; description?: string | null;
-  categoriesJson?: string[] | null; capabilitiesJson?: string[] | null; territoryJson?: string[] | null;
-  contactName?: string | null; contactEmail?: string | null; contactPhone?: string | null;
-  fulfillmentNotes?: string | null; isActive: boolean;
-};
+import type { Supplier } from "@workspace/db/schema";
 
 function SupplierDialog({ supplier, trigger, onSaved }: { supplier?: Supplier | null; trigger: React.ReactNode; onSaved: () => void }) {
   const [open, setOpen] = useState(false);

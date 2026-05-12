@@ -13,11 +13,9 @@ import { Plus, Lightbulb, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useDemoMode } from "@/contexts/DemoModeContext";
 
-type Objection = {
-  id: number; accountId?: number | null; proposalId?: number | null; category: string; summary: string;
-  detail?: string | null; status: string; recommendedResponse?: string | null; internalNotes?: string | null;
-  tagsJson?: string[]; raisedBy?: string | null; raisedAt: string; resolvedAt?: string | null;
-};
+import type { Objection as SchemaObjection } from "@workspace/db/schema";
+import type { SerializedRow } from "@/lib/schemaRow";
+type Objection = SerializedRow<SchemaObjection>;
 type Constants = { categories: { key: string; label: string }[]; statuses: string[]; recommendedResponses: Record<string, string> };
 
 const STATUS_COLORS: Record<string, string> = {

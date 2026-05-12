@@ -17,31 +17,11 @@ import { ArrowLeft, Loader2, Plus, Pencil, Trash2, MapPin, Eye, EyeOff, Check, A
 import { ImportDialog } from "@/components/imports/ImportDialog";
 import { Link, useLocation } from "wouter";
 
-interface BrandingLocation {
-  id: number;
-  name: string;
-  internalCode: string;
-  category: string;
-  description: string;
-  sizeWidth: number | null;
-  sizeHeight: number | null;
-  sizeUnit: string;
-  sourcePageNumber: number | null;
-  previewImageUrl: string;
-  confidenceScore: number | null;
-  productionNotesInternal: string;
-  installNotesInternal: string;
-  templateFileUrl: string;
-  artworkGuidelines: string;
-  reviewStatus: string;
-  isActive: boolean;
-  sortOrder: number;
+import type { PartnerBrandingLocation } from "@workspace/db/schema";
+type BrandingLocation = Omit<PartnerBrandingLocation, "unitRate" | "minCharge" | "pricingModel" | "createdAt" | "updatedAt"> & {
   pricingModel: string | null;
   unitRate: number | string | null;
-  pricingUnit: string | null;
-  minBillableSize: number | null;
   minCharge: number | string | null;
-  allowsCustomSize: boolean;
 }
 
 const CATEGORIES = [

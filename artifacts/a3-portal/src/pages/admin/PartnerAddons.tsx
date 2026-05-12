@@ -25,21 +25,12 @@ import {
   ArrowLeft, Loader2, Plus, Trash2, Star, ChevronUp, ChevronDown, PackagePlus, Save, Check, Search,
 } from "lucide-react";
 
-type Product = {
-  id: number;
-  name: string;
-  displayName?: string | null;
-  sku?: string | null;
-  category: string;
-  imageUrl: string | null;
-  isActive: boolean;
-  slug: string;
-  reviewStatus?: string | null;
-};
+import type { ProductCatalog, PartnerAddon } from "@workspace/db/schema";
+type Product = ProductCatalog;
 
-type AddonRow = {
-  id?: number; productId: number; sortOrder: number; isFeatured: boolean; isActive: boolean;
-  categoryOverride?: string | null;
+type AddonRow = Omit<PartnerAddon, "id" | "createdAt" | "updatedAt" | "productId" | "partnerId" | "surveyAssetId"> & {
+  id?: number;
+  productId: number;
   productName?: string | null; productCategory?: string | null; productImageUrl?: string | null; productSlug?: string | null; productIsActive?: boolean | null;
   productSku?: string | null;
   effectiveCategory?: string | null;
@@ -107,6 +98,7 @@ export default function PartnerAddons() {
         sortOrder: prev.length,
         isFeatured: false,
         isActive: true,
+        categoryOverride: null,
         productName: p.name,
         productCategory: p.category,
         productImageUrl: p.imageUrl,

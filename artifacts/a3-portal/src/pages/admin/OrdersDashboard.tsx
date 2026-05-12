@@ -9,15 +9,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Loader2, ShoppingCart, Search, FileSpreadsheet } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import type { Order as OrderRow } from "@workspace/db/schema";
+import type { Order as SchemaOrder, Partner as SchemaPartner, Supplier as SchemaSupplier, City as SchemaCity } from "@workspace/db/schema";
+import type { SerializedRow } from "@/lib/schemaRow";
 
-// Source the row shape from the shared Drizzle schema so renamed/removed columns
-// surface as type errors instead of silently breaking the dashboard (mirrors the
-// approach the product editor took after the historic price-preview drift).
-// API serializes timestamps as ISO strings and joins in a few display-only
-// fields that aren't part of the orders table.
-type Order = Omit<OrderRow, "createdAt" | "updatedAt"> & {
-  createdAt: string;
+// Source row shape from the shared Drizzle schema so renamed/removed columns
+// surface as type errors instead of silently breaking the dashboard.
+// SerializedRow converts Drizzle Date columns to ISO strings the API returns;
+// extra fields below are display-only joins not in the orders table.
+type Order = SerializedRow<SchemaOrder> & {
   partnerName?: string;
   eventName?: string | null;
   supplierName?: string | null;
@@ -34,9 +33,9 @@ const EXCEPTION_BADGE: Record<string, { label: string; className: string }> = {
   waiting_internal: { label: "Waiting internal",   className: "border-violet-300 text-violet-700 bg-violet-50" },
   resolved:         { label: "Resolved",           className: "border-emerald-300 text-emerald-700 bg-emerald-50" },
 };
-type Partner = { id: number; companyName: string };
-type Supplier = { id: number; name: string };
-type City = { id: number; name: string };
+type Partner = Pick<SchemaPartner, "id" | "companyName">;
+type Supplier = Pick<SchemaSupplier, "id" | "name">;
+type City = Pick<SchemaCity, "id" | "name">;
 
 const FULFILLMENT_MODES = ["full", "graphic_only", "use_existing_partner_inventory", "rental_plus_print", "new_hardware_required", "client_owned_plus_print"];
 

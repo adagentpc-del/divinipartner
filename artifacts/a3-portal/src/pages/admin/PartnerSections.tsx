@@ -30,17 +30,15 @@ import {
   Boxes, LifeBuoy, HelpCircle, Type,
 } from "lucide-react";
 
-interface Section {
+import type { PartnerSection } from "@workspace/db/schema";
+type Section = Pick<PartnerSection, "sectionType" | "isEnabled" | "sortOrder"> & {
   id?: number;
-  sectionType: string;
   title: string;
   subtitle: string;
   description: string;
   featuredImageUrl: string;
   featuredVideoUrl: string;
-  isEnabled: boolean;
-  sortOrder: number;
-}
+};
 
 interface Partner { id: number; name: string; partnerType: string | null; }
 

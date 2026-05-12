@@ -40,72 +40,17 @@ const MISSING_FLAGS = [
   "missing_customer_summary", "missing_ops_summary",
 ];
 
-interface Source {
-  id: number;
-  name: string;
-  fileUrl: string;
-  fileType: string | null;
-  sourceType: string;
-  processingStatus: string;
-  supplierId: number | null;
-  supplierName: string | null;
-  version: string | null;
-  effectiveDate: string | null;
-  expirationDate: string | null;
-  isApprovedStandard: boolean;
-  internalOnly: boolean;
-  vendorVisible: boolean;
-  confidenceFlag: string | null;
-  extractedDisplayName: string | null;
-  extractedInternalName: string | null;
-  extractedCategory: string | null;
-  customerFacingSummary: string | null;
-  backendOpsSummary: string | null;
-  dimensionsSummary: string | null;
-  materialSummary: string | null;
-  finishingSummary: string | null;
-  attachmentSummary: string | null;
-  hardwareSummary: string | null;
-  leadTimeText: string | null;
-  printFileRequirements: string | null;
-  installNotes: string | null;
-  opsNotes: string | null;
-  reviewNotes: string | null;
-  clarificationNeeded: string | null;
-  missingDataFlagsJson: string[] | null;
-  notes: string | null;
+import type { QuoteAsset, Supplier as SchemaSupplier, ProductCatalog, Package as SchemaPackage } from "@workspace/db/schema";
+import type { SerializedRow } from "@/lib/schemaRow";
+type Source = SerializedRow<QuoteAsset> & {
   mappings: Mapping[];
   mappingCount: number;
   hasMissingData: boolean;
-  createdAt: string;
-  // Section 21: parsed billing signals
-  parsedAt: string | null;
-  parsedSource: string | null;            // 'rules' | 'ai' | 'none' | 'failed'
-  parsedReviewStatus: string | null;      // 'pending' | 'approved' | 'dismissed' | 'edited'
-  parsedCurrency: string | null;
-  parsedCurrencyConfidence: string | null;
-  parsedTaxLabel: string | null;
-  parsedTaxRate: string | null;
-  parsedTaxAmount: string | null;
-  parsedTaxInclusive: boolean | null;
-  parsedSubtotalAmount: string | null;
-  parsedTotalAmount: string | null;
-  parsedQuoteReference: string | null;
-  parsedSupplierName: string | null;
-  parsedPaymentTerms: string | null;
-  parsedDepositAmount: string | null;
-  parsedBillingCountry: string | null;
-  parsedIncoterm: string | null;
-  parsedBillingNotes: string | null;
-  parsedBillingFlagsJson: string[] | null;
-  parsedMissingFieldsJson: string[] | null;
-  parsedAiTokensInput: number | null;
-  parsedAiTokensOutput: number | null;
-}
+};
 interface Mapping { id: number; mappingType: string; mappingId: number; note: string | null; label?: string; }
-interface Supplier { id: number; name: string; }
-interface Product { id: number; name: string; displayName: string | null; category: string; }
-interface Pkg { id: number; name: string; }
+type Supplier = Pick<SchemaSupplier, "id" | "name">;
+type Product = Pick<ProductCatalog, "id" | "name" | "displayName" | "category">;
+type Pkg = Pick<SchemaPackage, "id" | "name">;
 interface Zone { id: number; name: string; partnerId: number; }
 
 export default function QuoteIngestion() {

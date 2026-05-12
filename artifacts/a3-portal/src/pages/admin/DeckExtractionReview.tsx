@@ -14,41 +14,10 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Loader2, Check, Pencil, Trash2, Copy, Eye, EyeOff, MapPin, FileText, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 import { Link } from "wouter";
 
-interface ExtractionItem {
-  id: number;
-  locationName: string;
-  category: string;
-  description: string | null;
-  dimensionsText: string | null;
-  sizeWidth: number | null;
-  sizeHeight: number | null;
-  sizeUnit: string;
-  sourcePageNumber: number | null;
-  extractedTextSnippet: string | null;
-  confidenceScore: number | null;
-  reviewStatus: string;
-  isHidden: boolean;
-  adminNotes: string | null;
-}
-
-interface Extraction {
-  id: number;
-  partnerId: number;
-  sourceFileUrl: string;
-  sourceFileName: string;
-  status: string;
-  totalPages: number | null;
-  processedAt: string | null;
-  errorMessage: string | null;
-  parseSource?: "ai" | "rules" | "reused_dedup" | null;
-  dedupedFromId?: number | null;
-  chunkCount?: number | null;
-  aiTokensInput?: number | null;
-  aiTokensOutput?: number | null;
-  aiModel?: string | null;
-  fileHash?: string | null;
-  items: ExtractionItem[];
-}
+import type { DeckExtraction, DeckExtractionItem } from "@workspace/db/schema";
+import type { SerializedRow } from "@/lib/schemaRow";
+type ExtractionItem = DeckExtractionItem;
+type Extraction = SerializedRow<DeckExtraction> & { items: ExtractionItem[] };
 
 const CATEGORIES = [
   "Wall Graphic", "Window Decal", "Column Wrap", "Pole Banner", "Fence Banner",

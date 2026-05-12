@@ -16,8 +16,8 @@ import { Plus, Loader2, Pencil, Trash2, MapPin, Building2, Copy, ChevronLeft, Up
 import { ImportDialog } from "@/components/imports/ImportDialog";
 import { UnitPreferenceSelect } from "@/components/units/DimensionInput";
 
-type City = { id: number; partnerId: number | null; name: string; state: string | null; country: string | null; notes: string | null; isActive: boolean; sortOrder: number };
-type Venue = { id: number; partnerId: number | null; cityId: number | null; cityName?: string | null; name: string; venueAddress: string | null; shippingAddress: string | null; onsiteContactName: string | null; onsiteContactPhone: string | null; onsiteContactEmail: string | null; installNotes: string | null; shippingInstructions: string | null; deadlineNotes: string | null; isActive: boolean; unitPreference?: string | null; country?: string | null };
+import type { City, Venue as SchemaVenue } from "@workspace/db/schema";
+type Venue = SchemaVenue & { cityName?: string | null };
 
 function CityDialog({ partnerId, city, trigger, onSaved }: { partnerId: number; city?: City | null; trigger: React.ReactNode; onSaved: () => void }) {
   const [open, setOpen] = useState(false);

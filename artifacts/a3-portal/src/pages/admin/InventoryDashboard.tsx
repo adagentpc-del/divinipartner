@@ -14,24 +14,18 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Loader2, Pencil, Trash2, Boxes, AlertTriangle, MapPin, Package, Wrench, ShoppingCart, TrendingDown, CalendarDays } from "lucide-react";
 
-type InvRow = {
-  id: number; partnerId: number | null; partnerName?: string | null;
-  cityId: number; cityName?: string;
-  productId: number | null; productName?: string | null; productCategory?: string | null;
-  name: string | null; category: string | null; assetType: string;
-  storageLocation: string | null;
-  totalQuantity: number; hardwareOnHand: number;
-  reserved: number; inUse: number; damaged: number; retired: number; onOrder: number;
-  reorderThreshold: number; lowInventoryThreshold: number;
-  graphicOnlyAvailable: boolean;
-  notes: string | null;
+import type { Inventory, InventoryReservation, City as SchemaCity, ProductCatalog, Partner as SchemaPartner } from "@workspace/db/schema";
+import type { SerializedRow } from "@/lib/schemaRow";
+type InvRow = Inventory & {
+  partnerName?: string | null; cityName?: string;
+  productName?: string | null; productCategory?: string | null;
   total: number; available: number; accountedFor: number; overcommitted: boolean; isLow: boolean;
   displayName: string;
 };
-type City = { id: number; name: string };
-type Product = { id: number; name: string; category: string };
-type Partner = { id: number; companyName: string };
-type Reservation = { id: number; inventoryId: number; eventId: number; eventName?: string; quantity: number; status: string; notes: string | null; createdAt: string; inventoryName?: string | null; productName?: string | null; cityName?: string | null };
+type City = Pick<SchemaCity, "id" | "name">;
+type Product = Pick<ProductCatalog, "id" | "name" | "category">;
+type Partner = Pick<SchemaPartner, "id" | "companyName">;
+type Reservation = SerializedRow<InventoryReservation> & { eventName?: string; inventoryName?: string | null; productName?: string | null; cityName?: string | null };
 
 const ASSET_TYPES = [
   { value: "hardware", label: "Hardware" },

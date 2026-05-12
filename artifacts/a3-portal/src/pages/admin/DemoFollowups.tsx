@@ -11,13 +11,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { Plus, Calendar, Target, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-type Followup = {
-  id: number; accountId?: number | null; prospectName?: string | null; demoAt?: string | null;
-  outcome?: string | null; status: string; interestAreas?: string[]; objectionsSummary?: string | null;
-  recommendedPlanId?: number | null; whiteLabelInterest?: string | null; activationReadiness?: string | null;
-  nextStep?: string | null; priorityFeatures?: string[]; internalNotes?: string | null;
-  loggedBy?: string | null; createdAt?: string;
-};
+import type { DemoFollowup } from "@workspace/db/schema";
+import type { SerializedRow } from "@/lib/schemaRow";
+type Followup = SerializedRow<DemoFollowup>;
 
 const STATUS = [
   { v: "demo_completed", l: "Demo completed" },

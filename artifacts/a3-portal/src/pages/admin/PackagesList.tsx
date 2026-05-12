@@ -18,10 +18,11 @@ import { PackagePdfImportDialog } from "@/components/imports/PackagePdfImportDia
 import { DimensionInput } from "@/components/units/DimensionInput";
 import type { LengthUnit } from "@/lib/units";
 
-type Pkg = { id: number; partnerId: number | null; supplierId: number | null; name: string; displayName: string | null; description: string | null; tier: number; price: string | null; currency: string; isActive: boolean; imageUrl?: string | null; imageUrls?: string[] | null; sizeWidth?: number | null; sizeHeight?: number | null; sizeDepth?: number | null; sizeDiameter?: number | null; sizeUnit?: string | null };
-type Supplier = { id: number; name: string };
-type Product = { id: number; name: string; category: string };
-type PkgItem = { id: number; productId: number; productName?: string | null; productCategory?: string | null; quantity: number; isOptional: boolean; sortOrder: number };
+import type { Package as SchemaPackage, PackageItem, Supplier as SchemaSupplier, ProductCatalog } from "@workspace/db/schema";
+type Pkg = SchemaPackage;
+type Supplier = Pick<SchemaSupplier, "id" | "name">;
+type Product = Pick<ProductCatalog, "id" | "name" | "category">;
+type PkgItem = PackageItem & { productName?: string | null; productCategory?: string | null };
 
 const MAX_IMAGES = 50;
 type PkgFull = Pkg & { items: PkgItem[] };

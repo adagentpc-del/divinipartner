@@ -94,33 +94,11 @@ function formatDateTime(d: string | null | undefined): string {
   return new Date(d).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
-type Doc = {
-  id: number; title: string; description: string | null; category: string;
-  documentType: string; visibilityLevel: string; storageKey: string;
-  originalFilename: string; fileMimeType: string; fileSizeBytes: number;
-  versionLabel: string | null; expirationDate: string | null;
-  isActive: boolean; isCustomerDownloadable: boolean;
-  requiresAdminApproval: boolean; autoSendWhenRequested: boolean;
-  internalNotes: string | null; uploadedByUserId: string | null;
-  createdAt: string; updatedAt: string;
-};
-
-type DocRequest = {
-  id: number; partnerId: number | null; requesterName: string;
-  requesterEmail: string; requesterCompany: string | null;
-  requestedDocumentTypes: string[] | null; requestMessage: string | null;
-  status: string; reviewedByUserId: string | null;
-  reviewedAt: string | null; createdAt: string; updatedAt: string;
-};
-
-type DocEvent = {
-  id: number; documentId: number | null; requestId: number | null;
-  assignmentId: number | null; partnerId: number | null;
-  customerEmail: string | null; customerName: string | null;
-  eventType: string; eventMetadata: any;
-  ipAddress: string | null; userAgent: string | null;
-  performedByUserId: string | null; createdAt: string;
-};
+import type { DocumentLibrary, DocumentRequest, DocumentEvent } from "@workspace/db/schema";
+import type { SerializedRow } from "@/lib/schemaRow";
+type Doc = SerializedRow<DocumentLibrary>;
+type DocRequest = SerializedRow<DocumentRequest>;
+type DocEvent = Omit<SerializedRow<DocumentEvent>, "eventMetadata"> & { eventMetadata: any };
 
 export default function DocumentCenter() {
   const [activeTab, setActiveTab] = useState("library");

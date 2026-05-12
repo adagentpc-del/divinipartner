@@ -95,23 +95,14 @@ function CurrencyTaxBreakdown({ order, onSave, saving }: { order: any; onSave: (
 import { formatWxHDual, formatPrimarySecondary, formatWeight, pickDisplayWeightUnit, convertWeight, defaultWeightUnit, type UnitSystem, type WeightUnit, type LengthUnit } from "@/lib/units";
 import { PackingDetailsInput, type PackingDetailsValue, type PackingMode } from "@/components/units/PackingDetailsInput";
 import { WeightInput, type WeightValue } from "@/components/units/WeightInput";
-import type { Order as OrderRow, OrderItem as OrderItemRow } from "@workspace/db/schema";
+import type { Order as SchemaOrder, OrderItem as SchemaOrderItem, Supplier as SchemaSupplier, City as SchemaCity } from "@workspace/db/schema";
+import type { SerializedRow } from "@/lib/schemaRow";
 
 // Source row shapes from the shared Drizzle schema so renamed/removed columns
-// surface as type errors instead of silently breaking the editor (mirrors the
-// approach the product editor took after the historic price-preview drift).
-// API serializes timestamps as ISO strings and joins in a few display-only
-// fields that aren't part of the order_items table.
-type OrderItem = Omit<
-  OrderItemRow,
-  "supplierDueDate" | "supplierShipDate" | "supplierDeliveryDate"
-  | "supplierInstallDate" | "supplierAcknowledgedAt" | "createdAt"
-> & {
-  supplierDueDate: string | null;
-  supplierShipDate: string | null;
-  supplierDeliveryDate: string | null;
-  supplierInstallDate: string | null;
-  supplierAcknowledgedAt: string | null;
+// surface as type errors instead of silently breaking the editor. SerializedRow
+// converts Drizzle Date columns to the ISO strings the API actually returns;
+// extra fields below are display-only joins not in the order_items table.
+type OrderItem = SerializedRow<SchemaOrderItem> & {
   productName?: string | null;
   productImageUrl?: string | null;
   packageName?: string | null;
@@ -144,15 +135,7 @@ const SOURCE_LABEL: Record<string, string> = {
   zone: "Inherited from zone", order: "Inherited from order",
   manual: "Manually assigned", none: "Unassigned",
 };
-type OrderFull = Omit<
-  OrderRow,
-  "createdAt" | "updatedAt" | "shipDateTarget" | "deliveryByDate"
-  | "exceptionUpdatedAt" | "measurementSystem"
-> & {
-  createdAt: string;
-  shipDateTarget: string | null;
-  deliveryByDate: string | null;
-  exceptionUpdatedAt: string | null;
+type OrderFull = Omit<SerializedRow<SchemaOrder>, "measurementSystem"> & {
   measurementSystem: "imperial" | "metric" | null;
   partnerName?: string;
   eventName?: string;
@@ -164,8 +147,8 @@ type OrderFull = Omit<
   supplier?: any;
   partnerContacts?: Array<{ id: number; role: string; fullName: string; email: string | null; phone: string | null; isPrimary: boolean; isActive: boolean }>;
 };
-type Supplier = { id: number; name: string };
-type City = { id: number; name: string };
+type Supplier = Pick<SchemaSupplier, "id" | "name">;
+type City = Pick<SchemaCity, "id" | "name">;
 
 const MODE_LABELS: Record<string, string> = {
   full: "Full (hardware + print)",

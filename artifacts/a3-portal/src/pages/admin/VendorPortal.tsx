@@ -14,16 +14,22 @@ import {
   Clock, Package, Image as ImageIcon, MapPin, User, Calendar,
 } from "lucide-react";
 
-type Supplier = { id: number; name: string };
-type VItem = {
-  id: number; orderId: number; orderNumber: string; partnerName: string | null;
-  eventName: string | null; eventStartDate: string | null; venueName: string | null;
-  name: string; quantity: number; fulfillmentMode: string | null;
-  printDemandQuantity: number | null; hardwareDemandQuantity: number | null;
-  supplierStatus: string; supplierDueDate: string | null; supplierShipDate: string | null;
-  supplierReference: string | null; supplierNotes: string | null;
-  exceptionFlag: boolean; exceptionReason: string | null;
-  artworkFileUrl: string | null; notes: string | null; productId: number | null;
+import type { Supplier as SchemaSupplier, OrderItem } from "@workspace/db/schema";
+import type { SerializedRow } from "@/lib/schemaRow";
+type Supplier = Pick<SchemaSupplier, "id" | "name">;
+type VItem = SerializedRow<Pick<OrderItem,
+  "id" | "orderId" | "name" | "quantity" | "fulfillmentMode"
+  | "printDemandQuantity" | "hardwareDemandQuantity"
+  | "supplierStatus" | "supplierDueDate" | "supplierShipDate"
+  | "supplierReference" | "supplierNotes"
+  | "exceptionFlag" | "exceptionReason"
+  | "artworkFileUrl" | "notes" | "productId"
+>> & {
+  orderNumber: string;
+  partnerName: string | null;
+  eventName: string | null;
+  eventStartDate: string | null;
+  venueName: string | null;
 };
 
 const STATUS_LABEL: Record<string, string> = {

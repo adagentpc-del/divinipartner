@@ -17,7 +17,9 @@ import { Loader2, Calculator, AlertTriangle, DollarSign, FileSpreadsheet, Flag, 
 
 type Recon = { id: number; orderNumber: string; partnerName?: string | null; eventName?: string | null; supplierName?: string | null; paymentModel: string; billingEntity?: string | null; totalEstimate: string | null; supplierEstimatedCost: string | null; supplierFinalCost: string | null; expectedCommission: string | null; paidCommission: string | null; commissionStatus: string; supplierPayableStatus: string; paymentStatus: string; reconciliationStatus: string; reconciliationNotes: string | null; financeNotes: string | null; commissionPaidDate: string | null; commissionPaidThrough: string | null; payoutStatus: string; grossMargin: number; commissionVariance: number; supplierCostVariance: number; openDiscrepancies: number; discrepancies: any[] };
 type Summary = { totalRetailBooked: number; totalEstimatedSupplierCost: number; totalFinalSupplierCost: number; expectedCommission: number; paidCommission: number; commissionVarianceTotal: number; supplierCostVarianceTotal: number; openDiscrepanciesCount: number; awaitingReconciliationCount: number; ordersTotal: number; byBillingModel: Record<string, number>; byReconciliationStatus: Record<string, number> };
-type Discrepancy = { id: number; orderId: number; orderNumber?: string | null; partnerName?: string | null; type: string; severity: string; status: string; reason: string | null; notes: string | null; expectedAmount: string | null; actualAmount: string | null; varianceAmount: string | null; createdAt: string; resolvedAt: string | null; resolutionNotes: string | null };
+import type { Discrepancy as SchemaDiscrepancy } from "@workspace/db/schema";
+import type { SerializedRow } from "@/lib/schemaRow";
+type Discrepancy = SerializedRow<SchemaDiscrepancy> & { orderNumber?: string | null; partnerName?: string | null };
 
 const PAYMENT_MODELS = ["partner_billed", "client_direct", "a3_billed", "prepaid"];
 const RECON_STATUSES = ["not_started", "in_review", "waiting_payment", "waiting_supplier_final", "waiting_commission", "discrepancy_found", "reconciled"];
