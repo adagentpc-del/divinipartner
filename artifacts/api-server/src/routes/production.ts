@@ -307,9 +307,19 @@ router.get("/orders/:orderId/supplier-packet/:supplierId", async (req, res) => {
     .filter(a => a.visibility === "vendor_visible" && a.approvalStatus === "approved");
 
   res.json({
-    order: { id: order.id, orderNumber: order.orderNumber, status: order.status, dueDate: order.dueDate, internalNotes: order.internalNotes, vendorNotes: order.vendorNotes },
+    order: {
+      id: order.id, orderNumber: order.orderNumber, status: order.status,
+      internalNotes: order.internalNotes, vendorNotes: order.vendorNotes,
+      shipDateTarget: order.shipDateTarget, deliveryByDate: order.deliveryByDate,
+      packageCount: order.packageCount,
+      totalShipmentWeight: order.totalShipmentWeight, totalShipmentWeightUnit: order.totalShipmentWeightUnit,
+      oversizeFlag: order.oversizeFlag, crateRequired: order.crateRequired, palletRequired: order.palletRequired,
+      shippingContactJson: order.shippingContactJson, receivingContactJson: order.receivingContactJson,
+      customsNotes: order.customsNotes, internationalShippingNotes: order.internationalShippingNotes,
+      logisticsNotes: order.logisticsNotes, measurementSystem: order.measurementSystem,
+    },
     partner: partner ? { id: partner.id, companyName: partner.companyName } : null,
-    event: event ? { id: event.id, name: event.name, startDate: event.startDate, endDate: event.endDate, venueId: event.venueId } : null,
+    event: event ? { id: event.id, name: event.name, eventStartDate: event.eventStartDate, eventEndDate: event.eventEndDate, venueId: event.venueId } : null,
     supplier: { id: supplier.id, name: supplier.name },
     items: packetItems,
     measurementContext: {

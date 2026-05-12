@@ -8,6 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import type { Asset } from "@workspace/db/schema";
+import type { SerializedRow } from "@/lib/schemaRow";
+
+// Source the row shape from the shared Drizzle schema so renamed/removed
+// columns surface as type errors here instead of silently breaking the
+// admin asset library. `timestamp` columns are returned as ISO strings on
+// the wire, so we run the schema row through SerializedRow.
+type AssetRow = SerializedRow<Asset>;
 
 const STATUSES = ["all", "uploaded", "under_review", "revision_requested", "approved", "vendor_released", "superseded"];
 const CATS = ["all", "client_artwork", "approved_artwork", "proof", "print_ready", "reference", "install_reference", "shipping_document", "photo", "spec", "internal_only"];
@@ -19,7 +27,7 @@ export default function Assets() {
   const [q, setQ] = useState("");
   const [showUpload, setShowUpload] = useState(false);
 
-  const { data: assets = [] } = useQuery<any[]>({
+  const { data: assets = [] } = useQuery<AssetRow[]>({
     queryKey: ["/api/assets", { status, category }],
     queryFn: () => {
       const params = new URLSearchParams();

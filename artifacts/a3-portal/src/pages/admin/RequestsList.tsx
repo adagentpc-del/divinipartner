@@ -8,25 +8,112 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { Loader2, FileText, ArrowUpRight, Search, ShoppingBag, MapPin, Palette, MessageSquare, Filter, Flag } from "lucide-react";
+import type {
+  Request as IntakeRequest,
+  PortalRequest,
+  ProductRequest,
+  BrandingLocationRequest,
+} from "@workspace/db/schema";
+import type { SerializedRow } from "@/lib/schemaRow";
 
-interface UnifiedRequest {
-  id: number;
-  type: "intake" | "portal" | "product" | "branding";
-  partnerId: number;
-  partnerName?: string;
-  contactName: string;
-  companyName?: string;
-  email: string;
-  eventName?: string;
-  status: string;
-  quoteStatus?: string;
-  priority?: string;
-  requestType?: string;
-  productName?: string;
-  locationName?: string;
-  createdAt: string;
-  neededByDate?: string;
-  eventDate?: string;
+// Each tab's row shape is sourced from the underlying schema (with `Date`
+// columns serialized to ISO strings on the wire). Tabs are unified via a
+// discriminated union on `type`, plus per-tab joined fields the server
+// returns alongside the row (`partnerName`, `productName`, `locationName`).
+type IntakeRow = SerializedRow<
+  Pick<
+    IntakeRequest,
+    | "id"
+    | "partnerId"
+    | "contactName"
+    | "companyName"
+    | "email"
+    | "eventName"
+    | "eventDate"
+    | "status"
+    | "createdAt"
+  >
+> & { type: "intake"; partnerName?: string };
+
+type PortalRow = SerializedRow<
+  Pick<
+    PortalRequest,
+    | "id"
+    | "partnerId"
+    | "mainContactName"
+    | "companyName"
+    | "email"
+    | "eventName"
+    | "eventDate"
+    | "neededByDate"
+    | "status"
+    | "requestType"
+    | "quoteStatus"
+    | "priority"
+    | "createdAt"
+  >
+> & { type: "portal"; partnerName?: string };
+
+type ProductRow = SerializedRow<
+  Pick<
+    ProductRequest,
+    | "id"
+    | "partnerId"
+    | "mainContactName"
+    | "companyName"
+    | "email"
+    | "eventName"
+    | "eventDate"
+    | "neededByDate"
+    | "status"
+    | "quoteStatus"
+    | "priority"
+    | "createdAt"
+  >
+> & { type: "product"; partnerName?: string; productName?: string | null };
+
+type BrandingRow = SerializedRow<
+  Pick<
+    BrandingLocationRequest,
+    | "id"
+    | "partnerId"
+    | "mainContactName"
+    | "companyName"
+    | "email"
+    | "eventName"
+    | "eventDate"
+    | "neededByDate"
+    | "status"
+    | "quoteStatus"
+    | "priority"
+    | "createdAt"
+  >
+> & { type: "branding"; partnerName?: string; locationName?: string | null };
+
+type UnifiedRequest = IntakeRow | PortalRow | ProductRow | BrandingRow;
+
+function rowContactName(r: UnifiedRequest): string {
+  return r.type === "intake" ? r.contactName : r.mainContactName;
+}
+function rowNeededBy(r: UnifiedRequest): string | null {
+  return r.type === "intake" ? null : (r.neededByDate ?? null);
+}
+function rowQuoteStatus(r: UnifiedRequest): string | null {
+  return r.type === "intake" ? null : r.quoteStatus;
+}
+function rowPriority(r: UnifiedRequest): string | null {
+  return r.type === "intake" ? null : r.priority;
+}
+function rowSubject(r: UnifiedRequest): string | null {
+  if (r.eventName) return r.eventName;
+  if (r.type === "portal") return r.requestType ?? null;
+  return null;
+}
+function rowProductName(r: UnifiedRequest): string | null {
+  return r.type === "product" ? (r.productName ?? null) : null;
+}
+function rowLocationName(r: UnifiedRequest): string | null {
+  return r.type === "branding" ? (r.locationName ?? null) : null;
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -79,48 +166,35 @@ export default function RequestsList() {
       const unified: UnifiedRequest[] = [];
 
       const intakeRequests = intakeData.requests || intakeData || [];
-      for (const r of intakeRequests) {
+      for (const r of intakeRequests as Array<Omit<IntakeRow, "type"> & { partnerName?: string }>) {
         unified.push({
-          id: r.id, type: "intake", partnerId: r.partnerId,
+          ...r,
+          type: "intake",
           partnerName: r.partnerName || partnerMap.get(r.partnerId) || "Unknown",
-          contactName: r.contactName, companyName: r.companyName, email: r.email,
-          eventName: r.eventName, status: r.status, createdAt: r.createdAt,
-          eventDate: r.eventDate,
         });
       }
 
-      for (const r of (portalData || [])) {
+      for (const r of (portalData || []) as Array<Omit<PortalRow, "type">>) {
         unified.push({
-          id: r.id, type: "portal", partnerId: r.partnerId,
+          ...r,
+          type: "portal",
           partnerName: partnerMap.get(r.partnerId) || "Unknown",
-          contactName: r.mainContactName, companyName: r.companyName, email: r.email,
-          eventName: r.eventName, status: r.status, requestType: r.requestType,
-          quoteStatus: r.quoteStatus, priority: r.priority,
-          createdAt: r.createdAt, neededByDate: r.neededByDate, eventDate: r.eventDate,
         });
       }
 
-      for (const r of (productData || [])) {
+      for (const r of (productData || []) as Array<Omit<ProductRow, "type">>) {
         unified.push({
-          id: r.id, type: "product", partnerId: r.partnerId,
+          ...r,
+          type: "product",
           partnerName: partnerMap.get(r.partnerId) || "Unknown",
-          contactName: r.mainContactName, companyName: r.companyName, email: r.email,
-          eventName: r.eventName, status: r.status,
-          productName: r.productName || undefined,
-          quoteStatus: r.quoteStatus, priority: r.priority,
-          createdAt: r.createdAt, neededByDate: r.neededByDate, eventDate: r.eventDate,
         });
       }
 
-      for (const r of (brandingData || [])) {
+      for (const r of (brandingData || []) as Array<Omit<BrandingRow, "type">>) {
         unified.push({
-          id: r.id, type: "branding", partnerId: r.partnerId,
+          ...r,
+          type: "branding",
           partnerName: partnerMap.get(r.partnerId) || "Unknown",
-          contactName: r.mainContactName, companyName: r.companyName, email: r.email,
-          eventName: r.eventName, status: r.status,
-          locationName: r.locationName || undefined,
-          quoteStatus: r.quoteStatus, priority: r.priority,
-          createdAt: r.createdAt, neededByDate: r.neededByDate, eventDate: r.eventDate,
         });
       }
 
@@ -142,7 +216,7 @@ export default function RequestsList() {
       if (filterStatus && r.status !== filterStatus) return false;
       if (searchTerm) {
         const term = searchTerm.toLowerCase();
-        const matches = [r.contactName, r.companyName, r.eventName, r.email, r.partnerName]
+        const matches = [rowContactName(r), r.companyName, r.eventName, r.email, r.partnerName]
           .filter(Boolean).some(v => v!.toLowerCase().includes(term));
         if (!matches) return false;
       }
@@ -253,35 +327,35 @@ export default function RequestsList() {
                     </TableCell>
                     <TableCell>
                       <Link href={getDetailPath(r)}>
-                        <span className="font-medium text-primary hover:underline cursor-pointer text-sm">{r.contactName}</span>
+                        <span className="font-medium text-primary hover:underline cursor-pointer text-sm">{rowContactName(r)}</span>
                       </Link>
                       {r.companyName && <p className="text-xs text-muted-foreground">{r.companyName}</p>}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{r.partnerName}</TableCell>
                     <TableCell>
-                      <span className="text-sm">{r.eventName || r.requestType || "—"}</span>
-                      {r.productName && <p className="text-[11px] text-muted-foreground">{r.productName}</p>}
-                      {r.locationName && <p className="text-[11px] text-muted-foreground">{r.locationName}</p>}
+                      <span className="text-sm">{rowSubject(r) || "—"}</span>
+                      {rowProductName(r) && <p className="text-[11px] text-muted-foreground">{rowProductName(r)}</p>}
+                      {rowLocationName(r) && <p className="text-[11px] text-muted-foreground">{rowLocationName(r)}</p>}
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-1">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium border w-fit ${STATUS_STYLES[r.status] || "bg-muted text-muted-foreground border-border"}`}>
                           {r.status}
                         </span>
-                        {r.quoteStatus && r.quoteStatus !== "needs_review" && (
-                          <span className="text-[10px] text-muted-foreground">{r.quoteStatus.replace(/_/g, " ")}</span>
+                        {rowQuoteStatus(r) && rowQuoteStatus(r) !== "needs_review" && (
+                          <span className="text-[10px] text-muted-foreground">{rowQuoteStatus(r)!.replace(/_/g, " ")}</span>
                         )}
-                        {r.priority && r.priority !== "normal" && (
-                          <span className={`inline-flex items-center gap-0.5 text-[10px] font-medium ${r.priority === "urgent" ? "text-red-600" : "text-amber-600"}`}>
-                            <Flag className="h-2.5 w-2.5" /> {r.priority}
+                        {rowPriority(r) && rowPriority(r) !== "normal" && (
+                          <span className={`inline-flex items-center gap-0.5 text-[10px] font-medium ${rowPriority(r) === "urgent" ? "text-red-600" : "text-amber-600"}`}>
+                            <Flag className="h-2.5 w-2.5" /> {rowPriority(r)}
                           </span>
                         )}
                       </div>
                     </TableCell>
                     <TableCell className="text-xs tabular-nums">
                       <span className="text-muted-foreground">{format(new Date(r.createdAt), "MMM d, yyyy")}</span>
-                      {r.neededByDate && (
-                        <p className="text-amber-600 font-medium mt-0.5">Due: {r.neededByDate}</p>
+                      {rowNeededBy(r) && (
+                        <p className="text-amber-600 font-medium mt-0.5">Due: {rowNeededBy(r)}</p>
                       )}
                     </TableCell>
                     <TableCell className="text-right">

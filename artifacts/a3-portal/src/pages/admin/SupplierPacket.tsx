@@ -7,38 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Printer, ChevronLeft, FileText, Image as ImageIcon, AlertTriangle, CheckCircle2, Truck } from "lucide-react";
 import { Link } from "wouter";
 import { formatWeight, convertWeight, pickDisplayWeightUnit, type WeightUnit, type UnitSystem } from "@/lib/units";
+import type {
+  SupplierPacketResponse,
+  SupplierPacketDualValue,
+  SupplierPacketOrder,
+} from "@workspace/db/dtos";
 
-type PacketAsset = { linkId: number; role: string; asset: any };
-
-type DualValue = { primary: string; secondary: string | null; converted: boolean };
-type ItemSpecs = {
-  finished: DualValue | null;
-  artwork: DualValue | null;
-  visible: DualValue | null;
-  bleed: DualValue | null;
-  safeArea: DualValue | null;
-};
-type Packet = {
-  order: any; partner: any; event: any; supplier: any;
-  items: Array<{
-    itemId: number; name: string; productName: string | null; quantity: number;
-    dimensionDisplay: string | null;
-    specs: ItemSpecs | null;
-    pricingBasis: {
-      pricingModel: string | null; pricingUnit: string | null; pricingUnitLabel: string | null;
-      unitRate: string | number | null; billableAreaSqm: number | null; billableLinearM: number | null;
-      unitPrice: string | number | null; minBillableSize: number | null;
-      minCharge: string | number | null; calculation: string | null; requiresQuote?: boolean;
-    } | null;
-    fulfillmentMode: string | null; supplierStatus: string;
-    supplierDueDate: string | null; supplierShipDate: string | null; supplierInstallDate: string | null;
-    internalFulfillmentNotes: string | null; productionBlockedReason: string | null;
-    assets: PacketAsset[]; flags: string[]; ready: boolean;
-  }>;
-  measurementContext?: { system: string; primarySystem?: string; secondarySystem?: string; source: string; reason: string };
-  orderLevelAssets: any[];
-  summary: { totalItems: number; ready: number; blocked: number };
-};
+type Packet = SupplierPacketResponse;
+type DualValue = SupplierPacketDualValue;
 
 function DualSpec({ label, v }: { label: string; v: DualValue | null }) {
   if (!v?.primary) return null;
@@ -65,7 +41,7 @@ function formatWeightForOrder(value: number | null, unit: string | null, system:
   return formatWeight(convertWeight(value, u, tgt), tgt);
 }
 
-function LogisticsBlock({ order }: { order: any }) {
+function LogisticsBlock({ order }: { order: SupplierPacketOrder }) {
   const system: UnitSystem = (order.measurementSystem === "metric" ? "metric" : "imperial");
   const sc = order.shippingContactJson || null;
   const rc = order.receivingContactJson || null;
@@ -160,7 +136,7 @@ export default function SupplierPacket() {
                 <div>
                   <h1 className="text-2xl font-bold">Production Packet · {data.supplier?.name}</h1>
                   <p className="text-sm text-muted-foreground mt-1">Order {data.order.orderNumber} · {data.partner?.companyName}</p>
-                  {data.event && <p className="text-sm text-muted-foreground">Event: {data.event.name}{data.event.startDate ? ` · ${new Date(data.event.startDate).toLocaleDateString()}` : ""}</p>}
+                  {data.event && <p className="text-sm text-muted-foreground">Event: {data.event.name}{data.event.eventStartDate ? ` · ${new Date(data.event.eventStartDate).toLocaleDateString()}` : ""}</p>}
                 </div>
                 <div className="flex gap-2">
                   <Badge className={data.summary.blocked === 0 ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}>
@@ -182,7 +158,7 @@ export default function SupplierPacket() {
               <Card className="p-4">
                 <h2 className="font-semibold mb-3">Order-level assets</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                  {data.orderLevelAssets.map((a: any) => (
+                  {data.orderLevelAssets.map((a) => (
                     <a key={a.id} href={fileLink(a.fileUrl)} target="_blank" rel="noreferrer" className="p-2 border rounded hover:bg-muted/40 flex items-center gap-2">
                       {a.mimeType?.startsWith("image/") ? <ImageIcon className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
                       <span className="text-sm truncate">{a.title}</span>
@@ -269,7 +245,7 @@ export default function SupplierPacket() {
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                         {it.assets.map(l => l.asset && (
-                          <a key={l.linkId} href={fileLink(l.asset.fileUrl)} target="_blank" rel="noreferrer" className="p-2 border rounded hover:bg-muted/40 flex items-center gap-2">
+                          <a key={l.id} href={fileLink(l.asset.fileUrl)} target="_blank" rel="noreferrer" className="p-2 border rounded hover:bg-muted/40 flex items-center gap-2">
                             {l.asset.mimeType?.startsWith("image/") ? <ImageIcon className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-medium truncate">{l.asset.title}</p>
