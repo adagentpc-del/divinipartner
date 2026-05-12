@@ -30,15 +30,19 @@ import type {
   ListPartnersParams,
   ListPricingRulesParams,
   ListRequestsParams,
+  OrderItemProductionBlockResponse,
+  OrderReadinessResponse,
   Partner,
   PartnerAsset,
   PdfResponse,
   PricingRule,
+  ProductionDashboardResponse,
   PublicPartner,
   PublicPricingItem,
   RequestDetail,
   RequestListResponse,
   RequestSummary,
+  SetOrderItemProductionBlockBody,
   StatusCount,
   SubmitRequestBody,
   SubmitRequestResponse,
@@ -2482,6 +2486,266 @@ export function useGetSupplierPacket<
     supplierId,
     options,
   );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Returns per-line-item production readiness info (expectations, asset
+links, blocked reasons, flags) plus a roll-up summary for the order.
+
+ * @summary Get production readiness for an order
+ */
+export const getGetOrderReadinessUrl = (id: number) => {
+  return `/api/orders/${id}/readiness`;
+};
+
+export const getOrderReadiness = async (
+  id: number,
+  options?: RequestInit,
+): Promise<OrderReadinessResponse> => {
+  return customFetch<OrderReadinessResponse>(getGetOrderReadinessUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetOrderReadinessQueryKey = (id: number) => {
+  return [`/api/orders/${id}/readiness`] as const;
+};
+
+export const getGetOrderReadinessQueryOptions = <
+  TData = Awaited<ReturnType<typeof getOrderReadiness>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getOrderReadiness>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetOrderReadinessQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getOrderReadiness>>
+  > = ({ signal }) => getOrderReadiness(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getOrderReadiness>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetOrderReadinessQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getOrderReadiness>>
+>;
+export type GetOrderReadinessQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Get production readiness for an order
+ */
+
+export function useGetOrderReadiness<
+  TData = Awaited<ReturnType<typeof getOrderReadiness>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getOrderReadiness>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetOrderReadinessQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Set or clear the production-blocked reason on a line item
+ */
+export const getSetOrderItemProductionBlockUrl = (id: number) => {
+  return `/api/order-items/${id}/production-block`;
+};
+
+export const setOrderItemProductionBlock = async (
+  id: number,
+  setOrderItemProductionBlockBody?: SetOrderItemProductionBlockBody,
+  options?: RequestInit,
+): Promise<OrderItemProductionBlockResponse> => {
+  return customFetch<OrderItemProductionBlockResponse>(
+    getSetOrderItemProductionBlockUrl(id),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(setOrderItemProductionBlockBody),
+    },
+  );
+};
+
+export const getSetOrderItemProductionBlockMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof setOrderItemProductionBlock>>,
+    TError,
+    { id: number; data: BodyType<SetOrderItemProductionBlockBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof setOrderItemProductionBlock>>,
+  TError,
+  { id: number; data: BodyType<SetOrderItemProductionBlockBody> },
+  TContext
+> => {
+  const mutationKey = ["setOrderItemProductionBlock"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof setOrderItemProductionBlock>>,
+    { id: number; data: BodyType<SetOrderItemProductionBlockBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return setOrderItemProductionBlock(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SetOrderItemProductionBlockMutationResult = NonNullable<
+  Awaited<ReturnType<typeof setOrderItemProductionBlock>>
+>;
+export type SetOrderItemProductionBlockMutationBody =
+  BodyType<SetOrderItemProductionBlockBody>;
+export type SetOrderItemProductionBlockMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Set or clear the production-blocked reason on a line item
+ */
+export const useSetOrderItemProductionBlock = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof setOrderItemProductionBlock>>,
+    TError,
+    { id: number; data: BodyType<SetOrderItemProductionBlockBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof setOrderItemProductionBlock>>,
+  TError,
+  { id: number; data: BodyType<SetOrderItemProductionBlockBody> },
+  TContext
+> => {
+  return useMutation(getSetOrderItemProductionBlockMutationOptions(options));
+};
+
+/**
+ * @summary Production review dashboard counters and recent activity
+ */
+export const getGetProductionDashboardUrl = () => {
+  return `/api/production/dashboard`;
+};
+
+export const getProductionDashboard = async (
+  options?: RequestInit,
+): Promise<ProductionDashboardResponse> => {
+  return customFetch<ProductionDashboardResponse>(
+    getGetProductionDashboardUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetProductionDashboardQueryKey = () => {
+  return [`/api/production/dashboard`] as const;
+};
+
+export const getGetProductionDashboardQueryOptions = <
+  TData = Awaited<ReturnType<typeof getProductionDashboard>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getProductionDashboard>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetProductionDashboardQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getProductionDashboard>>
+  > = ({ signal }) => getProductionDashboard({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getProductionDashboard>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetProductionDashboardQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getProductionDashboard>>
+>;
+export type GetProductionDashboardQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Production review dashboard counters and recent activity
+ */
+
+export function useGetProductionDashboard<
+  TData = Awaited<ReturnType<typeof getProductionDashboard>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getProductionDashboard>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetProductionDashboardQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

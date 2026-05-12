@@ -22,7 +22,12 @@ import {
   type PricingUnit,
 } from "@workspace/db";
 import { fire } from "../services/workflowEngine";
-import { GetSupplierPacketResponse } from "@workspace/api-zod";
+import {
+  GetSupplierPacketResponse,
+  GetOrderReadinessResponse,
+  SetOrderItemProductionBlockResponse,
+  GetProductionDashboardResponse,
+} from "@workspace/api-zod";
 
 const router: IRouter = Router();
 
@@ -109,7 +114,15 @@ async function readinessForOrder(orderId: number) {
 router.get("/orders/:id/readiness", async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
-  res.json(await readinessForOrder(id));
+  const payload = await readinessForOrder(id);
+  const parsed = GetOrderReadinessResponse.safeParse(payload);
+  if (!parsed.success) {
+    req.log.error({ err: parsed.error.flatten(), orderId: id }, "Order readiness response failed schema validation");
+    return res.status(500).json({ error: "Order readiness response failed schema validation", details: parsed.error.issues });
+  }
+  // Send the original payload so additionalProperties on nested objects
+  // (asset rows, item passthroughs) are preserved — generated zod schemas strip unknowns.
+  res.json(payload);
 });
 
 // Mark/clear blocked reason on a line item
@@ -135,11 +148,18 @@ router.patch("/order-items/:id/production-block", async (req, res) => {
   } else if (!reason && prev.productionBlockedReason) {
     fire("production.unblocked", { objectType: "order_item", objectId: id, orderItemId: id, orderId: row.orderId, orderNumber: ord?.orderNumber, overrideNote }).catch(() => {});
   }
+  const parsed = SetOrderItemProductionBlockResponse.safeParse(row);
+  if (!parsed.success) {
+    req.log.error({ err: parsed.error.flatten(), orderItemId: id }, "Production-block response failed schema validation");
+    return res.status(500).json({ error: "Production-block response failed schema validation", details: parsed.error.issues });
+  }
+  // Send the original row so additional DB columns (additionalProperties: true)
+  // are preserved on the wire — generated zod object schemas strip unknowns.
   res.json(row);
 });
 
 // ===== Production review dashboard =====
-router.get("/production/dashboard", async (_req, res) => {
+router.get("/production/dashboard", async (req, res) => {
   const allAssets = await db.select().from(assetsTable);
   const counters = {
     awaitingReview: allAssets.filter(a => a.isCurrent && a.status === "uploaded").length,
@@ -167,7 +187,15 @@ router.get("/production/dashboard", async (_req, res) => {
       orderIssues.push({ orderId: o.id, orderNumber: o.orderNumber, partnerId: o.partnerId, ...r.summary });
     }
   }
-  res.json({ counters, latest, byEvent, bySupplier, orderIssues });
+  const payload = { counters, latest, byEvent, bySupplier, orderIssues };
+  const parsed = GetProductionDashboardResponse.safeParse(payload);
+  if (!parsed.success) {
+    req.log.error({ err: parsed.error.flatten() }, "Production dashboard response failed schema validation");
+    return res.status(500).json({ error: "Production dashboard response failed schema validation", details: parsed.error.issues });
+  }
+  // Send the original payload so additionalProperties on nested objects
+  // (asset rows, order-issue passthroughs) are preserved — generated zod schemas strip unknowns.
+  res.json(payload);
 });
 
 // ===== Supplier packet (production handoff) =====

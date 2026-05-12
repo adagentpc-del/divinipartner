@@ -1171,6 +1171,115 @@ export interface SupplierPacketResponse {
   summary: SupplierPacketSummary;
 }
 
+export interface OrderReadinessSummary {
+  total: number;
+  ready: number;
+  blocked: number;
+  missingArtwork: number;
+  missingProof: number;
+  awaitingApproval: number;
+}
+
+export interface OrderReadinessExpectations {
+  needsArtwork: boolean;
+  needsProof: boolean;
+}
+
+export interface OrderReadinessAssetLink {
+  linkId: number;
+  /** @nullable */
+  role: string | null;
+  asset: SupplierPacketAsset;
+  [key: string]: unknown;
+}
+
+export interface OrderReadinessItem {
+  itemId: number;
+  /** @nullable */
+  name: string | null;
+  /** @nullable */
+  itemType: string | null;
+  /** @nullable */
+  quantity: number | null;
+  /** @nullable */
+  productId: number | null;
+  /** @nullable */
+  brandingZoneId: number | null;
+  /** @nullable */
+  assignedSupplierId: number | null;
+  /** @nullable */
+  supplierStatus: string | null;
+  /** @nullable */
+  fulfillmentMode: string | null;
+  expectations: OrderReadinessExpectations;
+  assets: OrderReadinessAssetLink[];
+  /** @nullable */
+  currentArtworkAssetId: number | null;
+  /** @nullable */
+  approvedArtworkAssetId: number | null;
+  flags: string[];
+  productionReady: boolean;
+  /** @nullable */
+  productionBlockedReason: string | null;
+  [key: string]: unknown;
+}
+
+export interface OrderReadinessResponse {
+  orderId: number;
+  items: OrderReadinessItem[];
+  summary: OrderReadinessSummary;
+}
+
+/**
+ * Updated order item row. Only the most stable identifying fields are
+listed as required; the row carries many additional columns that are
+passed through to the client.
+
+ */
+export interface OrderItemProductionBlockResponse {
+  id: number;
+  orderId: number;
+  /** @nullable */
+  productionBlockedReason?: string | null;
+  [key: string]: unknown;
+}
+
+export interface ProductionDashboardCounters {
+  awaitingReview: number;
+  awaitingApproval: number;
+  approved: number;
+  vendorReleased: number;
+  revisionRequested: number;
+  superseded: number;
+}
+
+export interface ProductionDashboardOrderIssue {
+  orderId: number;
+  /** @nullable */
+  orderNumber: string | null;
+  /** @nullable */
+  partnerId: number | null;
+  total: number;
+  ready: number;
+  blocked: number;
+  missingArtwork: number;
+  missingProof: number;
+  awaitingApproval: number;
+  [key: string]: unknown;
+}
+
+export type ProductionDashboardResponseByEvent = { [key: string]: number };
+
+export type ProductionDashboardResponseBySupplier = { [key: string]: number };
+
+export interface ProductionDashboardResponse {
+  counters: ProductionDashboardCounters;
+  latest: SupplierPacketAsset[];
+  byEvent: ProductionDashboardResponseByEvent;
+  bySupplier: ProductionDashboardResponseBySupplier;
+  orderIssues: ProductionDashboardOrderIssue[];
+}
+
 export type ListPartnersParams = {
   active?: boolean;
 };
@@ -1190,6 +1299,14 @@ export type ListPricingRulesParams = {
 
 export type GetRecentRequestsParams = {
   limit?: number;
+};
+
+export type SetOrderItemProductionBlockBody = {
+  /** @nullable */
+  reason?: string | null;
+  /** @nullable */
+  overrideNote?: string | null;
+  [key: string]: unknown;
 };
 
 export type SurveyWebhookBody = {

@@ -1329,6 +1329,183 @@ export const GetSupplierPacketResponse = zod.object({
 });
 
 /**
+ * Returns per-line-item production readiness info (expectations, asset
+links, blocked reasons, flags) plus a roll-up summary for the order.
+
+ * @summary Get production readiness for an order
+ */
+export const GetOrderReadinessParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetOrderReadinessResponse = zod.object({
+  orderId: zod.number(),
+  items: zod.array(
+    zod.object({
+      itemId: zod.number(),
+      name: zod.string().nullable(),
+      itemType: zod.string().nullable(),
+      quantity: zod.number().nullable(),
+      productId: zod.number().nullable(),
+      brandingZoneId: zod.number().nullable(),
+      assignedSupplierId: zod.number().nullable(),
+      supplierStatus: zod.string().nullable(),
+      fulfillmentMode: zod.string().nullable(),
+      expectations: zod.object({
+        needsArtwork: zod.boolean(),
+        needsProof: zod.boolean(),
+      }),
+      assets: zod.array(
+        zod.object({
+          linkId: zod.number(),
+          role: zod.string().nullable(),
+          asset: zod
+            .object({
+              id: zod.number(),
+              title: zod.string(),
+              fileUrl: zod.string(),
+              fileName: zod.string().nullish(),
+              mimeType: zod.string().nullish(),
+              fileSize: zod.number().nullish(),
+              category: zod.string().optional(),
+              visibility: zod.string().optional(),
+              ownerType: zod.string().nullish(),
+              ownerId: zod.number().nullish(),
+              partnerId: zod.number().nullish(),
+              eventId: zod.number().nullish(),
+              orderId: zod.number().nullish(),
+              productId: zod.number().nullish(),
+              packageId: zod.number().nullish(),
+              brandingZoneId: zod.number().nullish(),
+              supplierId: zod.number().nullish(),
+              version: zod.number(),
+              isCurrent: zod.boolean(),
+              parentAssetId: zod.number().nullish(),
+              status: zod.string(),
+              approvalStatus: zod.string(),
+              approvedByUserId: zod.string().nullish(),
+              approvedAt: zod.coerce.date().nullish(),
+              releasedToVendorAt: zod.coerce.date().nullish(),
+              productionReady: zod.boolean().optional(),
+              uploadedByUserId: zod.string().nullish(),
+              notes: zod.string().nullish(),
+              tagsJson: zod.array(zod.string()).nullish(),
+              createdAt: zod.coerce.date().optional(),
+              updatedAt: zod.coerce.date().optional(),
+            })
+            .describe(
+              "Full asset row (vendor-visible, current, approved). Date fields are ISO strings.",
+            ),
+        }),
+      ),
+      currentArtworkAssetId: zod.number().nullable(),
+      approvedArtworkAssetId: zod.number().nullable(),
+      flags: zod.array(zod.string()),
+      productionReady: zod.boolean(),
+      productionBlockedReason: zod.string().nullable(),
+    }),
+  ),
+  summary: zod.object({
+    total: zod.number(),
+    ready: zod.number(),
+    blocked: zod.number(),
+    missingArtwork: zod.number(),
+    missingProof: zod.number(),
+    awaitingApproval: zod.number(),
+  }),
+});
+
+/**
+ * @summary Set or clear the production-blocked reason on a line item
+ */
+export const SetOrderItemProductionBlockParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const SetOrderItemProductionBlockBody = zod.object({
+  reason: zod.string().nullish(),
+  overrideNote: zod.string().nullish(),
+});
+
+export const SetOrderItemProductionBlockResponse = zod
+  .object({
+    id: zod.number(),
+    orderId: zod.number(),
+    productionBlockedReason: zod.string().nullish(),
+  })
+  .describe(
+    "Updated order item row. Only the most stable identifying fields are\nlisted as required; the row carries many additional columns that are\npassed through to the client.\n",
+  );
+
+/**
+ * @summary Production review dashboard counters and recent activity
+ */
+export const GetProductionDashboardResponse = zod.object({
+  counters: zod.object({
+    awaitingReview: zod.number(),
+    awaitingApproval: zod.number(),
+    approved: zod.number(),
+    vendorReleased: zod.number(),
+    revisionRequested: zod.number(),
+    superseded: zod.number(),
+  }),
+  latest: zod.array(
+    zod
+      .object({
+        id: zod.number(),
+        title: zod.string(),
+        fileUrl: zod.string(),
+        fileName: zod.string().nullish(),
+        mimeType: zod.string().nullish(),
+        fileSize: zod.number().nullish(),
+        category: zod.string().optional(),
+        visibility: zod.string().optional(),
+        ownerType: zod.string().nullish(),
+        ownerId: zod.number().nullish(),
+        partnerId: zod.number().nullish(),
+        eventId: zod.number().nullish(),
+        orderId: zod.number().nullish(),
+        productId: zod.number().nullish(),
+        packageId: zod.number().nullish(),
+        brandingZoneId: zod.number().nullish(),
+        supplierId: zod.number().nullish(),
+        version: zod.number(),
+        isCurrent: zod.boolean(),
+        parentAssetId: zod.number().nullish(),
+        status: zod.string(),
+        approvalStatus: zod.string(),
+        approvedByUserId: zod.string().nullish(),
+        approvedAt: zod.coerce.date().nullish(),
+        releasedToVendorAt: zod.coerce.date().nullish(),
+        productionReady: zod.boolean().optional(),
+        uploadedByUserId: zod.string().nullish(),
+        notes: zod.string().nullish(),
+        tagsJson: zod.array(zod.string()).nullish(),
+        createdAt: zod.coerce.date().optional(),
+        updatedAt: zod.coerce.date().optional(),
+      })
+      .describe(
+        "Full asset row (vendor-visible, current, approved). Date fields are ISO strings.",
+      ),
+  ),
+  byEvent: zod.record(zod.string(), zod.number()),
+  bySupplier: zod.record(zod.string(), zod.number()),
+  orderIssues: zod.array(
+    zod.object({
+      orderId: zod.number(),
+      orderNumber: zod.string().nullable(),
+      partnerId: zod.number().nullable(),
+      total: zod.number(),
+      ready: zod.number(),
+      blocked: zod.number(),
+      missingArtwork: zod.number(),
+      missingProof: zod.number(),
+      awaitingApproval: zod.number(),
+    }),
+  ),
+});
+
+/**
  * @summary Request a presigned URL for file upload
  */
 

@@ -646,6 +646,80 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
+  /orders/{id}/readiness:
+    get:
+      operationId: getOrderReadiness
+      tags: [production]
+      summary: Get production readiness for an order
+      description: |
+        Returns per-line-item production readiness info (expectations, asset
+        links, blocked reasons, flags) plus a roll-up summary for the order.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Order readiness
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderReadinessResponse"
+        "400":
+          description: Invalid id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /order-items/{id}/production-block:
+    patch:
+      operationId: setOrderItemProductionBlock
+      tags: [production]
+      summary: Set or clear the production-blocked reason on a line item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              properties:
+                reason: { type: ["string", "null"] }
+                overrideNote: { type: ["string", "null"] }
+      responses:
+        "200":
+          description: Updated order item row
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderItemProductionBlockResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /production/dashboard:
+    get:
+      operationId: getProductionDashboard
+      tags: [production]
+      summary: Production review dashboard counters and recent activity
+      responses:
+        "200":
+          description: Production dashboard payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductionDashboardResponse"
+
   /storage/uploads/request-url:
     post:
       tags: [Storage]
@@ -2365,3 +2439,153 @@ components:
           type: array
           items: { $ref: "#/components/schemas/SupplierPacketAsset" }
         summary: { $ref: "#/components/schemas/SupplierPacketSummary" }
+
+    OrderReadinessSummary:
+      type: object
+      required: [total, ready, blocked, missingArtwork, missingProof, awaitingApproval]
+      properties:
+        total: { type: integer }
+        ready: { type: integer }
+        blocked: { type: integer }
+        missingArtwork: { type: integer }
+        missingProof: { type: integer }
+        awaitingApproval: { type: integer }
+
+    OrderReadinessExpectations:
+      type: object
+      required: [needsArtwork, needsProof]
+      properties:
+        needsArtwork: { type: boolean }
+        needsProof: { type: boolean }
+
+    OrderReadinessAssetLink:
+      type: object
+      additionalProperties: true
+      required: [linkId, role, asset]
+      properties:
+        linkId: { type: integer }
+        role: { type: ["string", "null"] }
+        asset: { $ref: "#/components/schemas/SupplierPacketAsset" }
+
+    OrderReadinessItem:
+      type: object
+      additionalProperties: true
+      required:
+        [
+          itemId,
+          name,
+          itemType,
+          quantity,
+          productId,
+          brandingZoneId,
+          assignedSupplierId,
+          supplierStatus,
+          fulfillmentMode,
+          expectations,
+          assets,
+          currentArtworkAssetId,
+          approvedArtworkAssetId,
+          flags,
+          productionReady,
+          productionBlockedReason,
+        ]
+      properties:
+        itemId: { type: integer }
+        name: { type: ["string", "null"] }
+        itemType: { type: ["string", "null"] }
+        quantity: { type: ["integer", "null"] }
+        productId: { type: ["integer", "null"] }
+        brandingZoneId: { type: ["integer", "null"] }
+        assignedSupplierId: { type: ["integer", "null"] }
+        supplierStatus: { type: ["string", "null"] }
+        fulfillmentMode: { type: ["string", "null"] }
+        expectations: { $ref: "#/components/schemas/OrderReadinessExpectations" }
+        assets:
+          type: array
+          items: { $ref: "#/components/schemas/OrderReadinessAssetLink" }
+        currentArtworkAssetId: { type: ["integer", "null"] }
+        approvedArtworkAssetId: { type: ["integer", "null"] }
+        flags:
+          type: array
+          items: { type: string }
+        productionReady: { type: boolean }
+        productionBlockedReason: { type: ["string", "null"] }
+
+    OrderReadinessResponse:
+      type: object
+      required: [orderId, items, summary]
+      properties:
+        orderId: { type: integer }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/OrderReadinessItem" }
+        summary: { $ref: "#/components/schemas/OrderReadinessSummary" }
+
+    OrderItemProductionBlockResponse:
+      type: object
+      additionalProperties: true
+      description: |
+        Updated order item row. Only the most stable identifying fields are
+        listed as required; the row carries many additional columns that are
+        passed through to the client.
+      required: [id, orderId]
+      properties:
+        id: { type: integer }
+        orderId: { type: integer }
+        productionBlockedReason: { type: ["string", "null"] }
+
+    ProductionDashboardCounters:
+      type: object
+      required:
+        [awaitingReview, awaitingApproval, approved, vendorReleased, revisionRequested, superseded]
+      properties:
+        awaitingReview: { type: integer }
+        awaitingApproval: { type: integer }
+        approved: { type: integer }
+        vendorReleased: { type: integer }
+        revisionRequested: { type: integer }
+        superseded: { type: integer }
+
+    ProductionDashboardOrderIssue:
+      type: object
+      additionalProperties: true
+      required:
+        [
+          orderId,
+          orderNumber,
+          partnerId,
+          total,
+          ready,
+          blocked,
+          missingArtwork,
+          missingProof,
+          awaitingApproval,
+        ]
+      properties:
+        orderId: { type: integer }
+        orderNumber: { type: ["string", "null"] }
+        partnerId: { type: ["integer", "null"] }
+        total: { type: integer }
+        ready: { type: integer }
+        blocked: { type: integer }
+        missingArtwork: { type: integer }
+        missingProof: { type: integer }
+        awaitingApproval: { type: integer }
+
+    ProductionDashboardResponse:
+      type: object
+      required: [counters, latest, byEvent, bySupplier, orderIssues]
+      properties:
+        counters: { $ref: "#/components/schemas/ProductionDashboardCounters" }
+        latest:
+          type: array
+          items: { $ref: "#/components/schemas/SupplierPacketAsset" }
+        byEvent:
+          type: object
+          additionalProperties: { type: integer }
+        bySupplier:
+          type: object
+          additionalProperties: { type: integer }
+        orderIssues:
+          type: array
+          items: { $ref: "#/components/schemas/ProductionDashboardOrderIssue" }
