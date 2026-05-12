@@ -29,7 +29,7 @@ router.get("/workflow/rules", async (req, res) => {
 router.get("/workflow/rules/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   const [row] = await db.select().from(workflowRulesTable).where(eq(workflowRulesTable.id, id));
-  if (!row) return res.status(404).json({ error: "Not found" });
+  if (!row) { res.status(404).json({ error: "Not found" }); return; }
   res.json(row);
 });
 const RuleBody = z.object({
@@ -47,7 +47,7 @@ const RuleBody = z.object({
 });
 router.post("/workflow/rules", async (req, res) => {
   const parsed = RuleBody.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const [row] = await db.insert(workflowRulesTable).values(parsed.data as any).returning();
   await logAudit({ eventType: "rule_fired", summary: `Rule created: ${row.name}`, details: { ruleId: row.id }, isAutomated: false });
   res.json(row);
@@ -55,22 +55,22 @@ router.post("/workflow/rules", async (req, res) => {
 router.patch("/workflow/rules/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   const parsed = RuleBody.partial().safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const [row] = await db.update(workflowRulesTable).set({ ...parsed.data, updatedAt: new Date() } as any).where(eq(workflowRulesTable.id, id)).returning();
-  if (!row) return res.status(404).json({ error: "Not found" });
+  if (!row) { res.status(404).json({ error: "Not found" }); return; }
   res.json(row);
 });
 router.post("/workflow/rules/:id/toggle", async (req, res) => {
   const id = parseInt(req.params.id);
   const [prev] = await db.select().from(workflowRulesTable).where(eq(workflowRulesTable.id, id));
-  if (!prev) return res.status(404).json({ error: "Not found" });
+  if (!prev) { res.status(404).json({ error: "Not found" }); return; }
   const [row] = await db.update(workflowRulesTable).set({ isActive: !prev.isActive, updatedAt: new Date() }).where(eq(workflowRulesTable.id, id)).returning();
   res.json(row);
 });
 router.post("/workflow/rules/:id/duplicate", async (req, res) => {
   const id = parseInt(req.params.id);
   const [src] = await db.select().from(workflowRulesTable).where(eq(workflowRulesTable.id, id));
-  if (!src) return res.status(404).json({ error: "Not found" });
+  if (!src) { res.status(404).json({ error: "Not found" }); return; }
   const { id: _ignore, createdAt, updatedAt, ...rest } = src as any;
   const [row] = await db.insert(workflowRulesTable).values({ ...rest, name: `${src.name} (copy)`, isSystem: false, isActive: false } as any).returning();
   res.json(row);
@@ -130,7 +130,7 @@ const TaskBody = z.object({
 });
 router.post("/workflow/tasks", async (req, res) => {
   const parsed = TaskBody.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const data = { ...parsed.data, dueDate: parsed.data.dueDate ? new Date(parsed.data.dueDate) : null, autoCreated: false } as any;
   const [row] = await db.insert(workflowTasksTable).values(data).returning();
   await logAudit({ eventType: "task_created", summary: `Manual task: ${row.title}`, details: { taskId: row.id }, isAutomated: false, objectType: row.linkedObjectType ?? undefined, objectId: row.linkedObjectId ?? undefined });
@@ -139,18 +139,18 @@ router.post("/workflow/tasks", async (req, res) => {
 router.patch("/workflow/tasks/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   const parsed = TaskBody.partial().safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const data: any = { ...parsed.data, updatedAt: new Date() };
   if (parsed.data.dueDate !== undefined) data.dueDate = parsed.data.dueDate ? new Date(parsed.data.dueDate) : null;
   const [row] = await db.update(workflowTasksTable).set(data).where(eq(workflowTasksTable.id, id)).returning();
-  if (!row) return res.status(404).json({ error: "Not found" });
+  if (!row) { res.status(404).json({ error: "Not found" }); return; }
   res.json(row);
 });
 router.post("/workflow/tasks/:id/complete", async (req, res) => {
   const id = parseInt(req.params.id);
   const { userId, notes } = req.body || {};
   const [row] = await db.update(workflowTasksTable).set({ status: "done", completedAt: new Date(), completedByUserId: userId ?? null, notes: notes ?? undefined, updatedAt: new Date() } as any).where(eq(workflowTasksTable.id, id)).returning();
-  if (!row) return res.status(404).json({ error: "Not found" });
+  if (!row) { res.status(404).json({ error: "Not found" }); return; }
   await logAudit({ eventType: "task_created", summary: `Task completed: ${row.title}`, details: { taskId: id }, isAutomated: false, actorUserId: userId });
   res.json(row);
 });
@@ -158,7 +158,7 @@ router.post("/workflow/tasks/:id/snooze", async (req, res) => {
   const id = parseInt(req.params.id);
   const { days = 1 } = req.body || {};
   const [prev] = await db.select().from(workflowTasksTable).where(eq(workflowTasksTable.id, id));
-  if (!prev) return res.status(404).json({ error: "Not found" });
+  if (!prev) { res.status(404).json({ error: "Not found" }); return; }
   const base = prev.dueDate ? new Date(prev.dueDate).getTime() : Date.now();
   const newDue = new Date(base + Number(days) * 86400_000);
   const [row] = await db.update(workflowTasksTable).set({ dueDate: newDue, status: "waiting", updatedAt: new Date() }).where(eq(workflowTasksTable.id, id)).returning();
@@ -188,7 +188,7 @@ router.post("/workflow/alerts/:id/resolve", async (req, res) => {
   const id = parseInt(req.params.id);
   const { userId, note } = req.body || {};
   const [row] = await db.update(workflowAlertsTable).set({ isResolved: true, isRead: true, resolvedAt: new Date(), resolvedByUserId: userId ?? null }).where(eq(workflowAlertsTable.id, id)).returning();
-  if (!row) return res.status(404).json({ error: "Not found" });
+  if (!row) { res.status(404).json({ error: "Not found" }); return; }
   await logAudit({ eventType: "alert_created", summary: `Alert resolved: ${row.title}`, details: { alertId: id, note }, isAutomated: false, actorUserId: userId });
   res.json(row);
 });
@@ -212,7 +212,7 @@ router.get("/workflow/audit", async (req, res) => {
 // =====================================================================
 router.post("/workflow/override", async (req, res) => {
   const { objectType, objectId, action, note, userId, ctx } = req.body || {};
-  if (!objectType || !objectId || !action || !note) return res.status(400).json({ error: "objectType, objectId, action, and note are required" });
+  if (!objectType || !objectId || !action || !note) { res.status(400).json({ error: "objectType, objectId, action, and note are required" }); return; }
   await logAudit({ eventType: "override_applied", summary: `Override: ${action} on ${objectType} #${objectId}`, details: { action, ctx }, isAutomated: false, actorUserId: userId, objectType, objectId, overrideNote: note });
   res.json({ success: true });
 });
@@ -252,7 +252,7 @@ router.get("/workflow/queue", async (_req, res) => {
 // =====================================================================
 router.post("/workflow/fire", async (req, res) => {
   const { triggerType, ctx } = req.body || {};
-  if (!triggerType) return res.status(400).json({ error: "triggerType required" });
+  if (!triggerType) { res.status(400).json({ error: "triggerType required" }); return; }
   const r = await fire(triggerType, ctx || {});
   res.json(r);
 });

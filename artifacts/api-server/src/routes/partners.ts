@@ -50,19 +50,19 @@ const PartnerBody = z.object({
   partnerVideoUrl: z.string().optional().nullable(),
   partnerDeckFileUrl: z.string().optional().nullable(),
   siteSurveyDeckFileUrl: z.string().optional().nullable(),
-  portalMode: z.enum(["intake", "full", "ordering"]).optional().nullable(),
+  portalMode: z.enum(["intake", "full", "ordering"]).optional().nullable().transform((v) => v ?? undefined),
   partnerType: z.enum(["branding", "ordering"]).optional().nullable(),
   defaultSupplierId: z.number().int().positive().optional().nullable(),
   isActive: z.boolean().optional(),
   smallA3BadgeEnabled: z.boolean().optional(),
   pricingDisplayEnabled: z.boolean().optional(),
-  defaultBillingExecModel: z.string().optional().nullable(),
+  defaultBillingExecModel: z.string().optional().nullable().transform((v) => v ?? undefined),
   billingEntityName: z.string().optional().nullable(),
   paymentTerms: z.string().optional().nullable(),
   depositRequired: z.boolean().optional(),
   depositPct: z.union([z.string(), z.number()]).optional().nullable().transform((v) => {
     if (v === "" || v === undefined || v === null) return null;
-    return v;
+    return String(v);
   }),
   allowPartialPayment: z.boolean().optional(),
   allowOrderOverride: z.boolean().optional(),
@@ -257,7 +257,7 @@ router.patch("/partners/:id", async (req, res): Promise<void> => {
 // Uses the most recent order for the partner if available, otherwise renders a
 // stub. Sends to the address provided in the body (admin-supplied).
 router.post("/partners/:id/test-confirmation-email", requireAuth, async (req, res): Promise<void> => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(String(req.params.id));
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const to = (req.body?.to || "").trim();
   const parsedTo = z.string().email().safeParse(to);
@@ -274,7 +274,7 @@ router.post("/partners/:id/test-confirmation-email", requireAuth, async (req, re
 });
 
 router.post("/partners/:id/test-internal-forward", requireAuth, async (req, res): Promise<void> => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(String(req.params.id));
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const overrideTo = (req.body?.to || "").trim() || null;
   if (overrideTo) {

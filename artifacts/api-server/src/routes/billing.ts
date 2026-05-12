@@ -22,9 +22,9 @@ function num(v: any): number {
 // ===== Resolve billing model for an order =====
 router.get("/billing/orders/:id/resolve", async (req, res) => {
   const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, id));
-  if (!order) return res.status(404).json({ error: "Not found" });
+  if (!order) { res.status(404).json({ error: "Not found" }); return; }
   const [partner] = await db.select().from(partnersTable).where(eq(partnersTable.id, order.partnerId));
   const [event] = order.eventId ? await db.select().from(eventsTable).where(eq(eventsTable.id, order.eventId)) : [null];
   res.json({
@@ -48,13 +48,13 @@ const OverrideBody = z.object({
 });
 router.post("/billing/orders/:id/override", async (req, res) => {
   const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const parsed = OverrideBody.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, id));
-  if (!order) return res.status(404).json({ error: "Not found" });
+  if (!order) { res.status(404).json({ error: "Not found" }); return; }
   const [partner] = await db.select().from(partnersTable).where(eq(partnersTable.id, order.partnerId));
-  if (!(partner?.allowOrderOverride ?? true)) return res.status(403).json({ error: "Partner does not allow per-order override" });
+  if (!(partner?.allowOrderOverride ?? true)) { res.status(403).json({ error: "Partner does not allow per-order override" }); return; }
 
   if (parsed.data.billingExecModel == null) {
     // Clear override -> inherit again
@@ -194,7 +194,7 @@ const BulkBody = z.object({
 });
 router.post("/billing/bulk", async (req, res) => {
   const parsed = BulkBody.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const { action } = parsed.data;
   let count = 0;
   if (action === "create_invoices" && parsed.data.orderIds) {

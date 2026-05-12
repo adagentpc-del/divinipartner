@@ -265,7 +265,15 @@ function applyMmGroup(
  */
 export function withMmColumns<T extends Record<string, any>>(
   input: T,
-  existing?: { sizeUnit?: string | null; artworkUnit?: string | null } | string | null,
+  existing?:
+    | {
+        sizeUnit?: string | null;
+        artworkUnit?: string | null;
+        enteredSizeUnit?: string | null;
+        packedSizeUnit?: string | null;
+      }
+    | string
+    | null,
 ): T & Record<string, any> {
   const existingSize = typeof existing === "string" || existing == null
     ? existing as (string | null | undefined)
@@ -406,11 +414,17 @@ function applyWeightGroup(
  */
 export function withWeightColumns<T extends Record<string, any>>(
   input: T,
-  existing?: Record<string, any> | null,
+  existing?:
+    | {
+        shippingWeightUnit?: string | null;
+        totalShipmentWeightUnit?: string | null;
+        [k: string]: unknown;
+      }
+    | null,
 ): T & Record<string, any> {
   const out: any = { ...input };
   for (const group of WEIGHT_GROUPS) {
-    const existingUnit = existing && typeof existing === "object" ? existing[group.unitKey] : null;
+    const existingUnit = existing && typeof existing === "object" ? (existing[group.unitKey] as string | null | undefined) : null;
     applyWeightGroup(input as any, out, group.unitKey, existingUnit, group.pairs);
   }
   return out;

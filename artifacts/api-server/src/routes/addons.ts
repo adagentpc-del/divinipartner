@@ -136,7 +136,7 @@ async function resolveEventAddons(eventId: number) {
   if (override && override.mode === "override") {
     inheritance = "override";
     const allow = new Set<number>(Array.isArray(override.productIds) ? override.productIds : []);
-    chosen = activePartnerAddons.filter((a) => allow.has(a.productId));
+    chosen = activePartnerAddons.filter((a) => a.productId != null && allow.has(a.productId));
   }
 
   // Section 36: optional per-event category filter (works regardless of mode

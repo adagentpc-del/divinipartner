@@ -32,7 +32,7 @@ const router: IRouter = Router();
 // contacts and partner IDs are enumerable, so a public endpoint would let any
 // caller harvest the routing book.
 router.get("/partners/:id/email-recipients", requireAuth, async (req, res): Promise<void> => {
-  const partnerId = parseInt(req.params.id);
+  const partnerId = parseInt(String(req.params.id));
   if (isNaN(partnerId)) { res.status(400).json({ error: "Invalid partner id" }); return; }
   const rows = await db
     .select()
@@ -43,7 +43,7 @@ router.get("/partners/:id/email-recipients", requireAuth, async (req, res): Prom
 });
 
 router.post("/partners/:id/email-recipients", requireAuth, async (req, res): Promise<void> => {
-  const partnerId = parseInt(req.params.id);
+  const partnerId = parseInt(String(req.params.id));
   if (isNaN(partnerId)) { res.status(400).json({ error: "Invalid partner id" }); return; }
   const parsed = RecipientCreateBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() }); return; }
@@ -63,8 +63,8 @@ router.post("/partners/:id/email-recipients", requireAuth, async (req, res): Pro
 });
 
 router.put("/partners/:id/email-recipients/:rid", requireAuth, async (req, res): Promise<void> => {
-  const partnerId = parseInt(req.params.id);
-  const rid = parseInt(req.params.rid);
+  const partnerId = parseInt(String(req.params.id));
+  const rid = parseInt(String(req.params.rid));
   if (isNaN(partnerId) || isNaN(rid)) { res.status(400).json({ error: "Invalid id" }); return; }
   const parsed = RecipientUpdateBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() }); return; }
@@ -85,8 +85,8 @@ router.put("/partners/:id/email-recipients/:rid", requireAuth, async (req, res):
 });
 
 router.delete("/partners/:id/email-recipients/:rid", requireAuth, async (req, res): Promise<void> => {
-  const partnerId = parseInt(req.params.id);
-  const rid = parseInt(req.params.rid);
+  const partnerId = parseInt(String(req.params.id));
+  const rid = parseInt(String(req.params.rid));
   if (isNaN(partnerId) || isNaN(rid)) { res.status(400).json({ error: "Invalid id" }); return; }
   const result = await db.delete(partnerEmailRecipientsTable)
     .where(and(eq(partnerEmailRecipientsTable.id, rid), eq(partnerEmailRecipientsTable.partnerId, partnerId)))
@@ -98,7 +98,7 @@ router.delete("/partners/:id/email-recipients/:rid", requireAuth, async (req, re
 // Test send to a single role: assembles a sample order context and routes
 // through the matching template. Useful for admins to verify each audience.
 router.post("/partners/:id/test-role-email", requireAuth, async (req, res): Promise<void> => {
-  const partnerId = parseInt(req.params.id);
+  const partnerId = parseInt(String(req.params.id));
   if (isNaN(partnerId)) { res.status(400).json({ error: "Invalid partner id" }); return; }
   const Body = z.object({
     role: z.enum(["customer", ...RECIPIENT_ROLES] as const),

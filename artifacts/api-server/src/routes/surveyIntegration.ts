@@ -581,7 +581,6 @@ router.patch("/admin/survey-assets/:id", async (req, res): Promise<void> => {
   if (row && parsed.data.approvalStatus === "approved") {
     await db.insert(partnerAddonsTable).values({
       partnerId: row.partnerId,
-      productId: null,
       surveyAssetId: row.id,
       isActive: true,
       categoryOverride: "Brand our space",

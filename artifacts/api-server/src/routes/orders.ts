@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, sql, desc, inArray } from "drizzle-orm";
+import { eq, and, sql, desc, inArray, type SQL } from "drizzle-orm";
 import { db, ordersTable, orderItemsTable, partnersTable, eventsTable, packagesTable, suppliersTable, venuesTable, productCatalogTable, partnerBrandingLocationsTable, citiesTable, inventoryTable, inventoryReservationsTable, supplierAssignmentHistoryTable, supplierStatusEventsTable, quoteAssetsTable, usageEvents, partnerContactsTable, withMmColumns, withWeightColumns } from "@workspace/db";
 import { z } from "zod";
 
@@ -156,8 +156,8 @@ const OrderBody = z.object({
   vendorNotes: z.string().nullable().optional(),
   fulfillmentStatus: z.string().nullable().optional(),
   // Logistics summary (April 2026 logistics extension).
-  shipDateTarget: z.string().nullable().optional(),
-  deliveryByDate: z.string().nullable().optional(),
+  shipDateTarget: z.union([z.string(), z.date()]).nullable().optional().transform((v) => v == null ? v : (v instanceof Date ? v : new Date(v))),
+  deliveryByDate: z.union([z.string(), z.date()]).nullable().optional().transform((v) => v == null ? v : (v instanceof Date ? v : new Date(v))),
   packageCount: z.number().int().nullable().optional(),
   totalShipmentWeight: z.number().nullable().optional(),
   totalShipmentWeightUnit: z.string().nullable().optional(),
@@ -1015,7 +1015,7 @@ router.get("/fulfillment/command-center", async (req, res) => {
 
 // ----- Vendor (supplier-scoped) endpoints -----
 
-function vendorOrderJoin(supplierId: number) {
+function vendorOrderJoin(supplierId: number, extra?: SQL) {
   return db.select({
     id: orderItemsTable.id,
     orderId: orderItemsTable.orderId,
@@ -1044,7 +1044,7 @@ function vendorOrderJoin(supplierId: number) {
     .leftJoin(partnersTable, eq(ordersTable.partnerId, partnersTable.id))
     .leftJoin(eventsTable, eq(ordersTable.eventId, eventsTable.id))
     .leftJoin(venuesTable, eq(ordersTable.shippingVenueId, venuesTable.id))
-    .where(eq(orderItemsTable.assignedSupplierId, supplierId));
+    .where(extra ? and(eq(orderItemsTable.assignedSupplierId, supplierId), extra) : eq(orderItemsTable.assignedSupplierId, supplierId));
 }
 
 router.get("/vendor/orders", async (req, res): Promise<void> => {
@@ -1117,7 +1117,7 @@ router.get("/vendor/orders/:orderId/packet", async (req, res): Promise<void> => 
     .leftJoin(citiesTable, eq(eventsTable.cityId, citiesTable.id))
     .where(eq(ordersTable.id, orderId));
   if (!order) { res.status(404).json({ error: "Order not found" }); return; }
-  const items = await vendorOrderJoin(supplierId).where(and(eq(orderItemsTable.assignedSupplierId, supplierId), eq(orderItemsTable.orderId, orderId)));
+  const items = await vendorOrderJoin(supplierId, eq(orderItemsTable.orderId, orderId));
   if (!items.length) { res.status(404).json({ error: "No items assigned to this supplier" }); return; }
   const productIds = Array.from(new Set(items.map(i => i.productId).filter((x): x is number => !!x)));
   const products = productIds.length ? await db.select().from(productCatalogTable).where(inArray(productCatalogTable.id, productIds)) : [];

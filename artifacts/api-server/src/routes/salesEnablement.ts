@@ -44,16 +44,16 @@ router.get("/sales/proposals", async (_req, res) => {
 
 router.post("/sales/proposals", async (req, res) => {
   const parsed = ProposalBody.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const [row] = await db.insert(proposalsTable).values(parsed.data as any).returning();
   res.status(201).json(row);
 });
 
 router.get("/sales/proposals/:id", async (req, res) => {
   const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.status(400).json({ error: "bad id" });
+  if (isNaN(id)) { res.status(400).json({ error: "bad id" }); return; }
   const [row] = await db.select().from(proposalsTable).where(eq(proposalsTable.id, id));
-  if (!row) return res.status(404).json({ error: "not found" });
+  if (!row) { res.status(404).json({ error: "not found" }); return; }
   const planIds = row.comparedPlanIds ?? [];
   const matrix = await buildPlanComparisonMatrix(planIds);
   let recommended: any = null;
@@ -69,9 +69,9 @@ router.get("/sales/proposals/:id", async (req, res) => {
 
 router.patch("/sales/proposals/:id", async (req, res) => {
   const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.status(400).json({ error: "bad id" });
+  if (isNaN(id)) { res.status(400).json({ error: "bad id" }); return; }
   const parsed = ProposalBody.partial().safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const patch: any = { ...parsed.data };
   // Auto-stamp transitions
   if (parsed.data.status === "sent") patch.sentAt = new Date();
@@ -82,7 +82,7 @@ router.patch("/sales/proposals/:id", async (req, res) => {
 
 router.delete("/sales/proposals/:id", async (req, res) => {
   const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.status(400).json({ error: "bad id" });
+  if (isNaN(id)) { res.status(400).json({ error: "bad id" }); return; }
   await db.delete(proposalsTable).where(eq(proposalsTable.id, id));
   res.json({ ok: true });
 });
@@ -90,23 +90,23 @@ router.delete("/sales/proposals/:id", async (req, res) => {
 // Comparison matrix without saving a proposal (ad-hoc)
 router.post("/sales/comparison-matrix", async (req, res) => {
   const planIds = z.array(z.number().int()).safeParse(req.body?.planIds);
-  if (!planIds.success) return res.status(400).json({ error: planIds.error.message });
+  if (!planIds.success) { res.status(400).json({ error: planIds.error.message }); return; }
   res.json(await buildPlanComparisonMatrix(planIds.data));
 });
 
 // ===== Activation =====
 router.get("/sales/accounts/:id/activation", async (req, res) => {
   const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.status(400).json({ error: "bad id" });
+  if (isNaN(id)) { res.status(400).json({ error: "bad id" }); return; }
   const [account] = await db.select().from(commercialAccountsTable).where(eq(commercialAccountsTable.id, id));
-  if (!account) return res.status(404).json({ error: "not found" });
+  if (!account) { res.status(404).json({ error: "not found" }); return; }
   const progress = await getActivationProgress(id);
   res.json({ account, progress, template: DEFAULT_CHECKLIST_TEMPLATE });
 });
 
 router.post("/sales/accounts/:id/activation/seed", async (req, res) => {
   const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.status(400).json({ error: "bad id" });
+  if (isNaN(id)) { res.status(400).json({ error: "bad id" }); return; }
   await seedActivationChecklist(id);
   res.json(await getActivationProgress(id));
 });
@@ -119,9 +119,9 @@ const ItemPatchBody = z.object({
 
 router.patch("/sales/activation-items/:itemId", async (req, res) => {
   const itemId = parseInt(req.params.itemId);
-  if (isNaN(itemId)) return res.status(400).json({ error: "bad id" });
+  if (isNaN(itemId)) { res.status(400).json({ error: "bad id" }); return; }
   const parsed = ItemPatchBody.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const patch: any = { ...parsed.data };
   if (parsed.data.status === "done" || parsed.data.status === "skipped") patch.completedAt = new Date();
   if (parsed.data.status === "pending" || parsed.data.status === "in_progress") patch.completedAt = null;
@@ -131,11 +131,11 @@ router.patch("/sales/activation-items/:itemId", async (req, res) => {
 
 router.post("/sales/accounts/:id/activation/advance", async (req, res) => {
   const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.status(400).json({ error: "bad id" });
+  if (isNaN(id)) { res.status(400).json({ error: "bad id" }); return; }
   const target = z.enum(ACTIVATION_STATUSES).safeParse(req.body?.status);
-  if (!target.success) return res.status(400).json({ error: "invalid status" });
+  if (!target.success) { res.status(400).json({ error: "invalid status" }); return; }
   const result = await advanceActivationStatus(id, target.data);
-  if (!result.ok) return res.status(400).json({ error: result.error });
+  if (!result.ok) { res.status(400).json({ error: result.error }); return; }
   res.json(result.account);
 });
 

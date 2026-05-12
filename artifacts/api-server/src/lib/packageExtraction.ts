@@ -398,8 +398,8 @@ export async function processPackageExtraction(
     if (typeof (heartbeatTimer as any).unref === "function") (heartbeatTimer as any).unref();
 
     // Stage 3: PDF text extraction
-    let pdfParse: any;
-    try { pdfParse = (await import("pdf-parse")).default; }
+    let PDFParseCls: typeof import("pdf-parse").PDFParse;
+    try { PDFParseCls = (await import("pdf-parse")).PDFParse; }
     catch {
       await db.update(packageExtractionsTable)
         .set({ status: "parse_failed", errorMessage: "PDF parsing library not available" })
@@ -408,8 +408,8 @@ export async function processPackageExtraction(
       return;
     }
 
-    const pdfData = await pdfParse(fileBuffer);
-    const totalPages = pdfData.numpages || 1;
+    const pdfData = await new PDFParseCls({ data: fileBuffer }).getText();
+    const totalPages = pdfData.total || 1;
     const rawText = (pdfData.text || "").substring(0, PDF_LIMITS.MAX_TEXT_CHARS);
     const pageChunks = rawText.split(/\f/);
     const pageTexts: { page: number; text: string }[] = [];

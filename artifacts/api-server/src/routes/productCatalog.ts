@@ -28,10 +28,12 @@ const ProductBody = z.object({
   visibleWidth: z.number().nullable().optional(),
   visibleHeight: z.number().nullable().optional(),
   pricingModel: z.enum(["fixed", "area", "linear", "quantity", "custom_quote"]).optional(),
-  unitRate: z.union([z.number(), z.string(), z.null()]).optional(),
+  unitRate: z.union([z.number(), z.string(), z.null()]).optional()
+    .transform((v) => (v == null ? null : String(v))),
   pricingUnit: z.enum(["per_unit", "per_sqft", "per_sqm", "per_linear_ft", "per_linear_m"]).nullable().optional(),
   minBillableSize: z.number().nullable().optional(),
-  minCharge: z.union([z.number(), z.string(), z.null()]).optional(),
+  minCharge: z.union([z.number(), z.string(), z.null()]).optional()
+    .transform((v) => (v == null ? null : String(v))),
   allowsCustomSize: z.boolean().optional(),
   backendProductionNotes: z.string().nullable().optional(),
   installNotes: z.string().nullable().optional(),
@@ -107,7 +109,7 @@ router.patch("/products/:id", async (req, res): Promise<void> => {
 
   const [existing] = await db.select().from(productCatalogTable).where(eq(productCatalogTable.id, id));
   if (!existing) { res.status(404).json({ error: "Product not found" }); return; }
-  const [product] = await db.update(productCatalogTable).set(withWeightColumns(withMmColumns(parsed.data, { sizeUnit: existing.sizeUnit, artworkUnit: (existing as any).artworkUnit, packedSizeUnit: (existing as any).packedSizeUnit }), { shippingWeightUnit: (existing as any).shippingWeightUnit })).where(eq(productCatalogTable.id, id)).returning();
+  const [product] = await db.update(productCatalogTable).set(withWeightColumns(withMmColumns(parsed.data, { sizeUnit: existing.sizeUnit, artworkUnit: existing.artworkUnit, packedSizeUnit: existing.packedSizeUnit }), { shippingWeightUnit: existing.shippingWeightUnit })).where(eq(productCatalogTable.id, id)).returning();
   if (!product) { res.status(404).json({ error: "Product not found" }); return; }
   res.json(product);
 });

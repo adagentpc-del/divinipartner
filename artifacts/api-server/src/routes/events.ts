@@ -103,7 +103,12 @@ router.get("/events/:id", async (req, res): Promise<void> => {
 router.post("/events", async (req, res): Promise<void> => {
   const parsed = EventBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const [row] = await db.insert(eventsTable).values(parsed.data).returning();
+  const { orderingOpensAt, orderingClosesAt, ...rest } = parsed.data;
+  const [row] = await db.insert(eventsTable).values({
+    ...rest,
+    ...(orderingOpensAt !== undefined ? { orderingOpensAt: orderingOpensAt ? new Date(orderingOpensAt) : null } : {}),
+    ...(orderingClosesAt !== undefined ? { orderingClosesAt: orderingClosesAt ? new Date(orderingClosesAt) : null } : {}),
+  }).returning();
   if (row?.partnerId) {
     usageEmit("event.created", { partnerId: row.partnerId, objectType: "event", objectId: row.id }).catch(() => {});
     usageEmitFirst("first_event_created", { partnerId: row.partnerId, objectType: "event", objectId: row.id }).catch(() => {});
@@ -126,7 +131,13 @@ router.patch("/events/:id", async (req, res): Promise<void> => {
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const parsed = EventBody.partial().safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const [row] = await db.update(eventsTable).set(parsed.data).where(eq(eventsTable.id, id)).returning();
+  const { orderingOpensAt, orderingClosesAt, ...rest } = parsed.data;
+  const updateValues = {
+    ...rest,
+    ...(orderingOpensAt !== undefined ? { orderingOpensAt: orderingOpensAt ? new Date(orderingOpensAt) : null } : {}),
+    ...(orderingClosesAt !== undefined ? { orderingClosesAt: orderingClosesAt ? new Date(orderingClosesAt) : null } : {}),
+  };
+  const [row] = await db.update(eventsTable).set(updateValues).where(eq(eventsTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
   res.json(row);
 });

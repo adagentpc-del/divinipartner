@@ -107,9 +107,9 @@ router.get("/invoices", async (req, res) => {
 // ===== Get one invoice (with payments) =====
 router.get("/invoices/:id", async (req, res) => {
   const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const [inv] = await db.select().from(invoicesTable).where(eq(invoicesTable.id, id));
-  if (!inv) return res.status(404).json({ error: "Not found" });
+  if (!inv) { res.status(404).json({ error: "Not found" }); return; }
   const payments = await db.select().from(invoicePaymentsTable).where(eq(invoicePaymentsTable.invoiceId, id)).orderBy(desc(invoicePaymentsTable.createdAt));
   const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, inv.orderId));
   const [partner] = await db.select().from(partnersTable).where(eq(partnersTable.id, inv.partnerId));
@@ -120,7 +120,7 @@ router.get("/invoices/:id", async (req, res) => {
 // ===== Get invoice by public token (client-facing) =====
 router.get("/invoices/public/:token", async (req, res) => {
   const [inv] = await db.select().from(invoicesTable).where(eq(invoicesTable.publicToken, req.params.token));
-  if (!inv) return res.status(404).json({ error: "Not found" });
+  if (!inv) { res.status(404).json({ error: "Not found" }); return; }
   const [partner] = await db.select().from(partnersTable).where(eq(partnersTable.id, inv.partnerId));
   // Trim sensitive internal fields
   res.json({
@@ -154,12 +154,12 @@ router.get("/invoices/public/:token", async (req, res) => {
 // ===== Create invoice from order =====
 router.post("/invoices/from-order/:orderId", async (req, res) => {
   const orderId = parseInt(req.params.orderId);
-  if (isNaN(orderId)) return res.status(400).json({ error: "Invalid id" });
+  if (isNaN(orderId)) { res.status(400).json({ error: "Invalid id" }); return; }
   const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, orderId));
-  if (!order) return res.status(404).json({ error: "Order not found" });
+  if (!order) { res.status(404).json({ error: "Order not found" }); return; }
 
   const existing = await db.select().from(invoicesTable).where(and(eq(invoicesTable.orderId, orderId), sql`${invoicesTable.status} != 'cancelled'`));
-  if (existing.length > 0) return res.status(409).json({ error: "Invoice already exists for this order", invoiceId: existing[0].id });
+  if (existing.length > 0) { res.status(409).json({ error: "Invoice already exists for this order", invoiceId: existing[0].id }); return; }
 
   const [partner] = await db.select().from(partnersTable).where(eq(partnersTable.id, order.partnerId));
   const [event] = order.eventId ? await db.select().from(eventsTable).where(eq(eventsTable.id, order.eventId)) : [null];
@@ -258,9 +258,9 @@ const PatchBody = z.object({
 });
 router.patch("/invoices/:id", async (req, res) => {
   const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const parsed = PatchBody.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const patch: any = { ...parsed.data };
   if (patch.status === "sent") patch.sentAt = new Date();
   if (patch.status === "cancelled") patch.cancelledAt = new Date();
@@ -272,7 +272,7 @@ router.patch("/invoices/:id", async (req, res) => {
     patch.balanceDue = Math.max(0, total - paid).toFixed(2);
   }
   const [row] = await db.update(invoicesTable).set(patch).where(eq(invoicesTable.id, id)).returning();
-  if (!row) return res.status(404).json({ error: "Not found" });
+  if (!row) { res.status(404).json({ error: "Not found" }); return; }
   // Only recompute when amounts changed; manual status changes (mark sent/paid/cancelled) are authoritative.
   if (patch.totalAmount != null || patch.tax != null || patch.subtotal != null) {
     await recomputeInvoiceTotals(id);
@@ -297,12 +297,12 @@ router.patch("/invoices/:id", async (req, res) => {
 // ===== Regenerate from order =====
 router.post("/invoices/:id/regenerate", async (req, res) => {
   const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const [inv] = await db.select().from(invoicesTable).where(eq(invoicesTable.id, id));
-  if (!inv) return res.status(404).json({ error: "Not found" });
-  if (inv.status !== "draft") return res.status(409).json({ error: "Only draft invoices can be regenerated" });
+  if (!inv) { res.status(404).json({ error: "Not found" }); return; }
+  if (inv.status !== "draft") { res.status(409).json({ error: "Only draft invoices can be regenerated" }); return; }
   const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, inv.orderId));
-  if (!order) return res.status(404).json({ error: "Order not found" });
+  if (!order) { res.status(404).json({ error: "Order not found" }); return; }
   const items = await db.select().from(orderItemsTable).where(eq(orderItemsTable.orderId, inv.orderId));
   // Recompute totals from the live order item snapshot using the order's
   // current currency/tax config. The previous implementation read order.totalEstimate
@@ -353,9 +353,9 @@ const PaymentBody = z.object({
 });
 router.post("/invoices/:id/payments", async (req, res) => {
   const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const parsed = PaymentBody.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const [row] = await db.insert(invoicePaymentsTable).values({ invoiceId: id, ...parsed.data } as any).returning();
   await recomputeInvoiceTotals(id);
   res.status(201).json(row);

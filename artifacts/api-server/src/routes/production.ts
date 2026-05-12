@@ -113,12 +113,12 @@ async function readinessForOrder(orderId: number) {
 
 router.get("/orders/:id/readiness", async (req, res) => {
   const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const payload = await readinessForOrder(id);
   const parsed = GetOrderReadinessResponse.safeParse(payload);
   if (!parsed.success) {
     req.log.error({ err: parsed.error.flatten(), orderId: id }, "Order readiness response failed schema validation");
-    return res.status(500).json({ error: "Order readiness response failed schema validation", details: parsed.error.issues });
+    res.status(500).json({ error: "Order readiness response failed schema validation", details: parsed.error.issues }); return;
   }
   // Send the original payload so additionalProperties on nested objects
   // (asset rows, item passthroughs) are preserved — generated zod schemas strip unknowns.
@@ -140,7 +140,7 @@ router.patch("/order-items/:id/production-block", async (req, res) => {
     }
     return { row, prev };
   });
-  if ((result as any).notFound) return res.status(404).json({ error: "Not found" });
+  if ((result as any).notFound) { res.status(404).json({ error: "Not found" }); return; }
   const { row, prev } = result as any;
   const ord = (await db.select().from(ordersTable).where(eq(ordersTable.id, row.orderId)))[0];
   if (reason && reason !== prev.productionBlockedReason) {
@@ -151,7 +151,7 @@ router.patch("/order-items/:id/production-block", async (req, res) => {
   const parsed = SetOrderItemProductionBlockResponse.safeParse(row);
   if (!parsed.success) {
     req.log.error({ err: parsed.error.flatten(), orderItemId: id }, "Production-block response failed schema validation");
-    return res.status(500).json({ error: "Production-block response failed schema validation", details: parsed.error.issues });
+    res.status(500).json({ error: "Production-block response failed schema validation", details: parsed.error.issues }); return;
   }
   // Send the original row so additional DB columns (additionalProperties: true)
   // are preserved on the wire — generated zod object schemas strip unknowns.
@@ -191,7 +191,7 @@ router.get("/production/dashboard", async (req, res) => {
   const parsed = GetProductionDashboardResponse.safeParse(payload);
   if (!parsed.success) {
     req.log.error({ err: parsed.error.flatten() }, "Production dashboard response failed schema validation");
-    return res.status(500).json({ error: "Production dashboard response failed schema validation", details: parsed.error.issues });
+    res.status(500).json({ error: "Production dashboard response failed schema validation", details: parsed.error.issues }); return;
   }
   // Send the original payload so additionalProperties on nested objects
   // (asset rows, order-issue passthroughs) are preserved — generated zod schemas strip unknowns.
@@ -203,7 +203,7 @@ router.get("/orders/:orderId/supplier-packet/:supplierId", async (req, res) => {
   const orderId = parseInt(req.params.orderId);
   const supplierId = parseInt(req.params.supplierId);
   const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, orderId));
-  if (!order) return res.status(404).json({ error: "Order not found" });
+  if (!order) { res.status(404).json({ error: "Order not found" }); return; }
   const [partner] = await db.select().from(partnersTable).where(eq(partnersTable.id, order.partnerId));
   const event = order.eventId ? (await db.select().from(eventsTable).where(eq(eventsTable.id, order.eventId)))[0] : null;
   const venue = event?.venueId ? (await db.select().from(venuesTable).where(eq(venuesTable.id, event.venueId)))[0] : null;
@@ -215,7 +215,7 @@ router.get("/orders/:orderId/supplier-packet/:supplierId", async (req, res) => {
   });
   const preferredSystem: UnitSystem = resolved.system;
   const [supplier] = await db.select().from(suppliersTable).where(eq(suppliersTable.id, supplierId));
-  if (!supplier) return res.status(404).json({ error: "Supplier not found" });
+  if (!supplier) { res.status(404).json({ error: "Supplier not found" }); return; }
 
   const items = await db.select().from(orderItemsTable).where(and(eq(orderItemsTable.orderId, orderId), eq(orderItemsTable.assignedSupplierId, supplierId)));
   const itemIds = items.map(i => i.id);
@@ -368,7 +368,7 @@ router.get("/orders/:orderId/supplier-packet/:supplierId", async (req, res) => {
   const parsed = GetSupplierPacketResponse.safeParse(payload);
   if (!parsed.success) {
     req.log.error({ err: parsed.error.flatten(), orderId, supplierId }, "Supplier packet response failed schema validation");
-    return res.status(500).json({ error: "Supplier packet response failed schema validation", details: parsed.error.issues });
+    res.status(500).json({ error: "Supplier packet response failed schema validation", details: parsed.error.issues }); return;
   }
   res.json(parsed.data);
 });

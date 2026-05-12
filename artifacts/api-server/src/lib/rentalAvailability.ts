@@ -146,7 +146,7 @@ export async function getInventoryAvailabilityForRange(
  */
 export async function getEventDateWindow(eventId: number): Promise<{ startDate: string; endDate: string } | null> {
   const [ev] = await db.select({
-    eventDate: eventsTable.eventDate,
+    eventDate: eventsTable.eventStartDate,
     installDate: eventsTable.installDate,
     teardownDate: eventsTable.teardownDate,
   }).from(eventsTable).where(eq(eventsTable.id, eventId));

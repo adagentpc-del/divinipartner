@@ -43,14 +43,22 @@ export async function getPlan(planId: number | null) {
   return p ?? null;
 }
 
-export async function getEffectivePlan(accountId: number, _visited: Set<number> = new Set()) {
+type EffectivePlan = {
+  account: typeof commercialAccountsTable.$inferSelect;
+  plan: Awaited<ReturnType<typeof getPlan>>;
+};
+
+export async function getEffectivePlan(
+  accountId: number,
+  _visited: Set<number> = new Set(),
+): Promise<EffectivePlan | null> {
   if (_visited.has(accountId)) return null; // cycle guard
   _visited.add(accountId);
   const [acc] = await db.select().from(commercialAccountsTable).where(eq(commercialAccountsTable.id, accountId));
   if (!acc) return null;
   let plan = await getPlan(acc.planId);
   if (!plan && acc.parentAccountId && acc.parentAccountId !== accountId) {
-    plan = await getEffectivePlan(acc.parentAccountId, _visited).then(r => r?.plan ?? null);
+    plan = await getEffectivePlan(acc.parentAccountId, _visited).then((r: EffectivePlan | null) => r?.plan ?? null);
   }
   return { account: acc, plan };
 }

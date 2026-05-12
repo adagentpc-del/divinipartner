@@ -332,13 +332,13 @@ router.post("/dev/seed-easy-up-family", async (req, res): Promise<void> => {
     }
     // Demo event reservation: half the chairs booked for the partner's next
     // upcoming event so the rentable card immediately shows partial booking.
-    const upcomingEvent = await db.select({ id: eventsTable.id, eventDate: eventsTable.eventDate, installDate: eventsTable.installDate, teardownDate: eventsTable.teardownDate })
-      .from(eventsTable).where(and(eq(eventsTable.partnerId, partnerId))).orderBy(asc(eventsTable.eventDate)).limit(1);
+    const upcomingEvent = await db.select({ id: eventsTable.id, eventStartDate: eventsTable.eventStartDate, installDate: eventsTable.installDate, teardownDate: eventsTable.teardownDate })
+      .from(eventsTable).where(and(eq(eventsTable.partnerId, partnerId))).orderBy(asc(eventsTable.eventStartDate)).limit(1);
     const ev = upcomingEvent[0];
     const chairsInvId = rentableInventoryIds["chairs"];
     if (ev && chairsInvId) {
-      const evStart: any = ev.installDate ?? ev.eventDate;
-      const evEnd: any = ev.teardownDate ?? ev.eventDate;
+      const evStart: any = ev.installDate ?? ev.eventStartDate;
+      const evEnd: any = ev.teardownDate ?? ev.eventStartDate;
       const existingRes = await db.select().from(inventoryReservationsTable)
         .where(and(eq(inventoryReservationsTable.inventoryId, chairsInvId), eq(inventoryReservationsTable.eventId, ev.id)));
       if (!existingRes[0]) {

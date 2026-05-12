@@ -66,7 +66,7 @@ router.get("/assets", async (req, res) => {
   if (q.orderItemId) {
     const links = await db.select().from(assetLinksTable).where(eq(assetLinksTable.orderItemId, parseInt(q.orderItemId)));
     const ids = links.map(l => l.assetId);
-    if (!ids.length) return res.json([]);
+    if (!ids.length) { res.json([]); return; }
     conds.push(inArray(assetsTable.id, ids));
   }
   const rows = conds.length
@@ -78,9 +78,9 @@ router.get("/assets", async (req, res) => {
 // ===== Get one (with links + event history + version siblings) =====
 router.get("/assets/:id", async (req, res) => {
   const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const [asset] = await db.select().from(assetsTable).where(eq(assetsTable.id, id));
-  if (!asset) return res.status(404).json({ error: "Not found" });
+  if (!asset) { res.status(404).json({ error: "Not found" }); return; }
   const links = await db.select().from(assetLinksTable).where(eq(assetLinksTable.assetId, id));
   const events = await db.select().from(assetEventsTable).where(eq(assetEventsTable.assetId, id)).orderBy(desc(assetEventsTable.createdAt));
   // Version family: same parentAssetId chain
@@ -114,7 +114,7 @@ const CreateBody = z.object({
 });
 router.post("/assets", async (req, res) => {
   const parsed = CreateBody.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const data = parsed.data;
   const { linkOrderItemIds, ...payload } = data;
   const [row] = await db.insert(assetsTable).values(payload as any).returning();
@@ -144,18 +144,20 @@ const PatchBody = z.object({
 });
 router.patch("/assets/:id", async (req, res) => {
   const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const parsed = PatchBody.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const [prev] = await db.select().from(assetsTable).where(eq(assetsTable.id, id));
-  if (!prev) return res.status(404).json({ error: "Not found" });
+  if (!prev) { res.status(404).json({ error: "Not found" }); return; }
   // Safety: cannot mark vendor_released or vendor_visible without an approved approvalStatus
   const nextApproval = parsed.data.approvalStatus ?? prev.approvalStatus;
   if (parsed.data.status === "vendor_released" && nextApproval !== "approved") {
-    return res.status(400).json({ error: "Cannot release to vendor: asset is not approved. Approve it first." });
+    res.status(400).json({ error: "Cannot release to vendor: asset is not approved. Approve it first." });
+    return;
   }
   if (parsed.data.visibility === "vendor_visible" && nextApproval !== "approved") {
-    return res.status(400).json({ error: "Cannot set vendor visibility on an unapproved asset." });
+    res.status(400).json({ error: "Cannot set vendor visibility on an unapproved asset." });
+    return;
   }
   const [row] = await db.update(assetsTable).set({ ...parsed.data, updatedAt: new Date() } as any).where(eq(assetsTable.id, id)).returning();
   if (parsed.data.status && parsed.data.status !== prev.status) {
@@ -173,7 +175,7 @@ router.post("/assets/:id/approve", async (req, res) => {
   const userId: string | null = req.body?.userId || null;
   const releaseToVendor: boolean = req.body?.releaseToVendor !== false;
   const [prev] = await db.select().from(assetsTable).where(eq(assetsTable.id, id));
-  if (!prev) return res.status(404).json({ error: "Not found" });
+  if (!prev) { res.status(404).json({ error: "Not found" }); return; }
   const patch: any = {
     status: releaseToVendor ? "vendor_released" : "approved",
     approvalStatus: "approved",
@@ -201,7 +203,7 @@ router.post("/assets/:id/request-revision", async (req, res) => {
   const userId: string | null = req.body?.userId || null;
   const note: string | null = req.body?.notes || null;
   const [row] = await db.update(assetsTable).set({ status: "revision_requested", approvalStatus: "rejected", productionReady: false, updatedAt: new Date() } as any).where(eq(assetsTable.id, id)).returning();
-  if (!row) return res.status(404).json({ error: "Not found" });
+  if (!row) { res.status(404).json({ error: "Not found" }); return; }
   await logEvent({ assetId: id, orderId: row.orderId ?? undefined, eventType: "revision_requested", actorUserId: userId, notes: note });
   fire("asset.revision_requested", { objectType: "asset", objectId: id, assetId: id, orderId: row.orderId ?? null, partnerId: row.partnerId ?? null, eventId: row.eventId ?? null, assetTitle: row.title, note }).catch(() => {});
   res.json(row);
@@ -219,9 +221,9 @@ const NewVersionBody = z.object({
 router.post("/assets/:id/new-version", async (req, res) => {
   const id = parseInt(req.params.id);
   const parsed = NewVersionBody.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const [requested] = await db.select().from(assetsTable).where(eq(assetsTable.id, id));
-  if (!requested) return res.status(404).json({ error: "Not found" });
+  if (!requested) { res.status(404).json({ error: "Not found" }); return; }
   const rootId = requested.parentAssetId || requested.id;
 
   try {
@@ -281,10 +283,10 @@ router.post("/assets/:id/new-version", async (req, res) => {
 router.post("/assets/:id/links", async (req, res) => {
   const id = parseInt(req.params.id);
   const { orderItemId, role = "primary_artwork", isRequiredFor = false } = req.body || {};
-  if (!orderItemId) return res.status(400).json({ error: "orderItemId required" });
+  if (!orderItemId) { res.status(400).json({ error: "orderItemId required" }); return; }
   // De-dupe: same asset+item+role
   const existing = await db.select().from(assetLinksTable).where(and(eq(assetLinksTable.assetId, id), eq(assetLinksTable.orderItemId, orderItemId), eq(assetLinksTable.role, role)));
-  if (existing.length) return res.json(existing[0]);
+  if (existing.length) { res.json(existing[0]); return; }
   const [row] = await db.insert(assetLinksTable).values({ assetId: id, orderItemId, role, isRequiredFor } as any).returning();
   await logEvent({ assetId: id, orderItemId, eventType: "linked", toValue: role });
   res.json(row);
@@ -293,7 +295,7 @@ router.delete("/assets/:id/links/:linkId", async (req, res) => {
   const id = parseInt(req.params.id);
   const linkId = parseInt(req.params.linkId);
   const [link] = await db.select().from(assetLinksTable).where(and(eq(assetLinksTable.id, linkId), eq(assetLinksTable.assetId, id)));
-  if (!link) return res.status(404).json({ error: "Link not found for this asset" });
+  if (!link) { res.status(404).json({ error: "Link not found for this asset" }); return; }
   await db.delete(assetLinksTable).where(eq(assetLinksTable.id, linkId));
   await logEvent({ assetId: id, orderItemId: link.orderItemId, eventType: "unlinked" });
   res.json({ success: true });
@@ -303,7 +305,7 @@ router.delete("/assets/:id/links/:linkId", async (req, res) => {
 router.delete("/assets/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   const [prev] = await db.select().from(assetsTable).where(eq(assetsTable.id, id));
-  if (!prev) return res.status(404).json({ error: "Not found" });
+  if (!prev) { res.status(404).json({ error: "Not found" }); return; }
   await db.delete(assetsTable).where(eq(assetsTable.id, id));
   await logEvent({ orderId: prev.orderId ?? undefined, eventType: "archived", fromValue: prev.title });
   res.json({ success: true });

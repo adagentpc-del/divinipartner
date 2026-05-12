@@ -95,7 +95,7 @@ router.get("/reconciliation/orders", async (req, res) => {
     const grossMargin = num(o.totalEstimate) - num(o.supplierFinalCost || o.supplierEstimatedCost);
     return {
       ...o,
-      partnerName: partnerById.get(o.partnerId)?.name || null,
+      partnerName: partnerById.get(o.partnerId)?.companyName || null,
       eventName: o.eventId ? eventById.get(o.eventId)?.name || null : null,
       supplierName: o.assignedSupplierId ? supById.get(o.assignedSupplierId)?.name || null : null,
       grossMargin,
@@ -130,20 +130,20 @@ const ReconUpdate = z.object({
 });
 router.patch("/reconciliation/orders/:id", async (req, res) => {
   const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const parsed = ReconUpdate.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const [updated] = await db.update(ordersTable).set(parsed.data as any).where(eq(ordersTable.id, id)).returning();
-  if (!updated) return res.status(404).json({ error: "Not found" });
+  if (!updated) { res.status(404).json({ error: "Not found" }); return; }
   res.json(updated);
 });
 
 // ===== Auto-flag discrepancies for an order =====
 router.post("/reconciliation/orders/:id/auto-flag", async (req, res) => {
   const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const [o] = await db.select().from(ordersTable).where(eq(ordersTable.id, id));
-  if (!o) return res.status(404).json({ error: "Not found" });
+  if (!o) { res.status(404).json({ error: "Not found" }); return; }
   const flagged: any[] = [];
   const exp = num(o.expectedCommission), paid = num(o.paidCommission);
   if (exp > 0 && Math.abs(exp - paid) > 0.01) {
@@ -184,7 +184,7 @@ router.get("/discrepancies", async (req, res) => {
   const partnerById = new Map(partners.map(p => [p.id, p]));
   const decorated = rows.map(r => {
     const o = oById.get(r.orderId);
-    return { ...r, orderNumber: o?.orderNumber || null, partnerName: o ? partnerById.get(o.partnerId)?.name : null };
+    return { ...r, orderNumber: o?.orderNumber || null, partnerName: o ? partnerById.get(o.partnerId)?.companyName : null };
   }).sort((a, b) => b.id - a.id);
   res.json(decorated);
 });
@@ -204,24 +204,24 @@ const DiscrepancyBody = z.object({
 });
 router.post("/discrepancies", async (req, res) => {
   const parsed = DiscrepancyBody.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const [row] = await db.insert(discrepanciesTable).values(parsed.data as any).returning();
   res.status(201).json(row);
 });
 router.patch("/discrepancies/:id", async (req, res) => {
   const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const parsed = DiscrepancyBody.partial().safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const patch: any = { ...parsed.data };
   if (patch.status === "resolved" || patch.status === "wont_fix") patch.resolvedAt = new Date();
   const [row] = await db.update(discrepanciesTable).set(patch).where(eq(discrepanciesTable.id, id)).returning();
-  if (!row) return res.status(404).json({ error: "Not found" });
+  if (!row) { res.status(404).json({ error: "Not found" }); return; }
   res.json(row);
 });
 router.delete("/discrepancies/:id", async (req, res) => {
   const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   await db.delete(discrepanciesTable).where(eq(discrepanciesTable.id, id));
   res.json({ success: true });
 });
@@ -229,7 +229,7 @@ router.delete("/discrepancies/:id", async (req, res) => {
 // ===== Commission payouts =====
 router.get("/orders/:id/commission-payouts", async (req, res) => {
   const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const rows = await db.select().from(commissionPayoutsTable).where(eq(commissionPayoutsTable.orderId, id)).orderBy(commissionPayoutsTable.createdAt);
   res.json(rows);
 });
@@ -242,9 +242,9 @@ const PayoutBody = z.object({
 });
 router.post("/orders/:id/commission-payouts", async (req, res) => {
   const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const parsed = PayoutBody.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const [row] = await db.insert(commissionPayoutsTable).values({ orderId: id, ...parsed.data } as any).returning();
   // Recompute paidCommission as sum of payouts and bump status
   const allPayouts = await db.select().from(commissionPayoutsTable).where(eq(commissionPayoutsTable.orderId, id));
@@ -293,9 +293,9 @@ const BulkBody = z.object({
 });
 router.post("/reconciliation/bulk-update", async (req, res) => {
   const parsed = BulkBody.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const { ids, patch } = parsed.data;
-  if (Object.keys(patch).length === 0) return res.status(400).json({ error: "Empty patch" });
+  if (Object.keys(patch).length === 0) { res.status(400).json({ error: "Empty patch" }); return; }
   await db.update(ordersTable).set(patch as any).where(inArray(ordersTable.id, ids));
   res.json({ success: true, count: ids.length });
 });

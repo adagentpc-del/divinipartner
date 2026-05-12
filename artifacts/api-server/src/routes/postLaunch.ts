@@ -33,7 +33,7 @@ router.post("/usage/emit", async (req, res) => {
     meta: z.record(z.any()).nullable().optional(),
   });
   const parsed = Body.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   await emit(parsed.data.eventType, parsed.data);
   res.json({ ok: true });
 });
@@ -64,7 +64,7 @@ router.post("/feedback", async (req, res) => {
     tags: z.array(z.string()).optional(),
   });
   const parsed = Body.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const [row] = await db.insert(feedbackItems).values({ ...parsed.data, tags: parsed.data.tags ?? null }).returning();
   emit("feedback.submitted", { partnerId: parsed.data.partnerId ?? null, userId: parsed.data.submitterUserId ?? null, role: parsed.data.submitterRole ?? null, objectType: "feedback", objectId: row.id, meta: { category: row.category, severity: row.severity } }).catch(() => {});
   res.status(201).json(row);
@@ -72,7 +72,7 @@ router.post("/feedback", async (req, res) => {
 
 router.patch("/feedback/:id", async (req, res) => {
   const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.status(400).json({ error: "bad id" });
+  if (isNaN(id)) { res.status(400).json({ error: "bad id" }); return; }
   const Body = z.object({
     status: z.string().optional(),
     severity: z.string().optional(),
@@ -82,7 +82,7 @@ router.patch("/feedback/:id", async (req, res) => {
     internalNotes: z.string().nullable().optional(),
   });
   const parsed = Body.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const update: any = { ...parsed.data, updatedAt: new Date() };
   if (parsed.data.status === "resolved") update.resolvedAt = new Date();
   const [row] = await db.update(feedbackItems).set(update).where(eq(feedbackItems.id, id)).returning();
@@ -103,7 +103,7 @@ router.get("/partner-health", async (_req, res) => {
 router.get("/partner-health/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   const h = await computePartnerHealth(id);
-  if (!h) return res.status(404).json({ error: "Not found" });
+  if (!h) { res.status(404).json({ error: "Not found" }); return; }
   res.json(h);
 });
 

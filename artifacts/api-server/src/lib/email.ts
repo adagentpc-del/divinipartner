@@ -1,6 +1,6 @@
 import { getUncachableResendClient } from "./resend";
 import { logger } from "./logger";
-import { db, partnersTable, partnerThemesTable, ordersTable, orderItemsTable, eventsTable, venuesTable, partnerEmailRecipientsTable, type RecipientRole } from "@workspace/db";
+import { db, partnersTable, partnerThemesTable, ordersTable, orderItemsTable, eventsTable, venuesTable, citiesTable, partnerEmailRecipientsTable, type RecipientRole } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 import { emit } from "../services/usageTracking";
 
@@ -171,15 +171,17 @@ export async function buildOrderEmailContext(orderId: number): Promise<OrderEmai
   let venue = null;
   if (order.eventId) {
     const [ev] = await db.select().from(eventsTable).where(eq(eventsTable.id, order.eventId));
-    event = ev ? { name: ev.name, eventDate: ev.eventDate } : null;
+    event = ev ? { name: ev.name, eventDate: ev.eventStartDate } : null;
     if (ev?.venueId) {
       const [vn] = await db.select().from(venuesTable).where(eq(venuesTable.id, ev.venueId));
-      venue = vn ? { name: vn.name, city: vn.city, country: vn.country } : null;
+      const cityName = vn?.cityId ? (await db.select().from(citiesTable).where(eq(citiesTable.id, vn.cityId)))[0]?.name ?? null : null;
+      venue = vn ? { name: vn.name, city: cityName, country: vn.country ?? null } : null;
     }
   }
   if (!venue && order.shippingVenueId) {
     const [vn] = await db.select().from(venuesTable).where(eq(venuesTable.id, order.shippingVenueId));
-    venue = vn ? { name: vn.name, city: vn.city, country: vn.country } : null;
+    const cityName = vn?.cityId ? (await db.select().from(citiesTable).where(eq(citiesTable.id, vn.cityId)))[0]?.name ?? null : null;
+    venue = vn ? { name: vn.name, city: cityName, country: vn.country ?? null } : null;
   }
   return { partner, theme: theme ?? null, order, items, event, venue };
 }

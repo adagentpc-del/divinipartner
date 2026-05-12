@@ -86,7 +86,7 @@ router.get("/exports/orders.csv", async (req, res) => {
       order_id: o.id,
       order_number: o.orderNumber,
       created_date: o.createdAt?.toISOString().slice(0, 10),
-      partner: pById.get(o.partnerId)?.name || "",
+      partner: pById.get(o.partnerId)?.companyName || "",
       portal_type: o.portalType,
       event: e?.name || "",
       city: c?.name || "",
@@ -167,7 +167,7 @@ router.get("/exports/order-items.csv", async (req, res) => {
     return {
       order_id: o.id,
       order_number: o.orderNumber,
-      partner: partnerById.get(o.partnerId)?.name || "",
+      partner: partnerById.get(o.partnerId)?.companyName || "",
       line_item_id: it.id,
       product: prod?.displayName || prod?.name || it.name,
       package_or_zone: pkg?.name || zone?.name || "",
@@ -238,12 +238,12 @@ router.get("/exports/events.csv", async (_req, res) => {
     const eOrderIds = new Set(eOrders.map(o => o.id));
     const eItems = items.filter(i => eOrderIds.has(i.orderId));
     return {
-      partner: partnerById.get(e.partnerId)?.name || "",
+      partner: partnerById.get(e.partnerId)?.companyName || "",
       event: e.name,
       city: e.cityId ? cityById.get(e.cityId)?.name || "" : "",
       venue: e.venueId ? venueById.get(e.venueId)?.name || "" : "",
-      start_date: e.startDate || "",
-      end_date: e.endDate || "",
+      start_date: e.eventStartDate || "",
+      end_date: e.eventEndDate || "",
       reserved_units: eItems.reduce((a, i) => a + (i.reservedQuantity || 0), 0),
       shortage_units: eItems.reduce((a, i) => a + (i.shortageQuantity || 0), 0),
       orders_count: eOrders.length,
@@ -274,7 +274,7 @@ router.get("/exports/finance.csv", async (req, res) => {
     return {
       order_id: o.id,
       order_number: o.orderNumber,
-      partner: partnerById.get(o.partnerId)?.name || "",
+      partner: partnerById.get(o.partnerId)?.companyName || "",
       payment_model: o.paymentModel,
       billing_entity: o.billingEntity || "",
       retail_amount: o.totalEstimate || "",
@@ -350,7 +350,7 @@ router.get("/exports/orders/:id/packet.html", async (req, res) => {
   if (supplierId) items = items.filter(i => i.assignedSupplierId === supplierId);
   const suppliers = await db.select().from(suppliersTable);
   const supById = new Map(suppliers.map(s => [s.id, s]));
-  const supScopeName = supplierId ? (supById.get(supplierId)?.name || "Supplier") : null;
+  const supScopeName = supplierId ? (supById.get(supplierId)?.companyName || "Supplier") : null;
 
   // Attached quote/spec assets via product mappings
   const productIds = items.map(i => i.productId).filter(Boolean) as number[];
@@ -377,7 +377,7 @@ router.get("/exports/orders/:id/packet.html", async (req, res) => {
       <div><b>Created:</b> ${esc(o.createdAt?.toISOString().slice(0, 10))}</div>
       <div><b>Status:</b> <span class="pill">${esc(o.status)}</span> <span class="pill">${esc(o.fulfillmentStatus || "—")}</span></div>
       <div><b>Payment:</b> <span class="pill">${esc(o.paymentStatus)}</span> <span class="pill">${esc(o.paymentModel)}</span></div>
-      <div><b>Partner:</b> ${esc(partner?.name || "—")}</div>
+      <div><b>Partner:</b> ${esc(partner?.companyName || "—")}</div>
       <div><b>Portal:</b> ${esc(o.portalType)}</div>
       <div><b>Event:</b> ${esc(evt?.name || "—")}</div>
       <div><b>Venue:</b> ${esc(venue?.name || "—")}</div>
@@ -416,7 +416,7 @@ router.get("/exports/orders/:id/packet.html", async (req, res) => {
         <td>${it.quantity}</td>
         <td>${it.printDemandQuantity}</td>
         <td>${it.hardwareDemandQuantity}</td>
-        ${supplierId ? "" : `<td>${esc(supById.get(it.assignedSupplierId || 0)?.name || "—")}</td>`}
+        ${supplierId ? "" : `<td>${esc(supById.get(it.assignedSupplierId || 0)?.companyName || "—")}</td>`}
         <td><span class="pill">${esc(it.supplierStatus)}</span>${it.exceptionFlag ? ' <span class="pill" style="background:#fee">⚠ ' + esc(it.exceptionReason || "exception") + '</span>' : ""}</td>
         <td>${it.supplierDueDate ? esc(it.supplierDueDate.toISOString().slice(0, 10)) : "—"}</td>
       </tr>`).join("")}
@@ -446,7 +446,7 @@ router.get("/exports/orders/:id/packet.html", async (req, res) => {
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.send(packetHtml({
     title: supplierId ? `Supplier Packet — ${supScopeName} — ${o.orderNumber}` : `Operational Packet — ${o.orderNumber}`,
-    subtitle: `${partner?.name || ""} · ${evt?.name || ""}`,
+    subtitle: `${partner?.companyName || ""} · ${evt?.name || ""}`,
     sections,
   }));
 });

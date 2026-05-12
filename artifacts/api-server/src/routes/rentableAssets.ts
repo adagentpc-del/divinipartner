@@ -167,7 +167,7 @@ router.get("/inventory/:id/bookings", async (req, res): Promise<void> => {
     notes: inventoryReservationsTable.notes,
     eventId: inventoryReservationsTable.eventId,
     eventName: eventsTable.name,
-    eventDate: eventsTable.eventDate,
+    eventDate: eventsTable.eventStartDate,
   }).from(inventoryReservationsTable)
     .leftJoin(eventsTable, eq(eventsTable.id, inventoryReservationsTable.eventId))
     .where(and(

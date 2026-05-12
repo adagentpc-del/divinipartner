@@ -332,16 +332,16 @@ async function runAiFallback(billingPages: { page: number; text: string }[]): Pr
 // ---------------------------------------------------------------------------
 export async function parseBillingSignalsFromPdf(buf: Buffer): Promise<{ signals: BillingSignals; extractedText: string } | null> {
   if (buf.length > PDF_LIMITS.MAX_FILE_BYTES) return null;
-  let pdfParse: any;
-  try { pdfParse = (await import("pdf-parse")).default; }
+  let PDFParseCls: typeof import("pdf-parse").PDFParse;
+  try { PDFParseCls = (await import("pdf-parse")).PDFParse; }
   catch { return null; }
-  let parsed: any;
-  try { parsed = await pdfParse(buf); }
+  let parsed: { text: string };
+  try { parsed = await new PDFParseCls({ data: buf }).getText(); }
   catch (e) { console.error("billingSignals pdf-parse failed", e); return null; }
   // pdf-parse gives one big string; split heuristically by form-feed or "Page N".
   const raw = (parsed.text || "").substring(0, PDF_LIMITS.MAX_TEXT_CHARS);
   const splits = raw.split(/\f|\n\s*Page\s+\d+\s*\n/);
-  const pages = splits.map((t: string, i: number) => ({ page: i + 1, text: t.trim() })).filter(p => p.text);
+  const pages = splits.map((t: string, i: number) => ({ page: i + 1, text: t.trim() })).filter((p: { text: string }) => p.text);
   const signals = await parseBillingSignals({ pages });
   return { signals, extractedText: raw };
 }

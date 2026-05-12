@@ -67,7 +67,7 @@ router.get("/analytics/export", async (req, res) => {
     case "zones": rows = await zoneAnalytics(filters); break;
     case "products": rows = await productAnalytics(filters); break;
     case "trends": rows = await trends(filters, (req.query.granularity as any) || "month"); break;
-    default: return res.status(400).json({ error: "Unknown view" });
+    default: { res.status(400).json({ error: "Unknown view" }); return; }
   }
   res.setHeader("Content-Type", "text/csv");
   res.setHeader("Content-Disposition", `attachment; filename="analytics_${view}_${Date.now()}.csv"`);

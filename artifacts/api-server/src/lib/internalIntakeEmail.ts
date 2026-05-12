@@ -295,7 +295,7 @@ export async function buildA3IntakeAnalysis(ctx: OrderEmailContext): Promise<Int
     // Derive label.
     const label = deriveItemLabel({
       itemType: it.itemType,
-      productAssetType: product?.assetType ?? null,
+      productAssetType: (product as { assetType?: string | null } | undefined)?.assetType ?? null,
       memberRole: role ?? null,
       fulfillmentMode: it.fulfillmentMode,
       reservedQuantity: it.reservedQuantity ?? 0,

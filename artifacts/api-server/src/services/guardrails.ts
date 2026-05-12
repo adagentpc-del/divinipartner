@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { db, orders as ordersTable, orderItems as orderItemsTable, assets as assetsTable, invoices as invoicesTable } from "@workspace/db";
+import { db, ordersTable, orderItemsTable, assetsTable, invoicesTable } from "@workspace/db";
 import { logAudit } from "./workflowEngine";
 
 export type ValidationResult = {

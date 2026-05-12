@@ -40,7 +40,7 @@ const PlanBody = z.object({
 
 router.post("/commercial/plans", async (req, res) => {
   const parsed = PlanBody.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const data: any = { ...parsed.data };
   if (data.priceAmount != null) data.priceAmount = String(data.priceAmount);
   const [row] = await db.insert(commercialPlansTable).values(data).returning();
@@ -49,9 +49,9 @@ router.post("/commercial/plans", async (req, res) => {
 
 router.patch("/commercial/plans/:id", async (req, res) => {
   const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.status(400).json({ error: "bad id" });
+  if (isNaN(id)) { res.status(400).json({ error: "bad id" }); return; }
   const parsed = PlanBody.partial().safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const data: any = { ...parsed.data };
   if (data.priceAmount != null) data.priceAmount = String(data.priceAmount);
   const [row] = await db.update(commercialPlansTable).set(data).where(eq(commercialPlansTable.id, id)).returning();
@@ -94,7 +94,7 @@ const BrandingBody = z.object({
 
 router.post("/commercial/branding-packages", async (req, res) => {
   const parsed = BrandingBody.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const [row] = await db.insert(brandingPackagesTable).values(parsed.data).returning();
   res.status(201).json(row);
 });
@@ -102,7 +102,7 @@ router.post("/commercial/branding-packages", async (req, res) => {
 router.patch("/commercial/branding-packages/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   const parsed = BrandingBody.partial().safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const [row] = await db.update(brandingPackagesTable).set(parsed.data).where(eq(brandingPackagesTable.id, id)).returning();
   res.json(row);
 });
@@ -114,9 +114,9 @@ router.get("/commercial/accounts", async (_req, res) => {
 
 router.get("/commercial/accounts/:id", async (req, res) => {
   const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.status(400).json({ error: "bad id" });
+  if (isNaN(id)) { res.status(400).json({ error: "bad id" }); return; }
   const detail = await getAccountWithDetail(id);
-  if (!detail) return res.status(404).json({ error: "not found" });
+  if (!detail) { res.status(404).json({ error: "not found" }); return; }
   res.json(detail);
 });
 
@@ -158,7 +158,7 @@ function coerceDates(d: any) {
 
 router.post("/commercial/accounts", async (req, res) => {
   const parsed = AccountBody.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const [row] = await db.insert(commercialAccountsTable).values(coerceDates({ ...parsed.data })).returning();
   await recomputeUsage(row.id).catch(() => {});
   res.status(201).json(row);
@@ -166,11 +166,11 @@ router.post("/commercial/accounts", async (req, res) => {
 
 router.patch("/commercial/accounts/:id", async (req, res) => {
   const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.status(400).json({ error: "bad id" });
+  if (isNaN(id)) { res.status(400).json({ error: "bad id" }); return; }
   const parsed = AccountBody.partial().safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   if (parsed.data.parentAccountId !== undefined && await wouldCreateCycle(id, parsed.data.parentAccountId ?? null)) {
-    return res.status(400).json({ error: "Parent assignment would create an account hierarchy cycle." });
+    res.status(400).json({ error: "Parent assignment would create an account hierarchy cycle." }); return;
   }
   const [row] = await db.update(commercialAccountsTable).set(coerceDates({ ...parsed.data })).where(eq(commercialAccountsTable.id, id)).returning();
   await recomputeUsage(id).catch(() => {});
@@ -179,14 +179,14 @@ router.patch("/commercial/accounts/:id", async (req, res) => {
 
 router.delete("/commercial/accounts/:id", async (req, res) => {
   const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.status(400).json({ error: "bad id" });
+  if (isNaN(id)) { res.status(400).json({ error: "bad id" }); return; }
   await db.delete(commercialAccountsTable).where(eq(commercialAccountsTable.id, id));
   res.status(204).end();
 });
 
 router.post("/commercial/accounts/:id/recompute-usage", async (req, res) => {
   const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.status(400).json({ error: "bad id" });
+  if (isNaN(id)) { res.status(400).json({ error: "bad id" }); return; }
   res.json(await recomputeUsage(id));
 });
 
@@ -194,7 +194,7 @@ router.post("/commercial/accounts/:id/link-partners", async (req, res) => {
   const id = parseInt(req.params.id);
   const Body = z.object({ partnerIds: z.array(z.number()) });
   const parsed = Body.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   for (const pid of parsed.data.partnerIds) {
     await db.update(partnersTable).set({ commercialAccountId: id }).where(eq(partnersTable.id, pid));
   }
@@ -205,16 +205,16 @@ router.post("/commercial/accounts/:id/link-partners", async (req, res) => {
 // ===== Entitlements =====
 router.get("/commercial/entitlements/account/:id", async (req, res) => {
   const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.status(400).json({ error: "bad id" });
+  if (isNaN(id)) { res.status(400).json({ error: "bad id" }); return; }
   res.json({ entitlements: await getEntitlements(id), featureKeys: FEATURE_KEYS });
 });
 
 router.get("/commercial/entitlements/partner/:id", async (req, res) => {
   const pid = parseInt(req.params.id);
-  if (isNaN(pid)) return res.status(400).json({ error: "bad id" });
+  if (isNaN(pid)) { res.status(400).json({ error: "bad id" }); return; }
   const [p] = await db.select().from(partnersTable).where(eq(partnersTable.id, pid));
-  if (!p) return res.status(404).json({ error: "not found" });
-  if (!p.commercialAccountId) return res.json({ entitlements: Object.fromEntries(FEATURE_KEYS.map(k => [k, true])), reason: "no_account_full_access" });
+  if (!p) { res.status(404).json({ error: "not found" }); return; }
+  if (!p.commercialAccountId) { res.json({ entitlements: Object.fromEntries(FEATURE_KEYS.map(k => [k, true])), reason: "no_account_full_access" }); return; }
   res.json({ entitlements: await getEntitlements(p.commercialAccountId), accountId: p.commercialAccountId });
 });
 
