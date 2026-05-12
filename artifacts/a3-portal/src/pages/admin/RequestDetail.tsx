@@ -42,11 +42,11 @@ export default function RequestDetail() {
   const queryClient = useQueryClient();
 
   const { data: request, isLoading } = useGetRequest(requestId, {
-    query: { enabled: !!requestId }
+    query: { queryKey: [`/api/requests/${requestId}`], enabled: !!requestId }
   });
 
   const { data: notes } = useListRequestNotes(requestId, {
-    query: { enabled: !!requestId }
+    query: { queryKey: [`/api/requests/${requestId}/notes`], enabled: !!requestId }
   });
 
   const updateMutation = useUpdateRequest();

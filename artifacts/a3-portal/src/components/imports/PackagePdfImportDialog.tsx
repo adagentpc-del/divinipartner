@@ -425,7 +425,7 @@ function ReviewStage({
 }
 
 function RowEditor({ row, mode, onCell, onDelete }: { row: ParsedRow; mode: "header" | "item"; onCell: (f: string, v: any) => void; onDelete: () => void }) {
-  const fields = EDITABLE_FIELDS.filter(f => mode === "header" ? f.header : f.item);
+  const fields = EDITABLE_FIELDS.filter(f => mode === "header" ? "header" in f : "item" in f);
   const conf = row._confidence ?? 1;
   const lowConf = conf < 0.5;
   return (

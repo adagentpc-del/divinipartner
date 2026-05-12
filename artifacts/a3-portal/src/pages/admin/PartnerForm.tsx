@@ -116,7 +116,7 @@ export default function PartnerForm() {
   const queryClient = useQueryClient();
 
   const { data: partner, isLoading } = useGetPartner(id as number, {
-    query: { enabled: isEditing }
+    query: { queryKey: [`/api/partners/${id}`], enabled: isEditing }
   });
 
   const createMutation = useCreatePartner();
@@ -431,7 +431,7 @@ export default function PartnerForm() {
         </nav>
       </div>
 
-      {isEditing && id && <div className="mb-4"><RolloutChecklist partnerId={parseInt(id)} /></div>}
+      {isEditing && id && <div className="mb-4"><RolloutChecklist partnerId={id} /></div>}
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -845,7 +845,7 @@ export default function PartnerForm() {
         <SendDocumentsModal
           open={showSendDocs}
           onClose={() => setShowSendDocs(false)}
-          partnerId={parseInt(id)}
+          partnerId={id}
           partnerName={form.watch("companyName")}
           prefillEmail={form.watch("contactEmail") || undefined}
           prefillName={form.watch("contactName") || undefined}

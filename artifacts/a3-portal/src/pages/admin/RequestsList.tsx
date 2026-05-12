@@ -74,7 +74,7 @@ export default function RequestsList() {
     ]).then(([partnerData, intakeData, portalData, productData, brandingData]) => {
       const partnerList = partnerData.partners || partnerData || [];
       setPartners(partnerList);
-      const partnerMap = new Map(partnerList.map((p: any) => [p.id, p.companyName]));
+      const partnerMap = new Map<number, string>(partnerList.map((p: any) => [p.id, p.companyName]));
 
       const unified: UnifiedRequest[] = [];
 

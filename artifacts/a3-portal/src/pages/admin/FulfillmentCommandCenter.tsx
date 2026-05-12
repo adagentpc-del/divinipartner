@@ -74,7 +74,7 @@ export default function FulfillmentCommandCenter() {
 
   const params = useMemo(() => {
     const q = new URLSearchParams();
-    Object.entries(filters).forEach(([k, v]) => { if (v && v !== "" && v !== false) q.set(k, String(v)); });
+    Object.entries(filters).forEach(([k, v]) => { if (v && v !== "") q.set(k, String(v)); });
     return q.toString();
   }, [filters]);
 

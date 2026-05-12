@@ -347,16 +347,16 @@ export default function ProductCatalog() {
               <TabsContent value="pricing" className="space-y-3 mt-4">
                 <PricingModelInput
                   value={{
-                    pricingModel: editing.pricingModel ?? null,
+                    pricingModel: (editing.pricingModel as PricingModel | null) ?? null,
                     unitRate: (editing as any).unitRate ?? null,
-                    pricingUnit: editing.pricingUnit ?? null,
+                    pricingUnit: (editing.pricingUnit as PricingUnit | null) ?? null,
                     minBillableSize: (editing as any).minBillableSize ?? null,
                     minCharge: (editing as any).minCharge ?? null,
                     allowsCustomSize: (editing as any).allowsCustomSize ?? false,
                   }}
                   onChange={patch => setEditing(p => ({ ...p!, ...patch }))}
-                  nativeWidthMm={(editing as any).sizeWidthMm ?? null}
-                  nativeHeightMm={(editing as any).sizeHeightMm ?? null}
+                  sampleWidthMm={(editing as any).sizeWidthMm ?? null}
+                  sampleHeightMm={(editing as any).sizeHeightMm ?? null}
                 />
               </TabsContent>
 

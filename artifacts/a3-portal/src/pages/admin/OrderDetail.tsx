@@ -423,7 +423,7 @@ export default function OrderDetail() {
           <Card className="p-5">
             <h2 className="font-semibold text-lg mb-3 flex items-center gap-2"><FolderOpen className="h-5 w-5 text-muted-foreground" />Production Assets</h2>
             <OrderAssetsPanel orderId={order.id} partnerId={order.partnerId} eventId={order.eventId} />
-            <TaskPanel orderId={order.id} partnerId={order.partnerId} eventId={order.eventId} supplierId={order.assignedSupplierId ?? undefined} />
+            <TaskPanel orderId={order.id} partnerId={order.partnerId} eventId={order.eventId ?? undefined} supplierId={order.assignedSupplierId ?? undefined} />
             {order.artworkFilesJson && order.artworkFilesJson.length > 0 && (
               <div className="mt-4 pt-4 border-t">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Legacy attachments</p>
@@ -851,7 +851,7 @@ function ItemSpecsLine({ productId, partnerId }: { productId: number; partnerId:
   const safe     = formatPrimarySecondary(p.safeArea, aUnit, sys);
   const visible  = formatWxHDual(p.visibleWidth, p.visibleHeight, aUnit, sys);
   if (!finished.primary && !artwork.primary && !bleed.primary && !safe.primary && !visible.primary) return null;
-  const Bit = ({ label, v }: { label: string; v: { primary: string; secondary?: string } }) => (
+  const Bit = ({ label, v }: { label: string; v: { primary: string; secondary?: string | null } }) => (
     v.primary ? <span className="mr-3"><span className="text-muted-foreground">{label}:</span> <span className="font-medium">{v.primary}</span>{v.secondary && <span className="text-muted-foreground/80"> (≈ {v.secondary})</span>}</span> : null
   );
   return (
