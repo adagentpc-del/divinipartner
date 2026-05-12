@@ -23,6 +23,8 @@ tags:
     description: Admin dashboard
   - name: Storage
     description: Object storage upload and serving endpoints.
+  - name: production
+    description: Production handoff and supplier packets.
 
 paths:
   /healthz:
@@ -607,6 +609,42 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AssetsLibrary"
+
+  /orders/{orderId}/supplier-packet/{supplierId}:
+    get:
+      operationId: getSupplierPacket
+      tags: [production]
+      summary: Get the production packet for a supplier on an order
+      description: |
+        Returns the supplier-facing production packet for a single order/supplier
+        pair: order header + logistics, partner/event/supplier identity, and the
+        line items assigned to this supplier with their resolved specs, pricing
+        basis, asset links (current + approved + vendor-visible only), and
+        readiness flags.
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: supplierId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Supplier production packet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierPacketResponse"
+        "404":
+          description: Order or supplier not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
 
   /storage/uploads/request-url:
     post:
@@ -2013,3 +2051,317 @@ components:
           type: string
         metadata:
           $ref: '#/components/schemas/UploadUrlRequest'
+
+    SupplierPacketContact:
+      type: object
+      properties:
+        name: { type: ["string", "null"] }
+        phone: { type: ["string", "null"] }
+        email: { type: ["string", "null"] }
+
+    SupplierPacketDualValue:
+      type: object
+      description: A measurement rendered in its native unit, optionally with a converted secondary value.
+      required: [primary, secondary, converted]
+      properties:
+        primary: { type: string }
+        secondary: { type: ["string", "null"] }
+        converted: { type: boolean }
+
+    SupplierPacketItemSpecs:
+      type: object
+      description: Structured spec block for a line item — finished/artwork/visible/bleed/safe-area dimensions.
+      required: [finished, artwork, visible, bleed, safeArea]
+      properties:
+        finished:
+          oneOf:
+            - $ref: "#/components/schemas/SupplierPacketDualValue"
+            - type: "null"
+        artwork:
+          oneOf:
+            - $ref: "#/components/schemas/SupplierPacketDualValue"
+            - type: "null"
+        visible:
+          oneOf:
+            - $ref: "#/components/schemas/SupplierPacketDualValue"
+            - type: "null"
+        bleed:
+          oneOf:
+            - $ref: "#/components/schemas/SupplierPacketDualValue"
+            - type: "null"
+        safeArea:
+          oneOf:
+            - $ref: "#/components/schemas/SupplierPacketDualValue"
+            - type: "null"
+
+    SupplierPacketPricingBasis:
+      type: object
+      additionalProperties: true
+      required:
+        [
+          pricingModel,
+          pricingUnit,
+          pricingUnitLabel,
+          unitRate,
+          billableAreaSqm,
+          billableLinearM,
+          unitPrice,
+          minBillableSize,
+          minCharge,
+          calculation,
+        ]
+      properties:
+        pricingModel: { type: ["string", "null"] }
+        pricingUnit: { type: ["string", "null"] }
+        pricingUnitLabel: { type: ["string", "null"] }
+        unitRate:
+          oneOf:
+            - { type: string }
+            - { type: number }
+            - { type: "null" }
+        billableAreaSqm: { type: ["number", "null"] }
+        billableLinearM: { type: ["number", "null"] }
+        unitPrice:
+          oneOf:
+            - { type: string }
+            - { type: number }
+            - { type: "null" }
+        minBillableSize: { type: ["number", "null"] }
+        minCharge:
+          oneOf:
+            - { type: string }
+            - { type: number }
+            - { type: "null" }
+        calculation: { type: ["string", "null"] }
+        requiresQuote: { type: boolean }
+
+    SupplierPacketAsset:
+      type: object
+      description: Full asset row (vendor-visible, current, approved). Date fields are ISO strings.
+      additionalProperties: true
+      required: [id, title, fileUrl, version, isCurrent, status, approvalStatus]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        fileUrl: { type: string }
+        fileName: { type: ["string", "null"] }
+        mimeType: { type: ["string", "null"] }
+        fileSize: { type: ["integer", "null"] }
+        category: { type: string }
+        visibility: { type: string }
+        ownerType: { type: ["string", "null"] }
+        ownerId: { type: ["integer", "null"] }
+        partnerId: { type: ["integer", "null"] }
+        eventId: { type: ["integer", "null"] }
+        orderId: { type: ["integer", "null"] }
+        productId: { type: ["integer", "null"] }
+        packageId: { type: ["integer", "null"] }
+        brandingZoneId: { type: ["integer", "null"] }
+        supplierId: { type: ["integer", "null"] }
+        version: { type: integer }
+        isCurrent: { type: boolean }
+        parentAssetId: { type: ["integer", "null"] }
+        status: { type: string }
+        approvalStatus: { type: string }
+        approvedByUserId: { type: ["string", "null"] }
+        approvedAt: { type: ["string", "null"], format: date-time }
+        releasedToVendorAt: { type: ["string", "null"], format: date-time }
+        productionReady: { type: boolean }
+        uploadedByUserId: { type: ["string", "null"] }
+        notes: { type: ["string", "null"] }
+        tagsJson:
+          type: ["array", "null"]
+          items: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    SupplierPacketAssetLink:
+      type: object
+      description: Asset-link row joined to its asset (or null when the asset is not vendor-visible).
+      additionalProperties: true
+      required: [id, assetId, orderItemId, isRequiredFor, createdAt, asset]
+      properties:
+        id: { type: integer }
+        assetId: { type: integer }
+        orderItemId: { type: integer }
+        role: { type: ["string", "null"] }
+        isRequiredFor: { type: boolean }
+        notes: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        asset:
+          oneOf:
+            - $ref: "#/components/schemas/SupplierPacketAsset"
+            - type: "null"
+        hidden: { type: boolean }
+
+    SupplierPacketItem:
+      type: object
+      required:
+        [
+          itemId,
+          name,
+          productId,
+          productName,
+          quantity,
+          dimensionDisplay,
+          specs,
+          pricingBasis,
+          fulfillmentMode,
+          supplierStatus,
+          supplierDueDate,
+          supplierShipDate,
+          supplierInstallDate,
+          internalFulfillmentNotes,
+          productionBlockedReason,
+          assets,
+          flags,
+          ready,
+        ]
+      properties:
+        itemId: { type: integer }
+        name: { type: string }
+        productId: { type: ["integer", "null"] }
+        productName: { type: ["string", "null"] }
+        quantity: { type: integer }
+        dimensionDisplay: { type: ["string", "null"] }
+        specs:
+          oneOf:
+            - $ref: "#/components/schemas/SupplierPacketItemSpecs"
+            - type: "null"
+        pricingBasis:
+          oneOf:
+            - $ref: "#/components/schemas/SupplierPacketPricingBasis"
+            - type: "null"
+        fulfillmentMode: { type: ["string", "null"] }
+        supplierStatus: { type: ["string", "null"] }
+        supplierDueDate: { type: ["string", "null"], format: date-time }
+        supplierShipDate: { type: ["string", "null"], format: date-time }
+        supplierInstallDate: { type: ["string", "null"], format: date-time }
+        internalFulfillmentNotes: { type: ["string", "null"] }
+        productionBlockedReason: { type: ["string", "null"] }
+        assets:
+          type: array
+          items: { $ref: "#/components/schemas/SupplierPacketAssetLink" }
+        flags:
+          type: array
+          items: { type: string }
+        ready: { type: boolean }
+
+    SupplierPacketOrder:
+      type: object
+      required:
+        [
+          id,
+          orderNumber,
+          status,
+          internalNotes,
+          vendorNotes,
+          shipDateTarget,
+          deliveryByDate,
+          packageCount,
+          totalShipmentWeight,
+          totalShipmentWeightUnit,
+          oversizeFlag,
+          crateRequired,
+          palletRequired,
+          shippingContactJson,
+          receivingContactJson,
+          customsNotes,
+          internationalShippingNotes,
+          logisticsNotes,
+          measurementSystem,
+        ]
+      properties:
+        id: { type: integer }
+        orderNumber: { type: ["string", "null"] }
+        status: { type: ["string", "null"] }
+        internalNotes: { type: ["string", "null"] }
+        vendorNotes: { type: ["string", "null"] }
+        shipDateTarget: { type: ["string", "null"], format: date-time }
+        deliveryByDate: { type: ["string", "null"], format: date-time }
+        packageCount: { type: ["integer", "null"] }
+        totalShipmentWeight:
+          oneOf:
+            - { type: string }
+            - { type: number }
+            - { type: "null" }
+        totalShipmentWeightUnit: { type: ["string", "null"] }
+        oversizeFlag: { type: ["boolean", "null"] }
+        crateRequired: { type: ["boolean", "null"] }
+        palletRequired: { type: ["boolean", "null"] }
+        shippingContactJson:
+          oneOf:
+            - $ref: "#/components/schemas/SupplierPacketContact"
+            - type: "null"
+        receivingContactJson:
+          oneOf:
+            - $ref: "#/components/schemas/SupplierPacketContact"
+            - type: "null"
+        customsNotes: { type: ["string", "null"] }
+        internationalShippingNotes: { type: ["string", "null"] }
+        logisticsNotes: { type: ["string", "null"] }
+        measurementSystem: { type: ["string", "null"] }
+
+    SupplierPacketPartner:
+      oneOf:
+        - type: object
+          required: [id, companyName]
+          properties:
+            id: { type: integer }
+            companyName: { type: string }
+        - type: "null"
+
+    SupplierPacketEvent:
+      oneOf:
+        - type: object
+          required: [id, name, eventStartDate, eventEndDate, venueId]
+          properties:
+            id: { type: integer }
+            name: { type: string }
+            eventStartDate: { type: ["string", "null"], format: date-time }
+            eventEndDate: { type: ["string", "null"], format: date-time }
+            venueId: { type: ["integer", "null"] }
+        - type: "null"
+
+    SupplierPacketSupplier:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+
+    SupplierPacketMeasurementContext:
+      type: object
+      required: [system, source, reason]
+      properties:
+        system: { type: string }
+        primarySystem: { type: string }
+        secondarySystem: { type: string }
+        source: { type: string }
+        reason: { type: string }
+
+    SupplierPacketSummary:
+      type: object
+      required: [totalItems, ready, blocked]
+      properties:
+        totalItems: { type: integer }
+        ready: { type: integer }
+        blocked: { type: integer }
+
+    SupplierPacketResponse:
+      type: object
+      required: [order, partner, event, supplier, items, orderLevelAssets, summary]
+      properties:
+        order: { $ref: "#/components/schemas/SupplierPacketOrder" }
+        partner: { $ref: "#/components/schemas/SupplierPacketPartner" }
+        event: { $ref: "#/components/schemas/SupplierPacketEvent" }
+        supplier: { $ref: "#/components/schemas/SupplierPacketSupplier" }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/SupplierPacketItem" }
+        measurementContext:
+          $ref: "#/components/schemas/SupplierPacketMeasurementContext"
+        orderLevelAssets:
+          type: array
+          items: { $ref: "#/components/schemas/SupplierPacketAsset" }
+        summary: { $ref: "#/components/schemas/SupplierPacketSummary" }

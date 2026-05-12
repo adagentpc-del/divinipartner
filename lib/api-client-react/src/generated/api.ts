@@ -42,6 +42,7 @@ import type {
   StatusCount,
   SubmitRequestBody,
   SubmitRequestResponse,
+  SupplierPacketResponse,
   SurveyAdminPull200,
   SurveyAssetDelete200,
   SurveyAssetPatch,
@@ -2370,6 +2371,117 @@ export function useGetAssetsLibrary<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetAssetsLibraryQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Returns the supplier-facing production packet for a single order/supplier
+pair: order header + logistics, partner/event/supplier identity, and the
+line items assigned to this supplier with their resolved specs, pricing
+basis, asset links (current + approved + vendor-visible only), and
+readiness flags.
+
+ * @summary Get the production packet for a supplier on an order
+ */
+export const getGetSupplierPacketUrl = (
+  orderId: number,
+  supplierId: number,
+) => {
+  return `/api/orders/${orderId}/supplier-packet/${supplierId}`;
+};
+
+export const getSupplierPacket = async (
+  orderId: number,
+  supplierId: number,
+  options?: RequestInit,
+): Promise<SupplierPacketResponse> => {
+  return customFetch<SupplierPacketResponse>(
+    getGetSupplierPacketUrl(orderId, supplierId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetSupplierPacketQueryKey = (
+  orderId: number,
+  supplierId: number,
+) => {
+  return [`/api/orders/${orderId}/supplier-packet/${supplierId}`] as const;
+};
+
+export const getGetSupplierPacketQueryOptions = <
+  TData = Awaited<ReturnType<typeof getSupplierPacket>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  orderId: number,
+  supplierId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getSupplierPacket>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetSupplierPacketQueryKey(orderId, supplierId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getSupplierPacket>>
+  > = ({ signal }) =>
+    getSupplierPacket(orderId, supplierId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!(orderId && supplierId),
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getSupplierPacket>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetSupplierPacketQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getSupplierPacket>>
+>;
+export type GetSupplierPacketQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Get the production packet for a supplier on an order
+ */
+
+export function useGetSupplierPacket<
+  TData = Awaited<ReturnType<typeof getSupplierPacket>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  orderId: number,
+  supplierId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getSupplierPacket>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetSupplierPacketQueryOptions(
+    orderId,
+    supplierId,
+    options,
+  );
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

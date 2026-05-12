@@ -1,19 +1,12 @@
 import { useParams } from "wouter";
-import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api";
+import { useGetSupplierPacket, type SupplierPacketDualValue, type SupplierPacketOrder } from "@workspace/api-client-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Printer, ChevronLeft, FileText, Image as ImageIcon, AlertTriangle, CheckCircle2, Truck } from "lucide-react";
 import { Link } from "wouter";
 import { formatWeight, convertWeight, pickDisplayWeightUnit, type WeightUnit, type UnitSystem } from "@/lib/units";
-import type {
-  SupplierPacketResponse,
-  SupplierPacketDualValue,
-  SupplierPacketOrder,
-} from "@workspace/db/dtos";
 
-type Packet = SupplierPacketResponse;
 type DualValue = SupplierPacketDualValue;
 
 function DualSpec({ label, v }: { label: string; v: DualValue | null }) {
@@ -112,10 +105,7 @@ export default function SupplierPacket() {
   const params = useParams<{ orderId: string; supplierId: string }>();
   const orderId = parseInt(params.orderId);
   const supplierId = parseInt(params.supplierId);
-  const { data, isLoading, isError } = useQuery<Packet>({
-    queryKey: [`/api/orders/${orderId}/supplier-packet/${supplierId}`],
-    queryFn: () => apiFetch(`/api/orders/${orderId}/supplier-packet/${supplierId}`),
-  });
+  const { data, isLoading, isError } = useGetSupplierPacket(orderId, supplierId);
 
   return (
     <div className="space-y-4 print:p-0">

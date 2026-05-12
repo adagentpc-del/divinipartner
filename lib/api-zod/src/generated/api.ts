@@ -1043,6 +1043,292 @@ export const GetAssetsLibraryResponse = zod.object({
 });
 
 /**
+ * Returns the supplier-facing production packet for a single order/supplier
+pair: order header + logistics, partner/event/supplier identity, and the
+line items assigned to this supplier with their resolved specs, pricing
+basis, asset links (current + approved + vendor-visible only), and
+readiness flags.
+
+ * @summary Get the production packet for a supplier on an order
+ */
+export const GetSupplierPacketParams = zod.object({
+  orderId: zod.coerce.number(),
+  supplierId: zod.coerce.number(),
+});
+
+export const GetSupplierPacketResponse = zod.object({
+  order: zod.object({
+    id: zod.number(),
+    orderNumber: zod.string().nullable(),
+    status: zod.string().nullable(),
+    internalNotes: zod.string().nullable(),
+    vendorNotes: zod.string().nullable(),
+    shipDateTarget: zod.coerce.date().nullable(),
+    deliveryByDate: zod.coerce.date().nullable(),
+    packageCount: zod.number().nullable(),
+    totalShipmentWeight: zod.union([zod.string(), zod.number(), zod.null()]),
+    totalShipmentWeightUnit: zod.string().nullable(),
+    oversizeFlag: zod.boolean().nullable(),
+    crateRequired: zod.boolean().nullable(),
+    palletRequired: zod.boolean().nullable(),
+    shippingContactJson: zod.union([
+      zod.object({
+        name: zod.string().nullish(),
+        phone: zod.string().nullish(),
+        email: zod.string().nullish(),
+      }),
+      zod.null(),
+    ]),
+    receivingContactJson: zod.union([
+      zod.object({
+        name: zod.string().nullish(),
+        phone: zod.string().nullish(),
+        email: zod.string().nullish(),
+      }),
+      zod.null(),
+    ]),
+    customsNotes: zod.string().nullable(),
+    internationalShippingNotes: zod.string().nullable(),
+    logisticsNotes: zod.string().nullable(),
+    measurementSystem: zod.string().nullable(),
+  }),
+  partner: zod.union([
+    zod.object({
+      id: zod.number(),
+      companyName: zod.string(),
+    }),
+    zod.null(),
+  ]),
+  event: zod.union([
+    zod.object({
+      id: zod.number(),
+      name: zod.string(),
+      eventStartDate: zod.coerce.date().nullable(),
+      eventEndDate: zod.coerce.date().nullable(),
+      venueId: zod.number().nullable(),
+    }),
+    zod.null(),
+  ]),
+  supplier: zod.object({
+    id: zod.number(),
+    name: zod.string(),
+  }),
+  items: zod.array(
+    zod.object({
+      itemId: zod.number(),
+      name: zod.string(),
+      productId: zod.number().nullable(),
+      productName: zod.string().nullable(),
+      quantity: zod.number(),
+      dimensionDisplay: zod.string().nullable(),
+      specs: zod.union([
+        zod
+          .object({
+            finished: zod.union([
+              zod
+                .object({
+                  primary: zod.string(),
+                  secondary: zod.string().nullable(),
+                  converted: zod.boolean(),
+                })
+                .describe(
+                  "A measurement rendered in its native unit, optionally with a converted secondary value.",
+                ),
+              zod.null(),
+            ]),
+            artwork: zod.union([
+              zod
+                .object({
+                  primary: zod.string(),
+                  secondary: zod.string().nullable(),
+                  converted: zod.boolean(),
+                })
+                .describe(
+                  "A measurement rendered in its native unit, optionally with a converted secondary value.",
+                ),
+              zod.null(),
+            ]),
+            visible: zod.union([
+              zod
+                .object({
+                  primary: zod.string(),
+                  secondary: zod.string().nullable(),
+                  converted: zod.boolean(),
+                })
+                .describe(
+                  "A measurement rendered in its native unit, optionally with a converted secondary value.",
+                ),
+              zod.null(),
+            ]),
+            bleed: zod.union([
+              zod
+                .object({
+                  primary: zod.string(),
+                  secondary: zod.string().nullable(),
+                  converted: zod.boolean(),
+                })
+                .describe(
+                  "A measurement rendered in its native unit, optionally with a converted secondary value.",
+                ),
+              zod.null(),
+            ]),
+            safeArea: zod.union([
+              zod
+                .object({
+                  primary: zod.string(),
+                  secondary: zod.string().nullable(),
+                  converted: zod.boolean(),
+                })
+                .describe(
+                  "A measurement rendered in its native unit, optionally with a converted secondary value.",
+                ),
+              zod.null(),
+            ]),
+          })
+          .describe(
+            "Structured spec block for a line item — finished\/artwork\/visible\/bleed\/safe-area dimensions.",
+          ),
+        zod.null(),
+      ]),
+      pricingBasis: zod.union([
+        zod.object({
+          pricingModel: zod.string().nullable(),
+          pricingUnit: zod.string().nullable(),
+          pricingUnitLabel: zod.string().nullable(),
+          unitRate: zod.union([zod.string(), zod.number(), zod.null()]),
+          billableAreaSqm: zod.number().nullable(),
+          billableLinearM: zod.number().nullable(),
+          unitPrice: zod.union([zod.string(), zod.number(), zod.null()]),
+          minBillableSize: zod.number().nullable(),
+          minCharge: zod.union([zod.string(), zod.number(), zod.null()]),
+          calculation: zod.string().nullable(),
+          requiresQuote: zod.boolean().optional(),
+        }),
+        zod.null(),
+      ]),
+      fulfillmentMode: zod.string().nullable(),
+      supplierStatus: zod.string().nullable(),
+      supplierDueDate: zod.coerce.date().nullable(),
+      supplierShipDate: zod.coerce.date().nullable(),
+      supplierInstallDate: zod.coerce.date().nullable(),
+      internalFulfillmentNotes: zod.string().nullable(),
+      productionBlockedReason: zod.string().nullable(),
+      assets: zod.array(
+        zod
+          .object({
+            id: zod.number(),
+            assetId: zod.number(),
+            orderItemId: zod.number(),
+            role: zod.string().nullish(),
+            isRequiredFor: zod.boolean(),
+            notes: zod.string().nullish(),
+            createdAt: zod.coerce.date(),
+            asset: zod.union([
+              zod
+                .object({
+                  id: zod.number(),
+                  title: zod.string(),
+                  fileUrl: zod.string(),
+                  fileName: zod.string().nullish(),
+                  mimeType: zod.string().nullish(),
+                  fileSize: zod.number().nullish(),
+                  category: zod.string().optional(),
+                  visibility: zod.string().optional(),
+                  ownerType: zod.string().nullish(),
+                  ownerId: zod.number().nullish(),
+                  partnerId: zod.number().nullish(),
+                  eventId: zod.number().nullish(),
+                  orderId: zod.number().nullish(),
+                  productId: zod.number().nullish(),
+                  packageId: zod.number().nullish(),
+                  brandingZoneId: zod.number().nullish(),
+                  supplierId: zod.number().nullish(),
+                  version: zod.number(),
+                  isCurrent: zod.boolean(),
+                  parentAssetId: zod.number().nullish(),
+                  status: zod.string(),
+                  approvalStatus: zod.string(),
+                  approvedByUserId: zod.string().nullish(),
+                  approvedAt: zod.coerce.date().nullish(),
+                  releasedToVendorAt: zod.coerce.date().nullish(),
+                  productionReady: zod.boolean().optional(),
+                  uploadedByUserId: zod.string().nullish(),
+                  notes: zod.string().nullish(),
+                  tagsJson: zod.array(zod.string()).nullish(),
+                  createdAt: zod.coerce.date().optional(),
+                  updatedAt: zod.coerce.date().optional(),
+                })
+                .describe(
+                  "Full asset row (vendor-visible, current, approved). Date fields are ISO strings.",
+                ),
+              zod.null(),
+            ]),
+            hidden: zod.boolean().optional(),
+          })
+          .describe(
+            "Asset-link row joined to its asset (or null when the asset is not vendor-visible).",
+          ),
+      ),
+      flags: zod.array(zod.string()),
+      ready: zod.boolean(),
+    }),
+  ),
+  measurementContext: zod
+    .object({
+      system: zod.string(),
+      primarySystem: zod.string().optional(),
+      secondarySystem: zod.string().optional(),
+      source: zod.string(),
+      reason: zod.string(),
+    })
+    .optional(),
+  orderLevelAssets: zod.array(
+    zod
+      .object({
+        id: zod.number(),
+        title: zod.string(),
+        fileUrl: zod.string(),
+        fileName: zod.string().nullish(),
+        mimeType: zod.string().nullish(),
+        fileSize: zod.number().nullish(),
+        category: zod.string().optional(),
+        visibility: zod.string().optional(),
+        ownerType: zod.string().nullish(),
+        ownerId: zod.number().nullish(),
+        partnerId: zod.number().nullish(),
+        eventId: zod.number().nullish(),
+        orderId: zod.number().nullish(),
+        productId: zod.number().nullish(),
+        packageId: zod.number().nullish(),
+        brandingZoneId: zod.number().nullish(),
+        supplierId: zod.number().nullish(),
+        version: zod.number(),
+        isCurrent: zod.boolean(),
+        parentAssetId: zod.number().nullish(),
+        status: zod.string(),
+        approvalStatus: zod.string(),
+        approvedByUserId: zod.string().nullish(),
+        approvedAt: zod.coerce.date().nullish(),
+        releasedToVendorAt: zod.coerce.date().nullish(),
+        productionReady: zod.boolean().optional(),
+        uploadedByUserId: zod.string().nullish(),
+        notes: zod.string().nullish(),
+        tagsJson: zod.array(zod.string()).nullish(),
+        createdAt: zod.coerce.date().optional(),
+        updatedAt: zod.coerce.date().optional(),
+      })
+      .describe(
+        "Full asset row (vendor-visible, current, approved). Date fields are ISO strings.",
+      ),
+  ),
+  summary: zod.object({
+    totalItems: zod.number(),
+    ready: zod.number(),
+    blocked: zod.number(),
+  }),
+});
+
+/**
  * @summary Request a presigned URL for file upload
  */
 

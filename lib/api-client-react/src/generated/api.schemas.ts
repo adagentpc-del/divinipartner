@@ -930,6 +930,247 @@ export interface UploadUrlResponse {
   metadata?: UploadUrlRequest;
 }
 
+export interface SupplierPacketContact {
+  /** @nullable */
+  name?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  email?: string | null;
+}
+
+/**
+ * A measurement rendered in its native unit, optionally with a converted secondary value.
+ */
+export interface SupplierPacketDualValue {
+  primary: string;
+  /** @nullable */
+  secondary: string | null;
+  converted: boolean;
+}
+
+/**
+ * Structured spec block for a line item — finished/artwork/visible/bleed/safe-area dimensions.
+ */
+export interface SupplierPacketItemSpecs {
+  finished: SupplierPacketDualValue | null;
+  artwork: SupplierPacketDualValue | null;
+  visible: SupplierPacketDualValue | null;
+  bleed: SupplierPacketDualValue | null;
+  safeArea: SupplierPacketDualValue | null;
+}
+
+export interface SupplierPacketPricingBasis {
+  /** @nullable */
+  pricingModel: string | null;
+  /** @nullable */
+  pricingUnit: string | null;
+  /** @nullable */
+  pricingUnitLabel: string | null;
+  unitRate: string | number | null;
+  /** @nullable */
+  billableAreaSqm: number | null;
+  /** @nullable */
+  billableLinearM: number | null;
+  unitPrice: string | number | null;
+  /** @nullable */
+  minBillableSize: number | null;
+  minCharge: string | number | null;
+  /** @nullable */
+  calculation: string | null;
+  requiresQuote?: boolean;
+  [key: string]: unknown;
+}
+
+/**
+ * Full asset row (vendor-visible, current, approved). Date fields are ISO strings.
+ */
+export interface SupplierPacketAsset {
+  id: number;
+  title: string;
+  fileUrl: string;
+  /** @nullable */
+  fileName?: string | null;
+  /** @nullable */
+  mimeType?: string | null;
+  /** @nullable */
+  fileSize?: number | null;
+  category?: string;
+  visibility?: string;
+  /** @nullable */
+  ownerType?: string | null;
+  /** @nullable */
+  ownerId?: number | null;
+  /** @nullable */
+  partnerId?: number | null;
+  /** @nullable */
+  eventId?: number | null;
+  /** @nullable */
+  orderId?: number | null;
+  /** @nullable */
+  productId?: number | null;
+  /** @nullable */
+  packageId?: number | null;
+  /** @nullable */
+  brandingZoneId?: number | null;
+  /** @nullable */
+  supplierId?: number | null;
+  version: number;
+  isCurrent: boolean;
+  /** @nullable */
+  parentAssetId?: number | null;
+  status: string;
+  approvalStatus: string;
+  /** @nullable */
+  approvedByUserId?: string | null;
+  /** @nullable */
+  approvedAt?: string | null;
+  /** @nullable */
+  releasedToVendorAt?: string | null;
+  productionReady?: boolean;
+  /** @nullable */
+  uploadedByUserId?: string | null;
+  /** @nullable */
+  notes?: string | null;
+  /** @nullable */
+  tagsJson?: string[] | null;
+  createdAt?: string;
+  updatedAt?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Asset-link row joined to its asset (or null when the asset is not vendor-visible).
+ */
+export interface SupplierPacketAssetLink {
+  id: number;
+  assetId: number;
+  orderItemId: number;
+  /** @nullable */
+  role?: string | null;
+  isRequiredFor: boolean;
+  /** @nullable */
+  notes?: string | null;
+  createdAt: string;
+  asset: SupplierPacketAsset | null;
+  hidden?: boolean;
+  [key: string]: unknown;
+}
+
+export interface SupplierPacketItem {
+  itemId: number;
+  name: string;
+  /** @nullable */
+  productId: number | null;
+  /** @nullable */
+  productName: string | null;
+  quantity: number;
+  /** @nullable */
+  dimensionDisplay: string | null;
+  specs: SupplierPacketItemSpecs | null;
+  pricingBasis: SupplierPacketPricingBasis | null;
+  /** @nullable */
+  fulfillmentMode: string | null;
+  /** @nullable */
+  supplierStatus: string | null;
+  /** @nullable */
+  supplierDueDate: string | null;
+  /** @nullable */
+  supplierShipDate: string | null;
+  /** @nullable */
+  supplierInstallDate: string | null;
+  /** @nullable */
+  internalFulfillmentNotes: string | null;
+  /** @nullable */
+  productionBlockedReason: string | null;
+  assets: SupplierPacketAssetLink[];
+  flags: string[];
+  ready: boolean;
+}
+
+export interface SupplierPacketOrder {
+  id: number;
+  /** @nullable */
+  orderNumber: string | null;
+  /** @nullable */
+  status: string | null;
+  /** @nullable */
+  internalNotes: string | null;
+  /** @nullable */
+  vendorNotes: string | null;
+  /** @nullable */
+  shipDateTarget: string | null;
+  /** @nullable */
+  deliveryByDate: string | null;
+  /** @nullable */
+  packageCount: number | null;
+  totalShipmentWeight: string | number | null;
+  /** @nullable */
+  totalShipmentWeightUnit: string | null;
+  /** @nullable */
+  oversizeFlag: boolean | null;
+  /** @nullable */
+  crateRequired: boolean | null;
+  /** @nullable */
+  palletRequired: boolean | null;
+  shippingContactJson: SupplierPacketContact | null;
+  receivingContactJson: SupplierPacketContact | null;
+  /** @nullable */
+  customsNotes: string | null;
+  /** @nullable */
+  internationalShippingNotes: string | null;
+  /** @nullable */
+  logisticsNotes: string | null;
+  /** @nullable */
+  measurementSystem: string | null;
+}
+
+export type SupplierPacketPartner = {
+  id: number;
+  companyName: string;
+} | null;
+
+export type SupplierPacketEvent = {
+  id: number;
+  name: string;
+  /** @nullable */
+  eventStartDate: string | null;
+  /** @nullable */
+  eventEndDate: string | null;
+  /** @nullable */
+  venueId: number | null;
+} | null;
+
+export interface SupplierPacketSupplier {
+  id: number;
+  name: string;
+}
+
+export interface SupplierPacketMeasurementContext {
+  system: string;
+  primarySystem?: string;
+  secondarySystem?: string;
+  source: string;
+  reason: string;
+}
+
+export interface SupplierPacketSummary {
+  totalItems: number;
+  ready: number;
+  blocked: number;
+}
+
+export interface SupplierPacketResponse {
+  order: SupplierPacketOrder;
+  partner: SupplierPacketPartner;
+  event: SupplierPacketEvent;
+  supplier: SupplierPacketSupplier;
+  items: SupplierPacketItem[];
+  measurementContext?: SupplierPacketMeasurementContext;
+  orderLevelAssets: SupplierPacketAsset[];
+  summary: SupplierPacketSummary;
+}
+
 export type ListPartnersParams = {
   active?: boolean;
 };
