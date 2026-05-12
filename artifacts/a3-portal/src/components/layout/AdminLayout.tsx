@@ -76,6 +76,8 @@ const NAV_GROUPS: NavGroup[] = [
     { name: "Suppliers",        href: "/admin/suppliers",         icon: Truck },
     { name: "Assets",           href: "/admin/assets",            icon: FolderOpen },
     { name: "Quote Ingestion",  href: "/admin/quote-ingestion",   icon: Sparkles },
+    { name: "Survey Imports",   href: "/admin/survey-imports",    icon: Inbox },
+    { name: "Approved Materials", href: "/admin/approved-materials", icon: Tags },
   ] },
   { name: "Operations", icon: Wrench, items: [
     { name: "Workflow",        href: "/admin/workflow",        icon: Workflow },

@@ -83,7 +83,12 @@ app.use((req, res, next) => {
 // through JSON, so legitimate bodies are small (largest is POST orders with
 // up to 200 items ≈ 200 KB). 2 MB gives 10× headroom while preventing the
 // memory-exhaustion DoS that the prior 50 MB cap allowed.
-app.use(express.json({ limit: "2mb" }));
+// Capture raw body buffer for downstream HMAC signature verification
+// (Task #5 — venue asset survey webhook verifies sha256 of the raw body).
+app.use(express.json({
+  limit: "2mb",
+  verify: (req, _res, buf) => { (req as express.Request).rawBody = buf; },
+}));
 app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 
 app.use(clerkMiddleware());

@@ -53,10 +53,12 @@ type Data = { partner: Partner; theme?: ThemeShape; cities: City[]; venues: Venu
 
 type CartItem = {
   key: string; itemType: "product" | "package" | "branding_zone";
-  productId?: number; packageId?: number; name: string; quantity: number;
+  productId?: number | null; packageId?: number; name: string; quantity: number;
   unitPrice?: string | null; productImageUrl?: string | null;
   customWidth?: number | null; customHeight?: number | null; customSizeUnit?: LengthUnit | null;
   pricingBasis?: string | null;
+  surveyAssetId?: number | null;
+  selectedMaterial?: string | null;
 };
 
 const STEPS = ["Event", "Package", "Add-ons", "Artwork", "Contact", "Review"] as const;
@@ -506,6 +508,8 @@ export default function OrderingPortal({ slug }: { slug: string }) {
       customWidth: c.customWidth ?? null,
       customHeight: c.customHeight ?? null,
       customSizeUnit: c.customSizeUnit ?? null,
+      surveyAssetId: c.surveyAssetId ?? null,
+      selectedMaterial: c.selectedMaterial ?? null,
     }));
 
     const addonReqTrim = addonRequest.trim();
@@ -714,6 +718,14 @@ export default function OrderingPortal({ slug }: { slug: string }) {
                 addToCart={addToCart}
               />
 
+              <SurveyAssetsSection
+                slug={slug}
+                cart={cart}
+                addToCart={(item: CartItem) => setCart(prev => [...prev, item])}
+                removeFromCart={(key) => setCart(prev => prev.filter(c => c.key !== key))}
+                branding={branding}
+              />
+
               <div className={`rounded-lg border p-4 ${addonProducts.length === 0 ? "bg-amber-50 border-amber-200" : "bg-muted/30"}`}>
                 {addonProducts.length === 0 ? (
                   <>
@@ -916,6 +928,115 @@ export default function OrderingPortal({ slug }: { slug: string }) {
       </div>
       <PortalFooter partnerName={data.partner.companyName} branding={branding} />
     </BrandedShell>
+  );
+}
+
+// Matches the backend `toPublicSurveyAsset()` projection in
+// lib/db/src/schema/surveyAssets.ts. Internal fields (notes, NetSuite,
+// install/production notes, surveyor, etc.) are intentionally absent.
+// Public projection — measurements and all internal fields are intentionally
+// absent. A3 ops uses measurements internally for quoting; the customer-facing
+// portal only shows the photo + the approved-material picker.
+type PublicSurveyAsset = {
+  id: number;
+  externalAssetId: string;
+  name: string;
+  description: string | null;
+  category: string | null;
+  venueName: string | null;
+  cityName: string | null;
+  publicPhotoUrl: string | null;
+  publicPhotos: Array<{ url: string; caption?: string }>;
+  approvedMaterials: string[];
+  materialOverrideMode: string;
+};
+
+type SurveyBranding = { text: string; headingFont: string; button: string; buttonText: string };
+
+function SurveyAssetsSection({ slug, cart, addToCart, removeFromCart, branding }: {
+  slug: string;
+  cart: CartItem[];
+  addToCart: (item: CartItem) => void;
+  removeFromCart: (key: string) => void;
+  branding: SurveyBranding;
+}) {
+  const { data } = useQuery<{ assets: PublicSurveyAsset[] }>({
+    queryKey: [`/api/public/partners/${slug}/survey-assets`],
+    queryFn: () => apiFetch(`/api/public/partners/${slug}/survey-assets`),
+  });
+  const [materialChoice, setMaterialChoice] = useState<Record<number, string>>({});
+  const assets = data?.assets ?? [];
+  if (assets.length === 0) return null;
+
+  const cartByAssetId = new Map<number, CartItem>();
+  for (const c of cart) if (c.surveyAssetId != null) cartByAssetId.set(c.surveyAssetId, c);
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <h3 className="text-base font-semibold" style={{ color: branding.text, fontFamily: branding.headingFont }}>Brand our space for your event</h3>
+        <p className="text-xs text-muted-foreground mt-0.5">Pre-surveyed venue locations ready to brand. Pick a material if you have a preference.</p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {assets.map(a => {
+          const inCart = cartByAssetId.get(a.id);
+          const photo = a.publicPhotos[0]?.url ?? a.publicPhotoUrl ?? null;
+          const materials = a.approvedMaterials;
+          const showMaterial = materials.length > 0;
+          const chosen = materialChoice[a.id] ?? materials[0] ?? "";
+          return (
+            <div key={a.id} className="border rounded-lg overflow-hidden bg-white flex flex-col">
+              {photo
+                ? <img src={resolveAssetUrl(photo)} alt={a.name} className="w-full h-32 object-cover" />
+                : <div className="w-full h-32 bg-muted flex items-center justify-center text-xs text-muted-foreground"><MapPin className="h-5 w-5" /></div>}
+              <div className="p-3 flex-1 flex flex-col gap-2">
+                <div>
+                  <div className="text-sm font-semibold leading-tight">{a.name}</div>
+                  {(a.venueName || a.cityName) && (
+                    <div className="text-[11px] text-muted-foreground mt-0.5">{[a.venueName, a.cityName].filter(Boolean).join(" · ")}</div>
+                  )}
+                </div>
+                {a.description && <div className="text-xs text-muted-foreground line-clamp-2">{a.description}</div>}
+                {showMaterial && (
+                  <Select value={chosen} onValueChange={(v) => setMaterialChoice(prev => ({ ...prev, [a.id]: v }))}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Choose material" /></SelectTrigger>
+                    <SelectContent>
+                      {materials.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                )}
+                <div className="mt-auto pt-1">
+                  {inCart ? (
+                    <Button size="sm" variant="outline" className="w-full" onClick={() => removeFromCart(inCart.key)}>
+                      <Check className="h-3.5 w-3.5 mr-1" /> Added — remove
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      style={{ background: branding.button, color: branding.buttonText }}
+                      onClick={() => addToCart({
+                        key: `survey-${a.id}-${Date.now()}`,
+                        itemType: "product",
+                        productId: null,
+                        name: `Brand: ${a.name}${chosen ? ` (${chosen})` : ""}`,
+                        quantity: 1,
+                        productImageUrl: photo,
+                        customSizeUnit: null,
+                        surveyAssetId: a.id,
+                        selectedMaterial: chosen || null,
+                      })}
+                    >
+                      <Plus className="h-3.5 w-3.5 mr-1" /> Add to order
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

@@ -691,8 +691,371 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
 
+  /public/integrations/asset-survey/{partnerSlug}:
+    post:
+      operationId: surveyWebhook
+      tags: [public]
+      summary: Inbound webhook from the Venue Asset Survey app
+      description: HMAC-SHA256 signed (header `X-Survey-Signature`) ingest of one or more SurveyAsset payloads. Per-partner secret.
+      parameters:
+        - name: partnerSlug
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                assets:
+                  type: array
+                  items: { $ref: "#/components/schemas/SurveyAssetIngest" }
+              required: [assets]
+      responses:
+        "200":
+          description: Ingest result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [created, updated]
+                properties:
+                  created: { type: integer }
+                  updated: { type: integer }
+        "401": { description: Invalid signature, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorEnvelope" } } } }
+        "404": { description: Unknown partner slug, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorEnvelope" } } } }
+
+  /admin/integrations/asset-survey/pull/{partnerId}:
+    post:
+      operationId: surveyAdminPull
+      tags: [public]
+      summary: Admin-triggered pull from the survey app for a partner
+      parameters:
+        - name: partnerId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Pull result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [created, updated]
+                properties:
+                  created: { type: integer }
+                  updated: { type: integer }
+
+  /admin/integrations/asset-survey/test/{partnerId}:
+    post:
+      operationId: surveyTestConnection
+      tags: [public]
+      summary: Probe the configured survey app to confirm it is reachable
+      parameters:
+        - name: partnerId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Probe result (`ok=false` is still 200 for diagnostics)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok: { type: boolean }
+                  status: { type: integer }
+                  probedUrl: { type: string }
+                  apiKeyPresent: { type: boolean }
+                  message: { type: string }
+                  error: { type: string }
+
+  /admin/survey-assets:
+    get:
+      operationId: surveyAssetsList
+      tags: [public]
+      summary: List all survey assets (filterable by status / partner)
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [pending, approved, rejected, all] }
+        - name: partnerId
+          in: query
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Asset list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [assets]
+                properties:
+                  assets:
+                    type: array
+                    items: { $ref: "#/components/schemas/SurveyAsset" }
+
+  /admin/survey-assets/{id}:
+    patch:
+      operationId: surveyAssetPatch
+      tags: [public]
+      summary: Approve, reject, or edit a survey asset
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SurveyAssetPatch" }
+      responses:
+        "200":
+          description: Updated asset
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [asset]
+                properties:
+                  asset: { $ref: "#/components/schemas/SurveyAsset" }
+    delete:
+      operationId: surveyAssetDelete
+      tags: [public]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200": { description: Deleted, content: { application/json: { schema: { type: object, required: [ok], properties: { ok: { type: boolean } } } } } }
+
+  /public/partners/{slug}/survey-assets:
+    get:
+      operationId: surveyPublicList
+      tags: [public]
+      summary: Public approved survey assets for the partner portal "Brand our space" tile gallery
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Public-projected assets only (no measurements, no internal fields)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [assets]
+                properties:
+                  assets:
+                    type: array
+                    items: { $ref: "#/components/schemas/PublicSurveyAsset" }
+
 components:
   schemas:
+    SurveyAssetPhoto:
+      type: object
+      required: [url]
+      properties:
+        url: { type: string }
+        caption: { type: string }
+
+    SurveyAssetMeasurements:
+      type: object
+      description: Physical measurements. A3-internal — never exposed on /public/* projections.
+      additionalProperties: false
+      properties:
+        widthIn: { type: ["number", "null"] }
+        heightIn: { type: ["number", "null"] }
+        depthIn: { type: ["number", "null"] }
+        diameterIn: { type: ["number", "null"] }
+        areaSqft: { type: ["number", "null"] }
+        shape: { type: ["string", "null"] }
+        measurementUnit:
+          type: ["string", "null"]
+          enum: [in, cm, ft, null]
+          description: Unit the survey app captured. Intake email/UI render measurements in this unit.
+        orientation:
+          type: ["string", "null"]
+          description: landscape | portrait | square | free
+
+    SurveyAssetSurface:
+      type: object
+      additionalProperties: false
+      properties:
+        surfaceMaterial: { type: ["string", "null"], description: Physical mounting surface (drywall, glass, fabric, brick…) }
+        environment: { type: ["string", "null"], description: indoor | outdoor | covered_outdoor }
+        zoneName: { type: ["string", "null"], description: Venue zone (Lobby, Concourse, Suite Level…) }
+
+    SurveyAssetApplications:
+      type: object
+      additionalProperties: false
+      properties:
+        primary:
+          type: ["array", "null"]
+          items: { type: string }
+        recommended:
+          type: ["array", "null"]
+          items: { type: string }
+        alternate:
+          type: ["array", "null"]
+          items: { type: string }
+        publicUseCase: { type: ["string", "null"] }
+
+    SurveyAssetVisibility:
+      type: object
+      additionalProperties: false
+      properties:
+        visibilityTier:
+          type: ["string", "null"]
+          description: hero | featured | standard | hidden
+        publicStatus:
+          type: ["string", "null"]
+          description: live | draft | retired
+        publicDeckInclude: { type: ["boolean", "null"] }
+        portalVisible: { type: ["boolean", "null"] }
+        netsuiteInclude: { type: ["boolean", "null"] }
+        designNeeded: { type: ["boolean", "null"] }
+        commissionEligible: { type: ["boolean", "null"] }
+        opsOwner: { type: ["string", "null"] }
+
+    SurveyAssetInternal:
+      type: object
+      description: Internal-only fields the survey app attaches. Stored server-side, never echoed on /public/* projections.
+      additionalProperties: false
+      properties:
+        notes: { type: ["string", "null"] }
+        installNotes: { type: ["string", "null"] }
+        productionNotes: { type: ["string", "null"] }
+        pricingNotes: { type: ["string", "null"] }
+        photos:
+          type: ["array", "null"]
+          items: { $ref: "#/components/schemas/SurveyAssetPhoto" }
+        netsuiteAssetNumber: { type: ["string", "null"] }
+        netsuiteVenueNumber: { type: ["string", "null"] }
+        netsuiteItemName: { type: ["string", "null"] }
+        netsuiteItemCategory: { type: ["string", "null"] }
+        costCenter: { type: ["string", "null"] }
+        surveyorName: { type: ["string", "null"] }
+        surveyedAt: { type: ["string", "null"], description: "ISO 8601 date-time" }
+
+    SurveyAssetIngest:
+      type: object
+      description: Payload shape sent by the Venue Asset Survey app (subset of Asset_Master columns). Measurements and internal/ops-only fields are nested so /public/* projections can guarantee they never leak.
+      additionalProperties: false
+      required: [externalAssetId, name]
+      properties:
+        externalAssetId: { type: string }
+        externalSurveyId: { type: ["string", "null"] }
+        name: { type: string }
+        description: { type: ["string", "null"] }
+        category: { type: ["string", "null"] }
+        venueName: { type: ["string", "null"] }
+        cityName: { type: ["string", "null"] }
+        publicPhotoUrl: { type: ["string", "null"] }
+        publicPhotos:
+          type: ["array", "null"]
+          items: { $ref: "#/components/schemas/SurveyAssetPhoto" }
+        measurements:
+          oneOf:
+            - { $ref: "#/components/schemas/SurveyAssetMeasurements" }
+            - { type: "null" }
+        surface:
+          oneOf:
+            - { $ref: "#/components/schemas/SurveyAssetSurface" }
+            - { type: "null" }
+        applications:
+          oneOf:
+            - { $ref: "#/components/schemas/SurveyAssetApplications" }
+            - { type: "null" }
+        visibility:
+          oneOf:
+            - { $ref: "#/components/schemas/SurveyAssetVisibility" }
+            - { type: "null" }
+        approvedMaterials:
+          type: ["array", "null"]
+          items: { type: string }
+        internal:
+          oneOf:
+            - { $ref: "#/components/schemas/SurveyAssetInternal" }
+            - { type: "null" }
+
+    SurveyAsset:
+      type: object
+      description: Full admin-only view of a survey asset row.
+      additionalProperties: true
+      required: [id, partnerId, name, approvalStatus, materialOverrideMode]
+      properties:
+        id: { type: integer }
+        partnerId: { type: integer }
+        externalAssetId: { type: ["string", "null"] }
+        name: { type: string }
+        description: { type: ["string", "null"] }
+        approvalStatus: { type: string, enum: [pending, approved, rejected] }
+        materialOverrideMode: { type: string, enum: [per_item, global, custom] }
+        publicPhotoUrl: { type: ["string", "null"] }
+        approvedMaterialsJson:
+          type: ["array", "null"]
+          items: { type: string }
+        customApprovedMaterialsJson:
+          type: ["array", "null"]
+          items: { type: string }
+
+    PublicSurveyAsset:
+      type: object
+      description: Customer-safe projection — guaranteed to omit measurements and all internal fields. Mirrors `toPublicSurveyAsset()` in lib/db.
+      additionalProperties: false
+      required: [id, externalAssetId, name, publicPhotos, approvedMaterials, materialOverrideMode]
+      properties:
+        id: { type: integer }
+        externalAssetId: { type: string }
+        name: { type: string }
+        description: { type: ["string", "null"] }
+        category: { type: ["string", "null"] }
+        venueName: { type: ["string", "null"] }
+        cityName: { type: ["string", "null"] }
+        publicPhotoUrl: { type: ["string", "null"] }
+        publicPhotos:
+          type: array
+          items: { $ref: "#/components/schemas/SurveyAssetPhoto" }
+        approvedMaterials:
+          type: array
+          items: { type: string }
+        materialOverrideMode:
+          type: string
+          enum: [per_item, global, custom]
+        publicUseCase: { type: ["string", "null"] }
+
+    SurveyAssetPatch:
+      type: object
+      additionalProperties: false
+      properties:
+        approvalStatus: { type: string, enum: [pending, approved, rejected] }
+        rejectedReason: { type: ["string", "null"] }
+        isActive: { type: boolean }
+        name: { type: string }
+        description: { type: ["string", "null"] }
+        category: { type: ["string", "null"] }
+        publicPhotoUrl: { type: ["string", "null"] }
+        approvedMaterialsJson:
+          type: ["array", "null"]
+          items: { type: string }
+        customApprovedMaterialsJson:
+          type: ["array", "null"]
+          items: { type: string }
+        materialOverrideMode: { type: string, enum: [per_item, global, custom] }
+        internalNotes: { type: ["string", "null"] }
+        installNotes: { type: ["string", "null"] }
+        productionNotes: { type: ["string", "null"] }
+
     HealthStatus:
       type: object
       properties:

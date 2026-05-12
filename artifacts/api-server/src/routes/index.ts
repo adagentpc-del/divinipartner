@@ -42,6 +42,7 @@ import commercializationRouter from "./commercialization";
 import salesEnablementRouter from "./salesEnablement";
 import stabilizationRouter from "./stabilization";
 import documentsRouter from "./documents";
+import surveyIntegrationRouter from "./surveyIntegration";
 import deploymentRouter from "./deployment";
 import unitsRouter from "./units";
 import partnerInventoryRouter from "./partnerInventory";
@@ -109,6 +110,10 @@ router.use(publicPortalRouter);
 router.use(storageRouter);
 router.use(documentsRouter);
 router.use(onboardingRouter);
+// Survey-integration router. Public webhook (HMAC-authenticated) sits under
+// /public/integrations/* (allowlisted). Admin endpoints check Clerk auth
+// inline via getAuth, so a single mount before the auth boundary is correct.
+router.use(surveyIntegrationRouter);
 
 // ── Auth boundary ──────────────────────────────────────────────────────
 // Every route registered AFTER this middleware requires a valid Clerk session.

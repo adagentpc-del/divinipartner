@@ -36,6 +36,38 @@ interface IntakeItem {
   shortageQty: number;
   inventorySource: { cityName: string | null; inventoryName: string | null; onHandBefore: number | null; onHandAfter: number | null } | null;
   note: string;
+  surveyAsset: {
+    id: number;
+    externalAssetId: string;
+    name: string;
+    venueName: string | null;
+    cityName: string | null;
+    selectedMaterial: string | null;
+    measurements: {
+      widthIn: number | null; heightIn: number | null; depthIn: number | null;
+      areaSqft: number | null; shape: string | null;
+      measurementUnit: string | null; orientation: string | null;
+    };
+    surfaceMaterial: string | null;
+    environment: string | null;
+    zoneName: string | null;
+    recommendedApplications: string[];
+    alternateApplications: string[];
+    visibilityTier: string | null;
+    publicStatus: string | null;
+    designNeeded: boolean;
+    commissionEligible: boolean;
+    opsOwner: string | null;
+    internalNotes: string | null;
+    installNotes: string | null;
+    productionNotes: string | null;
+    pricingNotes: string | null;
+    internalPhotos: Array<{ url: string; caption?: string }>;
+    netsuiteAssetNumber: string | null;
+    netsuiteVenueNumber: string | null;
+    netsuiteItemName: string | null;
+    netsuiteItemCategory: string | null;
+  } | null;
 }
 interface IntakeFamily {
   familyId: number;
@@ -204,6 +236,75 @@ export default function OrderInternalIntakePanel({ orderId }: { orderId: number 
                 {it.shortageQty > 0 && (
                   <div className="text-[11px] text-rose-700 mt-1 flex items-center gap-1">
                     <AlertTriangle className="h-3 w-3" /> Shortage: {it.shortageQty}
+                  </div>
+                )}
+                {it.surveyAsset && (
+                  <div className="mt-1.5 border border-dashed rounded p-2 bg-slate-50/60 text-[11px]">
+                    <div className="font-bold text-muted-foreground uppercase tracking-wider text-[10px]">
+                      Venue Survey · {it.surveyAsset.name}
+                      {" "}· Asset <code className="text-[10px] normal-case">{it.surveyAsset.externalAssetId}</code>
+                      {" "}<span className="text-slate-400 normal-case">(#{it.surveyAsset.id})</span>
+                    </div>
+                    {(it.surveyAsset.venueName || it.surveyAsset.zoneName || it.surveyAsset.cityName) && (
+                      <div className="mt-0.5">{[it.surveyAsset.venueName, it.surveyAsset.zoneName, it.surveyAsset.cityName].filter(Boolean).join(" · ")}</div>
+                    )}
+                    {(() => {
+                      const m = it.surveyAsset.measurements;
+                      const unit = m.measurementUnit ?? "in";
+                      const g = unit === "in" ? "″" : ` ${unit}`;
+                      const areaUnit = unit === "cm" ? "sq m" : "sq ft";
+                      const parts: string[] = [];
+                      if (m.widthIn != null && m.heightIn != null) parts.push(`${m.widthIn}${g} × ${m.heightIn}${g}${m.depthIn != null ? ` × ${m.depthIn}${g}` : ""}`);
+                      if (m.areaSqft != null) parts.push(`${m.areaSqft} ${areaUnit}`);
+                      if (m.shape) parts.push(m.shape);
+                      if (m.orientation) parts.push(m.orientation);
+                      return parts.length ? <div className="mt-0.5 tabular-nums">{parts.join(" · ")}</div> : null;
+                    })()}
+                    {(it.surveyAsset.surfaceMaterial || it.surveyAsset.environment) && (
+                      <div className="mt-0.5">
+                        {it.surveyAsset.surfaceMaterial && <span><span className="font-semibold">Surface:</span> {it.surveyAsset.surfaceMaterial}</span>}
+                        {it.surveyAsset.surfaceMaterial && it.surveyAsset.environment && " · "}
+                        {it.surveyAsset.environment && <span><span className="font-semibold">Env:</span> {it.surveyAsset.environment}</span>}
+                      </div>
+                    )}
+                    {it.surveyAsset.selectedMaterial && <div className="mt-0.5"><span className="font-semibold">Material:</span> {it.surveyAsset.selectedMaterial}</div>}
+                    {(it.surveyAsset.recommendedApplications.length > 0 || it.surveyAsset.alternateApplications.length > 0) && (
+                      <div className="mt-0.5 text-muted-foreground">
+                        {it.surveyAsset.recommendedApplications.length > 0 && <div>Recommended: {it.surveyAsset.recommendedApplications.join(", ")}</div>}
+                        {it.surveyAsset.alternateApplications.length > 0 && <div>Alternate: {it.surveyAsset.alternateApplications.join(", ")}</div>}
+                      </div>
+                    )}
+                    {(it.surveyAsset.visibilityTier || it.surveyAsset.publicStatus || it.surveyAsset.designNeeded || it.surveyAsset.commissionEligible || it.surveyAsset.opsOwner) && (
+                      <div className="mt-0.5 text-muted-foreground space-x-1">
+                        {it.surveyAsset.visibilityTier && <span>Tier: {it.surveyAsset.visibilityTier}</span>}
+                        {it.surveyAsset.publicStatus && <span>· Status: {it.surveyAsset.publicStatus}</span>}
+                        {it.surveyAsset.designNeeded && <span>· Design needed</span>}
+                        {it.surveyAsset.commissionEligible && <span>· Commission eligible</span>}
+                        {it.surveyAsset.opsOwner && <span>· Ops: {it.surveyAsset.opsOwner}</span>}
+                      </div>
+                    )}
+                    {(it.surveyAsset.netsuiteItemName || it.surveyAsset.netsuiteItemCategory || it.surveyAsset.netsuiteAssetNumber || it.surveyAsset.netsuiteVenueNumber) && (
+                      <div className="mt-0.5 text-muted-foreground space-x-1">
+                        {it.surveyAsset.netsuiteItemName && <span>Item <code className="text-[10px]">{it.surveyAsset.netsuiteItemName}</code></span>}
+                        {it.surveyAsset.netsuiteItemCategory && <span className="text-[10px]">({it.surveyAsset.netsuiteItemCategory})</span>}
+                        {it.surveyAsset.netsuiteAssetNumber && <span>· Asset #<code className="text-[10px]">{it.surveyAsset.netsuiteAssetNumber}</code></span>}
+                        {it.surveyAsset.netsuiteVenueNumber && <span>· Venue #<code className="text-[10px]">{it.surveyAsset.netsuiteVenueNumber}</code></span>}
+                      </div>
+                    )}
+                    {it.surveyAsset.installNotes && <div className="mt-0.5 text-muted-foreground"><span className="font-semibold">Install:</span> {it.surveyAsset.installNotes}</div>}
+                    {it.surveyAsset.productionNotes && <div className="mt-0.5 text-muted-foreground"><span className="font-semibold">Production:</span> {it.surveyAsset.productionNotes}</div>}
+                    {it.surveyAsset.pricingNotes && <div className="mt-0.5 text-muted-foreground"><span className="font-semibold">Pricing:</span> {it.surveyAsset.pricingNotes}</div>}
+                    {it.surveyAsset.internalNotes && <div className="mt-0.5 text-muted-foreground"><span className="font-semibold">Internal:</span> {it.surveyAsset.internalNotes}</div>}
+                    {it.surveyAsset.internalPhotos.length > 0 && (
+                      <div className="mt-1 text-[11px]">
+                        <span className="font-semibold text-muted-foreground">Marked photos: </span>
+                        {it.surveyAsset.internalPhotos.map((p, i) => (
+                          <a key={i} href={p.url} target="_blank" rel="noreferrer" className="underline mr-2">
+                            #{i + 1}{p.caption ? ` ${p.caption}` : ""}
+                          </a>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

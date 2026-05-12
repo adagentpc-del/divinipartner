@@ -42,6 +42,16 @@ import type {
   StatusCount,
   SubmitRequestBody,
   SubmitRequestResponse,
+  SurveyAdminPull200,
+  SurveyAssetDelete200,
+  SurveyAssetPatch,
+  SurveyAssetPatch200,
+  SurveyAssetsList200,
+  SurveyAssetsListParams,
+  SurveyPublicList200,
+  SurveyTestConnection200,
+  SurveyWebhook200,
+  SurveyWebhookBody,
   UpdatePartnerBody,
   UpdatePricingRuleBody,
   UpdateRequestBody,
@@ -2623,6 +2633,614 @@ export function useGetStorageObject<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetStorageObjectQueryOptions(objectPath, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * HMAC-SHA256 signed (header `X-Survey-Signature`) ingest of one or more SurveyAsset payloads. Per-partner secret.
+ * @summary Inbound webhook from the Venue Asset Survey app
+ */
+export const getSurveyWebhookUrl = (partnerSlug: string) => {
+  return `/api/public/integrations/asset-survey/${partnerSlug}`;
+};
+
+export const surveyWebhook = async (
+  partnerSlug: string,
+  surveyWebhookBody: SurveyWebhookBody,
+  options?: RequestInit,
+): Promise<SurveyWebhook200> => {
+  return customFetch<SurveyWebhook200>(getSurveyWebhookUrl(partnerSlug), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(surveyWebhookBody),
+  });
+};
+
+export const getSurveyWebhookMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof surveyWebhook>>,
+    TError,
+    { partnerSlug: string; data: BodyType<SurveyWebhookBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof surveyWebhook>>,
+  TError,
+  { partnerSlug: string; data: BodyType<SurveyWebhookBody> },
+  TContext
+> => {
+  const mutationKey = ["surveyWebhook"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof surveyWebhook>>,
+    { partnerSlug: string; data: BodyType<SurveyWebhookBody> }
+  > = (props) => {
+    const { partnerSlug, data } = props ?? {};
+
+    return surveyWebhook(partnerSlug, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SurveyWebhookMutationResult = NonNullable<
+  Awaited<ReturnType<typeof surveyWebhook>>
+>;
+export type SurveyWebhookMutationBody = BodyType<SurveyWebhookBody>;
+export type SurveyWebhookMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Inbound webhook from the Venue Asset Survey app
+ */
+export const useSurveyWebhook = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof surveyWebhook>>,
+    TError,
+    { partnerSlug: string; data: BodyType<SurveyWebhookBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof surveyWebhook>>,
+  TError,
+  { partnerSlug: string; data: BodyType<SurveyWebhookBody> },
+  TContext
+> => {
+  return useMutation(getSurveyWebhookMutationOptions(options));
+};
+
+/**
+ * @summary Admin-triggered pull from the survey app for a partner
+ */
+export const getSurveyAdminPullUrl = (partnerId: number) => {
+  return `/api/admin/integrations/asset-survey/pull/${partnerId}`;
+};
+
+export const surveyAdminPull = async (
+  partnerId: number,
+  options?: RequestInit,
+): Promise<SurveyAdminPull200> => {
+  return customFetch<SurveyAdminPull200>(getSurveyAdminPullUrl(partnerId), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getSurveyAdminPullMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof surveyAdminPull>>,
+    TError,
+    { partnerId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof surveyAdminPull>>,
+  TError,
+  { partnerId: number },
+  TContext
+> => {
+  const mutationKey = ["surveyAdminPull"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof surveyAdminPull>>,
+    { partnerId: number }
+  > = (props) => {
+    const { partnerId } = props ?? {};
+
+    return surveyAdminPull(partnerId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SurveyAdminPullMutationResult = NonNullable<
+  Awaited<ReturnType<typeof surveyAdminPull>>
+>;
+
+export type SurveyAdminPullMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Admin-triggered pull from the survey app for a partner
+ */
+export const useSurveyAdminPull = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof surveyAdminPull>>,
+    TError,
+    { partnerId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof surveyAdminPull>>,
+  TError,
+  { partnerId: number },
+  TContext
+> => {
+  return useMutation(getSurveyAdminPullMutationOptions(options));
+};
+
+/**
+ * @summary Probe the configured survey app to confirm it is reachable
+ */
+export const getSurveyTestConnectionUrl = (partnerId: number) => {
+  return `/api/admin/integrations/asset-survey/test/${partnerId}`;
+};
+
+export const surveyTestConnection = async (
+  partnerId: number,
+  options?: RequestInit,
+): Promise<SurveyTestConnection200> => {
+  return customFetch<SurveyTestConnection200>(
+    getSurveyTestConnectionUrl(partnerId),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getSurveyTestConnectionMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof surveyTestConnection>>,
+    TError,
+    { partnerId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof surveyTestConnection>>,
+  TError,
+  { partnerId: number },
+  TContext
+> => {
+  const mutationKey = ["surveyTestConnection"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof surveyTestConnection>>,
+    { partnerId: number }
+  > = (props) => {
+    const { partnerId } = props ?? {};
+
+    return surveyTestConnection(partnerId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SurveyTestConnectionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof surveyTestConnection>>
+>;
+
+export type SurveyTestConnectionMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Probe the configured survey app to confirm it is reachable
+ */
+export const useSurveyTestConnection = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof surveyTestConnection>>,
+    TError,
+    { partnerId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof surveyTestConnection>>,
+  TError,
+  { partnerId: number },
+  TContext
+> => {
+  return useMutation(getSurveyTestConnectionMutationOptions(options));
+};
+
+/**
+ * @summary List all survey assets (filterable by status / partner)
+ */
+export const getSurveyAssetsListUrl = (params?: SurveyAssetsListParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/admin/survey-assets?${stringifiedParams}`
+    : `/api/admin/survey-assets`;
+};
+
+export const surveyAssetsList = async (
+  params?: SurveyAssetsListParams,
+  options?: RequestInit,
+): Promise<SurveyAssetsList200> => {
+  return customFetch<SurveyAssetsList200>(getSurveyAssetsListUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getSurveyAssetsListQueryKey = (
+  params?: SurveyAssetsListParams,
+) => {
+  return [`/api/admin/survey-assets`, ...(params ? [params] : [])] as const;
+};
+
+export const getSurveyAssetsListQueryOptions = <
+  TData = Awaited<ReturnType<typeof surveyAssetsList>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: SurveyAssetsListParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof surveyAssetsList>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getSurveyAssetsListQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof surveyAssetsList>>
+  > = ({ signal }) => surveyAssetsList(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof surveyAssetsList>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type SurveyAssetsListQueryResult = NonNullable<
+  Awaited<ReturnType<typeof surveyAssetsList>>
+>;
+export type SurveyAssetsListQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all survey assets (filterable by status / partner)
+ */
+
+export function useSurveyAssetsList<
+  TData = Awaited<ReturnType<typeof surveyAssetsList>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: SurveyAssetsListParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof surveyAssetsList>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getSurveyAssetsListQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Approve, reject, or edit a survey asset
+ */
+export const getSurveyAssetPatchUrl = (id: number) => {
+  return `/api/admin/survey-assets/${id}`;
+};
+
+export const surveyAssetPatch = async (
+  id: number,
+  surveyAssetPatch: SurveyAssetPatch,
+  options?: RequestInit,
+): Promise<SurveyAssetPatch200> => {
+  return customFetch<SurveyAssetPatch200>(getSurveyAssetPatchUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(surveyAssetPatch),
+  });
+};
+
+export const getSurveyAssetPatchMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof surveyAssetPatch>>,
+    TError,
+    { id: number; data: BodyType<SurveyAssetPatch> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof surveyAssetPatch>>,
+  TError,
+  { id: number; data: BodyType<SurveyAssetPatch> },
+  TContext
+> => {
+  const mutationKey = ["surveyAssetPatch"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof surveyAssetPatch>>,
+    { id: number; data: BodyType<SurveyAssetPatch> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return surveyAssetPatch(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SurveyAssetPatchMutationResult = NonNullable<
+  Awaited<ReturnType<typeof surveyAssetPatch>>
+>;
+export type SurveyAssetPatchMutationBody = BodyType<SurveyAssetPatch>;
+export type SurveyAssetPatchMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Approve, reject, or edit a survey asset
+ */
+export const useSurveyAssetPatch = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof surveyAssetPatch>>,
+    TError,
+    { id: number; data: BodyType<SurveyAssetPatch> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof surveyAssetPatch>>,
+  TError,
+  { id: number; data: BodyType<SurveyAssetPatch> },
+  TContext
+> => {
+  return useMutation(getSurveyAssetPatchMutationOptions(options));
+};
+
+export const getSurveyAssetDeleteUrl = (id: number) => {
+  return `/api/admin/survey-assets/${id}`;
+};
+
+export const surveyAssetDelete = async (
+  id: number,
+  options?: RequestInit,
+): Promise<SurveyAssetDelete200> => {
+  return customFetch<SurveyAssetDelete200>(getSurveyAssetDeleteUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getSurveyAssetDeleteMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof surveyAssetDelete>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof surveyAssetDelete>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["surveyAssetDelete"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof surveyAssetDelete>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return surveyAssetDelete(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SurveyAssetDeleteMutationResult = NonNullable<
+  Awaited<ReturnType<typeof surveyAssetDelete>>
+>;
+
+export type SurveyAssetDeleteMutationError = ErrorType<unknown>;
+
+export const useSurveyAssetDelete = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof surveyAssetDelete>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof surveyAssetDelete>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getSurveyAssetDeleteMutationOptions(options));
+};
+
+/**
+ * @summary Public approved survey assets for the partner portal "Brand our space" tile gallery
+ */
+export const getSurveyPublicListUrl = (slug: string) => {
+  return `/api/public/partners/${slug}/survey-assets`;
+};
+
+export const surveyPublicList = async (
+  slug: string,
+  options?: RequestInit,
+): Promise<SurveyPublicList200> => {
+  return customFetch<SurveyPublicList200>(getSurveyPublicListUrl(slug), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getSurveyPublicListQueryKey = (slug: string) => {
+  return [`/api/public/partners/${slug}/survey-assets`] as const;
+};
+
+export const getSurveyPublicListQueryOptions = <
+  TData = Awaited<ReturnType<typeof surveyPublicList>>,
+  TError = ErrorType<unknown>,
+>(
+  slug: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof surveyPublicList>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getSurveyPublicListQueryKey(slug);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof surveyPublicList>>
+  > = ({ signal }) => surveyPublicList(slug, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!slug,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof surveyPublicList>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type SurveyPublicListQueryResult = NonNullable<
+  Awaited<ReturnType<typeof surveyPublicList>>
+>;
+export type SurveyPublicListQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Public approved survey assets for the partner portal "Brand our space" tile gallery
+ */
+
+export function useSurveyPublicList<
+  TData = Awaited<ReturnType<typeof surveyPublicList>>,
+  TError = ErrorType<unknown>,
+>(
+  slug: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof surveyPublicList>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getSurveyPublicListQueryOptions(slug, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

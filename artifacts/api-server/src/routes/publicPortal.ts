@@ -490,6 +490,10 @@ const PublicOrderItemSchema = z.object({
   customWidth: z.number().positive().nullable().optional(),
   customHeight: z.number().positive().nullable().optional(),
   customSizeUnit: z.enum(["in", "ft", "mm", "cm", "m"]).nullable().optional(),
+  // Task #5: link a cart line to an approved Venue Asset Survey record so A3
+  // intake can render measurements/material/internal notes for that line.
+  surveyAssetId: z.number().int().positive().nullable().optional(),
+  selectedMaterial: z.string().max(120).nullable().optional(),
 }).strict();
 
 const PublicOrderSchema = z.object({
@@ -613,6 +617,42 @@ router.post("/public/partners/:slug/orders", async (req, res): Promise<void> => 
   }
   const _resolved = resolvePreference({ event: _event, venue: _venue, partner });
   const measurementSystem = _resolved.system;
+
+  // ---- Task #5: validate any surveyAssetId references belong to THIS partner
+  // and are approved + active. Without this check an attacker could submit a
+  // public order on partner A referencing partner B's asset id, causing B's
+  // internal data (notes, NetSuite numbers, install instructions) to surface
+  // in A's internal intake email/panel.
+  const submittedSurveyIds = Array.from(new Set(
+    data.items.map(it => it.surveyAssetId).filter((v): v is number => typeof v === "number")
+  ));
+  if (submittedSurveyIds.length) {
+    const { validateSurveyAssetIdsForPartner, resolveAllowedMaterialsForAsset } = await import("./surveyIntegration");
+    const allowed = await validateSurveyAssetIdsForPartner(submittedSurveyIds, partner.id);
+    const denied = submittedSurveyIds.filter(id => !allowed.has(id));
+    if (denied.length) {
+      res.status(400).json({
+        code: "INVALID_SURVEY_ASSET",
+        error: "One or more survey assets are not available for this partner.",
+        deniedIds: denied,
+      });
+      return;
+    }
+    // Validate selectedMaterial against the resolved approved-material list
+    // for each referenced asset so arbitrary strings can't enter ops intake.
+    for (const it of data.items) {
+      if (it.surveyAssetId == null || it.selectedMaterial == null) continue;
+      const allowedMats = await resolveAllowedMaterialsForAsset(it.surveyAssetId, partner.id);
+      if (!allowedMats || !allowedMats.has(it.selectedMaterial.trim().toLowerCase())) {
+        res.status(400).json({
+          code: "INVALID_SURVEY_MATERIAL",
+          error: `"${it.selectedMaterial}" is not an approved material for the selected asset.`,
+          surveyAssetId: it.surveyAssetId,
+        });
+        return;
+      }
+    }
+  }
 
   // ---- Section 26: family-aware enforcement ---------------------------------
   // Mutates `data.items` in place to set fulfillmentMode / inventory source for
@@ -754,6 +794,8 @@ router.post("/public/partners/:slug/orders", async (req, res): Promise<void> => 
             inventoryReservationId,
             reservedQuantity,
             shortageQuantity,
+            surveyAssetId: it.surveyAssetId ?? null,
+            selectedMaterial: it.selectedMaterial ?? null,
           });
         }
         await tx.insert(orderItemsTable).values(insertedRows);

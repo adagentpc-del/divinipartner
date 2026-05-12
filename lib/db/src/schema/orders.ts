@@ -111,6 +111,11 @@ export const orderItemsTable = pgTable("order_items", {
   productId: integer("product_id").references(() => productCatalogTable.id, { onDelete: "set null" }),
   packageId: integer("package_id").references(() => packagesTable.id, { onDelete: "set null" }),
   brandingZoneId: integer("branding_zone_id").references(() => partnerBrandingLocationsTable.id, { onDelete: "set null" }),
+  // Task #5: line ties back to a venue survey asset (for "Brand our space" flow).
+  // FK is intentionally not declared with .references() to avoid a circular import
+  // with surveyAssetsTable; orphan rows tolerated since approval can revoke an asset.
+  surveyAssetId: integer("survey_asset_id"),
+  selectedMaterial: text("selected_material"),
   name: text("name").notNull(),
   quantity: integer("quantity").notNull().default(1),
   unitPrice: numeric("unit_price", { precision: 12, scale: 2 }),

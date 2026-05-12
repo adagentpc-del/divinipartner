@@ -83,6 +83,41 @@ export interface IntakeItemAnalysis {
   } | null;
   // Per-line human note rendered in the email + UI.
   note: string;
+  // Task #5: when this order line is tied to a venue survey asset, A3 ops
+  // gets a richer per-line block (measurements, selected material, internal
+  // install/production notes, NetSuite asset & venue numbers).
+  surveyAsset: {
+    id: number;
+    externalAssetId: string;
+    name: string;
+    venueName: string | null;
+    cityName: string | null;
+    selectedMaterial: string | null;
+    measurements: {
+      widthIn: number | null; heightIn: number | null; depthIn: number | null;
+      areaSqft: number | null; shape: string | null;
+      measurementUnit: string | null; orientation: string | null;
+    };
+    surfaceMaterial: string | null;
+    environment: string | null;
+    zoneName: string | null;
+    recommendedApplications: string[];
+    alternateApplications: string[];
+    visibilityTier: string | null;
+    publicStatus: string | null;
+    designNeeded: boolean;
+    commissionEligible: boolean;
+    opsOwner: string | null;
+    internalNotes: string | null;
+    installNotes: string | null;
+    productionNotes: string | null;
+    pricingNotes: string | null;
+    internalPhotos: Array<{ url: string; caption?: string }>;
+    netsuiteAssetNumber: string | null;
+    netsuiteVenueNumber: string | null;
+    netsuiteItemName: string | null;
+    netsuiteItemCategory: string | null;
+  } | null;
 }
 
 export interface IntakeFamilyRemaining {
@@ -205,6 +240,16 @@ export async function buildA3IntakeAnalysis(ctx: OrderEmailContext): Promise<Int
     if (partner.routingEmail) opsRecipients.push(partner.routingEmail);
   }
 
+  // 4a) Resolve any linked Venue Asset Survey records for these items
+  // (Task #5). One round-trip lookup; orphans tolerated (asset deleted but
+  // order line preserved).
+  const surveyIds = Array.from(new Set(items.map(i => i.surveyAssetId).filter((v): v is number => typeof v === "number")));
+  const { loadSurveyAssetsByIdsForPartner } = await import("../routes/surveyIntegration");
+  // Partner-scoped: even if a stale order line points at an asset that now
+  // belongs to a different partner, we never surface the foreign asset's
+  // internal data in this partner's intake.
+  const surveyById = await loadSurveyAssetsByIdsForPartner(surveyIds, partner.id);
+
   // 4) Per-item analysis.
   const itemsOut: IntakeItemAnalysis[] = [];
   // Map of inventoryId → cumulative reservedQty in this order, so when the
@@ -273,6 +318,43 @@ export async function buildA3IntakeAnalysis(ctx: OrderEmailContext): Promise<Int
       shortageQty: it.shortageQuantity ?? 0,
       inventorySource: invSnap,
       note: itemNote(label, it, fam, invSnap),
+      surveyAsset: (() => {
+        const sId = it.surveyAssetId;
+        const s = sId ? surveyById.get(sId) : null;
+        if (!s) return null;
+        return {
+          id: s.id,
+          externalAssetId: s.externalAssetId,
+          name: s.name,
+          venueName: s.venueName,
+          cityName: s.cityName,
+          selectedMaterial: it.selectedMaterial ?? null,
+          measurements: {
+            widthIn: s.widthIn, heightIn: s.heightIn, depthIn: s.depthIn,
+            areaSqft: s.areaSqft, shape: s.shape,
+            measurementUnit: s.measurementUnit, orientation: s.orientation,
+          },
+          surfaceMaterial: s.surfaceMaterial,
+          environment: s.environment,
+          zoneName: s.zoneName,
+          recommendedApplications: s.recommendedApplicationsJson ?? [],
+          alternateApplications: s.alternateApplicationsJson ?? [],
+          visibilityTier: s.visibilityTier,
+          publicStatus: s.publicStatus,
+          designNeeded: s.designNeeded,
+          commissionEligible: s.commissionEligible,
+          opsOwner: s.opsOwner,
+          internalNotes: s.internalNotes,
+          installNotes: s.installNotes,
+          productionNotes: s.productionNotes,
+          pricingNotes: s.internalPricingNotes,
+          internalPhotos: s.internalPhotosJson ?? [],
+          netsuiteAssetNumber: s.netsuiteAssetNumber,
+          netsuiteVenueNumber: s.netsuiteVenueNumber,
+          netsuiteItemName: s.netsuiteItemName,
+          netsuiteItemCategory: s.netsuiteItemCategory,
+        };
+      })(),
     });
   }
 
@@ -484,10 +566,68 @@ function renderItemsTable(items: IntakeItemAnalysis[]): string {
           ${it.familyName ? `<div style="font-size:11px;color:${A3_MUTED};margin-top:2px;">${escape(it.familyName)}${it.memberRole ? ` · ${escape(it.memberRole)}` : ""}</div>` : ""}
         </td>
         <td align="right" style="padding:10px 12px;font-size:13px;color:${A3_INK};${i ? `border-top:1px solid ${A3_LINE};` : ""}vertical-align:top;font-variant-numeric:tabular-nums;">${it.quantity}</td>
-        <td style="padding:10px 12px;font-size:12px;color:${A3_INK};${i ? `border-top:1px solid ${A3_LINE};` : ""}vertical-align:top;">${labelChip(it.label)}<div style="margin-top:4px;color:${A3_MUTED};">${escape(it.note)}</div></td>
+        <td style="padding:10px 12px;font-size:12px;color:${A3_INK};${i ? `border-top:1px solid ${A3_LINE};` : ""}vertical-align:top;">${labelChip(it.label)}<div style="margin-top:4px;color:${A3_MUTED};">${escape(it.note)}</div>${renderSurveyAssetBlock(it.surveyAsset)}</td>
       </tr>`).join("")}
     </tbody>
   </table>`;
+}
+
+function renderSurveyAssetBlock(s: IntakeItemAnalysis["surveyAsset"]): string {
+  if (!s) return "";
+  // Unit-aware dimension rendering: the survey app captures `measurementUnit`
+  // (in/cm/ft) on each row. Default to inches when null so legacy rows render.
+  const unit = s.measurements.measurementUnit ?? "in";
+  const unitGlyph = unit === "in" ? "″" : ` ${unit}`;
+  const areaUnit = unit === "in" ? "sq ft" : unit === "cm" ? "sq m" : "sq ft";
+  const dims: string[] = [];
+  if (s.measurements.widthIn != null && s.measurements.heightIn != null) {
+    dims.push(`${s.measurements.widthIn}${unitGlyph} × ${s.measurements.heightIn}${unitGlyph}${s.measurements.depthIn != null ? ` × ${s.measurements.depthIn}${unitGlyph}` : ""}`);
+  }
+  if (s.measurements.areaSqft != null) dims.push(`${s.measurements.areaSqft} ${areaUnit}`);
+  if (s.measurements.shape) dims.push(escape(s.measurements.shape));
+  if (s.measurements.orientation) dims.push(escape(s.measurements.orientation));
+  const place = [s.venueName, s.zoneName, s.cityName].filter(Boolean).map(v => escape(v as string)).join(" · ");
+  const surface = [
+    s.surfaceMaterial ? `Surface: ${escape(s.surfaceMaterial)}` : null,
+    s.environment ? `Environment: ${escape(s.environment)}` : null,
+  ].filter(Boolean).join(" · ");
+  const apps = [
+    s.recommendedApplications.length ? `Recommended: ${s.recommendedApplications.map(escape).join(", ")}` : null,
+    s.alternateApplications.length ? `Alternate: ${s.alternateApplications.map(escape).join(", ")}` : null,
+  ].filter(Boolean).join(" · ");
+  const flags = [
+    s.visibilityTier ? `Tier: ${escape(s.visibilityTier)}` : null,
+    s.publicStatus ? `Status: ${escape(s.publicStatus)}` : null,
+    s.designNeeded ? "Design needed" : null,
+    s.commissionEligible ? "Commission eligible" : null,
+    s.opsOwner ? `Ops: ${escape(s.opsOwner)}` : null,
+  ].filter(Boolean).join(" · ");
+  const ns = [
+    s.netsuiteItemName ? `Item ${escape(s.netsuiteItemName)}` : null,
+    s.netsuiteItemCategory ? `(${escape(s.netsuiteItemCategory)})` : null,
+    s.netsuiteAssetNumber ? `Asset #${escape(s.netsuiteAssetNumber)}` : null,
+    s.netsuiteVenueNumber ? `Venue #${escape(s.netsuiteVenueNumber)}` : null,
+  ].filter(Boolean).join(" · ");
+  const notes: string[] = [];
+  if (s.installNotes) notes.push(`Install: ${escape(s.installNotes)}`);
+  if (s.productionNotes) notes.push(`Production: ${escape(s.productionNotes)}`);
+  if (s.pricingNotes) notes.push(`Pricing: ${escape(s.pricingNotes)}`);
+  if (s.internalNotes) notes.push(`Internal: ${escape(s.internalNotes)}`);
+  const photos = s.internalPhotos.length
+    ? `<div style="margin-top:4px;color:${A3_MUTED};">Marked photos: ${s.internalPhotos.map((p, i) => `<a href="${escape(p.url)}" style="color:${A3_INK};text-decoration:underline;">#${i + 1}${p.caption ? ` ${escape(p.caption)}` : ""}</a>`).join(" · ")}</div>`
+    : "";
+  return `<div style="margin-top:8px;padding:8px 10px;border:1px dashed ${A3_LINE};border-radius:6px;background:${A3_BG};font-size:11px;color:${A3_INK};">
+    <div style="font-weight:700;color:${A3_MUTED};text-transform:uppercase;letter-spacing:0.06em;">Venue Survey · ${escape(s.name)} <span style="color:${A3_MUTED};font-weight:600;">· Asset ${escape(s.externalAssetId)} <span style="color:#9aa1ad;">(#${s.id})</span></span></div>
+    ${place ? `<div style="margin-top:3px;">${place}</div>` : ""}
+    ${dims.length ? `<div style="margin-top:3px;">${dims.join(" · ")}</div>` : ""}
+    ${surface ? `<div style="margin-top:3px;">${surface}</div>` : ""}
+    ${s.selectedMaterial ? `<div style="margin-top:3px;"><strong>Material:</strong> ${escape(s.selectedMaterial)}</div>` : ""}
+    ${apps ? `<div style="margin-top:3px;color:${A3_MUTED};">${apps}</div>` : ""}
+    ${flags ? `<div style="margin-top:3px;color:${A3_MUTED};">${flags}</div>` : ""}
+    ${ns ? `<div style="margin-top:3px;color:${A3_MUTED};">${ns}</div>` : ""}
+    ${notes.length ? `<div style="margin-top:4px;color:${A3_MUTED};">${notes.join(" · ")}</div>` : ""}
+    ${photos}
+  </div>`;
 }
 
 function labelChip(label: ItemFulfillmentLabel): string {

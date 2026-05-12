@@ -360,6 +360,11 @@ export default function PartnerForm() {
                 <Settings className="h-3.5 w-3.5" /> Add-Ons
               </Button>
             </Link>
+            <Link href={`/admin/partners/${id}/survey-integration`}>
+              <Button variant="outline" size="sm" className="gap-1.5">
+                <Settings className="h-3.5 w-3.5" /> Venue Survey
+              </Button>
+            </Link>
             <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShowSendDocs(true)}>
               <FileText className="h-3.5 w-3.5" /> Send Docs
             </Button>

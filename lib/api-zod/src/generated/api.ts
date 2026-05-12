@@ -1077,3 +1077,295 @@ export const GetPublicObjectParams = zod.object({
 export const GetStorageObjectParams = zod.object({
   objectPath: zod.coerce.string(),
 });
+
+/**
+ * HMAC-SHA256 signed (header `X-Survey-Signature`) ingest of one or more SurveyAsset payloads. Per-partner secret.
+ * @summary Inbound webhook from the Venue Asset Survey app
+ */
+export const SurveyWebhookParams = zod.object({
+  partnerSlug: zod.coerce.string(),
+});
+
+export const SurveyWebhookBody = zod.object({
+  assets: zod.array(
+    zod
+      .object({
+        externalAssetId: zod.string(),
+        externalSurveyId: zod.string().nullish(),
+        name: zod.string(),
+        description: zod.string().nullish(),
+        category: zod.string().nullish(),
+        venueName: zod.string().nullish(),
+        cityName: zod.string().nullish(),
+        publicPhotoUrl: zod.string().nullish(),
+        publicPhotos: zod
+          .array(
+            zod.object({
+              url: zod.string(),
+              caption: zod.string().optional(),
+            }),
+          )
+          .nullish(),
+        measurements: zod
+          .union([
+            zod
+              .object({
+                widthIn: zod.number().nullish(),
+                heightIn: zod.number().nullish(),
+                depthIn: zod.number().nullish(),
+                diameterIn: zod.number().nullish(),
+                areaSqft: zod.number().nullish(),
+                shape: zod.string().nullish(),
+                measurementUnit: zod
+                  .union([
+                    zod.literal("in"),
+                    zod.literal("cm"),
+                    zod.literal("ft"),
+                    zod.literal(null),
+                  ])
+                  .nullish()
+                  .describe(
+                    "Unit the survey app captured. Intake email\/UI render measurements in this unit.",
+                  ),
+                orientation: zod
+                  .string()
+                  .nullish()
+                  .describe("landscape | portrait | square | free"),
+              })
+              .describe(
+                "Physical measurements. A3-internal — never exposed on \/public\/\* projections.",
+              ),
+            zod.null(),
+          ])
+          .optional(),
+        surface: zod
+          .union([
+            zod.object({
+              surfaceMaterial: zod
+                .string()
+                .nullish()
+                .describe("Physical mounting surface (drywall"),
+              environment: zod
+                .string()
+                .nullish()
+                .describe("indoor | outdoor | covered_outdoor"),
+              zoneName: zod.string().nullish().describe("Venue zone (Lobby"),
+            }),
+            zod.null(),
+          ])
+          .optional(),
+        applications: zod
+          .union([
+            zod.object({
+              primary: zod.array(zod.string()).nullish(),
+              recommended: zod.array(zod.string()).nullish(),
+              alternate: zod.array(zod.string()).nullish(),
+              publicUseCase: zod.string().nullish(),
+            }),
+            zod.null(),
+          ])
+          .optional(),
+        visibility: zod
+          .union([
+            zod.object({
+              visibilityTier: zod
+                .string()
+                .nullish()
+                .describe("hero | featured | standard | hidden"),
+              publicStatus: zod
+                .string()
+                .nullish()
+                .describe("live | draft | retired"),
+              publicDeckInclude: zod.boolean().nullish(),
+              portalVisible: zod.boolean().nullish(),
+              netsuiteInclude: zod.boolean().nullish(),
+              designNeeded: zod.boolean().nullish(),
+              commissionEligible: zod.boolean().nullish(),
+              opsOwner: zod.string().nullish(),
+            }),
+            zod.null(),
+          ])
+          .optional(),
+        approvedMaterials: zod.array(zod.string()).nullish(),
+        internal: zod
+          .union([
+            zod
+              .object({
+                notes: zod.string().nullish(),
+                installNotes: zod.string().nullish(),
+                productionNotes: zod.string().nullish(),
+                pricingNotes: zod.string().nullish(),
+                photos: zod
+                  .array(
+                    zod.object({
+                      url: zod.string(),
+                      caption: zod.string().optional(),
+                    }),
+                  )
+                  .nullish(),
+                netsuiteAssetNumber: zod.string().nullish(),
+                netsuiteVenueNumber: zod.string().nullish(),
+                netsuiteItemName: zod.string().nullish(),
+                netsuiteItemCategory: zod.string().nullish(),
+                costCenter: zod.string().nullish(),
+                surveyorName: zod.string().nullish(),
+                surveyedAt: zod
+                  .string()
+                  .nullish()
+                  .describe("ISO 8601 date-time"),
+              })
+              .describe(
+                "Internal-only fields the survey app attaches. Stored server-side, never echoed on \/public\/\* projections.",
+              ),
+            zod.null(),
+          ])
+          .optional(),
+      })
+      .describe(
+        "Payload shape sent by the Venue Asset Survey app (subset of Asset_Master columns). Measurements and internal\/ops-only fields are nested so \/public\/\* projections can guarantee they never leak.",
+      ),
+  ),
+});
+
+export const SurveyWebhookResponse = zod.object({
+  created: zod.number(),
+  updated: zod.number(),
+});
+
+/**
+ * @summary Admin-triggered pull from the survey app for a partner
+ */
+export const SurveyAdminPullParams = zod.object({
+  partnerId: zod.coerce.number(),
+});
+
+export const SurveyAdminPullResponse = zod.object({
+  created: zod.number(),
+  updated: zod.number(),
+});
+
+/**
+ * @summary Probe the configured survey app to confirm it is reachable
+ */
+export const SurveyTestConnectionParams = zod.object({
+  partnerId: zod.coerce.number(),
+});
+
+export const SurveyTestConnectionResponse = zod.object({
+  ok: zod.boolean(),
+  status: zod.number().optional(),
+  probedUrl: zod.string().optional(),
+  apiKeyPresent: zod.boolean().optional(),
+  message: zod.string().optional(),
+  error: zod.string().optional(),
+});
+
+/**
+ * @summary List all survey assets (filterable by status / partner)
+ */
+export const SurveyAssetsListQueryParams = zod.object({
+  status: zod.enum(["pending", "approved", "rejected", "all"]).optional(),
+  partnerId: zod.coerce.number().optional(),
+});
+
+export const SurveyAssetsListResponse = zod.object({
+  assets: zod.array(
+    zod
+      .object({
+        id: zod.number(),
+        partnerId: zod.number(),
+        externalAssetId: zod.string().nullish(),
+        name: zod.string(),
+        description: zod.string().nullish(),
+        approvalStatus: zod.enum(["pending", "approved", "rejected"]),
+        materialOverrideMode: zod.enum(["per_item", "global", "custom"]),
+        publicPhotoUrl: zod.string().nullish(),
+        approvedMaterialsJson: zod.array(zod.string()).nullish(),
+        customApprovedMaterialsJson: zod.array(zod.string()).nullish(),
+      })
+      .describe("Full admin-only view of a survey asset row."),
+  ),
+});
+
+/**
+ * @summary Approve, reject, or edit a survey asset
+ */
+export const SurveyAssetPatchParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const SurveyAssetPatchBody = zod.object({
+  approvalStatus: zod.enum(["pending", "approved", "rejected"]).optional(),
+  rejectedReason: zod.string().nullish(),
+  isActive: zod.boolean().optional(),
+  name: zod.string().optional(),
+  description: zod.string().nullish(),
+  category: zod.string().nullish(),
+  publicPhotoUrl: zod.string().nullish(),
+  approvedMaterialsJson: zod.array(zod.string()).nullish(),
+  customApprovedMaterialsJson: zod.array(zod.string()).nullish(),
+  materialOverrideMode: zod.enum(["per_item", "global", "custom"]).optional(),
+  internalNotes: zod.string().nullish(),
+  installNotes: zod.string().nullish(),
+  productionNotes: zod.string().nullish(),
+});
+
+export const SurveyAssetPatchResponse = zod.object({
+  asset: zod
+    .object({
+      id: zod.number(),
+      partnerId: zod.number(),
+      externalAssetId: zod.string().nullish(),
+      name: zod.string(),
+      description: zod.string().nullish(),
+      approvalStatus: zod.enum(["pending", "approved", "rejected"]),
+      materialOverrideMode: zod.enum(["per_item", "global", "custom"]),
+      publicPhotoUrl: zod.string().nullish(),
+      approvedMaterialsJson: zod.array(zod.string()).nullish(),
+      customApprovedMaterialsJson: zod.array(zod.string()).nullish(),
+    })
+    .describe("Full admin-only view of a survey asset row."),
+});
+
+export const SurveyAssetDeleteParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const SurveyAssetDeleteResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Public approved survey assets for the partner portal "Brand our space" tile gallery
+ */
+export const SurveyPublicListParams = zod.object({
+  slug: zod.coerce.string(),
+});
+
+export const SurveyPublicListResponse = zod.object({
+  assets: zod.array(
+    zod
+      .object({
+        id: zod.number(),
+        externalAssetId: zod.string(),
+        name: zod.string(),
+        description: zod.string().nullish(),
+        category: zod.string().nullish(),
+        venueName: zod.string().nullish(),
+        cityName: zod.string().nullish(),
+        publicPhotoUrl: zod.string().nullish(),
+        publicPhotos: zod.array(
+          zod.object({
+            url: zod.string(),
+            caption: zod.string().optional(),
+          }),
+        ),
+        approvedMaterials: zod.array(zod.string()),
+        materialOverrideMode: zod.enum(["per_item", "global", "custom"]),
+        publicUseCase: zod.string().nullish(),
+      })
+      .describe(
+        "Customer-safe projection — guaranteed to omit measurements and all internal fields. Mirrors `toPublicSurveyAsset()` in lib\/db.",
+      ),
+  ),
+});

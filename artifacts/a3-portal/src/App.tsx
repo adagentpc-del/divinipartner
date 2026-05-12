@@ -65,6 +65,9 @@ import HelpFaq from "@/pages/admin/HelpFaq";
 import OperatorRunbook from "@/pages/admin/OperatorRunbook";
 import DeploymentReadiness from "@/pages/admin/DeploymentReadiness";
 import LiveReadiness from "@/pages/admin/LiveReadiness";
+import SurveyImports from "@/pages/admin/SurveyImports";
+import ApprovedMaterials from "@/pages/admin/ApprovedMaterials";
+import PartnerSurveyIntegration from "@/pages/admin/PartnerSurveyIntegration";
 import { DemoModeProvider } from "@/contexts/DemoModeContext";
 import WorkflowRules from "@/pages/admin/WorkflowRules";
 
@@ -205,6 +208,15 @@ function ClerkProviderWithRoutes() {
             </Route>
             <Route path="/admin/partners/:id/committed-inventory">
               {() => <AdminRoute component={CommittedInventory} />}
+            </Route>
+            <Route path="/admin/partners/:id/survey-integration">
+              {() => <AdminRoute component={PartnerSurveyIntegration} />}
+            </Route>
+            <Route path="/admin/survey-imports">
+              {() => <AdminRoute component={SurveyImports} />}
+            </Route>
+            <Route path="/admin/approved-materials">
+              {() => <AdminRoute component={ApprovedMaterials} />}
             </Route>
             <Route path="/admin/products">
               {() => <AdminRoute component={ProductCatalog} />}

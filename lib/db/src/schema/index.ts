@@ -41,3 +41,6 @@ export * from "./usage";
 export * from "./commercialization";
 export * from "./stabilization";
 export * from "./documents";
+export * from "./surveyAssets";
+export * from "./partnerIntegrations";
+export * from "./approvedMaterials";

@@ -5,6 +5,285 @@
  * A3 Partner Portal API
  * OpenAPI spec version: 0.1.0
  */
+export interface SurveyAssetPhoto {
+  url: string;
+  caption?: string;
+}
+
+/**
+ * Unit the survey app captured. Intake email/UI render measurements in this unit.
+ * @nullable
+ */
+export type SurveyAssetMeasurementsMeasurementUnit =
+  | (typeof SurveyAssetMeasurementsMeasurementUnit)[keyof typeof SurveyAssetMeasurementsMeasurementUnit]
+  | null;
+
+export const SurveyAssetMeasurementsMeasurementUnit = {
+  in: "in",
+  cm: "cm",
+  ft: "ft",
+} as const;
+
+/**
+ * Physical measurements. A3-internal — never exposed on /public/* projections.
+ */
+export interface SurveyAssetMeasurements {
+  /** @nullable */
+  widthIn?: number | null;
+  /** @nullable */
+  heightIn?: number | null;
+  /** @nullable */
+  depthIn?: number | null;
+  /** @nullable */
+  diameterIn?: number | null;
+  /** @nullable */
+  areaSqft?: number | null;
+  /** @nullable */
+  shape?: string | null;
+  /**
+   * Unit the survey app captured. Intake email/UI render measurements in this unit.
+   * @nullable
+   */
+  measurementUnit?: SurveyAssetMeasurementsMeasurementUnit;
+  /**
+   * landscape | portrait | square | free
+   * @nullable
+   */
+  orientation?: string | null;
+}
+
+export interface SurveyAssetSurface {
+  /**
+   * Physical mounting surface (drywall
+   * @nullable
+   */
+  surfaceMaterial?: string | null;
+  /**
+   * indoor | outdoor | covered_outdoor
+   * @nullable
+   */
+  environment?: string | null;
+  /**
+   * Venue zone (Lobby
+   * @nullable
+   */
+  zoneName?: string | null;
+}
+
+export interface SurveyAssetApplications {
+  /** @nullable */
+  primary?: string[] | null;
+  /** @nullable */
+  recommended?: string[] | null;
+  /** @nullable */
+  alternate?: string[] | null;
+  /** @nullable */
+  publicUseCase?: string | null;
+}
+
+export interface SurveyAssetVisibility {
+  /**
+   * hero | featured | standard | hidden
+   * @nullable
+   */
+  visibilityTier?: string | null;
+  /**
+   * live | draft | retired
+   * @nullable
+   */
+  publicStatus?: string | null;
+  /** @nullable */
+  publicDeckInclude?: boolean | null;
+  /** @nullable */
+  portalVisible?: boolean | null;
+  /** @nullable */
+  netsuiteInclude?: boolean | null;
+  /** @nullable */
+  designNeeded?: boolean | null;
+  /** @nullable */
+  commissionEligible?: boolean | null;
+  /** @nullable */
+  opsOwner?: string | null;
+}
+
+/**
+ * Internal-only fields the survey app attaches. Stored server-side, never echoed on /public/* projections.
+ */
+export interface SurveyAssetInternal {
+  /** @nullable */
+  notes?: string | null;
+  /** @nullable */
+  installNotes?: string | null;
+  /** @nullable */
+  productionNotes?: string | null;
+  /** @nullable */
+  pricingNotes?: string | null;
+  /** @nullable */
+  photos?: SurveyAssetPhoto[] | null;
+  /** @nullable */
+  netsuiteAssetNumber?: string | null;
+  /** @nullable */
+  netsuiteVenueNumber?: string | null;
+  /** @nullable */
+  netsuiteItemName?: string | null;
+  /** @nullable */
+  netsuiteItemCategory?: string | null;
+  /** @nullable */
+  costCenter?: string | null;
+  /** @nullable */
+  surveyorName?: string | null;
+  /**
+   * ISO 8601 date-time
+   * @nullable
+   */
+  surveyedAt?: string | null;
+}
+
+/**
+ * Payload shape sent by the Venue Asset Survey app (subset of Asset_Master columns). Measurements and internal/ops-only fields are nested so /public/* projections can guarantee they never leak.
+ */
+export interface SurveyAssetIngest {
+  externalAssetId: string;
+  /** @nullable */
+  externalSurveyId?: string | null;
+  name: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  category?: string | null;
+  /** @nullable */
+  venueName?: string | null;
+  /** @nullable */
+  cityName?: string | null;
+  /** @nullable */
+  publicPhotoUrl?: string | null;
+  /** @nullable */
+  publicPhotos?: SurveyAssetPhoto[] | null;
+  measurements?: SurveyAssetMeasurements | null;
+  surface?: SurveyAssetSurface | null;
+  applications?: SurveyAssetApplications | null;
+  visibility?: SurveyAssetVisibility | null;
+  /** @nullable */
+  approvedMaterials?: string[] | null;
+  internal?: SurveyAssetInternal | null;
+}
+
+export type SurveyAssetApprovalStatus =
+  (typeof SurveyAssetApprovalStatus)[keyof typeof SurveyAssetApprovalStatus];
+
+export const SurveyAssetApprovalStatus = {
+  pending: "pending",
+  approved: "approved",
+  rejected: "rejected",
+} as const;
+
+export type SurveyAssetMaterialOverrideMode =
+  (typeof SurveyAssetMaterialOverrideMode)[keyof typeof SurveyAssetMaterialOverrideMode];
+
+export const SurveyAssetMaterialOverrideMode = {
+  per_item: "per_item",
+  global: "global",
+  custom: "custom",
+} as const;
+
+/**
+ * Full admin-only view of a survey asset row.
+ */
+export interface SurveyAsset {
+  id: number;
+  partnerId: number;
+  /** @nullable */
+  externalAssetId?: string | null;
+  name: string;
+  /** @nullable */
+  description?: string | null;
+  approvalStatus: SurveyAssetApprovalStatus;
+  materialOverrideMode: SurveyAssetMaterialOverrideMode;
+  /** @nullable */
+  publicPhotoUrl?: string | null;
+  /** @nullable */
+  approvedMaterialsJson?: string[] | null;
+  /** @nullable */
+  customApprovedMaterialsJson?: string[] | null;
+  [key: string]: unknown;
+}
+
+export type PublicSurveyAssetMaterialOverrideMode =
+  (typeof PublicSurveyAssetMaterialOverrideMode)[keyof typeof PublicSurveyAssetMaterialOverrideMode];
+
+export const PublicSurveyAssetMaterialOverrideMode = {
+  per_item: "per_item",
+  global: "global",
+  custom: "custom",
+} as const;
+
+/**
+ * Customer-safe projection — guaranteed to omit measurements and all internal fields. Mirrors `toPublicSurveyAsset()` in lib/db.
+ */
+export interface PublicSurveyAsset {
+  id: number;
+  externalAssetId: string;
+  name: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  category?: string | null;
+  /** @nullable */
+  venueName?: string | null;
+  /** @nullable */
+  cityName?: string | null;
+  /** @nullable */
+  publicPhotoUrl?: string | null;
+  publicPhotos: SurveyAssetPhoto[];
+  approvedMaterials: string[];
+  materialOverrideMode: PublicSurveyAssetMaterialOverrideMode;
+  /** @nullable */
+  publicUseCase?: string | null;
+}
+
+export type SurveyAssetPatchApprovalStatus =
+  (typeof SurveyAssetPatchApprovalStatus)[keyof typeof SurveyAssetPatchApprovalStatus];
+
+export const SurveyAssetPatchApprovalStatus = {
+  pending: "pending",
+  approved: "approved",
+  rejected: "rejected",
+} as const;
+
+export type SurveyAssetPatchMaterialOverrideMode =
+  (typeof SurveyAssetPatchMaterialOverrideMode)[keyof typeof SurveyAssetPatchMaterialOverrideMode];
+
+export const SurveyAssetPatchMaterialOverrideMode = {
+  per_item: "per_item",
+  global: "global",
+  custom: "custom",
+} as const;
+
+export interface SurveyAssetPatch {
+  approvalStatus?: SurveyAssetPatchApprovalStatus;
+  /** @nullable */
+  rejectedReason?: string | null;
+  isActive?: boolean;
+  name?: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  category?: string | null;
+  /** @nullable */
+  publicPhotoUrl?: string | null;
+  /** @nullable */
+  approvedMaterialsJson?: string[] | null;
+  /** @nullable */
+  customApprovedMaterialsJson?: string[] | null;
+  materialOverrideMode?: SurveyAssetPatchMaterialOverrideMode;
+  /** @nullable */
+  internalNotes?: string | null;
+  /** @nullable */
+  installNotes?: string | null;
+  /** @nullable */
+  productionNotes?: string | null;
+}
+
 export interface HealthStatus {
   status: string;
 }
@@ -670,4 +949,58 @@ export type ListPricingRulesParams = {
 
 export type GetRecentRequestsParams = {
   limit?: number;
+};
+
+export type SurveyWebhookBody = {
+  assets: SurveyAssetIngest[];
+};
+
+export type SurveyWebhook200 = {
+  created: number;
+  updated: number;
+};
+
+export type SurveyAdminPull200 = {
+  created: number;
+  updated: number;
+};
+
+export type SurveyTestConnection200 = {
+  ok: boolean;
+  status?: number;
+  probedUrl?: string;
+  apiKeyPresent?: boolean;
+  message?: string;
+  error?: string;
+};
+
+export type SurveyAssetsListParams = {
+  status?: SurveyAssetsListStatus;
+  partnerId?: number;
+};
+
+export type SurveyAssetsListStatus =
+  (typeof SurveyAssetsListStatus)[keyof typeof SurveyAssetsListStatus];
+
+export const SurveyAssetsListStatus = {
+  pending: "pending",
+  approved: "approved",
+  rejected: "rejected",
+  all: "all",
+} as const;
+
+export type SurveyAssetsList200 = {
+  assets: SurveyAsset[];
+};
+
+export type SurveyAssetPatch200 = {
+  asset: SurveyAsset;
+};
+
+export type SurveyAssetDelete200 = {
+  ok: boolean;
+};
+
+export type SurveyPublicList200 = {
+  assets: PublicSurveyAsset[];
 };
