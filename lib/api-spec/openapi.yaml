@@ -2191,243 +2191,788 @@ paths:
       responses:
         "200": { description: Commit result, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
   /admin/documents:
-    get: { operationId: listAdminDocuments, tags: [admin], responses: { "200": { description: Documents, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } } } }
+    get:
+      operationId: listAdminDocuments
+      tags: [admin]
+      responses:
+        "200":
+          description: Documents
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [documents]
+                properties:
+                  documents:
+                    type: array
+                    items: { $ref: "#/components/schemas/DocumentRow" }
   /admin/documents/upload:
-    post: { operationId: uploadAdminDocument, tags: [admin], responses: { "200": { description: Uploaded, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } } } }
+    post:
+      operationId: uploadAdminDocument
+      tags: [admin]
+      responses:
+        "200":
+          description: Uploaded
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [document, uploadUrl]
+                properties:
+                  document: { $ref: "#/components/schemas/DocumentRow" }
+                  uploadUrl: { type: string }
   /admin/documents/{id}:
     get:
       operationId: getAdminDocument
       tags: [admin]
       parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
       responses:
-        "200": { description: Document, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+        "200":
+          description: Document
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [document]
+                properties:
+                  document: { $ref: "#/components/schemas/DocumentRow" }
     patch:
       operationId: updateAdminDocument
       tags: [admin]
       parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
       responses:
-        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [document]
+                properties:
+                  document: { $ref: "#/components/schemas/DocumentRow" }
   /admin/documents/{id}/replace:
     post:
       operationId: replaceAdminDocument
       tags: [admin]
       parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
       responses:
-        "200": { description: Replaced, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+        "200":
+          description: Replaced
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [document, uploadUrl]
+                properties:
+                  document: { $ref: "#/components/schemas/DocumentRow" }
+                  uploadUrl: { type: string }
   /admin/documents/{id}/deactivate:
     post:
       operationId: deactivateAdminDocument
       tags: [admin]
       parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
       responses:
-        "200": { description: Deactivated, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+        "200":
+          description: Deactivated
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [document]
+                properties:
+                  document: { $ref: "#/components/schemas/DocumentRow" }
   /admin/documents/{id}/reactivate:
     post:
       operationId: reactivateAdminDocument
       tags: [admin]
       parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
       responses:
-        "200": { description: Reactivated, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+        "200":
+          description: Reactivated
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [document]
+                properties:
+                  document: { $ref: "#/components/schemas/DocumentRow" }
   /admin/documents/{id}/test-link:
     post:
       operationId: testAdminDocumentLink
       tags: [admin]
       parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
       responses:
-        "200": { description: Link, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+        "200":
+          description: Link
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [url, expiresInSeconds]
+                properties:
+                  url: { type: string }
+                  expiresInSeconds: { type: integer }
   /admin/documents/{id}/activity:
     get:
       operationId: getAdminDocumentActivity
       tags: [admin]
       parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
       responses:
-        "200": { description: Activity, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+        "200":
+          description: Activity
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [events]
+                properties:
+                  events:
+                    type: array
+                    items: { $ref: "#/components/schemas/DocumentEventRow" }
   /admin/document-events:
-    get: { operationId: listAdminDocumentEvents, tags: [admin], responses: { "200": { description: Events, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } } } }
+    get:
+      operationId: listAdminDocumentEvents
+      tags: [admin]
+      responses:
+        "200":
+          description: Events
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [events]
+                properties:
+                  events:
+                    type: array
+                    items: { $ref: "#/components/schemas/DocumentEventRow" }
   /admin/document-requests:
-    get: { operationId: listAdminDocumentRequests, tags: [admin], responses: { "200": { description: Requests, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } } } }
+    get:
+      operationId: listAdminDocumentRequests
+      tags: [admin]
+      responses:
+        "200":
+          description: Requests
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [requests]
+                properties:
+                  requests:
+                    type: array
+                    items: { $ref: "#/components/schemas/DocumentRequestRow" }
   /admin/document-requests/{id}/approve-send:
     post:
       operationId: approveDocumentRequestSend
       tags: [admin]
       parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
       responses:
-        "200": { description: Sent, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+        "200":
+          description: Sent
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [ok, assignmentCount, emailSent]
+                properties:
+                  ok: { type: boolean }
+                  assignmentCount: { type: integer }
+                  emailSent: { type: boolean }
   /admin/document-requests/{id}/deny:
     post:
       operationId: denyDocumentRequest
       tags: [admin]
       parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
       responses:
-        "200": { description: Denied, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+        "200":
+          description: Denied
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [ok]
+                properties:
+                  ok: { type: boolean }
   /admin/documents/send:
-    post: { operationId: sendAdminDocuments, tags: [admin], responses: { "200": { description: Sent, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } } } }
+    post:
+      operationId: sendAdminDocuments
+      tags: [admin]
+      responses:
+        "200":
+          description: Sent
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [ok, sentCount]
+                properties:
+                  ok: { type: boolean }
+                  sentCount: { type: integer }
   /admin/document-assignments:
-    get: { operationId: listAdminDocumentAssignments, tags: [admin], responses: { "200": { description: Assignments, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } } } }
+    get:
+      operationId: listAdminDocumentAssignments
+      tags: [admin]
+      responses:
+        "200":
+          description: Assignments
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [assignments]
+                properties:
+                  assignments:
+                    type: array
+                    items: { $ref: "#/components/schemas/DocumentAssignmentRow" }
   /admin/document-settings:
-    get: { operationId: getAdminDocumentSettings, tags: [admin], responses: { "200": { description: Settings, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } } } }
+    get:
+      operationId: getAdminDocumentSettings
+      tags: [admin]
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [settings]
+                properties:
+                  settings: { $ref: "#/components/schemas/DocumentSettings" }
   /portal-requests:
-    get: { operationId: listPortalRequests, tags: [admin], responses: { "200": { description: Requests, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericArray" } } } } } }
+    get:
+      operationId: listPortalRequests
+      tags: [admin]
+      responses:
+        "200":
+          description: Requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PortalRequestRow" }
   /portal-requests/{id}:
     get:
       operationId: getPortalRequest
       tags: [admin]
       parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
       responses:
-        "200": { description: Request, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+        "200":
+          description: Request
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: "#/components/schemas/PortalRequestRow" }
+                  - type: object
+                    additionalProperties: true
+                    properties:
+                      files:
+                        type: array
+                        items: { $ref: "#/components/schemas/RequestFileRow" }
     patch:
       operationId: updatePortalRequest
       tags: [admin]
       parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
       responses:
-        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortalRequestRow" }
   /product-requests:
-    get: { operationId: listProductRequests, tags: [admin], responses: { "200": { description: Requests, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericArray" } } } } } }
+    get:
+      operationId: listProductRequests
+      tags: [admin]
+      responses:
+        "200":
+          description: Requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ProductRequestListItem" }
   /product-requests/{id}:
     get:
       operationId: getProductRequest
       tags: [admin]
       parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
       responses:
-        "200": { description: Request, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+        "200":
+          description: Request
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [id]
+                properties:
+                  id: { type: integer }
+                  files:
+                    type: array
+                    items: { $ref: "#/components/schemas/RequestFileRow" }
+                  product:
+                    oneOf:
+                      - { $ref: "#/components/schemas/ProductRef" }
+                      - { type: "null" }
     patch:
       operationId: updateProductRequest
       tags: [admin]
       parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
       responses:
-        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [id]
+                properties:
+                  id: { type: integer }
   /branding-requests:
-    get: { operationId: listBrandingRequests, tags: [admin], responses: { "200": { description: Requests, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericArray" } } } } } }
+    get:
+      operationId: listBrandingRequests
+      tags: [admin]
+      responses:
+        "200":
+          description: Requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/BrandingRequestListItem" }
   /branding-requests/{id}:
     get:
       operationId: getBrandingRequest
       tags: [admin]
       parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
       responses:
-        "200": { description: Request, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+        "200":
+          description: Request
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [id]
+                properties:
+                  id: { type: integer }
+                  files:
+                    type: array
+                    items: { $ref: "#/components/schemas/RequestFileRow" }
+                  location:
+                    oneOf:
+                      - { $ref: "#/components/schemas/BrandingLocationRef" }
+                      - { type: "null" }
     patch:
       operationId: updateBrandingRequest
       tags: [admin]
       parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
       responses:
-        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [id]
+                properties:
+                  id: { type: integer }
   /all-requests/summary:
-    get: { operationId: getAllRequestsSummary, tags: [admin], responses: { "200": { description: Summary, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } } } }
+    get:
+      operationId: getAllRequestsSummary
+      tags: [admin]
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [portal, product, branding, total]
+                properties:
+                  portal: { type: integer }
+                  product: { type: integer }
+                  branding: { type: integer }
+                  total: { type: integer }
   /admin/email-readiness:
-    get: { operationId: getEmailReadiness, tags: [admin], responses: { "200": { description: Readiness, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } } } }
+    get:
+      operationId: getEmailReadiness
+      tags: [admin]
+      responses:
+        "200":
+          description: Readiness
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [system, summary, partners, recentFailures]
+                properties:
+                  system: { $ref: "#/components/schemas/EmailReadinessSystem" }
+                  summary: { $ref: "#/components/schemas/EmailReadinessSummary" }
+                  partners:
+                    type: array
+                    items: { $ref: "#/components/schemas/EmailReadinessPartner" }
+                  recentFailures:
+                    type: array
+                    items: { $ref: "#/components/schemas/EmailReadinessFailure" }
   /admin/email-readiness/dns:
-    get: { operationId: getEmailReadinessDns, tags: [admin], responses: { "200": { description: Dns, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } } } }
+    get:
+      operationId: getEmailReadinessDns
+      tags: [admin]
+      responses:
+        "200":
+          description: Dns
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                properties:
+                  senderDomain: { type: ["string", "null"] }
+                  canonicalHost: { type: ["string", "null"] }
+                  alignment: { type: ["boolean", "null"] }
+                  checks:
+                    type: array
+                    items: { $ref: "#/components/schemas/DnsCheck" }
+                  note: { type: ["string", "null"] }
   /orders:
-    get: { operationId: listOrders, tags: [admin], responses: { "200": { description: Orders, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericArray" } } } } } }
+    get:
+      operationId: listOrders
+      tags: [admin]
+      responses:
+        "200":
+          description: Orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/OrderListItem" }
   /orders/{id}:
     get:
       operationId: getOrder
       tags: [admin]
       parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
       responses:
-        "200": { description: Order, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+        "200":
+          description: Order
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: "#/components/schemas/OrderRow" }
+                  - type: object
+                    additionalProperties: true
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: "#/components/schemas/OrderItemDetail" }
+                      partner:
+                        oneOf:
+                          - { $ref: "#/components/schemas/PartnerRowLite" }
+                          - { type: "null" }
+                      event:
+                        oneOf:
+                          - { $ref: "#/components/schemas/EventRowLite" }
+                          - { type: "null" }
+                      venue:
+                        oneOf:
+                          - { $ref: "#/components/schemas/VenueRowLite" }
+                          - { type: "null" }
+                      supplier:
+                        oneOf:
+                          - { $ref: "#/components/schemas/SupplierRowLite" }
+                          - { type: "null" }
+                      partnerContacts:
+                        type: array
+                        items: { $ref: "#/components/schemas/PartnerContactRow" }
     patch:
       operationId: updateOrder
       tags: [admin]
       parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
       responses:
-        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrderRow" }
     delete:
       operationId: deleteOrder
       tags: [admin]
       parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
       responses:
-        "200": { description: Deleted, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [success]
+                properties:
+                  success: { type: boolean }
   /orders/{orderId}/items/{itemId}/assign-supplier:
     post:
       operationId: assignOrderItemSupplier
       tags: [admin]
       parameters: [{ name: orderId, in: path, required: true, schema: { type: integer } }, { name: itemId, in: path, required: true, schema: { type: integer } }]
       responses:
-        "200": { description: Assigned, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+        "200":
+          description: Assigned
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrderItemRow" }
   /orders/{orderId}/bulk-assign-supplier:
     post:
       operationId: bulkAssignOrderItemSupplier
       tags: [admin]
       parameters: [{ name: orderId, in: path, required: true, schema: { type: integer } }]
       responses:
-        "200": { description: Assigned, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+        "200":
+          description: Assigned
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [updated]
+                properties:
+                  updated: { type: integer }
   /orders/{orderId}/items/{itemId}/status:
     post:
       operationId: updateOrderItemStatus
       tags: [admin]
       parameters: [{ name: orderId, in: path, required: true, schema: { type: integer } }, { name: itemId, in: path, required: true, schema: { type: integer } }]
       responses:
-        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrderItemRow" }
   /orders/{orderId}/items/{itemId}/exception:
     post:
       operationId: setOrderItemException
       tags: [admin]
       parameters: [{ name: orderId, in: path, required: true, schema: { type: integer } }, { name: itemId, in: path, required: true, schema: { type: integer } }]
       responses:
-        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrderItemRow" }
   /orders/{orderId}/items/{itemId}/dates:
     post:
       operationId: updateOrderItemDates
       tags: [admin]
       parameters: [{ name: orderId, in: path, required: true, schema: { type: integer } }, { name: itemId, in: path, required: true, schema: { type: integer } }]
       responses:
-        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrderItemRow" }
   /orders/{orderId}/items/{itemId}/history:
     get:
       operationId: getOrderItemHistory
       tags: [admin]
       parameters: [{ name: orderId, in: path, required: true, schema: { type: integer } }, { name: itemId, in: path, required: true, schema: { type: integer } }]
       responses:
-        "200": { description: History, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+        "200":
+          description: History
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [assignments, statuses]
+                properties:
+                  assignments:
+                    type: array
+                    items: { $ref: "#/components/schemas/AssignmentHistoryRow" }
+                  statuses:
+                    type: array
+                    items: { $ref: "#/components/schemas/StatusEventRow" }
   /orders/{orderId}/items/{itemId}/supplier-recommendations:
     get:
       operationId: getOrderItemSupplierRecommendations
       tags: [admin]
       parameters: [{ name: orderId, in: path, required: true, schema: { type: integer } }, { name: itemId, in: path, required: true, schema: { type: integer } }]
       responses:
-        "200": { description: Recs, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+        "200":
+          description: Recs
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SupplierRecommendation" }
   /fulfillment/command-center:
-    get: { operationId: getFulfillmentCommandCenter, tags: [admin], responses: { "200": { description: Center, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } } } }
+    get:
+      operationId: getFulfillmentCommandCenter
+      tags: [admin]
+      responses:
+        "200":
+          description: Center
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [items, stats]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/CommandCenterItem" }
+                  stats: { $ref: "#/components/schemas/CommandCenterStats" }
   /vendor/orders:
-    get: { operationId: listVendorOrders, tags: [admin], responses: { "200": { description: Orders, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericArray" } } } } } }
+    get:
+      operationId: listVendorOrders
+      tags: [admin]
+      responses:
+        "200":
+          description: Orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/VendorOrderGroup" }
   /vendor/items:
-    get: { operationId: listVendorItems, tags: [admin], responses: { "200": { description: Items, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } } } }
+    get:
+      operationId: listVendorItems
+      tags: [admin]
+      responses:
+        "200":
+          description: Items
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [items, buckets]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/VendorItem" }
+                  buckets: { $ref: "#/components/schemas/VendorBuckets" }
   /vendor/orders/{orderId}/packet:
     get:
       operationId: getVendorOrderPacket
       tags: [admin]
       parameters: [{ name: orderId, in: path, required: true, schema: { type: integer } }]
       responses:
-        "200": { description: Packet, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+        "200":
+          description: Packet
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [order, items]
+                properties:
+                  order: { $ref: "#/components/schemas/VendorPacketOrder" }
+                  supplier:
+                    oneOf:
+                      - { $ref: "#/components/schemas/SupplierRowLite" }
+                      - { type: "null" }
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/VendorItem" }
+                  products:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  quoteAssets:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
   /orders/{id}/intake-analysis:
     get:
       operationId: getOrderIntakeAnalysis
       tags: [admin]
       parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
       responses:
-        "200": { description: Analysis, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+        "200":
+          description: Analysis
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [analysis]
+                properties:
+                  analysis: {}
   /orders/{id}/email-events:
     get:
       operationId: getOrderEmailEvents
       tags: [admin]
       parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
       responses:
-        "200": { description: Events, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+        "200":
+          description: Events
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [events]
+                properties:
+                  events:
+                    type: array
+                    items: { $ref: "#/components/schemas/UsageEventRow" }
   /orders/{id}/exception:
     post:
       operationId: setOrderException
       tags: [admin]
       parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
       responses:
-        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [ok, order]
+                properties:
+                  ok: { type: boolean }
+                  order: { $ref: "#/components/schemas/OrderRow" }
   /orders/{id}/artwork-needed:
     post:
       operationId: setOrderArtworkNeeded
       tags: [admin]
       parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
       responses:
-        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/AdminGenericObject" } } } }
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required: [ok, order]
+                properties:
+                  ok: { type: boolean }
+                  order: { $ref: "#/components/schemas/OrderRow" }
 
   # ----- workflow.ts -----
   /workflow/rules:
@@ -2746,6 +3291,666 @@ components:
       items:
         type: object
         additionalProperties: true
+
+    # ----- Task #19: typed admin response shapes -------------------------
+    # These schemas type the most stable fields on high-traffic admin
+    # endpoints (orders, fulfillment, documents, portal requests, email
+    # readiness). Fields not declared still pass through — zod.object
+    # strips unknown keys by default and sendValidated emits the original
+    # payload — but declared fields are now contract-enforced.
+
+    OrderListItem:
+      type: object
+      required: [id]
+      additionalProperties: true
+      properties:
+        id: { type: integer }
+        orderNumber: { type: ["string", "null"] }
+        partnerId: { type: ["integer", "null"] }
+        partnerName: { type: ["string", "null"] }
+        eventId: { type: ["integer", "null"] }
+        eventName: { type: ["string", "null"] }
+        packageId: { type: ["integer", "null"] }
+        packageName: { type: ["string", "null"] }
+        portalType: { type: ["string", "null"] }
+        shippingVenueId: { type: ["integer", "null"] }
+        venueName: { type: ["string", "null"] }
+        assignedSupplierId: { type: ["integer", "null"] }
+        supplierName: { type: ["string", "null"] }
+        fulfillmentMode: { type: ["string", "null"] }
+        status: { type: ["string", "null"] }
+        paymentStatus: { type: ["string", "null"] }
+        fulfillmentStatus: { type: ["string", "null"] }
+        exceptionState: { type: ["string", "null"] }
+        exceptionType: { type: ["string", "null"] }
+        artworkNeededFlag: { type: ["boolean", "null"] }
+        contactName: { type: ["string", "null"] }
+        contactEmail: { type: ["string", "null"] }
+        companyName: { type: ["string", "null"] }
+        totalEstimate: { type: ["string", "number", "null"] }
+        subtotal: { type: ["string", "number", "null"] }
+        taxAmount: { type: ["string", "number", "null"] }
+        currency: { type: ["string", "null"] }
+        currencySource: { type: ["string", "null"] }
+        taxMode: { type: ["string", "null"] }
+        taxModeSource: { type: ["string", "null"] }
+        taxLabel: { type: ["string", "null"] }
+        taxRate: { type: ["string", "number", "null"] }
+        taxInclusive: { type: ["boolean", "null"] }
+        createdAt: { type: ["string", "null"], format: date-time }
+        totalShortage: { type: ["integer", "number", "null"] }
+        totalReserved: { type: ["integer", "number", "null"] }
+        itemFulfillmentModes:
+          type: ["array", "null"]
+          items: { type: string }
+
+    OrderRow:
+      type: object
+      required: [id]
+      additionalProperties: true
+      properties:
+        id: { type: integer }
+        orderNumber: { type: ["string", "null"] }
+        partnerId: { type: ["integer", "null"] }
+        eventId: { type: ["integer", "null"] }
+        packageId: { type: ["integer", "null"] }
+        portalType: { type: ["string", "null"] }
+        shippingVenueId: { type: ["integer", "null"] }
+        assignedSupplierId: { type: ["integer", "null"] }
+        status: { type: ["string", "null"] }
+        paymentStatus: { type: ["string", "null"] }
+        fulfillmentMode: { type: ["string", "null"] }
+        fulfillmentStatus: { type: ["string", "null"] }
+        exceptionState: { type: ["string", "null"] }
+        exceptionType: { type: ["string", "null"] }
+        exceptionMessage: { type: ["string", "null"] }
+        exceptionUpdatedAt: { type: ["string", "null"], format: date-time }
+        exceptionUpdatedBy: { type: ["string", "null"] }
+        artworkNeededFlag: { type: ["boolean", "null"] }
+        artworkBrief: { type: ["string", "null"] }
+        artworkContactName: { type: ["string", "null"] }
+        artworkContactEmail: { type: ["string", "null"] }
+        contactName: { type: ["string", "null"] }
+        contactEmail: { type: ["string", "null"] }
+        contactPhone: { type: ["string", "null"] }
+        companyName: { type: ["string", "null"] }
+        notes: { type: ["string", "null"] }
+        vendorNotes: { type: ["string", "null"] }
+        totalEstimate: { type: ["string", "number", "null"] }
+        subtotal: { type: ["string", "number", "null"] }
+        taxAmount: { type: ["string", "number", "null"] }
+        currency: { type: ["string", "null"] }
+        taxRate: { type: ["string", "number", "null"] }
+        taxInclusive: { type: ["boolean", "null"] }
+        createdAt: { type: ["string", "null"], format: date-time }
+        updatedAt: { type: ["string", "null"], format: date-time }
+
+    OrderItemRow:
+      type: object
+      required: [id]
+      additionalProperties: true
+      properties:
+        id: { type: integer }
+        orderId: { type: ["integer", "null"] }
+        itemType: { type: ["string", "null"] }
+        productId: { type: ["integer", "null"] }
+        packageId: { type: ["integer", "null"] }
+        brandingZoneId: { type: ["integer", "null"] }
+        name: { type: ["string", "null"] }
+        quantity: { type: ["integer", "number", "null"] }
+        unitPrice: { type: ["string", "number", "null"] }
+        fulfillmentMode: { type: ["string", "null"] }
+        hardwareRequired: { type: ["boolean", "null"] }
+        printDemandQuantity: { type: ["integer", "number", "null"] }
+        hardwareDemandQuantity: { type: ["integer", "number", "null"] }
+        reservedQuantity: { type: ["integer", "number", "null"] }
+        shortageQuantity: { type: ["integer", "number", "null"] }
+        inventorySourceCityId: { type: ["integer", "null"] }
+        inventorySourceInventoryId: { type: ["integer", "null"] }
+        inventoryReservationId: { type: ["integer", "null"] }
+        internalFulfillmentNotes: { type: ["string", "null"] }
+        assignedSupplierId: { type: ["integer", "null"] }
+        supplierAssignmentSource: { type: ["string", "null"] }
+        supplierStatus: { type: ["string", "null"] }
+        supplierDueDate: { type: ["string", "null"], format: date-time }
+        supplierShipDate: { type: ["string", "null"], format: date-time }
+        supplierDeliveryDate: { type: ["string", "null"], format: date-time }
+        supplierInstallDate: { type: ["string", "null"], format: date-time }
+        supplierAcknowledgedAt: { type: ["string", "null"], format: date-time }
+        supplierReference: { type: ["string", "null"] }
+        supplierNotes: { type: ["string", "null"] }
+        exceptionFlag: { type: ["boolean", "null"] }
+        exceptionReason: { type: ["string", "null"] }
+        exceptionNotes: { type: ["string", "null"] }
+        artworkFileUrl: { type: ["string", "null"] }
+        notes: { type: ["string", "null"] }
+        sortOrder: { type: ["integer", "null"] }
+
+    OrderItemDetail:
+      type: object
+      required: [id]
+      additionalProperties: true
+      properties:
+        id: { type: integer }
+        orderId: { type: ["integer", "null"] }
+        itemType: { type: ["string", "null"] }
+        productId: { type: ["integer", "null"] }
+        productName: { type: ["string", "null"] }
+        productImageUrl: { type: ["string", "null"] }
+        productHardwareIncluded: { type: ["boolean", "null"] }
+        productInventoryTracked: { type: ["boolean", "null"] }
+        productUsePartnerInventoryEligible: { type: ["boolean", "null"] }
+        packageId: { type: ["integer", "null"] }
+        packageName: { type: ["string", "null"] }
+        brandingZoneId: { type: ["integer", "null"] }
+        brandingZoneName: { type: ["string", "null"] }
+        name: { type: ["string", "null"] }
+        quantity: { type: ["integer", "number", "null"] }
+        unitPrice: { type: ["string", "number", "null"] }
+        fulfillmentMode: { type: ["string", "null"] }
+        assignedSupplierId: { type: ["integer", "null"] }
+        assignedSupplierName: { type: ["string", "null"] }
+        supplierStatus: { type: ["string", "null"] }
+        exceptionFlag: { type: ["boolean", "null"] }
+        sortOrder: { type: ["integer", "null"] }
+
+    PartnerRowLite:
+      type: object
+      required: [id]
+      additionalProperties: true
+      properties:
+        id: { type: integer }
+        slug: { type: ["string", "null"] }
+        companyName: { type: ["string", "null"] }
+        contactEmail: { type: ["string", "null"] }
+
+    EventRowLite:
+      type: object
+      required: [id]
+      additionalProperties: true
+      properties:
+        id: { type: integer }
+        name: { type: ["string", "null"] }
+        eventStartDate: { type: ["string", "null"], format: date-time }
+        cityId: { type: ["integer", "null"] }
+
+    VenueRowLite:
+      type: object
+      required: [id]
+      additionalProperties: true
+      properties:
+        id: { type: integer }
+        name: { type: ["string", "null"] }
+
+    SupplierRowLite:
+      type: object
+      required: [id]
+      additionalProperties: true
+      properties:
+        id: { type: integer }
+        name: { type: ["string", "null"] }
+        isActive: { type: ["boolean", "null"] }
+
+    PartnerContactRow:
+      type: object
+      required: [id]
+      additionalProperties: true
+      properties:
+        id: { type: integer }
+        partnerId: { type: ["integer", "null"] }
+        name: { type: ["string", "null"] }
+        email: { type: ["string", "null"] }
+        role: { type: ["string", "null"] }
+
+    AssignmentHistoryRow:
+      type: object
+      required: [id]
+      additionalProperties: true
+      properties:
+        id: { type: integer }
+        fromSupplierId: { type: ["integer", "null"] }
+        toSupplierId: { type: ["integer", "null"] }
+        fromSupplierName: { type: ["string", "null"] }
+        toSupplierName: { type: ["string", "null"] }
+        source: { type: ["string", "null"] }
+        note: { type: ["string", "null"] }
+        changedByUserId: { type: ["string", "null"] }
+        createdAt: { type: ["string", "null"], format: date-time }
+
+    StatusEventRow:
+      type: object
+      required: [id]
+      additionalProperties: true
+      properties:
+        id: { type: integer }
+        orderItemId: { type: ["integer", "null"] }
+        fromStatus: { type: ["string", "null"] }
+        toStatus: { type: ["string", "null"] }
+        changedByRole: { type: ["string", "null"] }
+        changedByUserId: { type: ["string", "null"] }
+        note: { type: ["string", "null"] }
+        createdAt: { type: ["string", "null"], format: date-time }
+
+    SupplierRecommendation:
+      type: object
+      required: [supplierId, name, reason]
+      additionalProperties: true
+      properties:
+        supplierId: { type: integer }
+        name: { type: string }
+        reason: { type: string }
+
+    CommandCenterItem:
+      type: object
+      required: [id]
+      additionalProperties: true
+      properties:
+        id: { type: integer }
+        orderId: { type: ["integer", "null"] }
+        orderNumber: { type: ["string", "null"] }
+        partnerId: { type: ["integer", "null"] }
+        partnerName: { type: ["string", "null"] }
+        eventId: { type: ["integer", "null"] }
+        eventName: { type: ["string", "null"] }
+        eventStartDate: { type: ["string", "null"], format: date-time }
+        portalType: { type: ["string", "null"] }
+        name: { type: ["string", "null"] }
+        quantity: { type: ["integer", "number", "null"] }
+        productId: { type: ["integer", "null"] }
+        fulfillmentMode: { type: ["string", "null"] }
+        printDemandQuantity: { type: ["integer", "number", "null"] }
+        hardwareDemandQuantity: { type: ["integer", "number", "null"] }
+        shortageQuantity: { type: ["integer", "number", "null"] }
+        assignedSupplierId: { type: ["integer", "null"] }
+        supplierName: { type: ["string", "null"] }
+        supplierAssignmentSource: { type: ["string", "null"] }
+        supplierStatus: { type: ["string", "null"] }
+        supplierDueDate: { type: ["string", "null"], format: date-time }
+        supplierShipDate: { type: ["string", "null"], format: date-time }
+        supplierAcknowledgedAt: { type: ["string", "null"], format: date-time }
+        supplierReference: { type: ["string", "null"] }
+        exceptionFlag: { type: ["boolean", "null"] }
+        exceptionReason: { type: ["string", "null"] }
+        hasQuoteSpec: { type: ["boolean", "null"] }
+        cityId: { type: ["integer", "null"] }
+        createdAt: { type: ["string", "null"], format: date-time }
+
+    CommandCenterStats:
+      type: object
+      additionalProperties: true
+      required: [total, unassigned, awaitingAcknowledge, dueSoon, awaitingAssets, issues, shippedNotDelivered, installUpcoming, completedToday, missingQuoteSpec, withShortage]
+      properties:
+        total: { type: integer }
+        unassigned: { type: integer }
+        awaitingAcknowledge: { type: integer }
+        dueSoon: { type: integer }
+        awaitingAssets: { type: integer }
+        issues: { type: integer }
+        shippedNotDelivered: { type: integer }
+        installUpcoming: { type: integer }
+        completedToday: { type: integer }
+        missingQuoteSpec: { type: integer }
+        withShortage: { type: integer }
+
+    VendorItem:
+      type: object
+      required: [id]
+      additionalProperties: true
+      properties:
+        id: { type: integer }
+        orderId: { type: ["integer", "null"] }
+        orderNumber: { type: ["string", "null"] }
+        partnerName: { type: ["string", "null"] }
+        eventName: { type: ["string", "null"] }
+        eventStartDate: { type: ["string", "null"], format: date-time }
+        venueName: { type: ["string", "null"] }
+        name: { type: ["string", "null"] }
+        quantity: { type: ["integer", "number", "null"] }
+        fulfillmentMode: { type: ["string", "null"] }
+        printDemandQuantity: { type: ["integer", "number", "null"] }
+        hardwareDemandQuantity: { type: ["integer", "number", "null"] }
+        supplierStatus: { type: ["string", "null"] }
+        supplierDueDate: { type: ["string", "null"], format: date-time }
+        supplierShipDate: { type: ["string", "null"], format: date-time }
+        supplierReference: { type: ["string", "null"] }
+        supplierNotes: { type: ["string", "null"] }
+        exceptionFlag: { type: ["boolean", "null"] }
+        exceptionReason: { type: ["string", "null"] }
+        artworkFileUrl: { type: ["string", "null"] }
+        notes: { type: ["string", "null"] }
+        productId: { type: ["integer", "null"] }
+
+    VendorOrderGroup:
+      type: object
+      required: [id]
+      additionalProperties: true
+      properties:
+        id: { type: integer }
+        orderNumber: { type: ["string", "null"] }
+        partnerName: { type: ["string", "null"] }
+        eventName: { type: ["string", "null"] }
+        eventStartDate: { type: ["string", "null"], format: date-time }
+        venueName: { type: ["string", "null"] }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/VendorItem" }
+        itemCount: { type: integer }
+        dueSoon: { type: integer }
+        issues: { type: integer }
+
+    VendorBuckets:
+      type: object
+      additionalProperties: true
+      required: [all, due_soon, awaiting_assets, in_production, issues, recent]
+      properties:
+        all: { type: integer }
+        due_soon: { type: integer }
+        awaiting_assets: { type: integer }
+        in_production: { type: integer }
+        issues: { type: integer }
+        recent: { type: integer }
+
+    VendorPacketOrder:
+      type: object
+      required: [id]
+      additionalProperties: true
+      properties:
+        id: { type: integer }
+        orderNumber: { type: ["string", "null"] }
+        partnerName: { type: ["string", "null"] }
+        eventName: { type: ["string", "null"] }
+        eventStartDate: { type: ["string", "null"], format: date-time }
+        venueName: { type: ["string", "null"] }
+        cityName: { type: ["string", "null"] }
+        contactName: { type: ["string", "null"] }
+        contactEmail: { type: ["string", "null"] }
+        contactPhone: { type: ["string", "null"] }
+        notes: { type: ["string", "null"] }
+        vendorNotes: { type: ["string", "null"] }
+        createdAt: { type: ["string", "null"], format: date-time }
+
+    UsageEventRow:
+      type: object
+      required: [id]
+      additionalProperties: true
+      properties:
+        id: { type: integer }
+        eventType: { type: ["string", "null"] }
+        partnerId: { type: ["integer", "null"] }
+        objectType: { type: ["string", "null"] }
+        objectId: { type: ["integer", "null"] }
+        meta: {}
+        createdAt: { type: ["string", "null"], format: date-time }
+        occurredAt: { type: ["string", "null"], format: date-time }
+
+    DocumentRow:
+      type: object
+      required: [id]
+      additionalProperties: true
+      properties:
+        id: { type: integer }
+        title: { type: ["string", "null"] }
+        description: { type: ["string", "null"] }
+        category: { type: ["string", "null"] }
+        documentType: { type: ["string", "null"] }
+        visibilityLevel: { type: ["string", "null"] }
+        storageKey: { type: ["string", "null"] }
+        originalFilename: { type: ["string", "null"] }
+        fileMimeType: { type: ["string", "null"] }
+        fileSizeBytes: { type: ["integer", "number", "null"] }
+        versionLabel: { type: ["string", "null"] }
+        expirationDate: { type: ["string", "null"], format: date-time }
+        isActive: { type: ["boolean", "null"] }
+        isCustomerDownloadable: { type: ["boolean", "null"] }
+        requiresAdminApproval: { type: ["boolean", "null"] }
+        autoSendWhenRequested: { type: ["boolean", "null"] }
+        internalNotes: { type: ["string", "null"] }
+        uploadedByUserId: { type: ["string", "null"] }
+        createdAt: { type: ["string", "null"], format: date-time }
+        updatedAt: { type: ["string", "null"], format: date-time }
+
+    DocumentEventRow:
+      type: object
+      required: [id]
+      additionalProperties: true
+      properties:
+        id: { type: integer }
+        documentId: { type: ["integer", "null"] }
+        requestId: { type: ["integer", "null"] }
+        assignmentId: { type: ["integer", "null"] }
+        partnerId: { type: ["integer", "null"] }
+        customerEmail: { type: ["string", "null"] }
+        customerName: { type: ["string", "null"] }
+        eventType: { type: ["string", "null"] }
+        eventMetadata: {}
+        ipAddress: { type: ["string", "null"] }
+        userAgent: { type: ["string", "null"] }
+        performedByUserId: { type: ["string", "null"] }
+        createdAt: { type: ["string", "null"], format: date-time }
+
+    DocumentRequestRow:
+      type: object
+      required: [id]
+      additionalProperties: true
+      properties:
+        id: { type: integer }
+        partnerId: { type: ["integer", "null"] }
+        requesterName: { type: ["string", "null"] }
+        requesterEmail: { type: ["string", "null"] }
+        requesterCompany: { type: ["string", "null"] }
+        requestedDocumentTypes:
+          type: ["array", "null"]
+          items: { type: string }
+        requestMessage: { type: ["string", "null"] }
+        status: { type: ["string", "null"] }
+        reviewedByUserId: { type: ["string", "null"] }
+        reviewedAt: { type: ["string", "null"], format: date-time }
+        createdAt: { type: ["string", "null"], format: date-time }
+
+    DocumentAssignmentRow:
+      type: object
+      required: [id]
+      additionalProperties: true
+      properties:
+        id: { type: integer }
+        documentId: { type: ["integer", "null"] }
+        partnerId: { type: ["integer", "null"] }
+        customerEmail: { type: ["string", "null"] }
+        customerName: { type: ["string", "null"] }
+        assignedByUserId: { type: ["string", "null"] }
+        accessStatus: { type: ["string", "null"] }
+        signedUrlExpiresAt: { type: ["string", "null"], format: date-time }
+        createdAt: { type: ["string", "null"], format: date-time }
+
+    DocumentSettings:
+      type: object
+      additionalProperties: true
+      required: [publicSalesExpirationDays, customerRequestableExpirationDays, privateComplianceExpirationDays, maxUploadSizeBytes, allowedFileTypes, customerSelfServiceEnabled]
+      properties:
+        publicSalesExpirationDays: { type: integer }
+        customerRequestableExpirationDays: { type: integer }
+        privateComplianceExpirationDays: { type: integer }
+        maxUploadSizeBytes: { type: integer }
+        allowedFileTypes:
+          type: array
+          items: { type: string }
+        customerSelfServiceEnabled: { type: boolean }
+
+    RequestFileRow:
+      type: object
+      required: [id]
+      additionalProperties: true
+      properties:
+        id: { type: integer }
+        requestType: { type: ["string", "null"] }
+        requestId: { type: ["integer", "null"] }
+        fileUrl: { type: ["string", "null"] }
+        fileName: { type: ["string", "null"] }
+        fileType: { type: ["string", "null"] }
+        label: { type: ["string", "null"] }
+        createdAt: { type: ["string", "null"], format: date-time }
+
+    PortalRequestRow:
+      type: object
+      required: [id]
+      additionalProperties: true
+      properties:
+        id: { type: integer }
+        partnerId: { type: ["integer", "null"] }
+        requestType: { type: ["string", "null"] }
+        requestCategory: { type: ["string", "null"] }
+        mainContactName: { type: ["string", "null"] }
+        companyName: { type: ["string", "null"] }
+        email: { type: ["string", "null"] }
+        phone: { type: ["string", "null"] }
+        eventName: { type: ["string", "null"] }
+        eventDate: { type: ["string", "null"] }
+        neededByDate: { type: ["string", "null"] }
+        status: { type: ["string", "null"] }
+        quoteStatus: { type: ["string", "null"] }
+        priority: { type: ["string", "null"] }
+        adminNotes: { type: ["string", "null"] }
+        estimatedPrice: { type: ["string", "number", "null"] }
+        createdAt: { type: ["string", "null"], format: date-time }
+
+    ProductRequestListItem:
+      type: object
+      required: [id]
+      additionalProperties: true
+      properties:
+        id: { type: integer }
+        partnerId: { type: ["integer", "null"] }
+        productId: { type: ["integer", "null"] }
+        mainContactName: { type: ["string", "null"] }
+        companyName: { type: ["string", "null"] }
+        email: { type: ["string", "null"] }
+        eventName: { type: ["string", "null"] }
+        eventDate: { type: ["string", "null"] }
+        neededByDate: { type: ["string", "null"] }
+        quantity: { type: ["integer", "null"] }
+        selectedSize: { type: ["string", "null"] }
+        status: { type: ["string", "null"] }
+        quoteStatus: { type: ["string", "null"] }
+        priority: { type: ["string", "null"] }
+        productName: { type: ["string", "null"] }
+        createdAt: { type: ["string", "null"], format: date-time }
+
+    BrandingRequestListItem:
+      type: object
+      required: [id]
+      additionalProperties: true
+      properties:
+        id: { type: integer }
+        partnerId: { type: ["integer", "null"] }
+        brandingLocationId: { type: ["integer", "null"] }
+        mainContactName: { type: ["string", "null"] }
+        companyName: { type: ["string", "null"] }
+        email: { type: ["string", "null"] }
+        eventName: { type: ["string", "null"] }
+        eventDate: { type: ["string", "null"] }
+        neededByDate: { type: ["string", "null"] }
+        status: { type: ["string", "null"] }
+        quoteStatus: { type: ["string", "null"] }
+        priority: { type: ["string", "null"] }
+        locationName: { type: ["string", "null"] }
+        createdAt: { type: ["string", "null"], format: date-time }
+
+    BrandingLocationRef:
+      type: object
+      required: [id]
+      additionalProperties: true
+      properties:
+        id: { type: integer }
+        name: { type: ["string", "null"] }
+        category: { type: ["string", "null"] }
+        description: { type: ["string", "null"] }
+        sizeWidth: { type: ["string", "number", "null"] }
+        sizeHeight: { type: ["string", "number", "null"] }
+        sizeUnit: { type: ["string", "null"] }
+        previewImageUrl: { type: ["string", "null"] }
+
+    ProductRef:
+      type: object
+      required: [id]
+      additionalProperties: true
+      properties:
+        id: { type: integer }
+        name: { type: ["string", "null"] }
+        category: { type: ["string", "null"] }
+        imageUrl: { type: ["string", "null"] }
+
+    EmailReadinessSystem:
+      type: object
+      additionalProperties: true
+      required: [resendKeyConfigured]
+      properties:
+        resendKeyConfigured: { type: boolean }
+        resendError: { type: ["string", "null"] }
+        defaultFromAddress: { type: ["string", "null"] }
+        publicUrl: {}
+
+    EmailReadinessSummary:
+      type: object
+      additionalProperties: true
+      required: [ready, warning, incomplete]
+      properties:
+        ready: { type: integer }
+        warning: { type: integer }
+        incomplete: { type: integer }
+
+    EmailReadinessPartner:
+      type: object
+      required: [partnerId]
+      additionalProperties: true
+      properties:
+        partnerId: { type: integer }
+        slug: { type: ["string", "null"] }
+        name: { type: ["string", "null"] }
+        emailEnabled: { type: ["boolean", "null"] }
+        fromName: { type: ["string", "null"] }
+        replyToEmail: { type: ["string", "null"] }
+        internalForwardEmail: { type: ["string", "null"] }
+        routingEmail: { type: ["string", "null"] }
+        ccEmail: { type: ["string", "null"] }
+        recipientCount: { type: integer }
+        missing:
+          type: array
+          items: { type: string }
+        warnings:
+          type: array
+          items: { type: string }
+        status: { type: string, enum: [ready, warning, incomplete] }
+        ready: { type: boolean }
+
+    EmailReadinessFailure:
+      type: object
+      required: [id]
+      additionalProperties: true
+      properties:
+        id: { type: integer }
+        eventType: { type: ["string", "null"] }
+        partnerId: { type: ["integer", "null"] }
+        objectType: { type: ["string", "null"] }
+        objectId: { type: ["integer", "null"] }
+        meta: {}
+        createdAt: { type: ["string", "null"], format: date-time }
+
+    DnsCheck:
+      type: object
+      additionalProperties: true
+      required: [label, recordType, hostname, status, values, expectationHint, note]
+      properties:
+        label: { type: string }
+        recordType: { type: string, enum: [TXT, CNAME] }
+        hostname: { type: string }
+        status: { type: string, enum: [present, missing, unknown] }
+        values:
+          type: array
+          items: { type: string }
+        matchedExpectation: { type: ["boolean", "null"] }
+        expectationHint: { type: string }
+        note: { type: string }
+        error: { type: ["string", "null"] }
 
     SurveyAssetPhoto:
       type: object

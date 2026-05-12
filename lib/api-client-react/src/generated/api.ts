@@ -21,35 +21,72 @@ import type {
   AdminGenericObject,
   AdminGenericObjectOrNull,
   AdminNote,
+  ApproveDocumentRequestSend200,
   AssetsLibrary,
+  BrandingRequestListItem,
+  BulkAssignOrderItemSupplier200,
   CreateNoteBody,
   CreatePartnerAssetBody,
   CreatePartnerBody,
   CreatePricingRuleBody,
   DashboardSummary,
+  DeactivateAdminDocument200,
+  DeleteOrder200,
+  DenyDocumentRequest200,
   ErrorEnvelope,
+  GetAdminDocument200,
+  GetAdminDocumentActivity200,
+  GetAdminDocumentSettings200,
+  GetAllRequestsSummary200,
+  GetBrandingRequest200,
+  GetEmailReadiness200,
+  GetEmailReadinessDns200,
+  GetFulfillmentCommandCenter200,
+  GetOrder200,
+  GetOrderEmailEvents200,
+  GetOrderIntakeAnalysis200,
+  GetOrderItemHistory200,
+  GetPortalRequest200,
+  GetProductRequest200,
   GetRecentRequestsParams,
+  GetVendorOrderPacket200,
   HealthStatus,
+  ListAdminDocumentAssignments200,
+  ListAdminDocumentEvents200,
+  ListAdminDocumentRequests200,
+  ListAdminDocuments200,
   ListPartnersParams,
   ListPricingRulesParams,
   ListRequestsParams,
+  ListVendorItems200,
   OrderItemProductionBlockResponse,
+  OrderItemRow,
+  OrderListItem,
   OrderReadinessResponse,
+  OrderRow,
   Partner,
   PartnerAsset,
   PdfResponse,
+  PortalRequestRow,
   PricingRule,
+  ProductRequestListItem,
   ProductionDashboardResponse,
   PublicPartner,
   PublicPricingItem,
+  ReactivateAdminDocument200,
+  ReplaceAdminDocument200,
   RequestDetail,
   RequestListResponse,
   RequestSummary,
+  SendAdminDocuments200,
+  SetOrderArtworkNeeded200,
+  SetOrderException200,
   SetOrderItemProductionBlockBody,
   StatusCount,
   SubmitRequestBody,
   SubmitRequestResponse,
   SupplierPacketResponse,
+  SupplierRecommendation,
   SurveyAdminPull200,
   SurveyAssetDelete200,
   SurveyAssetPatch,
@@ -60,11 +97,17 @@ import type {
   SurveyTestConnection200,
   SurveyWebhook200,
   SurveyWebhookBody,
+  TestAdminDocumentLink200,
+  UpdateAdminDocument200,
+  UpdateBrandingRequest200,
   UpdatePartnerBody,
   UpdatePricingRuleBody,
+  UpdateProductRequest200,
   UpdateRequestBody,
+  UploadAdminDocument200,
   UploadUrlRequest,
   UploadUrlResponse,
+  VendorOrderGroup,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -19341,8 +19384,8 @@ export const getListAdminDocumentsUrl = () => {
 
 export const listAdminDocuments = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getListAdminDocumentsUrl(), {
+): Promise<ListAdminDocuments200> => {
+  return customFetch<ListAdminDocuments200>(getListAdminDocumentsUrl(), {
     ...options,
     method: "GET",
   });
@@ -19409,8 +19452,8 @@ export const getUploadAdminDocumentUrl = () => {
 
 export const uploadAdminDocument = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUploadAdminDocumentUrl(), {
+): Promise<UploadAdminDocument200> => {
+  return customFetch<UploadAdminDocument200>(getUploadAdminDocumentUrl(), {
     ...options,
     method: "POST",
   });
@@ -19485,8 +19528,8 @@ export const getGetAdminDocumentUrl = (id: number) => {
 export const getAdminDocument = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetAdminDocumentUrl(id), {
+): Promise<GetAdminDocument200> => {
+  return customFetch<GetAdminDocument200>(getGetAdminDocumentUrl(id), {
     ...options,
     method: "GET",
   });
@@ -19565,8 +19608,8 @@ export const getUpdateAdminDocumentUrl = (id: number) => {
 export const updateAdminDocument = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdateAdminDocumentUrl(id), {
+): Promise<UpdateAdminDocument200> => {
+  return customFetch<UpdateAdminDocument200>(getUpdateAdminDocumentUrl(id), {
     ...options,
     method: "PATCH",
   });
@@ -19643,8 +19686,8 @@ export const getReplaceAdminDocumentUrl = (id: number) => {
 export const replaceAdminDocument = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getReplaceAdminDocumentUrl(id), {
+): Promise<ReplaceAdminDocument200> => {
+  return customFetch<ReplaceAdminDocument200>(getReplaceAdminDocumentUrl(id), {
     ...options,
     method: "POST",
   });
@@ -19721,11 +19764,14 @@ export const getDeactivateAdminDocumentUrl = (id: number) => {
 export const deactivateAdminDocument = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getDeactivateAdminDocumentUrl(id), {
-    ...options,
-    method: "POST",
-  });
+): Promise<DeactivateAdminDocument200> => {
+  return customFetch<DeactivateAdminDocument200>(
+    getDeactivateAdminDocumentUrl(id),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
 };
 
 export const getDeactivateAdminDocumentMutationOptions = <
@@ -19799,11 +19845,14 @@ export const getReactivateAdminDocumentUrl = (id: number) => {
 export const reactivateAdminDocument = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getReactivateAdminDocumentUrl(id), {
-    ...options,
-    method: "POST",
-  });
+): Promise<ReactivateAdminDocument200> => {
+  return customFetch<ReactivateAdminDocument200>(
+    getReactivateAdminDocumentUrl(id),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
 };
 
 export const getReactivateAdminDocumentMutationOptions = <
@@ -19877,11 +19926,14 @@ export const getTestAdminDocumentLinkUrl = (id: number) => {
 export const testAdminDocumentLink = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getTestAdminDocumentLinkUrl(id), {
-    ...options,
-    method: "POST",
-  });
+): Promise<TestAdminDocumentLink200> => {
+  return customFetch<TestAdminDocumentLink200>(
+    getTestAdminDocumentLinkUrl(id),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
 };
 
 export const getTestAdminDocumentLinkMutationOptions = <
@@ -19955,11 +20007,14 @@ export const getGetAdminDocumentActivityUrl = (id: number) => {
 export const getAdminDocumentActivity = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetAdminDocumentActivityUrl(id), {
-    ...options,
-    method: "GET",
-  });
+): Promise<GetAdminDocumentActivity200> => {
+  return customFetch<GetAdminDocumentActivity200>(
+    getGetAdminDocumentActivityUrl(id),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
 };
 
 export const getGetAdminDocumentActivityQueryKey = (id: number) => {
@@ -20036,11 +20091,14 @@ export const getListAdminDocumentEventsUrl = () => {
 
 export const listAdminDocumentEvents = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getListAdminDocumentEventsUrl(), {
-    ...options,
-    method: "GET",
-  });
+): Promise<ListAdminDocumentEvents200> => {
+  return customFetch<ListAdminDocumentEvents200>(
+    getListAdminDocumentEventsUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
 };
 
 export const getListAdminDocumentEventsQueryKey = () => {
@@ -20105,11 +20163,14 @@ export const getListAdminDocumentRequestsUrl = () => {
 
 export const listAdminDocumentRequests = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getListAdminDocumentRequestsUrl(), {
-    ...options,
-    method: "GET",
-  });
+): Promise<ListAdminDocumentRequests200> => {
+  return customFetch<ListAdminDocumentRequests200>(
+    getListAdminDocumentRequestsUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
 };
 
 export const getListAdminDocumentRequestsQueryKey = () => {
@@ -20175,11 +20236,14 @@ export const getApproveDocumentRequestSendUrl = (id: number) => {
 export const approveDocumentRequestSend = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getApproveDocumentRequestSendUrl(id), {
-    ...options,
-    method: "POST",
-  });
+): Promise<ApproveDocumentRequestSend200> => {
+  return customFetch<ApproveDocumentRequestSend200>(
+    getApproveDocumentRequestSendUrl(id),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
 };
 
 export const getApproveDocumentRequestSendMutationOptions = <
@@ -20253,8 +20317,8 @@ export const getDenyDocumentRequestUrl = (id: number) => {
 export const denyDocumentRequest = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getDenyDocumentRequestUrl(id), {
+): Promise<DenyDocumentRequest200> => {
+  return customFetch<DenyDocumentRequest200>(getDenyDocumentRequestUrl(id), {
     ...options,
     method: "POST",
   });
@@ -20330,8 +20394,8 @@ export const getSendAdminDocumentsUrl = () => {
 
 export const sendAdminDocuments = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getSendAdminDocumentsUrl(), {
+): Promise<SendAdminDocuments200> => {
+  return customFetch<SendAdminDocuments200>(getSendAdminDocumentsUrl(), {
     ...options,
     method: "POST",
   });
@@ -20405,11 +20469,14 @@ export const getListAdminDocumentAssignmentsUrl = () => {
 
 export const listAdminDocumentAssignments = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getListAdminDocumentAssignmentsUrl(), {
-    ...options,
-    method: "GET",
-  });
+): Promise<ListAdminDocumentAssignments200> => {
+  return customFetch<ListAdminDocumentAssignments200>(
+    getListAdminDocumentAssignmentsUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
 };
 
 export const getListAdminDocumentAssignmentsQueryKey = () => {
@@ -20475,11 +20542,14 @@ export const getGetAdminDocumentSettingsUrl = () => {
 
 export const getAdminDocumentSettings = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetAdminDocumentSettingsUrl(), {
-    ...options,
-    method: "GET",
-  });
+): Promise<GetAdminDocumentSettings200> => {
+  return customFetch<GetAdminDocumentSettings200>(
+    getGetAdminDocumentSettingsUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
 };
 
 export const getGetAdminDocumentSettingsQueryKey = () => {
@@ -20544,8 +20614,8 @@ export const getListPortalRequestsUrl = () => {
 
 export const listPortalRequests = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListPortalRequestsUrl(), {
+): Promise<PortalRequestRow[]> => {
+  return customFetch<PortalRequestRow[]>(getListPortalRequestsUrl(), {
     ...options,
     method: "GET",
   });
@@ -20613,8 +20683,8 @@ export const getGetPortalRequestUrl = (id: number) => {
 export const getPortalRequest = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetPortalRequestUrl(id), {
+): Promise<GetPortalRequest200> => {
+  return customFetch<GetPortalRequest200>(getGetPortalRequestUrl(id), {
     ...options,
     method: "GET",
   });
@@ -20693,8 +20763,8 @@ export const getUpdatePortalRequestUrl = (id: number) => {
 export const updatePortalRequest = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdatePortalRequestUrl(id), {
+): Promise<PortalRequestRow> => {
+  return customFetch<PortalRequestRow>(getUpdatePortalRequestUrl(id), {
     ...options,
     method: "PATCH",
   });
@@ -20770,8 +20840,8 @@ export const getListProductRequestsUrl = () => {
 
 export const listProductRequests = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListProductRequestsUrl(), {
+): Promise<ProductRequestListItem[]> => {
+  return customFetch<ProductRequestListItem[]>(getListProductRequestsUrl(), {
     ...options,
     method: "GET",
   });
@@ -20839,8 +20909,8 @@ export const getGetProductRequestUrl = (id: number) => {
 export const getProductRequest = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetProductRequestUrl(id), {
+): Promise<GetProductRequest200> => {
+  return customFetch<GetProductRequest200>(getGetProductRequestUrl(id), {
     ...options,
     method: "GET",
   });
@@ -20919,8 +20989,8 @@ export const getUpdateProductRequestUrl = (id: number) => {
 export const updateProductRequest = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdateProductRequestUrl(id), {
+): Promise<UpdateProductRequest200> => {
+  return customFetch<UpdateProductRequest200>(getUpdateProductRequestUrl(id), {
     ...options,
     method: "PATCH",
   });
@@ -20996,8 +21066,8 @@ export const getListBrandingRequestsUrl = () => {
 
 export const listBrandingRequests = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListBrandingRequestsUrl(), {
+): Promise<BrandingRequestListItem[]> => {
+  return customFetch<BrandingRequestListItem[]>(getListBrandingRequestsUrl(), {
     ...options,
     method: "GET",
   });
@@ -21065,8 +21135,8 @@ export const getGetBrandingRequestUrl = (id: number) => {
 export const getBrandingRequest = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetBrandingRequestUrl(id), {
+): Promise<GetBrandingRequest200> => {
+  return customFetch<GetBrandingRequest200>(getGetBrandingRequestUrl(id), {
     ...options,
     method: "GET",
   });
@@ -21145,11 +21215,14 @@ export const getUpdateBrandingRequestUrl = (id: number) => {
 export const updateBrandingRequest = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdateBrandingRequestUrl(id), {
-    ...options,
-    method: "PATCH",
-  });
+): Promise<UpdateBrandingRequest200> => {
+  return customFetch<UpdateBrandingRequest200>(
+    getUpdateBrandingRequestUrl(id),
+    {
+      ...options,
+      method: "PATCH",
+    },
+  );
 };
 
 export const getUpdateBrandingRequestMutationOptions = <
@@ -21222,8 +21295,8 @@ export const getGetAllRequestsSummaryUrl = () => {
 
 export const getAllRequestsSummary = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetAllRequestsSummaryUrl(), {
+): Promise<GetAllRequestsSummary200> => {
+  return customFetch<GetAllRequestsSummary200>(getGetAllRequestsSummaryUrl(), {
     ...options,
     method: "GET",
   });
@@ -21290,8 +21363,8 @@ export const getGetEmailReadinessUrl = () => {
 
 export const getEmailReadiness = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetEmailReadinessUrl(), {
+): Promise<GetEmailReadiness200> => {
+  return customFetch<GetEmailReadiness200>(getGetEmailReadinessUrl(), {
     ...options,
     method: "GET",
   });
@@ -21358,8 +21431,8 @@ export const getGetEmailReadinessDnsUrl = () => {
 
 export const getEmailReadinessDns = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetEmailReadinessDnsUrl(), {
+): Promise<GetEmailReadinessDns200> => {
+  return customFetch<GetEmailReadinessDns200>(getGetEmailReadinessDnsUrl(), {
     ...options,
     method: "GET",
   });
@@ -21426,8 +21499,8 @@ export const getListOrdersUrl = () => {
 
 export const listOrders = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListOrdersUrl(), {
+): Promise<OrderListItem[]> => {
+  return customFetch<OrderListItem[]>(getListOrdersUrl(), {
     ...options,
     method: "GET",
   });
@@ -21495,8 +21568,8 @@ export const getGetOrderUrl = (id: number) => {
 export const getOrder = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetOrderUrl(id), {
+): Promise<GetOrder200> => {
+  return customFetch<GetOrder200>(getGetOrderUrl(id), {
     ...options,
     method: "GET",
   });
@@ -21573,8 +21646,8 @@ export const getUpdateOrderUrl = (id: number) => {
 export const updateOrder = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdateOrderUrl(id), {
+): Promise<OrderRow> => {
+  return customFetch<OrderRow>(getUpdateOrderUrl(id), {
     ...options,
     method: "PATCH",
   });
@@ -21651,8 +21724,8 @@ export const getDeleteOrderUrl = (id: number) => {
 export const deleteOrder = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getDeleteOrderUrl(id), {
+): Promise<DeleteOrder200> => {
+  return customFetch<DeleteOrder200>(getDeleteOrderUrl(id), {
     ...options,
     method: "DELETE",
   });
@@ -21733,8 +21806,8 @@ export const assignOrderItemSupplier = async (
   orderId: number,
   itemId: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(
+): Promise<OrderItemRow> => {
+  return customFetch<OrderItemRow>(
     getAssignOrderItemSupplierUrl(orderId, itemId),
     {
       ...options,
@@ -21814,8 +21887,8 @@ export const getBulkAssignOrderItemSupplierUrl = (orderId: number) => {
 export const bulkAssignOrderItemSupplier = async (
   orderId: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(
+): Promise<BulkAssignOrderItemSupplier200> => {
+  return customFetch<BulkAssignOrderItemSupplier200>(
     getBulkAssignOrderItemSupplierUrl(orderId),
     {
       ...options,
@@ -21899,8 +21972,8 @@ export const updateOrderItemStatus = async (
   orderId: number,
   itemId: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(
+): Promise<OrderItemRow> => {
+  return customFetch<OrderItemRow>(
     getUpdateOrderItemStatusUrl(orderId, itemId),
     {
       ...options,
@@ -21984,8 +22057,8 @@ export const setOrderItemException = async (
   orderId: number,
   itemId: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(
+): Promise<OrderItemRow> => {
+  return customFetch<OrderItemRow>(
     getSetOrderItemExceptionUrl(orderId, itemId),
     {
       ...options,
@@ -22066,8 +22139,8 @@ export const updateOrderItemDates = async (
   orderId: number,
   itemId: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(
+): Promise<OrderItemRow> => {
+  return customFetch<OrderItemRow>(
     getUpdateOrderItemDatesUrl(orderId, itemId),
     {
       ...options,
@@ -22148,8 +22221,8 @@ export const getOrderItemHistory = async (
   orderId: number,
   itemId: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(
+): Promise<GetOrderItemHistory200> => {
+  return customFetch<GetOrderItemHistory200>(
     getGetOrderItemHistoryUrl(orderId, itemId),
     {
       ...options,
@@ -22246,8 +22319,8 @@ export const getOrderItemSupplierRecommendations = async (
   orderId: number,
   itemId: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(
+): Promise<SupplierRecommendation[]> => {
+  return customFetch<SupplierRecommendation[]>(
     getGetOrderItemSupplierRecommendationsUrl(orderId, itemId),
     {
       ...options,
@@ -22345,11 +22418,14 @@ export const getGetFulfillmentCommandCenterUrl = () => {
 
 export const getFulfillmentCommandCenter = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetFulfillmentCommandCenterUrl(), {
-    ...options,
-    method: "GET",
-  });
+): Promise<GetFulfillmentCommandCenter200> => {
+  return customFetch<GetFulfillmentCommandCenter200>(
+    getGetFulfillmentCommandCenterUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
 };
 
 export const getGetFulfillmentCommandCenterQueryKey = () => {
@@ -22415,8 +22491,8 @@ export const getListVendorOrdersUrl = () => {
 
 export const listVendorOrders = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListVendorOrdersUrl(), {
+): Promise<VendorOrderGroup[]> => {
+  return customFetch<VendorOrderGroup[]>(getListVendorOrdersUrl(), {
     ...options,
     method: "GET",
   });
@@ -22483,8 +22559,8 @@ export const getListVendorItemsUrl = () => {
 
 export const listVendorItems = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getListVendorItemsUrl(), {
+): Promise<ListVendorItems200> => {
+  return customFetch<ListVendorItems200>(getListVendorItemsUrl(), {
     ...options,
     method: "GET",
   });
@@ -22552,11 +22628,14 @@ export const getGetVendorOrderPacketUrl = (orderId: number) => {
 export const getVendorOrderPacket = async (
   orderId: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetVendorOrderPacketUrl(orderId), {
-    ...options,
-    method: "GET",
-  });
+): Promise<GetVendorOrderPacket200> => {
+  return customFetch<GetVendorOrderPacket200>(
+    getGetVendorOrderPacketUrl(orderId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
 };
 
 export const getGetVendorOrderPacketQueryKey = (orderId: number) => {
@@ -22634,11 +22713,14 @@ export const getGetOrderIntakeAnalysisUrl = (id: number) => {
 export const getOrderIntakeAnalysis = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetOrderIntakeAnalysisUrl(id), {
-    ...options,
-    method: "GET",
-  });
+): Promise<GetOrderIntakeAnalysis200> => {
+  return customFetch<GetOrderIntakeAnalysis200>(
+    getGetOrderIntakeAnalysisUrl(id),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
 };
 
 export const getGetOrderIntakeAnalysisQueryKey = (id: number) => {
@@ -22715,8 +22797,8 @@ export const getGetOrderEmailEventsUrl = (id: number) => {
 export const getOrderEmailEvents = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetOrderEmailEventsUrl(id), {
+): Promise<GetOrderEmailEvents200> => {
+  return customFetch<GetOrderEmailEvents200>(getGetOrderEmailEventsUrl(id), {
     ...options,
     method: "GET",
   });
@@ -22795,8 +22877,8 @@ export const getSetOrderExceptionUrl = (id: number) => {
 export const setOrderException = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getSetOrderExceptionUrl(id), {
+): Promise<SetOrderException200> => {
+  return customFetch<SetOrderException200>(getSetOrderExceptionUrl(id), {
     ...options,
     method: "POST",
   });
@@ -22873,11 +22955,14 @@ export const getSetOrderArtworkNeededUrl = (id: number) => {
 export const setOrderArtworkNeeded = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getSetOrderArtworkNeededUrl(id), {
-    ...options,
-    method: "POST",
-  });
+): Promise<SetOrderArtworkNeeded200> => {
+  return customFetch<SetOrderArtworkNeeded200>(
+    getSetOrderArtworkNeededUrl(id),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
 };
 
 export const getSetOrderArtworkNeededMutationOptions = <

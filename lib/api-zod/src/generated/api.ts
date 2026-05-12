@@ -3240,123 +3240,345 @@ export const CommitPackageExtractionResponse = zod.record(
   zod.unknown(),
 );
 
-export const ListAdminDocumentsResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListAdminDocumentsResponse = zod.object({
+  documents: zod.array(
+    zod.object({
+      id: zod.number(),
+      title: zod.string().nullish(),
+      description: zod.string().nullish(),
+      category: zod.string().nullish(),
+      documentType: zod.string().nullish(),
+      visibilityLevel: zod.string().nullish(),
+      storageKey: zod.string().nullish(),
+      originalFilename: zod.string().nullish(),
+      fileMimeType: zod.string().nullish(),
+      fileSizeBytes: zod.union([zod.number(), zod.number()]).nullish(),
+      versionLabel: zod.string().nullish(),
+      expirationDate: zod.coerce.date().nullish(),
+      isActive: zod.boolean().nullish(),
+      isCustomerDownloadable: zod.boolean().nullish(),
+      requiresAdminApproval: zod.boolean().nullish(),
+      autoSendWhenRequested: zod.boolean().nullish(),
+      internalNotes: zod.string().nullish(),
+      uploadedByUserId: zod.string().nullish(),
+      createdAt: zod.coerce.date().nullish(),
+      updatedAt: zod.coerce.date().nullish(),
+    }),
+  ),
+});
 
-export const UploadAdminDocumentResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const UploadAdminDocumentResponse = zod.object({
+  document: zod.object({
+    id: zod.number(),
+    title: zod.string().nullish(),
+    description: zod.string().nullish(),
+    category: zod.string().nullish(),
+    documentType: zod.string().nullish(),
+    visibilityLevel: zod.string().nullish(),
+    storageKey: zod.string().nullish(),
+    originalFilename: zod.string().nullish(),
+    fileMimeType: zod.string().nullish(),
+    fileSizeBytes: zod.union([zod.number(), zod.number()]).nullish(),
+    versionLabel: zod.string().nullish(),
+    expirationDate: zod.coerce.date().nullish(),
+    isActive: zod.boolean().nullish(),
+    isCustomerDownloadable: zod.boolean().nullish(),
+    requiresAdminApproval: zod.boolean().nullish(),
+    autoSendWhenRequested: zod.boolean().nullish(),
+    internalNotes: zod.string().nullish(),
+    uploadedByUserId: zod.string().nullish(),
+    createdAt: zod.coerce.date().nullish(),
+    updatedAt: zod.coerce.date().nullish(),
+  }),
+  uploadUrl: zod.string(),
+});
 
 export const GetAdminDocumentParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const GetAdminDocumentResponse = zod.record(zod.string(), zod.unknown());
+export const GetAdminDocumentResponse = zod.object({
+  document: zod.object({
+    id: zod.number(),
+    title: zod.string().nullish(),
+    description: zod.string().nullish(),
+    category: zod.string().nullish(),
+    documentType: zod.string().nullish(),
+    visibilityLevel: zod.string().nullish(),
+    storageKey: zod.string().nullish(),
+    originalFilename: zod.string().nullish(),
+    fileMimeType: zod.string().nullish(),
+    fileSizeBytes: zod.union([zod.number(), zod.number()]).nullish(),
+    versionLabel: zod.string().nullish(),
+    expirationDate: zod.coerce.date().nullish(),
+    isActive: zod.boolean().nullish(),
+    isCustomerDownloadable: zod.boolean().nullish(),
+    requiresAdminApproval: zod.boolean().nullish(),
+    autoSendWhenRequested: zod.boolean().nullish(),
+    internalNotes: zod.string().nullish(),
+    uploadedByUserId: zod.string().nullish(),
+    createdAt: zod.coerce.date().nullish(),
+    updatedAt: zod.coerce.date().nullish(),
+  }),
+});
 
 export const UpdateAdminDocumentParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const UpdateAdminDocumentResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const UpdateAdminDocumentResponse = zod.object({
+  document: zod.object({
+    id: zod.number(),
+    title: zod.string().nullish(),
+    description: zod.string().nullish(),
+    category: zod.string().nullish(),
+    documentType: zod.string().nullish(),
+    visibilityLevel: zod.string().nullish(),
+    storageKey: zod.string().nullish(),
+    originalFilename: zod.string().nullish(),
+    fileMimeType: zod.string().nullish(),
+    fileSizeBytes: zod.union([zod.number(), zod.number()]).nullish(),
+    versionLabel: zod.string().nullish(),
+    expirationDate: zod.coerce.date().nullish(),
+    isActive: zod.boolean().nullish(),
+    isCustomerDownloadable: zod.boolean().nullish(),
+    requiresAdminApproval: zod.boolean().nullish(),
+    autoSendWhenRequested: zod.boolean().nullish(),
+    internalNotes: zod.string().nullish(),
+    uploadedByUserId: zod.string().nullish(),
+    createdAt: zod.coerce.date().nullish(),
+    updatedAt: zod.coerce.date().nullish(),
+  }),
+});
 
 export const ReplaceAdminDocumentParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const ReplaceAdminDocumentResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ReplaceAdminDocumentResponse = zod.object({
+  document: zod.object({
+    id: zod.number(),
+    title: zod.string().nullish(),
+    description: zod.string().nullish(),
+    category: zod.string().nullish(),
+    documentType: zod.string().nullish(),
+    visibilityLevel: zod.string().nullish(),
+    storageKey: zod.string().nullish(),
+    originalFilename: zod.string().nullish(),
+    fileMimeType: zod.string().nullish(),
+    fileSizeBytes: zod.union([zod.number(), zod.number()]).nullish(),
+    versionLabel: zod.string().nullish(),
+    expirationDate: zod.coerce.date().nullish(),
+    isActive: zod.boolean().nullish(),
+    isCustomerDownloadable: zod.boolean().nullish(),
+    requiresAdminApproval: zod.boolean().nullish(),
+    autoSendWhenRequested: zod.boolean().nullish(),
+    internalNotes: zod.string().nullish(),
+    uploadedByUserId: zod.string().nullish(),
+    createdAt: zod.coerce.date().nullish(),
+    updatedAt: zod.coerce.date().nullish(),
+  }),
+  uploadUrl: zod.string(),
+});
 
 export const DeactivateAdminDocumentParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const DeactivateAdminDocumentResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const DeactivateAdminDocumentResponse = zod.object({
+  document: zod.object({
+    id: zod.number(),
+    title: zod.string().nullish(),
+    description: zod.string().nullish(),
+    category: zod.string().nullish(),
+    documentType: zod.string().nullish(),
+    visibilityLevel: zod.string().nullish(),
+    storageKey: zod.string().nullish(),
+    originalFilename: zod.string().nullish(),
+    fileMimeType: zod.string().nullish(),
+    fileSizeBytes: zod.union([zod.number(), zod.number()]).nullish(),
+    versionLabel: zod.string().nullish(),
+    expirationDate: zod.coerce.date().nullish(),
+    isActive: zod.boolean().nullish(),
+    isCustomerDownloadable: zod.boolean().nullish(),
+    requiresAdminApproval: zod.boolean().nullish(),
+    autoSendWhenRequested: zod.boolean().nullish(),
+    internalNotes: zod.string().nullish(),
+    uploadedByUserId: zod.string().nullish(),
+    createdAt: zod.coerce.date().nullish(),
+    updatedAt: zod.coerce.date().nullish(),
+  }),
+});
 
 export const ReactivateAdminDocumentParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const ReactivateAdminDocumentResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ReactivateAdminDocumentResponse = zod.object({
+  document: zod.object({
+    id: zod.number(),
+    title: zod.string().nullish(),
+    description: zod.string().nullish(),
+    category: zod.string().nullish(),
+    documentType: zod.string().nullish(),
+    visibilityLevel: zod.string().nullish(),
+    storageKey: zod.string().nullish(),
+    originalFilename: zod.string().nullish(),
+    fileMimeType: zod.string().nullish(),
+    fileSizeBytes: zod.union([zod.number(), zod.number()]).nullish(),
+    versionLabel: zod.string().nullish(),
+    expirationDate: zod.coerce.date().nullish(),
+    isActive: zod.boolean().nullish(),
+    isCustomerDownloadable: zod.boolean().nullish(),
+    requiresAdminApproval: zod.boolean().nullish(),
+    autoSendWhenRequested: zod.boolean().nullish(),
+    internalNotes: zod.string().nullish(),
+    uploadedByUserId: zod.string().nullish(),
+    createdAt: zod.coerce.date().nullish(),
+    updatedAt: zod.coerce.date().nullish(),
+  }),
+});
 
 export const TestAdminDocumentLinkParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const TestAdminDocumentLinkResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const TestAdminDocumentLinkResponse = zod.object({
+  url: zod.string(),
+  expiresInSeconds: zod.number(),
+});
 
 export const GetAdminDocumentActivityParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const GetAdminDocumentActivityResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const GetAdminDocumentActivityResponse = zod.object({
+  events: zod.array(
+    zod.object({
+      id: zod.number(),
+      documentId: zod.number().nullish(),
+      requestId: zod.number().nullish(),
+      assignmentId: zod.number().nullish(),
+      partnerId: zod.number().nullish(),
+      customerEmail: zod.string().nullish(),
+      customerName: zod.string().nullish(),
+      eventType: zod.string().nullish(),
+      eventMetadata: zod.unknown().optional(),
+      ipAddress: zod.string().nullish(),
+      userAgent: zod.string().nullish(),
+      performedByUserId: zod.string().nullish(),
+      createdAt: zod.coerce.date().nullish(),
+    }),
+  ),
+});
 
-export const ListAdminDocumentEventsResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListAdminDocumentEventsResponse = zod.object({
+  events: zod.array(
+    zod.object({
+      id: zod.number(),
+      documentId: zod.number().nullish(),
+      requestId: zod.number().nullish(),
+      assignmentId: zod.number().nullish(),
+      partnerId: zod.number().nullish(),
+      customerEmail: zod.string().nullish(),
+      customerName: zod.string().nullish(),
+      eventType: zod.string().nullish(),
+      eventMetadata: zod.unknown().optional(),
+      ipAddress: zod.string().nullish(),
+      userAgent: zod.string().nullish(),
+      performedByUserId: zod.string().nullish(),
+      createdAt: zod.coerce.date().nullish(),
+    }),
+  ),
+});
 
-export const ListAdminDocumentRequestsResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListAdminDocumentRequestsResponse = zod.object({
+  requests: zod.array(
+    zod.object({
+      id: zod.number(),
+      partnerId: zod.number().nullish(),
+      requesterName: zod.string().nullish(),
+      requesterEmail: zod.string().nullish(),
+      requesterCompany: zod.string().nullish(),
+      requestedDocumentTypes: zod.array(zod.string()).nullish(),
+      requestMessage: zod.string().nullish(),
+      status: zod.string().nullish(),
+      reviewedByUserId: zod.string().nullish(),
+      reviewedAt: zod.coerce.date().nullish(),
+      createdAt: zod.coerce.date().nullish(),
+    }),
+  ),
+});
 
 export const ApproveDocumentRequestSendParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const ApproveDocumentRequestSendResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ApproveDocumentRequestSendResponse = zod.object({
+  ok: zod.boolean(),
+  assignmentCount: zod.number(),
+  emailSent: zod.boolean(),
+});
 
 export const DenyDocumentRequestParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const DenyDocumentRequestResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const DenyDocumentRequestResponse = zod.object({
+  ok: zod.boolean(),
+});
 
-export const SendAdminDocumentsResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const SendAdminDocumentsResponse = zod.object({
+  ok: zod.boolean(),
+  sentCount: zod.number(),
+});
 
-export const ListAdminDocumentAssignmentsResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListAdminDocumentAssignmentsResponse = zod.object({
+  assignments: zod.array(
+    zod.object({
+      id: zod.number(),
+      documentId: zod.number().nullish(),
+      partnerId: zod.number().nullish(),
+      customerEmail: zod.string().nullish(),
+      customerName: zod.string().nullish(),
+      assignedByUserId: zod.string().nullish(),
+      accessStatus: zod.string().nullish(),
+      signedUrlExpiresAt: zod.coerce.date().nullish(),
+      createdAt: zod.coerce.date().nullish(),
+    }),
+  ),
+});
 
-export const GetAdminDocumentSettingsResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const GetAdminDocumentSettingsResponse = zod.object({
+  settings: zod.object({
+    publicSalesExpirationDays: zod.number(),
+    customerRequestableExpirationDays: zod.number(),
+    privateComplianceExpirationDays: zod.number(),
+    maxUploadSizeBytes: zod.number(),
+    allowedFileTypes: zod.array(zod.string()),
+    customerSelfServiceEnabled: zod.boolean(),
+  }),
+});
 
-export const ListPortalRequestsResponseItem = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListPortalRequestsResponseItem = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  requestType: zod.string().nullish(),
+  requestCategory: zod.string().nullish(),
+  mainContactName: zod.string().nullish(),
+  companyName: zod.string().nullish(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  eventName: zod.string().nullish(),
+  eventDate: zod.string().nullish(),
+  neededByDate: zod.string().nullish(),
+  status: zod.string().nullish(),
+  quoteStatus: zod.string().nullish(),
+  priority: zod.string().nullish(),
+  adminNotes: zod.string().nullish(),
+  estimatedPrice: zod.union([zod.string(), zod.number()]).nullish(),
+  createdAt: zod.coerce.date().nullish(),
+});
 export const ListPortalRequestsResponse = zod.array(
   ListPortalRequestsResponseItem,
 );
@@ -3365,21 +3587,87 @@ export const GetPortalRequestParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const GetPortalRequestResponse = zod.record(zod.string(), zod.unknown());
+export const GetPortalRequestResponse = zod
+  .object({
+    id: zod.number(),
+    partnerId: zod.number().nullish(),
+    requestType: zod.string().nullish(),
+    requestCategory: zod.string().nullish(),
+    mainContactName: zod.string().nullish(),
+    companyName: zod.string().nullish(),
+    email: zod.string().nullish(),
+    phone: zod.string().nullish(),
+    eventName: zod.string().nullish(),
+    eventDate: zod.string().nullish(),
+    neededByDate: zod.string().nullish(),
+    status: zod.string().nullish(),
+    quoteStatus: zod.string().nullish(),
+    priority: zod.string().nullish(),
+    adminNotes: zod.string().nullish(),
+    estimatedPrice: zod.union([zod.string(), zod.number()]).nullish(),
+    createdAt: zod.coerce.date().nullish(),
+  })
+  .and(
+    zod.object({
+      files: zod
+        .array(
+          zod.object({
+            id: zod.number(),
+            requestType: zod.string().nullish(),
+            requestId: zod.number().nullish(),
+            fileUrl: zod.string().nullish(),
+            fileName: zod.string().nullish(),
+            fileType: zod.string().nullish(),
+            label: zod.string().nullish(),
+            createdAt: zod.coerce.date().nullish(),
+          }),
+        )
+        .optional(),
+    }),
+  );
 
 export const UpdatePortalRequestParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const UpdatePortalRequestResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const UpdatePortalRequestResponse = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  requestType: zod.string().nullish(),
+  requestCategory: zod.string().nullish(),
+  mainContactName: zod.string().nullish(),
+  companyName: zod.string().nullish(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  eventName: zod.string().nullish(),
+  eventDate: zod.string().nullish(),
+  neededByDate: zod.string().nullish(),
+  status: zod.string().nullish(),
+  quoteStatus: zod.string().nullish(),
+  priority: zod.string().nullish(),
+  adminNotes: zod.string().nullish(),
+  estimatedPrice: zod.union([zod.string(), zod.number()]).nullish(),
+  createdAt: zod.coerce.date().nullish(),
+});
 
-export const ListProductRequestsResponseItem = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListProductRequestsResponseItem = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  productId: zod.number().nullish(),
+  mainContactName: zod.string().nullish(),
+  companyName: zod.string().nullish(),
+  email: zod.string().nullish(),
+  eventName: zod.string().nullish(),
+  eventDate: zod.string().nullish(),
+  neededByDate: zod.string().nullish(),
+  quantity: zod.number().nullish(),
+  selectedSize: zod.string().nullish(),
+  status: zod.string().nullish(),
+  quoteStatus: zod.string().nullish(),
+  priority: zod.string().nullish(),
+  productName: zod.string().nullish(),
+  createdAt: zod.coerce.date().nullish(),
+});
 export const ListProductRequestsResponse = zod.array(
   ListProductRequestsResponseItem,
 );
@@ -3388,24 +3676,59 @@ export const GetProductRequestParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const GetProductRequestResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const GetProductRequestResponse = zod.object({
+  id: zod.number(),
+  files: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        requestType: zod.string().nullish(),
+        requestId: zod.number().nullish(),
+        fileUrl: zod.string().nullish(),
+        fileName: zod.string().nullish(),
+        fileType: zod.string().nullish(),
+        label: zod.string().nullish(),
+        createdAt: zod.coerce.date().nullish(),
+      }),
+    )
+    .optional(),
+  product: zod
+    .union([
+      zod.object({
+        id: zod.number(),
+        name: zod.string().nullish(),
+        category: zod.string().nullish(),
+        imageUrl: zod.string().nullish(),
+      }),
+      zod.null(),
+    ])
+    .optional(),
+});
 
 export const UpdateProductRequestParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const UpdateProductRequestResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const UpdateProductRequestResponse = zod.object({
+  id: zod.number(),
+});
 
-export const ListBrandingRequestsResponseItem = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListBrandingRequestsResponseItem = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  brandingLocationId: zod.number().nullish(),
+  mainContactName: zod.string().nullish(),
+  companyName: zod.string().nullish(),
+  email: zod.string().nullish(),
+  eventName: zod.string().nullish(),
+  eventDate: zod.string().nullish(),
+  neededByDate: zod.string().nullish(),
+  status: zod.string().nullish(),
+  quoteStatus: zod.string().nullish(),
+  priority: zod.string().nullish(),
+  locationName: zod.string().nullish(),
+  createdAt: zod.coerce.date().nullish(),
+});
 export const ListBrandingRequestsResponse = zod.array(
   ListBrandingRequestsResponseItem,
 );
@@ -3414,182 +3737,869 @@ export const GetBrandingRequestParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const GetBrandingRequestResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const GetBrandingRequestResponse = zod.object({
+  id: zod.number(),
+  files: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        requestType: zod.string().nullish(),
+        requestId: zod.number().nullish(),
+        fileUrl: zod.string().nullish(),
+        fileName: zod.string().nullish(),
+        fileType: zod.string().nullish(),
+        label: zod.string().nullish(),
+        createdAt: zod.coerce.date().nullish(),
+      }),
+    )
+    .optional(),
+  location: zod
+    .union([
+      zod.object({
+        id: zod.number(),
+        name: zod.string().nullish(),
+        category: zod.string().nullish(),
+        description: zod.string().nullish(),
+        sizeWidth: zod.union([zod.string(), zod.number()]).nullish(),
+        sizeHeight: zod.union([zod.string(), zod.number()]).nullish(),
+        sizeUnit: zod.string().nullish(),
+        previewImageUrl: zod.string().nullish(),
+      }),
+      zod.null(),
+    ])
+    .optional(),
+});
 
 export const UpdateBrandingRequestParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const UpdateBrandingRequestResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const UpdateBrandingRequestResponse = zod.object({
+  id: zod.number(),
+});
 
-export const GetAllRequestsSummaryResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const GetAllRequestsSummaryResponse = zod.object({
+  portal: zod.number(),
+  product: zod.number(),
+  branding: zod.number(),
+  total: zod.number(),
+});
 
-export const GetEmailReadinessResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const GetEmailReadinessResponse = zod.object({
+  system: zod.object({
+    resendKeyConfigured: zod.boolean(),
+    resendError: zod.string().nullish(),
+    defaultFromAddress: zod.string().nullish(),
+    publicUrl: zod.unknown().optional(),
+  }),
+  summary: zod.object({
+    ready: zod.number(),
+    warning: zod.number(),
+    incomplete: zod.number(),
+  }),
+  partners: zod.array(
+    zod.object({
+      partnerId: zod.number(),
+      slug: zod.string().nullish(),
+      name: zod.string().nullish(),
+      emailEnabled: zod.boolean().nullish(),
+      fromName: zod.string().nullish(),
+      replyToEmail: zod.string().nullish(),
+      internalForwardEmail: zod.string().nullish(),
+      routingEmail: zod.string().nullish(),
+      ccEmail: zod.string().nullish(),
+      recipientCount: zod.number().optional(),
+      missing: zod.array(zod.string()).optional(),
+      warnings: zod.array(zod.string()).optional(),
+      status: zod.enum(["ready", "warning", "incomplete"]).optional(),
+      ready: zod.boolean().optional(),
+    }),
+  ),
+  recentFailures: zod.array(
+    zod.object({
+      id: zod.number(),
+      eventType: zod.string().nullish(),
+      partnerId: zod.number().nullish(),
+      objectType: zod.string().nullish(),
+      objectId: zod.number().nullish(),
+      meta: zod.unknown().optional(),
+      createdAt: zod.coerce.date().nullish(),
+    }),
+  ),
+});
 
-export const GetEmailReadinessDnsResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const GetEmailReadinessDnsResponse = zod.object({
+  senderDomain: zod.string().nullish(),
+  canonicalHost: zod.string().nullish(),
+  alignment: zod.boolean().nullish(),
+  checks: zod
+    .array(
+      zod.object({
+        label: zod.string(),
+        recordType: zod.enum(["TXT", "CNAME"]),
+        hostname: zod.string(),
+        status: zod.enum(["present", "missing", "unknown"]),
+        values: zod.array(zod.string()),
+        matchedExpectation: zod.boolean().nullish(),
+        expectationHint: zod.string(),
+        note: zod.string(),
+        error: zod.string().nullish(),
+      }),
+    )
+    .optional(),
+  note: zod.string().nullish(),
+});
 
-export const ListOrdersResponseItem = zod.record(zod.string(), zod.unknown());
+export const ListOrdersResponseItem = zod.object({
+  id: zod.number(),
+  orderNumber: zod.string().nullish(),
+  partnerId: zod.number().nullish(),
+  partnerName: zod.string().nullish(),
+  eventId: zod.number().nullish(),
+  eventName: zod.string().nullish(),
+  packageId: zod.number().nullish(),
+  packageName: zod.string().nullish(),
+  portalType: zod.string().nullish(),
+  shippingVenueId: zod.number().nullish(),
+  venueName: zod.string().nullish(),
+  assignedSupplierId: zod.number().nullish(),
+  supplierName: zod.string().nullish(),
+  fulfillmentMode: zod.string().nullish(),
+  status: zod.string().nullish(),
+  paymentStatus: zod.string().nullish(),
+  fulfillmentStatus: zod.string().nullish(),
+  exceptionState: zod.string().nullish(),
+  exceptionType: zod.string().nullish(),
+  artworkNeededFlag: zod.boolean().nullish(),
+  contactName: zod.string().nullish(),
+  contactEmail: zod.string().nullish(),
+  companyName: zod.string().nullish(),
+  totalEstimate: zod.union([zod.string(), zod.number()]).nullish(),
+  subtotal: zod.union([zod.string(), zod.number()]).nullish(),
+  taxAmount: zod.union([zod.string(), zod.number()]).nullish(),
+  currency: zod.string().nullish(),
+  currencySource: zod.string().nullish(),
+  taxMode: zod.string().nullish(),
+  taxModeSource: zod.string().nullish(),
+  taxLabel: zod.string().nullish(),
+  taxRate: zod.union([zod.string(), zod.number()]).nullish(),
+  taxInclusive: zod.boolean().nullish(),
+  createdAt: zod.coerce.date().nullish(),
+  totalShortage: zod.union([zod.number(), zod.number()]).nullish(),
+  totalReserved: zod.union([zod.number(), zod.number()]).nullish(),
+  itemFulfillmentModes: zod.array(zod.string()).nullish(),
+});
 export const ListOrdersResponse = zod.array(ListOrdersResponseItem);
 
 export const GetOrderParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const GetOrderResponse = zod.record(zod.string(), zod.unknown());
+export const GetOrderResponse = zod
+  .object({
+    id: zod.number(),
+    orderNumber: zod.string().nullish(),
+    partnerId: zod.number().nullish(),
+    eventId: zod.number().nullish(),
+    packageId: zod.number().nullish(),
+    portalType: zod.string().nullish(),
+    shippingVenueId: zod.number().nullish(),
+    assignedSupplierId: zod.number().nullish(),
+    status: zod.string().nullish(),
+    paymentStatus: zod.string().nullish(),
+    fulfillmentMode: zod.string().nullish(),
+    fulfillmentStatus: zod.string().nullish(),
+    exceptionState: zod.string().nullish(),
+    exceptionType: zod.string().nullish(),
+    exceptionMessage: zod.string().nullish(),
+    exceptionUpdatedAt: zod.coerce.date().nullish(),
+    exceptionUpdatedBy: zod.string().nullish(),
+    artworkNeededFlag: zod.boolean().nullish(),
+    artworkBrief: zod.string().nullish(),
+    artworkContactName: zod.string().nullish(),
+    artworkContactEmail: zod.string().nullish(),
+    contactName: zod.string().nullish(),
+    contactEmail: zod.string().nullish(),
+    contactPhone: zod.string().nullish(),
+    companyName: zod.string().nullish(),
+    notes: zod.string().nullish(),
+    vendorNotes: zod.string().nullish(),
+    totalEstimate: zod.union([zod.string(), zod.number()]).nullish(),
+    subtotal: zod.union([zod.string(), zod.number()]).nullish(),
+    taxAmount: zod.union([zod.string(), zod.number()]).nullish(),
+    currency: zod.string().nullish(),
+    taxRate: zod.union([zod.string(), zod.number()]).nullish(),
+    taxInclusive: zod.boolean().nullish(),
+    createdAt: zod.coerce.date().nullish(),
+    updatedAt: zod.coerce.date().nullish(),
+  })
+  .and(
+    zod.object({
+      items: zod
+        .array(
+          zod.object({
+            id: zod.number(),
+            orderId: zod.number().nullish(),
+            itemType: zod.string().nullish(),
+            productId: zod.number().nullish(),
+            productName: zod.string().nullish(),
+            productImageUrl: zod.string().nullish(),
+            productHardwareIncluded: zod.boolean().nullish(),
+            productInventoryTracked: zod.boolean().nullish(),
+            productUsePartnerInventoryEligible: zod.boolean().nullish(),
+            packageId: zod.number().nullish(),
+            packageName: zod.string().nullish(),
+            brandingZoneId: zod.number().nullish(),
+            brandingZoneName: zod.string().nullish(),
+            name: zod.string().nullish(),
+            quantity: zod.union([zod.number(), zod.number()]).nullish(),
+            unitPrice: zod.union([zod.string(), zod.number()]).nullish(),
+            fulfillmentMode: zod.string().nullish(),
+            assignedSupplierId: zod.number().nullish(),
+            assignedSupplierName: zod.string().nullish(),
+            supplierStatus: zod.string().nullish(),
+            exceptionFlag: zod.boolean().nullish(),
+            sortOrder: zod.number().nullish(),
+          }),
+        )
+        .optional(),
+      partner: zod
+        .union([
+          zod.object({
+            id: zod.number(),
+            slug: zod.string().nullish(),
+            companyName: zod.string().nullish(),
+            contactEmail: zod.string().nullish(),
+          }),
+          zod.null(),
+        ])
+        .optional(),
+      event: zod
+        .union([
+          zod.object({
+            id: zod.number(),
+            name: zod.string().nullish(),
+            eventStartDate: zod.coerce.date().nullish(),
+            cityId: zod.number().nullish(),
+          }),
+          zod.null(),
+        ])
+        .optional(),
+      venue: zod
+        .union([
+          zod.object({
+            id: zod.number(),
+            name: zod.string().nullish(),
+          }),
+          zod.null(),
+        ])
+        .optional(),
+      supplier: zod
+        .union([
+          zod.object({
+            id: zod.number(),
+            name: zod.string().nullish(),
+            isActive: zod.boolean().nullish(),
+          }),
+          zod.null(),
+        ])
+        .optional(),
+      partnerContacts: zod
+        .array(
+          zod.object({
+            id: zod.number(),
+            partnerId: zod.number().nullish(),
+            name: zod.string().nullish(),
+            email: zod.string().nullish(),
+            role: zod.string().nullish(),
+          }),
+        )
+        .optional(),
+    }),
+  );
 
 export const UpdateOrderParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const UpdateOrderResponse = zod.record(zod.string(), zod.unknown());
+export const UpdateOrderResponse = zod.object({
+  id: zod.number(),
+  orderNumber: zod.string().nullish(),
+  partnerId: zod.number().nullish(),
+  eventId: zod.number().nullish(),
+  packageId: zod.number().nullish(),
+  portalType: zod.string().nullish(),
+  shippingVenueId: zod.number().nullish(),
+  assignedSupplierId: zod.number().nullish(),
+  status: zod.string().nullish(),
+  paymentStatus: zod.string().nullish(),
+  fulfillmentMode: zod.string().nullish(),
+  fulfillmentStatus: zod.string().nullish(),
+  exceptionState: zod.string().nullish(),
+  exceptionType: zod.string().nullish(),
+  exceptionMessage: zod.string().nullish(),
+  exceptionUpdatedAt: zod.coerce.date().nullish(),
+  exceptionUpdatedBy: zod.string().nullish(),
+  artworkNeededFlag: zod.boolean().nullish(),
+  artworkBrief: zod.string().nullish(),
+  artworkContactName: zod.string().nullish(),
+  artworkContactEmail: zod.string().nullish(),
+  contactName: zod.string().nullish(),
+  contactEmail: zod.string().nullish(),
+  contactPhone: zod.string().nullish(),
+  companyName: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  vendorNotes: zod.string().nullish(),
+  totalEstimate: zod.union([zod.string(), zod.number()]).nullish(),
+  subtotal: zod.union([zod.string(), zod.number()]).nullish(),
+  taxAmount: zod.union([zod.string(), zod.number()]).nullish(),
+  currency: zod.string().nullish(),
+  taxRate: zod.union([zod.string(), zod.number()]).nullish(),
+  taxInclusive: zod.boolean().nullish(),
+  createdAt: zod.coerce.date().nullish(),
+  updatedAt: zod.coerce.date().nullish(),
+});
 
 export const DeleteOrderParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const DeleteOrderResponse = zod.record(zod.string(), zod.unknown());
+export const DeleteOrderResponse = zod.object({
+  success: zod.boolean(),
+});
 
 export const AssignOrderItemSupplierParams = zod.object({
   orderId: zod.coerce.number(),
   itemId: zod.coerce.number(),
 });
 
-export const AssignOrderItemSupplierResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const AssignOrderItemSupplierResponse = zod.object({
+  id: zod.number(),
+  orderId: zod.number().nullish(),
+  itemType: zod.string().nullish(),
+  productId: zod.number().nullish(),
+  packageId: zod.number().nullish(),
+  brandingZoneId: zod.number().nullish(),
+  name: zod.string().nullish(),
+  quantity: zod.union([zod.number(), zod.number()]).nullish(),
+  unitPrice: zod.union([zod.string(), zod.number()]).nullish(),
+  fulfillmentMode: zod.string().nullish(),
+  hardwareRequired: zod.boolean().nullish(),
+  printDemandQuantity: zod.union([zod.number(), zod.number()]).nullish(),
+  hardwareDemandQuantity: zod.union([zod.number(), zod.number()]).nullish(),
+  reservedQuantity: zod.union([zod.number(), zod.number()]).nullish(),
+  shortageQuantity: zod.union([zod.number(), zod.number()]).nullish(),
+  inventorySourceCityId: zod.number().nullish(),
+  inventorySourceInventoryId: zod.number().nullish(),
+  inventoryReservationId: zod.number().nullish(),
+  internalFulfillmentNotes: zod.string().nullish(),
+  assignedSupplierId: zod.number().nullish(),
+  supplierAssignmentSource: zod.string().nullish(),
+  supplierStatus: zod.string().nullish(),
+  supplierDueDate: zod.coerce.date().nullish(),
+  supplierShipDate: zod.coerce.date().nullish(),
+  supplierDeliveryDate: zod.coerce.date().nullish(),
+  supplierInstallDate: zod.coerce.date().nullish(),
+  supplierAcknowledgedAt: zod.coerce.date().nullish(),
+  supplierReference: zod.string().nullish(),
+  supplierNotes: zod.string().nullish(),
+  exceptionFlag: zod.boolean().nullish(),
+  exceptionReason: zod.string().nullish(),
+  exceptionNotes: zod.string().nullish(),
+  artworkFileUrl: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  sortOrder: zod.number().nullish(),
+});
 
 export const BulkAssignOrderItemSupplierParams = zod.object({
   orderId: zod.coerce.number(),
 });
 
-export const BulkAssignOrderItemSupplierResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const BulkAssignOrderItemSupplierResponse = zod.object({
+  updated: zod.number(),
+});
 
 export const UpdateOrderItemStatusParams = zod.object({
   orderId: zod.coerce.number(),
   itemId: zod.coerce.number(),
 });
 
-export const UpdateOrderItemStatusResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const UpdateOrderItemStatusResponse = zod.object({
+  id: zod.number(),
+  orderId: zod.number().nullish(),
+  itemType: zod.string().nullish(),
+  productId: zod.number().nullish(),
+  packageId: zod.number().nullish(),
+  brandingZoneId: zod.number().nullish(),
+  name: zod.string().nullish(),
+  quantity: zod.union([zod.number(), zod.number()]).nullish(),
+  unitPrice: zod.union([zod.string(), zod.number()]).nullish(),
+  fulfillmentMode: zod.string().nullish(),
+  hardwareRequired: zod.boolean().nullish(),
+  printDemandQuantity: zod.union([zod.number(), zod.number()]).nullish(),
+  hardwareDemandQuantity: zod.union([zod.number(), zod.number()]).nullish(),
+  reservedQuantity: zod.union([zod.number(), zod.number()]).nullish(),
+  shortageQuantity: zod.union([zod.number(), zod.number()]).nullish(),
+  inventorySourceCityId: zod.number().nullish(),
+  inventorySourceInventoryId: zod.number().nullish(),
+  inventoryReservationId: zod.number().nullish(),
+  internalFulfillmentNotes: zod.string().nullish(),
+  assignedSupplierId: zod.number().nullish(),
+  supplierAssignmentSource: zod.string().nullish(),
+  supplierStatus: zod.string().nullish(),
+  supplierDueDate: zod.coerce.date().nullish(),
+  supplierShipDate: zod.coerce.date().nullish(),
+  supplierDeliveryDate: zod.coerce.date().nullish(),
+  supplierInstallDate: zod.coerce.date().nullish(),
+  supplierAcknowledgedAt: zod.coerce.date().nullish(),
+  supplierReference: zod.string().nullish(),
+  supplierNotes: zod.string().nullish(),
+  exceptionFlag: zod.boolean().nullish(),
+  exceptionReason: zod.string().nullish(),
+  exceptionNotes: zod.string().nullish(),
+  artworkFileUrl: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  sortOrder: zod.number().nullish(),
+});
 
 export const SetOrderItemExceptionParams = zod.object({
   orderId: zod.coerce.number(),
   itemId: zod.coerce.number(),
 });
 
-export const SetOrderItemExceptionResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const SetOrderItemExceptionResponse = zod.object({
+  id: zod.number(),
+  orderId: zod.number().nullish(),
+  itemType: zod.string().nullish(),
+  productId: zod.number().nullish(),
+  packageId: zod.number().nullish(),
+  brandingZoneId: zod.number().nullish(),
+  name: zod.string().nullish(),
+  quantity: zod.union([zod.number(), zod.number()]).nullish(),
+  unitPrice: zod.union([zod.string(), zod.number()]).nullish(),
+  fulfillmentMode: zod.string().nullish(),
+  hardwareRequired: zod.boolean().nullish(),
+  printDemandQuantity: zod.union([zod.number(), zod.number()]).nullish(),
+  hardwareDemandQuantity: zod.union([zod.number(), zod.number()]).nullish(),
+  reservedQuantity: zod.union([zod.number(), zod.number()]).nullish(),
+  shortageQuantity: zod.union([zod.number(), zod.number()]).nullish(),
+  inventorySourceCityId: zod.number().nullish(),
+  inventorySourceInventoryId: zod.number().nullish(),
+  inventoryReservationId: zod.number().nullish(),
+  internalFulfillmentNotes: zod.string().nullish(),
+  assignedSupplierId: zod.number().nullish(),
+  supplierAssignmentSource: zod.string().nullish(),
+  supplierStatus: zod.string().nullish(),
+  supplierDueDate: zod.coerce.date().nullish(),
+  supplierShipDate: zod.coerce.date().nullish(),
+  supplierDeliveryDate: zod.coerce.date().nullish(),
+  supplierInstallDate: zod.coerce.date().nullish(),
+  supplierAcknowledgedAt: zod.coerce.date().nullish(),
+  supplierReference: zod.string().nullish(),
+  supplierNotes: zod.string().nullish(),
+  exceptionFlag: zod.boolean().nullish(),
+  exceptionReason: zod.string().nullish(),
+  exceptionNotes: zod.string().nullish(),
+  artworkFileUrl: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  sortOrder: zod.number().nullish(),
+});
 
 export const UpdateOrderItemDatesParams = zod.object({
   orderId: zod.coerce.number(),
   itemId: zod.coerce.number(),
 });
 
-export const UpdateOrderItemDatesResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const UpdateOrderItemDatesResponse = zod.object({
+  id: zod.number(),
+  orderId: zod.number().nullish(),
+  itemType: zod.string().nullish(),
+  productId: zod.number().nullish(),
+  packageId: zod.number().nullish(),
+  brandingZoneId: zod.number().nullish(),
+  name: zod.string().nullish(),
+  quantity: zod.union([zod.number(), zod.number()]).nullish(),
+  unitPrice: zod.union([zod.string(), zod.number()]).nullish(),
+  fulfillmentMode: zod.string().nullish(),
+  hardwareRequired: zod.boolean().nullish(),
+  printDemandQuantity: zod.union([zod.number(), zod.number()]).nullish(),
+  hardwareDemandQuantity: zod.union([zod.number(), zod.number()]).nullish(),
+  reservedQuantity: zod.union([zod.number(), zod.number()]).nullish(),
+  shortageQuantity: zod.union([zod.number(), zod.number()]).nullish(),
+  inventorySourceCityId: zod.number().nullish(),
+  inventorySourceInventoryId: zod.number().nullish(),
+  inventoryReservationId: zod.number().nullish(),
+  internalFulfillmentNotes: zod.string().nullish(),
+  assignedSupplierId: zod.number().nullish(),
+  supplierAssignmentSource: zod.string().nullish(),
+  supplierStatus: zod.string().nullish(),
+  supplierDueDate: zod.coerce.date().nullish(),
+  supplierShipDate: zod.coerce.date().nullish(),
+  supplierDeliveryDate: zod.coerce.date().nullish(),
+  supplierInstallDate: zod.coerce.date().nullish(),
+  supplierAcknowledgedAt: zod.coerce.date().nullish(),
+  supplierReference: zod.string().nullish(),
+  supplierNotes: zod.string().nullish(),
+  exceptionFlag: zod.boolean().nullish(),
+  exceptionReason: zod.string().nullish(),
+  exceptionNotes: zod.string().nullish(),
+  artworkFileUrl: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  sortOrder: zod.number().nullish(),
+});
 
 export const GetOrderItemHistoryParams = zod.object({
   orderId: zod.coerce.number(),
   itemId: zod.coerce.number(),
 });
 
-export const GetOrderItemHistoryResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const GetOrderItemHistoryResponse = zod.object({
+  assignments: zod.array(
+    zod.object({
+      id: zod.number(),
+      fromSupplierId: zod.number().nullish(),
+      toSupplierId: zod.number().nullish(),
+      fromSupplierName: zod.string().nullish(),
+      toSupplierName: zod.string().nullish(),
+      source: zod.string().nullish(),
+      note: zod.string().nullish(),
+      changedByUserId: zod.string().nullish(),
+      createdAt: zod.coerce.date().nullish(),
+    }),
+  ),
+  statuses: zod.array(
+    zod.object({
+      id: zod.number(),
+      orderItemId: zod.number().nullish(),
+      fromStatus: zod.string().nullish(),
+      toStatus: zod.string().nullish(),
+      changedByRole: zod.string().nullish(),
+      changedByUserId: zod.string().nullish(),
+      note: zod.string().nullish(),
+      createdAt: zod.coerce.date().nullish(),
+    }),
+  ),
+});
 
 export const GetOrderItemSupplierRecommendationsParams = zod.object({
   orderId: zod.coerce.number(),
   itemId: zod.coerce.number(),
 });
 
-export const GetOrderItemSupplierRecommendationsResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
+export const GetOrderItemSupplierRecommendationsResponseItem = zod.object({
+  supplierId: zod.number(),
+  name: zod.string(),
+  reason: zod.string(),
+});
+export const GetOrderItemSupplierRecommendationsResponse = zod.array(
+  GetOrderItemSupplierRecommendationsResponseItem,
 );
 
-export const GetFulfillmentCommandCenterResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const GetFulfillmentCommandCenterResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.number(),
+      orderId: zod.number().nullish(),
+      orderNumber: zod.string().nullish(),
+      partnerId: zod.number().nullish(),
+      partnerName: zod.string().nullish(),
+      eventId: zod.number().nullish(),
+      eventName: zod.string().nullish(),
+      eventStartDate: zod.coerce.date().nullish(),
+      portalType: zod.string().nullish(),
+      name: zod.string().nullish(),
+      quantity: zod.union([zod.number(), zod.number()]).nullish(),
+      productId: zod.number().nullish(),
+      fulfillmentMode: zod.string().nullish(),
+      printDemandQuantity: zod.union([zod.number(), zod.number()]).nullish(),
+      hardwareDemandQuantity: zod.union([zod.number(), zod.number()]).nullish(),
+      shortageQuantity: zod.union([zod.number(), zod.number()]).nullish(),
+      assignedSupplierId: zod.number().nullish(),
+      supplierName: zod.string().nullish(),
+      supplierAssignmentSource: zod.string().nullish(),
+      supplierStatus: zod.string().nullish(),
+      supplierDueDate: zod.coerce.date().nullish(),
+      supplierShipDate: zod.coerce.date().nullish(),
+      supplierAcknowledgedAt: zod.coerce.date().nullish(),
+      supplierReference: zod.string().nullish(),
+      exceptionFlag: zod.boolean().nullish(),
+      exceptionReason: zod.string().nullish(),
+      hasQuoteSpec: zod.boolean().nullish(),
+      cityId: zod.number().nullish(),
+      createdAt: zod.coerce.date().nullish(),
+    }),
+  ),
+  stats: zod.object({
+    total: zod.number(),
+    unassigned: zod.number(),
+    awaitingAcknowledge: zod.number(),
+    dueSoon: zod.number(),
+    awaitingAssets: zod.number(),
+    issues: zod.number(),
+    shippedNotDelivered: zod.number(),
+    installUpcoming: zod.number(),
+    completedToday: zod.number(),
+    missingQuoteSpec: zod.number(),
+    withShortage: zod.number(),
+  }),
+});
 
-export const ListVendorOrdersResponseItem = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListVendorOrdersResponseItem = zod.object({
+  id: zod.number(),
+  orderNumber: zod.string().nullish(),
+  partnerName: zod.string().nullish(),
+  eventName: zod.string().nullish(),
+  eventStartDate: zod.coerce.date().nullish(),
+  venueName: zod.string().nullish(),
+  items: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        orderId: zod.number().nullish(),
+        orderNumber: zod.string().nullish(),
+        partnerName: zod.string().nullish(),
+        eventName: zod.string().nullish(),
+        eventStartDate: zod.coerce.date().nullish(),
+        venueName: zod.string().nullish(),
+        name: zod.string().nullish(),
+        quantity: zod.union([zod.number(), zod.number()]).nullish(),
+        fulfillmentMode: zod.string().nullish(),
+        printDemandQuantity: zod.union([zod.number(), zod.number()]).nullish(),
+        hardwareDemandQuantity: zod
+          .union([zod.number(), zod.number()])
+          .nullish(),
+        supplierStatus: zod.string().nullish(),
+        supplierDueDate: zod.coerce.date().nullish(),
+        supplierShipDate: zod.coerce.date().nullish(),
+        supplierReference: zod.string().nullish(),
+        supplierNotes: zod.string().nullish(),
+        exceptionFlag: zod.boolean().nullish(),
+        exceptionReason: zod.string().nullish(),
+        artworkFileUrl: zod.string().nullish(),
+        notes: zod.string().nullish(),
+        productId: zod.number().nullish(),
+      }),
+    )
+    .optional(),
+  itemCount: zod.number().optional(),
+  dueSoon: zod.number().optional(),
+  issues: zod.number().optional(),
+});
 export const ListVendorOrdersResponse = zod.array(ListVendorOrdersResponseItem);
 
-export const ListVendorItemsResponse = zod.record(zod.string(), zod.unknown());
+export const ListVendorItemsResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.number(),
+      orderId: zod.number().nullish(),
+      orderNumber: zod.string().nullish(),
+      partnerName: zod.string().nullish(),
+      eventName: zod.string().nullish(),
+      eventStartDate: zod.coerce.date().nullish(),
+      venueName: zod.string().nullish(),
+      name: zod.string().nullish(),
+      quantity: zod.union([zod.number(), zod.number()]).nullish(),
+      fulfillmentMode: zod.string().nullish(),
+      printDemandQuantity: zod.union([zod.number(), zod.number()]).nullish(),
+      hardwareDemandQuantity: zod.union([zod.number(), zod.number()]).nullish(),
+      supplierStatus: zod.string().nullish(),
+      supplierDueDate: zod.coerce.date().nullish(),
+      supplierShipDate: zod.coerce.date().nullish(),
+      supplierReference: zod.string().nullish(),
+      supplierNotes: zod.string().nullish(),
+      exceptionFlag: zod.boolean().nullish(),
+      exceptionReason: zod.string().nullish(),
+      artworkFileUrl: zod.string().nullish(),
+      notes: zod.string().nullish(),
+      productId: zod.number().nullish(),
+    }),
+  ),
+  buckets: zod.object({
+    all: zod.number(),
+    due_soon: zod.number(),
+    awaiting_assets: zod.number(),
+    in_production: zod.number(),
+    issues: zod.number(),
+    recent: zod.number(),
+  }),
+});
 
 export const GetVendorOrderPacketParams = zod.object({
   orderId: zod.coerce.number(),
 });
 
-export const GetVendorOrderPacketResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const GetVendorOrderPacketResponse = zod.object({
+  order: zod.object({
+    id: zod.number(),
+    orderNumber: zod.string().nullish(),
+    partnerName: zod.string().nullish(),
+    eventName: zod.string().nullish(),
+    eventStartDate: zod.coerce.date().nullish(),
+    venueName: zod.string().nullish(),
+    cityName: zod.string().nullish(),
+    contactName: zod.string().nullish(),
+    contactEmail: zod.string().nullish(),
+    contactPhone: zod.string().nullish(),
+    notes: zod.string().nullish(),
+    vendorNotes: zod.string().nullish(),
+    createdAt: zod.coerce.date().nullish(),
+  }),
+  supplier: zod
+    .union([
+      zod.object({
+        id: zod.number(),
+        name: zod.string().nullish(),
+        isActive: zod.boolean().nullish(),
+      }),
+      zod.null(),
+    ])
+    .optional(),
+  items: zod.array(
+    zod.object({
+      id: zod.number(),
+      orderId: zod.number().nullish(),
+      orderNumber: zod.string().nullish(),
+      partnerName: zod.string().nullish(),
+      eventName: zod.string().nullish(),
+      eventStartDate: zod.coerce.date().nullish(),
+      venueName: zod.string().nullish(),
+      name: zod.string().nullish(),
+      quantity: zod.union([zod.number(), zod.number()]).nullish(),
+      fulfillmentMode: zod.string().nullish(),
+      printDemandQuantity: zod.union([zod.number(), zod.number()]).nullish(),
+      hardwareDemandQuantity: zod.union([zod.number(), zod.number()]).nullish(),
+      supplierStatus: zod.string().nullish(),
+      supplierDueDate: zod.coerce.date().nullish(),
+      supplierShipDate: zod.coerce.date().nullish(),
+      supplierReference: zod.string().nullish(),
+      supplierNotes: zod.string().nullish(),
+      exceptionFlag: zod.boolean().nullish(),
+      exceptionReason: zod.string().nullish(),
+      artworkFileUrl: zod.string().nullish(),
+      notes: zod.string().nullish(),
+      productId: zod.number().nullish(),
+    }),
+  ),
+  products: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+  quoteAssets: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+});
 
 export const GetOrderIntakeAnalysisParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const GetOrderIntakeAnalysisResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const GetOrderIntakeAnalysisResponse = zod.object({
+  analysis: zod.unknown(),
+});
 
 export const GetOrderEmailEventsParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const GetOrderEmailEventsResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const GetOrderEmailEventsResponse = zod.object({
+  events: zod.array(
+    zod.object({
+      id: zod.number(),
+      eventType: zod.string().nullish(),
+      partnerId: zod.number().nullish(),
+      objectType: zod.string().nullish(),
+      objectId: zod.number().nullish(),
+      meta: zod.unknown().optional(),
+      createdAt: zod.coerce.date().nullish(),
+      occurredAt: zod.coerce.date().nullish(),
+    }),
+  ),
+});
 
 export const SetOrderExceptionParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const SetOrderExceptionResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const SetOrderExceptionResponse = zod.object({
+  ok: zod.boolean(),
+  order: zod.object({
+    id: zod.number(),
+    orderNumber: zod.string().nullish(),
+    partnerId: zod.number().nullish(),
+    eventId: zod.number().nullish(),
+    packageId: zod.number().nullish(),
+    portalType: zod.string().nullish(),
+    shippingVenueId: zod.number().nullish(),
+    assignedSupplierId: zod.number().nullish(),
+    status: zod.string().nullish(),
+    paymentStatus: zod.string().nullish(),
+    fulfillmentMode: zod.string().nullish(),
+    fulfillmentStatus: zod.string().nullish(),
+    exceptionState: zod.string().nullish(),
+    exceptionType: zod.string().nullish(),
+    exceptionMessage: zod.string().nullish(),
+    exceptionUpdatedAt: zod.coerce.date().nullish(),
+    exceptionUpdatedBy: zod.string().nullish(),
+    artworkNeededFlag: zod.boolean().nullish(),
+    artworkBrief: zod.string().nullish(),
+    artworkContactName: zod.string().nullish(),
+    artworkContactEmail: zod.string().nullish(),
+    contactName: zod.string().nullish(),
+    contactEmail: zod.string().nullish(),
+    contactPhone: zod.string().nullish(),
+    companyName: zod.string().nullish(),
+    notes: zod.string().nullish(),
+    vendorNotes: zod.string().nullish(),
+    totalEstimate: zod.union([zod.string(), zod.number()]).nullish(),
+    subtotal: zod.union([zod.string(), zod.number()]).nullish(),
+    taxAmount: zod.union([zod.string(), zod.number()]).nullish(),
+    currency: zod.string().nullish(),
+    taxRate: zod.union([zod.string(), zod.number()]).nullish(),
+    taxInclusive: zod.boolean().nullish(),
+    createdAt: zod.coerce.date().nullish(),
+    updatedAt: zod.coerce.date().nullish(),
+  }),
+});
 
 export const SetOrderArtworkNeededParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const SetOrderArtworkNeededResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const SetOrderArtworkNeededResponse = zod.object({
+  ok: zod.boolean(),
+  order: zod.object({
+    id: zod.number(),
+    orderNumber: zod.string().nullish(),
+    partnerId: zod.number().nullish(),
+    eventId: zod.number().nullish(),
+    packageId: zod.number().nullish(),
+    portalType: zod.string().nullish(),
+    shippingVenueId: zod.number().nullish(),
+    assignedSupplierId: zod.number().nullish(),
+    status: zod.string().nullish(),
+    paymentStatus: zod.string().nullish(),
+    fulfillmentMode: zod.string().nullish(),
+    fulfillmentStatus: zod.string().nullish(),
+    exceptionState: zod.string().nullish(),
+    exceptionType: zod.string().nullish(),
+    exceptionMessage: zod.string().nullish(),
+    exceptionUpdatedAt: zod.coerce.date().nullish(),
+    exceptionUpdatedBy: zod.string().nullish(),
+    artworkNeededFlag: zod.boolean().nullish(),
+    artworkBrief: zod.string().nullish(),
+    artworkContactName: zod.string().nullish(),
+    artworkContactEmail: zod.string().nullish(),
+    contactName: zod.string().nullish(),
+    contactEmail: zod.string().nullish(),
+    contactPhone: zod.string().nullish(),
+    companyName: zod.string().nullish(),
+    notes: zod.string().nullish(),
+    vendorNotes: zod.string().nullish(),
+    totalEstimate: zod.union([zod.string(), zod.number()]).nullish(),
+    subtotal: zod.union([zod.string(), zod.number()]).nullish(),
+    taxAmount: zod.union([zod.string(), zod.number()]).nullish(),
+    currency: zod.string().nullish(),
+    taxRate: zod.union([zod.string(), zod.number()]).nullish(),
+    taxInclusive: zod.boolean().nullish(),
+    createdAt: zod.coerce.date().nullish(),
+    updatedAt: zod.coerce.date().nullish(),
+  }),
+});
 
 export const ListWorkflowRulesResponseItem = zod.record(
   zod.string(),
