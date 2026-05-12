@@ -95,29 +95,28 @@ function CurrencyTaxBreakdown({ order, onSave, saving }: { order: any; onSave: (
 import { formatWxHDual, formatPrimarySecondary, formatWeight, pickDisplayWeightUnit, convertWeight, defaultWeightUnit, type UnitSystem, type WeightUnit, type LengthUnit } from "@/lib/units";
 import { PackingDetailsInput, type PackingDetailsValue, type PackingMode } from "@/components/units/PackingDetailsInput";
 import { WeightInput, type WeightValue } from "@/components/units/WeightInput";
+import type { Order as OrderRow, OrderItem as OrderItemRow } from "@workspace/db/schema";
 
-type OrderItem = {
-  id: number; itemType: string; productId: number | null; productName?: string | null; productImageUrl?: string | null;
-  packageId: number | null; packageName?: string | null; brandingZoneId: number | null; brandingZoneName?: string | null;
-  name: string; quantity: number; unitPrice: string | null; fulfillmentMode: string | null;
-  hardwareRequired: boolean | null; printDemandQuantity: number | null; hardwareDemandQuantity: number | null;
-  reservedQuantity: number | null; shortageQuantity: number | null;
-  inventorySourceCityId: number | null; inventorySourceInventoryId: number | null; inventoryReservationId: number | null;
-  internalFulfillmentNotes: string | null;
-  assignedSupplierId: number | null; assignedSupplierName: string | null;
-  supplierAssignmentSource: string | null; supplierStatus: string;
-  supplierDueDate: string | null; supplierShipDate: string | null;
-  supplierDeliveryDate: string | null; supplierInstallDate: string | null;
-  supplierAcknowledgedAt: string | null; supplierReference: string | null; supplierNotes: string | null;
-  exceptionFlag: boolean; exceptionReason: string | null; exceptionNotes: string | null;
-  artworkFileUrl: string | null; notes: string | null;
-  // Per-line packing/shipping (defaults copied from product on create).
-  packedWidth: number | null; packedHeight: number | null; packedDepth: number | null;
-  packedSizeUnit: string | null;
-  shippingWeight: number | null; shippingWeightUnit: string | null;
-  cartonCount: number | null; packingMode: string | null;
-  crateRequired: boolean; palletRequired: boolean; oversizeFlag: boolean;
-  freightClass: string | null; installKitNotes: string | null;
+// Source row shapes from the shared Drizzle schema so renamed/removed columns
+// surface as type errors instead of silently breaking the editor (mirrors the
+// approach the product editor took after the historic price-preview drift).
+// API serializes timestamps as ISO strings and joins in a few display-only
+// fields that aren't part of the order_items table.
+type OrderItem = Omit<
+  OrderItemRow,
+  "supplierDueDate" | "supplierShipDate" | "supplierDeliveryDate"
+  | "supplierInstallDate" | "supplierAcknowledgedAt" | "createdAt"
+> & {
+  supplierDueDate: string | null;
+  supplierShipDate: string | null;
+  supplierDeliveryDate: string | null;
+  supplierInstallDate: string | null;
+  supplierAcknowledgedAt: string | null;
+  productName?: string | null;
+  productImageUrl?: string | null;
+  packageName?: string | null;
+  brandingZoneName?: string | null;
+  assignedSupplierName: string | null;
 };
 
 const SUPPLIER_STATUSES = [
@@ -145,13 +144,25 @@ const SOURCE_LABEL: Record<string, string> = {
   zone: "Inherited from zone", order: "Inherited from order",
   manual: "Manually assigned", none: "Unassigned",
 };
-type OrderFull = { id: number; orderNumber: string; partnerId: number; partnerName?: string; eventId: number | null; eventName?: string; status: string; paymentStatus: string; fulfillmentMode: string | null; assignedSupplierId: number | null; supplierName?: string; contactName: string; contactEmail: string; contactPhone: string | null; companyName: string | null; shippingAddressJson: any; billingAddressJson: any; artworkFilesJson: any[] | null; totalEstimate: string | null; notes: string | null; internalNotes: string | null; vendorNotes: string | null; fulfillmentStatus: string | null; createdAt: string; items: OrderItem[]; partner?: any; event?: any; venue?: any; supplier?: any; exceptionState: string | null; exceptionType: string | null; exceptionMessage: string | null; exceptionUpdatedAt: string | null; artworkNeededFlag: boolean; artworkBrief: string | null; artworkContactName: string | null; artworkContactEmail: string | null; partnerContacts?: Array<{ id: number; role: string; fullName: string; email: string | null; phone: string | null; isPrimary: boolean; isActive: boolean }>;
-  shipDateTarget: string | null; deliveryByDate: string | null; packageCount: number | null;
-  totalShipmentWeight: number | null; totalShipmentWeightUnit: string | null;
+type OrderFull = Omit<
+  OrderRow,
+  "createdAt" | "updatedAt" | "shipDateTarget" | "deliveryByDate"
+  | "exceptionUpdatedAt" | "measurementSystem"
+> & {
+  createdAt: string;
+  shipDateTarget: string | null;
+  deliveryByDate: string | null;
+  exceptionUpdatedAt: string | null;
   measurementSystem: "imperial" | "metric" | null;
-  oversizeFlag: boolean; crateRequired: boolean; palletRequired: boolean;
-  shippingContactJson: any; receivingContactJson: any;
-  customsNotes: string | null; internationalShippingNotes: string | null; logisticsNotes: string | null;
+  partnerName?: string;
+  eventName?: string;
+  supplierName?: string;
+  items: OrderItem[];
+  partner?: any;
+  event?: any;
+  venue?: any;
+  supplier?: any;
+  partnerContacts?: Array<{ id: number; role: string; fullName: string; email: string | null; phone: string | null; isPrimary: boolean; isActive: boolean }>;
 };
 type Supplier = { id: number; name: string };
 type City = { id: number; name: string };

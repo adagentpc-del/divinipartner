@@ -9,8 +9,23 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Loader2, ShoppingCart, Search, FileSpreadsheet } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import type { Order as OrderRow } from "@workspace/db/schema";
 
-type Order = { id: number; orderNumber: string; partnerId: number; partnerName?: string; eventId: number | null; eventName?: string | null; portalType: string; status: string; paymentStatus: string; fulfillmentMode: string | null; assignedSupplierId: number | null; supplierName?: string | null; venueName?: string | null; contactName: string; companyName: string | null; totalEstimate: string | null; createdAt: string; totalShortage?: number; totalReserved?: number; itemFulfillmentModes?: string[]; exceptionState?: string | null; exceptionType?: string | null; artworkNeededFlag?: boolean };
+// Source the row shape from the shared Drizzle schema so renamed/removed columns
+// surface as type errors instead of silently breaking the dashboard (mirrors the
+// approach the product editor took after the historic price-preview drift).
+// API serializes timestamps as ISO strings and joins in a few display-only
+// fields that aren't part of the orders table.
+type Order = Omit<OrderRow, "createdAt" | "updatedAt"> & {
+  createdAt: string;
+  partnerName?: string;
+  eventName?: string | null;
+  supplierName?: string | null;
+  venueName?: string | null;
+  totalShortage?: number;
+  totalReserved?: number;
+  itemFulfillmentModes?: string[];
+};
 
 const EXCEPTION_BADGE: Record<string, { label: string; className: string }> = {
   warning:          { label: "Warning",            className: "border-amber-300 text-amber-700 bg-amber-50" },
