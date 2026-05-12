@@ -3,9 +3,11 @@ import { eq, and } from "drizzle-orm";
 import { db, pricingRulesTable } from "@workspace/db";
 import {
   ListPricingRulesQueryParams,
+  ListPricingRulesResponse,
   CreatePricingRuleBody,
   UpdatePricingRuleParams,
   UpdatePricingRuleBody,
+  UpdatePricingRuleResponse,
   DeletePricingRuleParams,
 } from "@workspace/api-zod";
 
@@ -26,6 +28,12 @@ router.get("/pricing-rules", async (req, res): Promise<void> => {
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
   const rules = await db.select().from(pricingRulesTable).where(whereClause).orderBy(pricingRulesTable.category, pricingRulesTable.itemName);
+  const parsed = ListPricingRulesResponse.safeParse(rules);
+  if (!parsed.success) {
+    req.log.error({ err: parsed.error.flatten() }, "List pricing rules response failed schema validation");
+    res.status(500).json({ error: "List pricing rules response failed schema validation", details: parsed.error.issues });
+    return;
+  }
   res.json(rules);
 });
 
@@ -64,6 +72,12 @@ router.patch("/pricing-rules/:id", async (req, res): Promise<void> => {
     return;
   }
 
+  const parsedRes = UpdatePricingRuleResponse.safeParse(rule);
+  if (!parsedRes.success) {
+    req.log.error({ err: parsedRes.error.flatten(), pricingRuleId: params.data.id }, "Update pricing rule response failed schema validation");
+    res.status(500).json({ error: "Update pricing rule response failed schema validation", details: parsedRes.error.issues });
+    return;
+  }
   res.json(rule);
 });
 
