@@ -138,7 +138,33 @@ interface QuoteAsset {
   notes: string | null;
 }
 
-const CAPABILITY_LABELS: Record<keyof Product, string> = {
+type BooleanKeys<T> = { [K in keyof T]-?: T[K] extends boolean ? K : never }[keyof T];
+type ProductBooleanKey = BooleanKeys<Product>;
+
+type CapabilityKey = Extract<
+  ProductBooleanKey,
+  | "hardwareIncluded"
+  | "printOnlyAvailable"
+  | "rentalEligible"
+  | "usePartnerInventoryEligible"
+  | "reusableHardwareCompatible"
+  | "inventoryTracked"
+  | "requiresAttachmentSelection"
+  | "requiresMaterialSelection"
+>;
+
+const CAPABILITY_KEYS: readonly CapabilityKey[] = [
+  "hardwareIncluded",
+  "printOnlyAvailable",
+  "rentalEligible",
+  "usePartnerInventoryEligible",
+  "reusableHardwareCompatible",
+  "inventoryTracked",
+  "requiresAttachmentSelection",
+  "requiresMaterialSelection",
+];
+
+const CAPABILITY_LABELS: Record<CapabilityKey, string> = {
   hardwareIncluded: "Hardware included",
   printOnlyAvailable: "Allows graphic only",
   rentalEligible: "Rental eligible",
@@ -147,7 +173,7 @@ const CAPABILITY_LABELS: Record<keyof Product, string> = {
   inventoryTracked: "Inventory tracked",
   requiresAttachmentSelection: "Requires attachment method",
   requiresMaterialSelection: "Requires material selection",
-} as any;
+};
 
 export default function ProductCatalog() {
   const { toast } = useToast();
@@ -333,10 +359,10 @@ export default function ProductCatalog() {
 
               <TabsContent value="caps" className="space-y-1 mt-4">
                 <p className="text-xs text-muted-foreground mb-3">Capability flags drive which fulfillment modes appear when ordering this product.</p>
-                {(["hardwareIncluded","printOnlyAvailable","rentalEligible","usePartnerInventoryEligible","reusableHardwareCompatible","inventoryTracked","requiresAttachmentSelection","requiresMaterialSelection"] as (keyof Product)[]).map(key => (
+                {CAPABILITY_KEYS.map(key => (
                   <div key={key} className="flex items-center justify-between py-2 border-b">
                     <Label className="text-sm">{CAPABILITY_LABELS[key]}</Label>
-                    <Switch checked={!!(editing as any)[key]} onCheckedChange={v => setEditing(p => ({ ...p!, [key]: v }))} />
+                    <Switch checked={!!editing[key]} onCheckedChange={v => setEditing(p => ({ ...p!, [key]: v }))} />
                   </div>
                 ))}
                 <div className="flex items-center justify-between py-2 border-b"><Label className="text-sm">Orderable</Label><Switch checked={editing.isOrderable ?? true} onCheckedChange={v => setEditing(p => ({ ...p!, isOrderable: v }))} /></div>
@@ -348,15 +374,15 @@ export default function ProductCatalog() {
                 <PricingModelInput
                   value={{
                     pricingModel: (editing.pricingModel as PricingModel | null) ?? null,
-                    unitRate: (editing as any).unitRate ?? null,
+                    unitRate: editing.unitRate ?? null,
                     pricingUnit: (editing.pricingUnit as PricingUnit | null) ?? null,
-                    minBillableSize: (editing as any).minBillableSize ?? null,
-                    minCharge: (editing as any).minCharge ?? null,
-                    allowsCustomSize: (editing as any).allowsCustomSize ?? false,
+                    minBillableSize: editing.minBillableSize ?? null,
+                    minCharge: editing.minCharge ?? null,
+                    allowsCustomSize: editing.allowsCustomSize ?? false,
                   }}
                   onChange={patch => setEditing(p => ({ ...p!, ...patch }))}
-                  sampleWidthMm={(editing as any).sizeWidthMm ?? null}
-                  sampleHeightMm={(editing as any).sizeHeightMm ?? null}
+                  sampleWidthMm={editing.sizeWidth != null ? toMm(editing.sizeWidth, editing.sizeUnit || "in") : null}
+                  sampleHeightMm={editing.sizeHeight != null ? toMm(editing.sizeHeight, editing.sizeUnit || "in") : null}
                 />
               </TabsContent>
 
