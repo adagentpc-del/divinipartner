@@ -403,18 +403,21 @@ export async function buildA3IntakeAnalysis(ctx: OrderEmailContext): Promise<Int
   // (these are the explicitly-named A3-side pointers), then fall back to
   // matching partner_contact rows so a partner that uses contacts instead
   // of the dedicated fields still resolves cleanly.
+  // Task #27: When no PM / account owner is named for the partner, fall back
+  // to the default A3 salesperson (Alyssa DelTorre) so internal email + intake
+  // panel always have a real human to point at instead of "—".
   const programManager = pickContact(
     "Program manager",
     partner.programManagerName,
     partner.programManagerEmail,
     contacts.find(c => c.role === "project" && c.isPrimary) ?? contacts.find(c => c.role === "project") ?? null,
-  );
+  ) ?? { label: "Program manager", name: DEFAULT_A3_SALESPERSON.name, email: DEFAULT_A3_SALESPERSON.email, source: "partner_field" as const };
   const accountOwner = pickContact(
     "A3 account owner",
     partner.internalAccountOwnerName,
     partner.internalAccountOwnerEmail,
     null,
-  );
+  ) ?? { label: "A3 account owner", name: DEFAULT_A3_SALESPERSON.name, email: DEFAULT_A3_SALESPERSON.email, source: "partner_field" as const };
   const supportContact = pickContact(
     "Support contact",
     partner.supportContactName,

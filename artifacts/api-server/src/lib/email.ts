@@ -667,9 +667,13 @@ export async function sendOpsForward(ctx: OrderEmailContext, overrideTo?: string
   let html: string;
   let subject: string;
   try {
-    const { buildA3IntakeAnalysis, renderA3InternalIntakeHtml } = await import("./internalIntakeEmail");
-    const analysis = await buildA3IntakeAnalysis(ctx);
-    html = renderA3InternalIntakeHtml(ctx, analysis);
+    // Single shared builder so the email html and the admin Internal Intake
+    // panel can never drift — both consume buildInternalOrderEmailData.
+    const { buildInternalOrderEmailData, DEFAULT_A3_SALESPERSON } = await import("./internalIntakeEmail");
+    const built = await buildInternalOrderEmailData(order.id);
+    if (!built) throw new Error("buildInternalOrderEmailData returned null");
+    html = built.html;
+    void DEFAULT_A3_SALESPERSON;
     // Subject spec (task #27): "New Partner Portal Order: <Partner> | <Event> | <Reference> | <Customer Company>"
     // Reference is the orderNumber; Customer Company falls back to contact name when missing.
     const eventPart = ctx.event?.name || "No event";
@@ -681,6 +685,11 @@ export async function sendOpsForward(ctx: OrderEmailContext, overrideTo?: string
     subject = `[New order] ${partner.companyName} · ${order.orderNumber}`;
   }
   const attachments = await maybeAttach(ctx, "internal", !!partner.attachPdfOps);
+  // Reply-to: prefer the customer's email so PMs can hit reply directly. If
+  // missing, fall back to the default A3 salesperson so replies still route
+  // to a real human inbox instead of bouncing to noreply@.
+  const { DEFAULT_A3_SALESPERSON } = await import("./internalIntakeEmail");
+  const replyTo = order.contactEmail || DEFAULT_A3_SALESPERSON.email;
   return sendBrandedEmail({
     partner,
     to,
@@ -688,7 +697,7 @@ export async function sendOpsForward(ctx: OrderEmailContext, overrideTo?: string
     bcc: bcc.length > 0 ? bcc : null,
     subject,
     html,
-    replyTo: order.contactEmail,
+    replyTo,
     emailType: "order_ops_forward",
     orderId: order.id,
     attachments,

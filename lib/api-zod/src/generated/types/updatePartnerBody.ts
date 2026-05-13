@@ -15,6 +15,12 @@ export interface UpdatePartnerBody {
   secondaryLogoUrl?: string | null;
   /** @nullable */
   websiteUrl?: string | null;
+  /** @nullable */
+  salespersonName?: string | null;
+  /** @nullable */
+  salespersonEmail?: string | null;
+  /** @nullable */
+  salespersonPhone?: string | null;
   smallA3BadgeEnabled?: boolean;
   /** @nullable */
   introHeadline?: string | null;

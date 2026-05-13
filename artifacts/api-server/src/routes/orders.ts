@@ -1167,12 +1167,12 @@ router.get("/orders/:id/intake-analysis", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid order id" }); return; }
   try {
-    const { buildOrderEmailContext } = await import("../lib/email");
-    const ctx = await buildOrderEmailContext(id);
-    if (!ctx) { res.status(404).json({ error: "Order not found" }); return; }
-    const { buildA3IntakeAnalysis } = await import("../lib/internalIntakeEmail");
-    const analysis = await buildA3IntakeAnalysis(ctx);
-    sendValidated(req, res, GetOrderIntakeAnalysisResponse, { analysis }, "GetOrderIntakeAnalysis");
+    // Single shared builder — same code path the internal email uses, so the
+    // admin Internal Intake panel and the email can never drift.
+    const { buildInternalOrderEmailData } = await import("../lib/internalIntakeEmail");
+    const built = await buildInternalOrderEmailData(id);
+    if (!built) { res.status(404).json({ error: "Order not found" }); return; }
+    sendValidated(req, res, GetOrderIntakeAnalysisResponse, { analysis: built.analysis }, "GetOrderIntakeAnalysis");
   } catch (err: any) {
     res.status(500).json({ error: err?.message || "Failed to build intake analysis" });
   }
