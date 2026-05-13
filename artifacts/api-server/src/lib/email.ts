@@ -685,11 +685,16 @@ export async function sendOpsForward(ctx: OrderEmailContext, overrideTo?: string
     subject = `[New order] ${partner.companyName} · ${order.orderNumber}`;
   }
   const attachments = await maybeAttach(ctx, "internal", !!partner.attachPdfOps);
-  // Reply-to: prefer the customer's email so PMs can hit reply directly. If
-  // missing, fall back to the default A3 salesperson so replies still route
-  // to a real human inbox instead of bouncing to noreply@.
+  // Reply-to for the INTERNAL PM packet: route replies to the partner-
+  // configured internal reply-to (an A3-side ops inbox), then to the
+  // partner salesperson, then the customer contact, and finally fall back
+  // to the default A3 salesperson so replies always land in a real inbox.
   const { DEFAULT_A3_SALESPERSON } = await import("./internalIntakeEmail");
-  const replyTo = order.contactEmail || DEFAULT_A3_SALESPERSON.email;
+  const replyTo =
+    (partner as Partner & { internalReplyToEmail?: string | null }).internalReplyToEmail ||
+    partner.salespersonEmail ||
+    order.contactEmail ||
+    DEFAULT_A3_SALESPERSON.email;
   return sendBrandedEmail({
     partner,
     to,

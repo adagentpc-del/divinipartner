@@ -104,7 +104,7 @@ interface IntakeAnalysis {
   customer?: { contactName: string; contactEmail: string; contactPhone: string | null; companyName: string | null };
   billing?: { contactName: string | null; contactEmail: string | null; contactPhone: string | null; addressLine: string | null; paymentModel: string | null; paymentTerms: string | null; netsuiteCustomerNumber: string | null };
   event?: { eventName: string | null; eventStartDate: string | null; eventEndDate: string | null; installDate: string | null; teardownDate: string | null; shippingDeadline: string | null; venueName: string | null; venueAddress: string | null; venueContacts: Array<{ name: string; email?: string | null; phone?: string | null; role?: string | null }> };
-  packages?: Array<{ packageId: number; packageName: string; packageDescription: string | null; itemIds: number[] }>;
+  packages?: Array<{ packageId: number; packageName: string; packageDescription: string | null; packageImageUrl?: string | null; itemIds: number[] }>;
   items: Array<IntakeItem & Partial<PmIntakeItemExtras>>;
   familiesRemaining: IntakeFamily[];
   netsuiteSummary?: { quoteType: string; netsuiteCustomerNumber: string | null; partnerName: string; customerCompany: string | null; customerContactName: string; customerContactEmail: string; customerContactPhone: string | null; billingContactName: string | null; billingContactEmail: string | null; billingContactPhone: string | null; billingTerms: string | null; salespersonName: string; salespersonEmail: string; salespersonPhone: string | null; totalLines: number; totalQuantity: number };
@@ -355,14 +355,78 @@ export default function OrderInternalIntakePanel({ orderId }: { orderId: number 
             {a.packages.map(pkg => {
               const lines = a.items.filter(i => pkg.itemIds.includes(i.itemId));
               return (
-                <div key={pkg.packageId} className="border rounded-md p-2.5 bg-white">
-                  <div className="text-sm font-medium">{pkg.packageName}</div>
-                  {pkg.packageDescription && <div className="text-xs text-muted-foreground mt-0.5">{pkg.packageDescription}</div>}
-                  <div className="text-[11px] text-muted-foreground mt-1">{lines.length} line{lines.length === 1 ? "" : "s"}: {lines.map(l => `${l.itemName} ×${l.quantity}`).join(" · ") || "—"}</div>
+                <div key={pkg.packageId} className="border rounded-md p-2.5 bg-white flex gap-2.5">
+                  {pkg.packageImageUrl
+                    ? <img src={pkg.packageImageUrl} alt="" className="w-16 h-16 rounded border object-cover flex-shrink-0" />
+                    : <div className="w-16 h-16 rounded border border-dashed bg-muted flex-shrink-0" />}
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium">{pkg.packageName}</div>
+                    {pkg.packageDescription && <div className="text-xs text-muted-foreground mt-0.5">{pkg.packageDescription}</div>}
+                    <div className="text-[11px] text-muted-foreground mt-1">{lines.length} line{lines.length === 1 ? "" : "s"}: {lines.map(l => `${l.itemName} ×${l.quantity}`).join(" · ") || "—"}</div>
+                  </div>
                 </div>
               );
             })}
           </div>
+        </Section>
+      )}
+
+      {/* Rental & inventory plan (PM packet) — grouped by source label so PM
+          can see at a glance what is coming from where. Mirrors the email
+          B3 section. */}
+      {a.items.length > 0 && (
+        <Section title="Rental & inventory plan" icon={<Boxes className="h-3.5 w-3.5" />}>
+          {(() => {
+            const order: InventorySourceLabel[] = ["partner_stock", "a3_stock", "customer_stock", "produce_new", "third_party", "confirm_manually"];
+            const groups = new Map<InventorySourceLabel, typeof a.items>();
+            for (const it of a.items) {
+              const k = (it.inventorySourceLabel || "confirm_manually") as InventorySourceLabel;
+              const arr = groups.get(k) ?? [];
+              arr.push(it);
+              groups.set(k, arr);
+            }
+            const out: React.ReactNode[] = [];
+            for (const k of order) {
+              const grp = groups.get(k);
+              if (!grp || !grp.length) continue;
+              const meta = INV_SOURCE_LABEL[k];
+              out.push(
+                <div key={k} className="border rounded-md bg-white mb-1.5">
+                  <div className="px-2 py-1.5 flex items-center gap-2 border-b">
+                    <Badge variant="outline" className={`${meta.tone} text-[10px] font-semibold`}>{meta.text}</Badge>
+                    <span className="text-[11px] text-muted-foreground">{grp.length} line{grp.length === 1 ? "" : "s"}</span>
+                  </div>
+                  <table className="w-full text-[11px]">
+                    <thead className="text-muted-foreground">
+                      <tr>
+                        <th className="text-left px-2 py-1 font-medium">Item</th>
+                        <th className="text-right px-2 py-1 font-medium">Req</th>
+                        <th className="text-right px-2 py-1 font-medium">Avail</th>
+                        <th className="text-right px-2 py-1 font-medium">After</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {grp.map(it => (
+                        <tr key={it.itemId} className="border-t">
+                          <td className="px-2 py-1">
+                            {it.itemName}
+                            {it.inventorySource?.cityName && <span className="text-muted-foreground"> · {it.inventorySource.cityName}</span>}
+                            {it.inventoryQty?.warnings?.length ? (
+                              <div className="text-rose-700 font-semibold mt-0.5">⚠ {it.inventoryQty.warnings.join(" · ")}</div>
+                            ) : null}
+                          </td>
+                          <td className="px-2 py-1 text-right tabular-nums">{it.inventoryQty?.requested ?? it.quantity ?? 0}</td>
+                          <td className="px-2 py-1 text-right tabular-nums">{it.inventoryQty?.available != null ? it.inventoryQty.available : "—"}</td>
+                          <td className="px-2 py-1 text-right tabular-nums">{it.inventoryQty?.remainingAfter != null ? it.inventoryQty.remainingAfter : "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            }
+            return out.length ? <>{out}</> : <div className="text-xs text-muted-foreground">No inventory groupings.</div>;
+          })()}
         </Section>
       )}
 

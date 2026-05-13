@@ -4302,6 +4302,8 @@ components:
           type: ["string", "null"]
         salespersonPhone:
           type: ["string", "null"]
+        internalReplyToEmail:
+          type: ["string", "null"]
         smallA3BadgeEnabled:
           type: boolean
         introHeadline:
@@ -4428,6 +4430,8 @@ components:
         salespersonEmail:
           type: ["string", "null"]
         salespersonPhone:
+          type: ["string", "null"]
+        internalReplyToEmail:
           type: ["string", "null"]
         smallA3BadgeEnabled:
           type: boolean

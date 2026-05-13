@@ -103,6 +103,7 @@ const PartnerBody = z.object({
   salespersonName: z.string().max(160).optional().nullable(),
   salespersonEmail: z.string().max(320).optional().nullable(),
   salespersonPhone: z.string().max(64).optional().nullable(),
+  internalReplyToEmail: z.string().max(320).optional().nullable(),
   // Currency & tax defaults (April 2026 international billing extension)
   defaultCurrency: z.string().min(3).max(3).optional(),
   defaultTaxMode: z.enum(["none","sales_tax","vat","gst","custom"]).optional(),

@@ -118,6 +118,11 @@ export const partnersTable = pgTable("partners", {
   salespersonName: text("salesperson_name"),
   salespersonEmail: text("salesperson_email"),
   salespersonPhone: text("salesperson_phone"),
+  // Task #27: partner-configurable internal reply-to address used as the
+  // Reply-To on the internal PM intake packet email so replies route to a
+  // partner-side internal owner (not the customer). Falls back to the
+  // default A3 salesperson when blank.
+  internalReplyToEmail: text("internal_reply_to_email"),
   // Section 36: default add-on display format on this partner's portal.
   // Values: "flat" | "grid" | "category_tiles" (default "grid").
   addonDisplayFormat: text("addon_display_format").notNull().default("grid"),

@@ -265,6 +265,7 @@ export interface IntakePackageBlock {
   packageId: number;
   packageName: string;
   packageDescription: string | null;
+  packageImageUrl: string | null;
   // Order items grouped under this package (matched by orderItem.packageId).
   itemIds: number[];
 }
@@ -734,6 +735,7 @@ export async function buildA3IntakeAnalysis(ctx: OrderEmailContext): Promise<Int
     packageId: pkg.id,
     packageName: pkg.displayName || pkg.name,
     packageDescription: pkg.description ?? null,
+    packageImageUrl: pkg.imageUrl ?? (pkg.imageUrls && pkg.imageUrls[0]) ?? null,
     itemIds: items.filter(i => i.packageId === pkg.id).map(i => i.id),
   }));
 
@@ -1237,6 +1239,8 @@ export function renderA3InternalIntakeHtml(ctx: OrderEmailContext, analysis: Int
         ${analysis.packages.length ? section("B2 · Packages", renderPackagesBlock(analysis.packages, analysis.items)) : ""}
 
         <!-- C. Order line items + fulfillment intent -->
+        ${section("B3 · Rental & inventory plan", renderInventoryPlanBlock(analysis.items))}
+
         ${section("C · Items + fulfillment intent", renderItemsTable(analysis.items))}
 
         <!-- C2. Vendor matches (deterministic) -->
@@ -1736,12 +1740,68 @@ function renderPackagesBlock(packages: IntakePackageBlock[], items: IntakeItemAn
         </td>
       </tr>`;
     }).join("");
+    const headerImage = pkg.packageImageUrl
+      ? `<img src="${escape(pkg.packageImageUrl)}" alt="" width="64" height="64" style="display:block;width:64px;height:64px;border-radius:6px;border:1px solid ${A3_LINE};object-fit:cover;margin-right:10px;" />`
+      : "";
     return `<div style="border:1px solid ${A3_LINE};border-radius:8px;padding:10px 12px;margin-bottom:10px;background:#ffffff;">
-      <div style="font-size:13px;font-weight:600;color:${A3_INK};">${escape(pkg.packageName)} <span style="color:${A3_MUTED};font-weight:400;font-size:11px;">· ${lines.length} line${lines.length === 1 ? "" : "s"}</span></div>
-      ${pkg.packageDescription ? `<div style="font-size:12px;color:${A3_MUTED};margin-top:2px;">${escape(pkg.packageDescription)}</div>` : ""}
+      <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;"><tr>
+        ${headerImage ? `<td style="vertical-align:top;width:74px;">${headerImage}</td>` : ""}
+        <td style="vertical-align:top;">
+          <div style="font-size:13px;font-weight:600;color:${A3_INK};">${escape(pkg.packageName)} <span style="color:${A3_MUTED};font-weight:400;font-size:11px;">· ${lines.length} line${lines.length === 1 ? "" : "s"}</span></div>
+          ${pkg.packageDescription ? `<div style="font-size:12px;color:${A3_MUTED};margin-top:2px;">${escape(pkg.packageDescription)}</div>` : ""}
+        </td>
+      </tr></table>
       ${lines.length ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-top:6px;">${rows}</table>` : `<div style="margin-top:6px;font-size:12px;color:${A3_MUTED};">No lines tied to this package.</div>`}
     </div>`;
   }).join("");
+}
+
+// Standalone scannable inventory plan: groups items by source label and
+// summarizes requested/available/remaining + warnings. Renders as one
+// table per source so PM can see at a glance what's coming from where.
+function renderInventoryPlanBlock(items: IntakeItemAnalysis[]): string {
+  if (!items.length) return `<div style="font-size:12px;color:${A3_MUTED};">No line items.</div>`;
+  const groups = new Map<InventorySourceLabel, IntakeItemAnalysis[]>();
+  for (const it of items) {
+    const arr = groups.get(it.inventorySourceLabel) ?? [];
+    arr.push(it);
+    groups.set(it.inventorySourceLabel, arr);
+  }
+  const groupOrder: InventorySourceLabel[] = ["partner_stock", "a3_stock", "customer_stock", "produce_new", "third_party", "confirm_manually"];
+  const blocks: string[] = [];
+  for (const label of groupOrder) {
+    const grp = groups.get(label);
+    if (!grp || !grp.length) continue;
+    const rows = grp.map(it => {
+      const iq = it.inventoryQty;
+      const reqCell = iq ? `${iq.requested}` : `${it.quantity ?? 0}`;
+      const availCell = iq?.available != null ? String(iq.available) : "—";
+      const remCell = iq?.remainingAfter != null ? String(iq.remainingAfter) : "—";
+      const warn = iq?.warnings?.length
+        ? `<div style="color:${A3_ACCENT};font-weight:600;font-size:11px;margin-top:2px;">⚠ ${iq.warnings.map(w => escape(w)).join(" · ")}</div>`
+        : "";
+      const where = it.inventorySource?.cityName ? ` <span style="color:${A3_MUTED};">· ${escape(it.inventorySource.cityName)}</span>` : "";
+      return `<tr>
+        <td style="padding:6px 8px;border-top:1px solid ${A3_LINE};font-size:12px;color:${A3_INK};">${escape(it.itemName)}${where}${warn}</td>
+        <td style="padding:6px 8px;border-top:1px solid ${A3_LINE};font-size:12px;color:${A3_INK};text-align:right;tabular-nums:auto;">${reqCell}</td>
+        <td style="padding:6px 8px;border-top:1px solid ${A3_LINE};font-size:12px;color:${A3_INK};text-align:right;tabular-nums:auto;">${availCell}</td>
+        <td style="padding:6px 8px;border-top:1px solid ${A3_LINE};font-size:12px;color:${A3_INK};text-align:right;tabular-nums:auto;">${remCell}</td>
+      </tr>`;
+    }).join("");
+    blocks.push(`<div style="border:1px solid ${A3_LINE};border-radius:8px;padding:10px 12px;margin-bottom:8px;background:#ffffff;">
+      <div style="font-size:13px;font-weight:600;color:${A3_INK};">${inventorySourceChip(label)} <span style="color:${A3_MUTED};font-weight:400;font-size:11px;margin-left:6px;">${grp.length} line${grp.length === 1 ? "" : "s"}</span></div>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-top:6px;">
+        <thead><tr>
+          <th style="text-align:left;padding:4px 8px;font-size:11px;color:${A3_MUTED};font-weight:600;">Item</th>
+          <th style="text-align:right;padding:4px 8px;font-size:11px;color:${A3_MUTED};font-weight:600;">Req</th>
+          <th style="text-align:right;padding:4px 8px;font-size:11px;color:${A3_MUTED};font-weight:600;">Avail</th>
+          <th style="text-align:right;padding:4px 8px;font-size:11px;color:${A3_MUTED};font-weight:600;">After</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`);
+  }
+  return blocks.join("") || `<div style="font-size:12px;color:${A3_MUTED};">No inventory groupings.</div>`;
 }
 
 function renderVendorMatchesBlock(matches: IntakeVendorMatch[], _items: IntakeItemAnalysis[]): string {

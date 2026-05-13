@@ -95,6 +95,7 @@ const formSchema = z.object({
   // Task #27: salesperson routing for the PM intake packet.
   salespersonName: z.string().optional(),
   salespersonEmail: z.string().optional(),
+  internalReplyToEmail: z.string().optional(),
   salespersonPhone: z.string().optional(),
   // Section 36: add-on display defaults.
   addonDisplayFormat: z.enum(["flat", "grid", "category_tiles"]).default("grid"),
@@ -156,7 +157,7 @@ export default function PartnerForm() {
       programManagerName: "", programManagerEmail: "",
       internalAccountOwnerName: "", internalAccountOwnerEmail: "",
       supportContactName: "", supportContactEmail: "",
-      salespersonName: "", salespersonEmail: "", salespersonPhone: "",
+      salespersonName: "", salespersonEmail: "", salespersonPhone: "", internalReplyToEmail: "",
       defaultCurrency: "USD", defaultTaxMode: "none", defaultTaxLabel: "", defaultTaxRate: "",
       taxInclusive: false, billingCountry: "", invoiceDisplayNotes: "",
       addonDisplayFormat: "grid", addonCategoryGroupingEnabled: false,
@@ -216,6 +217,7 @@ export default function PartnerForm() {
         supportContactEmail: (partner as any).supportContactEmail || "",
         salespersonName: (partner as any).salespersonName || "",
         salespersonEmail: (partner as any).salespersonEmail || "",
+        internalReplyToEmail: (partner as any).internalReplyToEmail || "",
         salespersonPhone: (partner as any).salespersonPhone || "",
         defaultCurrency: (partner as any).defaultCurrency || "USD",
         defaultTaxMode: (partner as any).defaultTaxMode || "none",
@@ -1086,6 +1088,13 @@ function CommunicationsCard({ partnerId, form }: { partnerId: number; form: any 
               <FormItem>
                 <FormLabel>Salesperson (phone)</FormLabel>
                 <FormControl><Input type="text" placeholder="optional" {...field} value={field.value || ""} /></FormControl>
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="internalReplyToEmail" render={({ field }: any) => (
+              <FormItem className="md:col-span-2">
+                <FormLabel>Internal intake reply-to (optional)</FormLabel>
+                <FormControl><Input type="text" placeholder="Defaults to salesperson, then customer, then Alyssa" {...field} value={field.value || ""} /></FormControl>
+                <div className="text-[11px] text-muted-foreground mt-1">Reply-To on the internal PM intake email so PM replies route to your A3-side ops inbox instead of the customer.</div>
               </FormItem>
             )} />
           </div>

@@ -1364,6 +1364,8 @@ export interface CreatePartnerBody {
   salespersonEmail?: string | null;
   /** @nullable */
   salespersonPhone?: string | null;
+  /** @nullable */
+  internalReplyToEmail?: string | null;
   smallA3BadgeEnabled?: boolean;
   /** @nullable */
   introHeadline?: string | null;
@@ -1468,6 +1470,8 @@ export interface UpdatePartnerBody {
   salespersonEmail?: string | null;
   /** @nullable */
   salespersonPhone?: string | null;
+  /** @nullable */
+  internalReplyToEmail?: string | null;
   smallA3BadgeEnabled?: boolean;
   /** @nullable */
   introHeadline?: string | null;
