@@ -669,11 +669,10 @@ export async function sendOpsForward(ctx: OrderEmailContext, overrideTo?: string
   try {
     // Single shared builder so the email html and the admin Internal Intake
     // panel can never drift — both consume buildInternalOrderEmailData.
-    const { buildInternalOrderEmailData, DEFAULT_A3_SALESPERSON } = await import("./internalIntakeEmail");
+    const { buildInternalOrderEmailData } = await import("./internalIntakeEmail");
     const built = await buildInternalOrderEmailData(order.id);
     if (!built) throw new Error("buildInternalOrderEmailData returned null");
     html = built.html;
-    void DEFAULT_A3_SALESPERSON;
     // Subject spec (task #27): "New Partner Portal Order: <Partner> | <Event> | <Reference> | <Customer Company>"
     // Reference is the orderNumber; Customer Company falls back to contact name when missing.
     const eventPart = ctx.event?.name || "No event";
