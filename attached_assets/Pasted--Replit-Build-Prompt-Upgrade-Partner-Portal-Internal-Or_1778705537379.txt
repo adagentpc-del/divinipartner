@@ -1,0 +1,609 @@
+# Replit Build Prompt: Upgrade Partner Portal Internal Order Emails for NetSuite Quoting Workflow
+
+We need to upgrade the Partner Portal internal order notification emails so they function like a complete project manager intake packet for A3 Visual. The goal is for the internal email to contain everything a PM, salesperson, or estimator needs to manually enter the order into NetSuite and generate a quote without hunting through the admin dashboard.
+
+The current internal emails are too basic. They show only order reference, event, item names, and quantity. We need a full operational order packet.
+
+## Core Objective
+
+Build a detailed internal order email template and backend data mapping system that includes:
+
+1. Full customer information
+2. Partner information
+3. NetSuite customer number
+4. Salesperson associated with the partner or order
+5. Contact details
+6. Billing information
+7. Shipping or delivery location
+8. Event information
+9. Order timeline
+10. Package breakdown
+11. Every item inside each package
+12. Product dimensions
+13. Hardware quantities
+14. Rental inventory logic
+15. Uploaded or associated reference images
+16. Suggested vendor items that match the order
+17. Admin entered notes and quote preparation notes
+
+Think like a project manager who needs to enter this order manually into NetSuite to generate a quote for the customer.
+
+---
+
+# Part 1: Admin Backend Updates
+
+## Add Salesperson Field to Partner Admin Settings
+
+In the partner admin backend, add a new editable field next to the NetSuite customer number:
+
+### New Fields
+
+- NetSuite Customer Number
+- Assigned Salesperson Name
+- Assigned Salesperson Email
+- Assigned Salesperson Phone, optional
+- Internal A3 Account Owner, optional
+- Default PM Contact, optional
+- Default Internal Reply To Email
+
+For now, the default assigned salesperson should be:
+
+- Name: Alyssa DelTorre
+- Email: adeltorre@a3visual.com
+
+These fields should be editable per partner because each partner may eventually have a different salesperson, PM, or account owner.
+
+## Add Partner Operational Fields
+
+Add or confirm these partner level fields exist:
+
+- Partner Name
+- Partner Company Name
+- Partner Contact Name
+- Partner Contact Email
+- Partner Contact Phone
+- Partner Billing Contact
+- Partner Billing Email
+- Partner Billing Phone
+- Partner Billing Address
+- NetSuite Customer Number
+- Salesperson Associated
+- Salesperson Email
+- Partner Default Shipping Address
+- Partner Default Event Location
+- Partner Logo
+- Partner Brand Colors
+- Partner Portal URL
+- Partner Notes
+
+---
+
+# Part 2: Order Form Data Requirements
+
+Each order must collect or inherit the following data.
+
+## Customer Information
+
+The internal email must include:
+
+- Customer Full Name
+- Company Name
+- Customer Email
+- Customer Phone
+- Customer Address, if provided
+- Billing Name
+- Billing Company
+- Billing Email
+- Billing Phone
+- Billing Address
+- Tax Exempt Status, if applicable
+- PO Number, if provided
+- Special Billing Notes
+
+## Event Information
+
+Include:
+
+- Event Name
+- Event City
+- Event Venue
+- Event Date
+- Install Date
+- Install Time Window
+- Delivery Date
+- Delivery Time Window
+- Removal Date
+- Removal Time Window
+- In Hands Date
+- Order Deadline
+- Rush Order Flag
+- Event Contact On Site
+- On Site Contact Phone
+- On Site Contact Email
+- Shipping or Delivery Location
+- Loading Dock Instructions
+- Venue Access Notes
+- COI Requirements, if applicable
+- Union Labor Notes, if applicable
+- Permit Notes, if applicable
+
+## Sales and Internal Routing
+
+Include:
+
+- Partner Name
+- Partner Portal Name
+- NetSuite Customer Number
+- Assigned Salesperson
+- Salesperson Email
+- Assigned PM, if available
+- Internal Order Owner, if available
+- Submitted By
+- Submitted At
+- Order Reference Number
+- Quote Status
+- Priority Level
+- Internal Admin Notes
+
+---
+
+# Part 3: Package and Product Breakdown Logic
+
+The internal email must clearly separate package orders from individual add on items.
+
+## If Customer Orders a Package
+
+For each package, display:
+
+- Package Name
+- Package Tier
+- Package Description
+- Package Quantity
+- Package Price, if available
+- Package Notes
+- Package Reference Image, if available
+- Package Category
+- Package Internal SKU, if available
+- NetSuite SKU or Item Mapping, if available
+
+Then list every single item included in that package.
+
+### Package Item Details
+
+For every item inside the package, display:
+
+- Item Name
+- Item Category
+- Item Description
+- Item Quantity
+- Final Size or Dimensions
+- Width
+- Height
+- Depth, if applicable
+- Material
+- Print Type
+- Finish
+- Hardware Included
+- Hardware Quantity
+- Hardware Size
+- Hardware Source
+- Installation Required: Yes or No
+- Design Required: Yes or No
+- Artwork Required: Yes or No
+- Artwork Status
+- Artwork Upload Link
+- Reference Image
+- Production Notes
+- Install Notes
+- Pack Out Notes
+- NetSuite SKU, if available
+- Supplier or Vendor Match, if available
+- Estimated Production Time
+- Required Delivery Date
+- Rush Flag
+
+## If Customer Orders Individual Items
+
+For each individual item, display the same information:
+
+- Item Name
+- Item Category
+- Item Quantity
+- Dimensions
+- Material
+- Hardware Quantity
+- Hardware Source
+- Print Type
+- Finish
+- Install Required
+- Artwork Required
+- Artwork Status
+- Upload Link
+- Reference Image
+- Vendor Suggestions
+- NetSuite SKU, if available
+- Production Notes
+
+---
+
+# Part 4: Rental Inventory Logic
+
+Some partner portals may include inventory or rentable customer owned stock.
+
+The internal email must identify whether any ordered item should be:
+
+1. Produced new by A3
+2. Rented from partner owned customer stock
+3. Pulled from A3 stock
+4. Ordered from a third party vendor
+5. Confirmed manually
+
+## Rental Fields
+
+For each relevant item, include:
+
+- Rental Required: Yes or No
+- Rental Source:
+  - Customer Owned Stock
+  - Partner Owned Stock
+  - A3 Owned Stock
+  - Third Party Rental
+  - Unknown
+- Available Inventory Quantity
+- Quantity Requested
+- Quantity Remaining After Order
+- Inventory Location
+- Inventory Contact
+- Return Required: Yes or No
+- Return Date
+- Damage Liability Notes
+- Replacement Cost, if available
+- Rental Notes
+
+## Inventory Warning Logic
+
+Add automatic warnings in the internal email:
+
+- If requested quantity exceeds available stock, show:
+  `Inventory Warning: Requested quantity exceeds available stock. PM must review before quoting.`
+
+- If rental source is unknown, show:
+  `Rental Source Requires Review.`
+
+- If item has both print production and rental hardware, separate them clearly:
+  - Printed graphic production
+  - Hardware rental or pull
+  - Install labor
+
+---
+
+# Part 5: Suggested Vendor Match Section
+
+The internal email should include suggested vendor items that match the order.
+
+This should use existing product/vendor data in the admin backend. Do not use automatic AI unless there is already a manual admin trigger. Keep this deterministic and low cost.
+
+## Vendor Match Logic
+
+Match suggested vendor items based on:
+
+- Product category
+- Material type
+- Dimensions
+- Hardware type
+- Event city
+- Shipping location
+- Production timeline
+- Partner preference
+- Approved vendor status
+- Product approval status
+
+Only show approved vendor products unless admin has enabled draft vendor suggestions.
+
+## Vendor Match Section in Email
+
+For each suggested vendor item, display:
+
+- Vendor Name
+- Vendor Product Name
+- Product Category
+- Matching Reason
+- Vendor SKU
+- A3 Internal SKU, if mapped
+- Cost, if available
+- Lead Time
+- Shipping Origin
+- Approved Status
+- Vendor Contact Name
+- Vendor Contact Email
+- Vendor Notes
+- Link to Vendor Product or Admin Record
+
+If no vendor matches exist, show:
+
+`No approved vendor matches were found for this order. PM should review manually.`
+
+---
+
+# Part 6: Uploaded Files and Reference Images
+
+The internal email must include all uploaded files and reference images as clickable links.
+
+## Include
+
+- Customer uploaded artwork files
+- Customer uploaded reference images
+- Package reference images
+- Product reference images
+- Partner logo
+- Site map or venue map, if uploaded
+- Marked up measurements
+- Clean image, if available
+- Visual placement reference
+- Any admin uploaded production spec files
+
+## Display Format
+
+In the email, show:
+
+- File Name
+- File Type
+- Related Item or Package
+- Upload Timestamp
+- Download Link
+- Preview Link, if available
+
+Do not attach large files directly to the email. Use secure links instead.
+
+Use existing object storage or uploaded file URLs. If secure signed URLs are already used, generate temporary signed links. If not, use existing stored file URLs.
+
+---
+
+# Part 7: Email Layout Requirements
+
+The internal order email should be clean, scannable, and operational.
+
+Use this structure:
+
+## Email Subject Line
+
+Format:
+
+`New Partner Portal Order: [Partner Name] | [Event Name] | [Order Reference] | [Customer Company]`
+
+Example:
+
+`New Partner Portal Order: SCF London | London SCF | PCP-MORDGBE4-USVG | Adidas`
+
+## Email Header
+
+Show:
+
+- A3 Visual Internal Order Packet
+- Order Reference
+- Partner Portal Name
+- Event Name
+- Submitted Date and Time
+- Priority or Rush Flag
+
+## Section 1: NetSuite Quote Entry Summary
+
+This section should be at the top because it is the most important for manual quote entry.
+
+Include:
+
+- NetSuite Customer Number
+- Customer Company
+- Billing Company
+- Billing Contact
+- Billing Email
+- Billing Phone
+- Salesperson Associated
+- Salesperson Email
+- Partner Name
+- Partner Contact
+- Partner Email
+- Quote Type:
+  - Package
+  - Individual Items
+  - Package Plus Add Ons
+  - Rental
+  - Production
+  - Mixed
+
+## Section 2: Customer Contact Information
+
+Include all customer contact fields.
+
+## Section 3: Event, Delivery, Install, and Shipping Details
+
+Include all event and timing fields.
+
+## Section 4: Package Summary
+
+Show all packages ordered.
+
+For each package:
+
+- Package Name
+- Quantity
+- Package Description
+- Package Image
+- Package Notes
+
+Then show every item inside the package in a table.
+
+## Section 5: Itemized Production Breakdown
+
+This should include every production item across packages and add ons.
+
+Use a table with columns:
+
+- Item
+- Qty
+- Dimensions
+- Material
+- Hardware Qty
+- Rental or Production
+- Install Required
+- Artwork Status
+- SKU
+- Notes
+
+## Section 6: Rental Inventory Breakdown
+
+Only show if rental items exist.
+
+## Section 7: Suggested Vendor Matches
+
+Only show if vendor matches exist, otherwise show the no matches message.
+
+## Section 8: Files and Visual References
+
+Include links to all uploaded and associated files.
+
+## Section 9: Internal Notes for PM
+
+Include:
+
+- Admin notes
+- Customer notes
+- Special instructions
+- Missing information
+- Required follow up
+- Quote preparation checklist
+
+## Section 10: Quick Actions
+
+Add buttons or links:
+
+- View Order in Admin
+- View Partner
+- View Customer
+- View Uploaded Files
+- Update Quote Status
+- Mark as Reviewed
+- Reply to Customer
+
+---
+
+# Part 8: PM Quote Preparation Checklist
+
+At the bottom of the email, include a checklist.
+
+## Checklist
+
+- Confirm NetSuite customer number
+- Confirm billing details
+- Confirm salesperson
+- Confirm event and delivery timeline
+- Confirm shipping or install location
+- Confirm all package items
+- Confirm all dimensions
+- Confirm hardware quantities
+- Confirm artwork status
+- Confirm rental inventory availability
+- Confirm vendor match availability
+- Confirm production lead time
+- Confirm install requirements
+- Confirm tax, shipping, rush, and labor charges
+- Confirm quote can be entered into NetSuite
+
+If any required fields are missing, display a warning section:
+
+`Missing Information Requiring Follow Up`
+
+List missing fields dynamically.
+
+Examples:
+
+- Billing phone missing
+- Install window missing
+- Artwork not uploaded
+- Dimensions missing for Step and Repeat
+- Hardware source not confirmed
+- NetSuite customer number missing
+
+---
+
+# Part 9: Backend Implementation Requirements
+
+## Data Mapping
+
+Create or update backend helper functions to build a complete `internalOrderEmailData` object.
+
+Suggested structure:
+
+```ts
+type InternalOrderEmailData = {
+  order: {
+    id: string;
+    reference: string;
+    submittedAt: string;
+    status: string;
+    priority?: string;
+    rush?: boolean;
+    quoteType: string;
+  };
+  partner: {
+    name: string;
+    portalName?: string;
+    netSuiteCustomerNumber?: string;
+    contactName?: string;
+    contactEmail?: string;
+    contactPhone?: string;
+    salespersonName?: string;
+    salespersonEmail?: string;
+    salespersonPhone?: string;
+  };
+  customer: {
+    name: string;
+    company?: string;
+    email: string;
+    phone?: string;
+    address?: string;
+  };
+  billing: {
+    name?: string;
+    company?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    poNumber?: string;
+    taxExempt?: boolean;
+    notes?: string;
+  };
+  event: {
+    name?: string;
+    city?: string;
+    venue?: string;
+    eventDate?: string;
+    installDate?: string;
+    installWindow?: string;
+    deliveryDate?: string;
+    deliveryWindow?: string;
+    removalDate?: string;
+    removalWindow?: string;
+    inHandsDate?: string;
+    shippingLocation?: string;
+    onsiteContactName?: string;
+    onsiteContactPhone?: string;
+    onsiteContactEmail?: string;
+    accessNotes?: string;
+  };
+  packages: Array<{
+    name: string;
+    tier?: string;
+    description?: string;
+    quantity: number;
+    imageUrl?: string;
+    notes?: string;
+    items: Array<OrderLineItem>;
+  }>;
+  addOns: Array<OrderLineItem>;
+  rentalItems: Array<RentalLineItem>;
+  vendorMatches: Array<VendorMatch>;
+  files: Array<OrderFile>;
+  missingFields: string[];
+  internalNotes?: string;
+};
