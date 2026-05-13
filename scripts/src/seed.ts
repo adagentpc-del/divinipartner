@@ -333,9 +333,9 @@ async function seed() {
     for (const pdef of packageDefs) {
       const { items, ...pkg } = pdef;
       const existing = await db.select().from(packagesTable).where(and(eq(packagesTable.partnerId, scf.id), eq(packagesTable.name, pkg.name)));
-      let pkgRow;
       if (existing.length === 0) {
-        [pkgRow] = await db.insert(packagesTable).values({ ...pkg, partnerId: scf.id, isActive: true }).returning();
+        const [pkgRow] = await db.insert(packagesTable).values({ ...pkg, partnerId: scf.id, isActive: true }).returning();
+        if (!pkgRow) continue;
         const itemValues = items.map((it, idx) => {
           const product = findP(it.slug);
           return product ? { packageId: pkgRow.id, productId: product.id, quantity: it.quantity, sortOrder: idx } : null;
