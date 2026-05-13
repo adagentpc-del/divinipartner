@@ -54,15 +54,6 @@ export function SiteHeader() {
               {l.label}
             </a>
           ))}
-          {isSignedIn && (
-            <Link
-              href="/admin"
-              className="text-sm font-semibold text-slate-500 hover:text-[#0E1B3D] transition-colors"
-              data-testid="link-admin"
-            >
-              Admin
-            </Link>
-          )}
           <a
             href="#become-partner"
             className="ml-2 inline-flex items-center px-5 py-2.5 rounded-md bg-[#0E1B3D] text-white text-sm font-bold uppercase tracking-[0.06em] hover:bg-[#0a1430] transition-colors"
@@ -70,6 +61,13 @@ export function SiteHeader() {
           >
             Become a Partner
           </a>
+          <Link
+            href={isSignedIn ? "/admin" : "/login"}
+            className="inline-flex items-center px-4 py-2.5 rounded-md border-2 border-[#E9B947] text-[#0E1B3D] text-sm font-bold uppercase tracking-[0.06em] hover:bg-[#E9B947] transition-colors"
+            data-testid="button-admin-login"
+          >
+            {isSignedIn ? "Admin" : "Admin Login"}
+          </Link>
         </nav>
 
         <button
@@ -94,15 +92,6 @@ export function SiteHeader() {
                 {l.label}
               </a>
             ))}
-            {isSignedIn && (
-              <Link
-                href="/admin"
-                onClick={() => setOpen(false)}
-                className="px-3 py-2.5 text-sm font-semibold text-slate-500 hover:bg-slate-50 rounded-md"
-              >
-                Admin
-              </Link>
-            )}
             <a
               href="#become-partner"
               onClick={() => setOpen(false)}
@@ -110,6 +99,13 @@ export function SiteHeader() {
             >
               Become a Partner
             </a>
+            <Link
+              href={isSignedIn ? "/admin" : "/login"}
+              onClick={() => setOpen(false)}
+              className="mt-2 px-3 py-3 rounded-md border-2 border-[#E9B947] text-[#0E1B3D] text-sm font-bold uppercase tracking-[0.06em] text-center"
+            >
+              {isSignedIn ? "Admin" : "Admin Login"}
+            </Link>
           </div>
         </div>
       )}

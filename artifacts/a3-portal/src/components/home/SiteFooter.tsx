@@ -1,4 +1,8 @@
+import { useAuth } from "@clerk/react";
+import { Link } from "wouter";
+
 export function SiteFooter() {
+  const { isSignedIn } = useAuth();
   return (
     <footer className="relative bg-[#0E1B3D] text-white overflow-hidden">
       {/* Subtle gold accent line at top */}
@@ -61,6 +65,15 @@ export function SiteFooter() {
                 <a href="#what" className="text-slate-300 hover:text-white transition-colors">
                   How it works
                 </a>
+              </li>
+              <li>
+                <Link
+                  href={isSignedIn ? "/admin" : "/login"}
+                  className="inline-flex items-center gap-1.5 text-[#E9B947] hover:text-white font-semibold transition-colors"
+                  data-testid="link-footer-admin-login"
+                >
+                  {isSignedIn ? "Admin Dashboard" : "Admin Login"} →
+                </Link>
               </li>
             </ul>
           </div>
