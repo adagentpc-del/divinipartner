@@ -33,3 +33,4 @@ channel = "stable-25_05"
 
 [userenv.shared]
 ADMIN_EMAIL = "admin@a3visual.com"
+ADMIN_ALLOWED_EMAILS = "alyssadeltorre@gmail.com"
