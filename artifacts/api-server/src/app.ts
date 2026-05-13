@@ -100,10 +100,26 @@ app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 const clerkPublishableKey =
   process.env.CLERK_PUBLISHABLE_KEY || process.env.VITE_CLERK_PUBLISHABLE_KEY;
 const clerkSecretKey = process.env.CLERK_SECRET_KEY;
+
+// When using a Clerk production instance (pk_live_*), the SPA proxies Clerk's
+// Frontend API through `/api/__clerk` on this same domain. The session JWTs
+// Clerk issues then carry that proxy URL as part of the issuer, and the
+// server-side SDK has to be told the same proxyUrl or it will reject every
+// session token (resulting in instant 401s on admin routes). Construct the
+// fully-qualified proxy URL from PUBLIC_APP_URL when present so the backend
+// matches the frontend exactly. Dev (pk_test_*) instances don't use the proxy.
+const isLiveClerkKey = clerkPublishableKey?.startsWith("pk_live_");
+const publicAppUrl = process.env.PUBLIC_APP_URL?.replace(/\/$/, "");
+const clerkProxyUrl =
+  isLiveClerkKey && publicAppUrl
+    ? `${publicAppUrl}/api/__clerk`
+    : undefined;
+
 app.use(
   clerkMiddleware({
     ...(clerkPublishableKey ? { publishableKey: clerkPublishableKey } : {}),
     ...(clerkSecretKey ? { secretKey: clerkSecretKey } : {}),
+    ...(clerkProxyUrl ? { proxyUrl: clerkProxyUrl } : {}),
   }),
 );
 
