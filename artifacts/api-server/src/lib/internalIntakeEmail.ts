@@ -48,6 +48,7 @@ import {
   type ProductFamilyMember,
 } from "@workspace/db";
 import type { OrderEmailContext } from "./email";
+import { publicLink } from "./publicUrl";
 
 // Default A3-side salesperson when a partner has no salesperson_* fields set.
 // Stored as a constant so the default can move without a data migration.
@@ -87,6 +88,9 @@ export interface IntakeItemAnalysis {
   itemName: string;
   quantity: number;
   productSlug: string | null;
+  productImageUrl: string | null;
+  productSku: string | null;
+  productCategory: string | null;
   // Family / role context (null if the product is not part of any family).
   familyId: number | null;
   familyName: string | null;
@@ -232,6 +236,24 @@ export interface IntakeVendorMatch {
   supplierName: string;
   itemIds: number[];
   matchSources: Array<"order_assigned" | "product_default" | "branding_location_default">;
+  contactName: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  leadTimeDays: number | null;
+  categories: string[];
+  city: string | null;
+  country: string | null;
+  isActive: boolean;
+  lineSummaries: Array<{
+    itemId: number;
+    itemName: string;
+    quantity: number;
+    sku: string | null;
+    productCategory: string | null;
+    dimensions: string | null;
+    material: string | null;
+    productLeadTimeDays: number | null;
+  }>;
 }
 
 export interface IntakeFile {
@@ -442,6 +464,9 @@ export async function buildA3IntakeAnalysis(ctx: OrderEmailContext): Promise<Int
       itemName: it.name,
       quantity: it.quantity,
       productSlug: product?.slug ?? null,
+      productImageUrl: product?.imageUrl ?? null,
+      productSku: product?.sku ?? null,
+      productCategory: product?.category ?? null,
       familyId,
       familyName,
       memberRole: role ?? null,
@@ -453,18 +478,18 @@ export async function buildA3IntakeAnalysis(ctx: OrderEmailContext): Promise<Int
       inventorySource: invSnap,
       inventorySourceLabel,
       dimensions: {
-        enteredWidth: (it as any).enteredWidth ?? null,
-        enteredHeight: (it as any).enteredHeight ?? null,
+        enteredWidth: it.enteredWidth ?? null,
+        enteredHeight: it.enteredHeight ?? null,
         enteredDepth: null,
-        sizeUnit: (it as any).enteredSizeUnit ?? null,
-        packedW: (it as any).packedWidth ?? null,
-        packedH: (it as any).packedHeight ?? null,
-        packedD: (it as any).packedDepth ?? null,
-        packedUnit: (it as any).packedSizeUnit ?? null,
+        sizeUnit: it.enteredSizeUnit ?? null,
+        packedW: it.packedWidth ?? null,
+        packedH: it.packedHeight ?? null,
+        packedD: it.packedDepth ?? null,
+        packedUnit: it.packedSizeUnit ?? null,
       },
       artwork: {
-        fileUrl: (it as any).artworkFileUrl ?? null,
-        needed: !!(it as any).artworkRequired && !(it as any).artworkFileUrl,
+        fileUrl: it.artworkFileUrl ?? null,
+        needed: !!it.artworkRequired && !it.artworkFileUrl,
       },
       selectedMaterial: it.selectedMaterial ?? null,
       hardwareSummary,
@@ -538,7 +563,7 @@ export async function buildA3IntakeAnalysis(ctx: OrderEmailContext): Promise<Int
 
   const allSupplierIds = new Set<number>();
   if (order.assignedSupplierId) allSupplierIds.add(order.assignedSupplierId);
-  for (const p of products) if ((p as any).supplierId) allSupplierIds.add((p as any).supplierId);
+  for (const p of products) if (p.supplierId) allSupplierIds.add(p.supplierId);
   for (const b of branchingLocs) if (b.defaultSupplierId) allSupplierIds.add(b.defaultSupplierId);
   const supplierRows = allSupplierIds.size
     ? await db.select().from(suppliersTable).where(inArray(suppliersTable.id, Array.from(allSupplierIds)))
@@ -555,25 +580,54 @@ export async function buildA3IntakeAnalysis(ctx: OrderEmailContext): Promise<Int
       supplierId = order.assignedSupplierId;
       matchSource = "order_assigned";
     } else if (it.productId && productById.get(it.productId)) {
-      const ps = (productById.get(it.productId) as any).supplierId;
+      const ps = productById.get(it.productId)?.supplierId;
       if (ps) { supplierId = ps; matchSource = "product_default"; }
     }
     if (!supplierId && it.brandingZoneId) {
       const bl = branchingLocById.get(it.brandingZoneId);
       if (bl?.defaultSupplierId) { supplierId = bl.defaultSupplierId; matchSource = "branding_location_default"; }
     }
-    const supplierName = supplierId ? supplierById.get(supplierId)?.name ?? null : null;
+    const supplier = supplierId ? supplierById.get(supplierId) : undefined;
+    const supplierName = supplier?.name ?? null;
     out.vendor = { supplierId, supplierName, matchSource };
-    if (supplierId && supplierName) {
+    if (supplierId && supplierName && supplier) {
+      const product = it.productId ? productById.get(it.productId) : undefined;
+      const d = out.dimensions;
+      let dims: string | null = null;
+      if (d.enteredWidth != null && d.enteredHeight != null) {
+        dims = `${d.enteredWidth} × ${d.enteredHeight} ${d.sizeUnit || "in"}`;
+      } else if (d.packedW != null && d.packedH != null) {
+        dims = `packed ${d.packedW} × ${d.packedH}${d.packedD != null ? ` × ${d.packedD}` : ""} ${d.packedUnit || "in"}`;
+      }
+      const lineSummary = {
+        itemId: out.itemId,
+        itemName: out.itemName,
+        quantity: out.quantity,
+        sku: product?.sku ?? null,
+        productCategory: product?.category ?? null,
+        dimensions: dims,
+        material: out.selectedMaterial,
+        productLeadTimeDays: product?.leadTimeDays ?? null,
+      };
       const cur = vendorAccum.get(supplierId);
       if (cur) {
         cur.itemIds.push(out.itemId);
-        if (!cur.matchSources.includes(matchSource as any)) cur.matchSources.push(matchSource as any);
+        cur.lineSummaries.push(lineSummary);
+        if (matchSource !== "none" && !cur.matchSources.includes(matchSource)) cur.matchSources.push(matchSource);
       } else {
         vendorAccum.set(supplierId, {
           supplierId, supplierName,
           itemIds: [out.itemId],
-          matchSources: matchSource === "none" ? [] : [matchSource as any],
+          matchSources: matchSource === "none" ? [] : [matchSource],
+          contactName: supplier.contactName ?? null,
+          contactEmail: supplier.contactEmail ?? null,
+          contactPhone: supplier.contactPhone ?? null,
+          leadTimeDays: supplier.defaultLeadTimeDays ?? null,
+          categories: supplier.categoriesJson ?? [],
+          city: supplier.city ?? null,
+          country: supplier.country ?? null,
+          isActive: supplier.isActive,
+          lineSummaries: [lineSummary],
         });
       }
     }
@@ -602,9 +656,9 @@ export async function buildA3IntakeAnalysis(ctx: OrderEmailContext): Promise<Int
     contactPhone: order.contactPhone ?? null,
     companyName: order.companyName ?? null,
   };
-  const bj = (order.billingContactJson as any) || {};
-  const ba = (order.billingAddressJson as any) || null;
-  const billingAddrLine = ba ? [ba.line1, ba.line2, ba.city, ba.state || ba.region, ba.postalCode, ba.country].filter(Boolean).join(", ") : null;
+  const bj = order.billingContactJson || {};
+  const ba = order.billingAddressJson || null;
+  const billingAddrLine = ba ? [ba.line1, ba.line2, ba.city, ba.state, ba.postalCode, ba.country].filter(Boolean).join(", ") : null;
   const billing: IntakeBillingBlock = {
     contactName: bj.name || partner.billingContactName || null,
     contactEmail: bj.email || partner.billingContactEmail || null,
@@ -614,25 +668,27 @@ export async function buildA3IntakeAnalysis(ctx: OrderEmailContext): Promise<Int
     paymentTerms: partner.paymentTerms ?? null,
     netsuiteCustomerNumber: partner.netsuiteCustomerNumber || null,
   };
-  const venueAddr = ctx.venue
-    ? [(ctx.venue as any).address, ctx.venue.city, (ctx.venue as any).state, ctx.venue.country].filter(Boolean).join(", ")
-    : null;
+  const vRow = ctx.venueRow ?? null;
+  const eRow = ctx.eventRow ?? null;
+  const venueAddr = vRow
+    ? [vRow.venueAddress, ctx.venue?.city, ctx.venue?.country].filter(Boolean).join(", ")
+    : ctx.venue
+      ? [ctx.venue.city, ctx.venue.country].filter(Boolean).join(", ")
+      : null;
   const eventBlock: IntakeEventBlock = {
-    eventName: ctx.event?.name ?? null,
-    eventStartDate: (ctx.event as any)?.eventStartDate ?? (ctx.event as any)?.eventDate ?? null,
-    eventEndDate: (ctx.event as any)?.eventEndDate ?? null,
-    installDate: (ctx.event as any)?.installDate ?? null,
-    teardownDate: (ctx.event as any)?.teardownDate ?? null,
-    shippingDeadline: (ctx.event as any)?.shippingDeadline ?? null,
-    venueName: ctx.venue?.name ?? null,
+    eventName: eRow?.name ?? ctx.event?.name ?? null,
+    eventStartDate: eRow?.eventStartDate ?? null,
+    eventEndDate: eRow?.eventEndDate ?? null,
+    installDate: eRow?.installDate ?? null,
+    teardownDate: eRow?.teardownDate ?? null,
+    shippingDeadline: eRow?.shippingDeadline ?? null,
+    venueName: vRow?.name ?? ctx.venue?.name ?? null,
     venueAddress: venueAddr || null,
-    venueContacts: ((ctx.event as any)?.venueContactsJson as any[] | null) ?? [],
+    venueContacts: eRow?.venueContactsJson ?? [],
   };
 
-  // 6e) Files: artwork attachments + per-line artwork file + product images
-  // for visual reference.
   const files: IntakeFile[] = [];
-  for (const f of (order.artworkFilesJson as any[] | null) ?? []) {
+  for (const f of order.artworkFilesJson ?? []) {
     if (f?.url) files.push({ url: f.url, name: f.name || f.url.split("/").pop() || "artwork", kind: "artwork", contextLabel: "Order-level artwork" });
   }
   for (const it of itemsOut) {
@@ -641,7 +697,7 @@ export async function buildA3IntakeAnalysis(ctx: OrderEmailContext): Promise<Int
     }
   }
   for (const p of products) {
-    if ((p as any).imageUrl) files.push({ url: (p as any).imageUrl, name: `${p.name} reference`, kind: "product_image", contextLabel: `Product: ${p.name}` });
+    if (p.imageUrl) files.push({ url: p.imageUrl, name: `${p.name} reference`, kind: "product_image", contextLabel: `Product: ${p.name}` });
   }
   for (const it of itemsOut) {
     if (it.surveyAsset) {
@@ -651,11 +707,10 @@ export async function buildA3IntakeAnalysis(ctx: OrderEmailContext): Promise<Int
     }
   }
 
-  // 6f) Salesperson — defaults to Alyssa DelTorre when unset.
   const salesperson: IntakeContact = {
     label: "Salesperson",
-    name: (partner as any).salespersonName || DEFAULT_A3_SALESPERSON.name,
-    email: (partner as any).salespersonEmail || DEFAULT_A3_SALESPERSON.email,
+    name: partner.salespersonName || DEFAULT_A3_SALESPERSON.name,
+    email: partner.salespersonEmail || DEFAULT_A3_SALESPERSON.email,
     source: "partner_field",
   };
 
@@ -755,15 +810,16 @@ function buildMissingFields(
   if (!order.contactPhone) {
     missing.push({ field: "Customer phone", severity: "warning", reason: "Phone helps for rush approvals." });
   }
-  if (!order.shippingAddressJson || !(order.shippingAddressJson as any).line1) {
+  if (!order.shippingAddressJson || !order.shippingAddressJson.line1) {
     missing.push({ field: "Shipping address", severity: "critical", reason: "Cannot quote freight without a destination." });
   }
+  const eRow = ctx.eventRow ?? null;
   if (!event) {
     missing.push({ field: "Event link", severity: "warning", reason: "Order is not associated with an event — confirm timeline." });
-  } else if (!(event as any).eventStartDate && !(event as any).eventDate) {
+  } else if (!eRow?.eventStartDate) {
     missing.push({ field: "Event start date", severity: "warning", reason: "Event has no date set — install/ship math may be wrong." });
   }
-  if (event && !(event as any).installDate && !(event as any).shippingDeadline) {
+  if (event && !eRow?.installDate && !eRow?.shippingDeadline) {
     missing.push({ field: "Install / ship deadline", severity: "warning", reason: "No install or ship-by date — production lead time is unknown." });
   }
   if (!venue) {
@@ -797,7 +853,7 @@ function buildPmChecklist(
   vendorMatches: IntakeVendorMatch[],
   missing: IntakeMissingField[],
 ): IntakeChecklistItem[] {
-  const { order, event } = ctx;
+  const { order, event, eventRow } = ctx;
   const out: IntakeChecklistItem[] = [];
   out.push({
     key: "ns_customer",
@@ -808,13 +864,13 @@ function buildPmChecklist(
   out.push({
     key: "ship_to",
     label: "Confirm ship-to address",
-    done: !!(order.shippingAddressJson && (order.shippingAddressJson as any).line1),
+    done: !!(order.shippingAddressJson && order.shippingAddressJson.line1),
     detail: order.shippingAddressJson ? "Captured on order" : "Missing on order",
   });
   out.push({
     key: "timeline",
     label: "Lock event/install/ship dates",
-    done: !!(event && ((event as any).installDate || (event as any).shippingDeadline)),
+    done: !!(event && (eventRow?.installDate || eventRow?.shippingDeadline)),
     detail: event ? "Event linked" : "No event linked",
   });
   out.push({
@@ -872,8 +928,8 @@ const A3_AMBER = "#b75a00";
 
 export function renderA3InternalIntakeHtml(ctx: OrderEmailContext, analysis: IntakeAnalysis): string {
   const { partner, order, event, venue } = ctx;
-  const ship = (order.shippingAddressJson as any) || null;
-  const shipLine = ship ? [ship.line1, ship.line2, ship.city, ship.state || ship.region, ship.postalCode, ship.country].filter(Boolean).map(escape).join(", ") : "";
+  const ship = order.shippingAddressJson || null;
+  const shipLine = ship ? [ship.line1, ship.line2, ship.city, ship.state, ship.postalCode, ship.country].filter(Boolean).map(escape).join(", ") : "";
   const eventLine = event ? `${escape(event.name)}${event.eventDate ? ` · ${escape(new Date(event.eventDate).toLocaleDateString())}` : ""}` : "—";
   const venueLine = venue ? `${escape(venue.name)}${venue.city ? `, ${escape(venue.city)}` : ""}${venue.country ? `, ${escape(venue.country)}` : ""}` : "—";
   const submittedAt = new Date(order.createdAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
@@ -924,6 +980,8 @@ export function renderA3InternalIntakeHtml(ctx: OrderEmailContext, analysis: Int
         ${analysis.missingFields.length ? `<tr><td style="padding:8px 24px 0 24px;">
           ${renderMissingFieldsBlock(analysis.missingFields)}
         </td></tr>` : ""}
+
+        <tr><td style="padding:0 24px 12px 24px;">${renderQuickActionsBlock(order.id, partner.id, analysis.customer.contactEmail || order.contactEmail || null, analysis.files.length)}</td></tr>
 
         <!-- A. Account snapshot -->
         ${section("A · Account snapshot", `
@@ -1298,12 +1356,12 @@ function buildFollowUpQuestions(ctx: OrderEmailContext, items: IntakeItemAnalysi
   const { order, event } = ctx;
   if (!order.contactPhone) qs.push("No phone number on the submitter — confirm a daytime contact in case we need approvals.");
   if (!event) qs.push("No event linked — confirm which event/show this order is for so we can align ship dates.");
-  if (!order.shippingAddressJson || !(order.shippingAddressJson as any).line1) {
+  if (!order.shippingAddressJson || !order.shippingAddressJson.line1) {
     qs.push("Shipping address is incomplete — confirm receiving address and any dock/access constraints.");
   }
   if (order.artworkNeededFlag) {
     qs.push(`Artwork is flagged as outstanding${order.artworkBrief ? ` (${order.artworkBrief})` : ""} — confirm who is delivering files and by when.`);
-  } else if (!(order.artworkFilesJson as any[] | null)?.length) {
+  } else if (!(order.artworkFilesJson?.length)) {
     qs.push("No artwork attached — confirm whether files are coming separately or if A3 is creating them.");
   }
   const fullUnits = items.filter(i => i.label === "full_unit_required");
@@ -1434,24 +1492,87 @@ function renderEventBlock(e: IntakeEventBlock): string {
 function renderPackagesBlock(packages: IntakePackageBlock[], items: IntakeItemAnalysis[]): string {
   return packages.map(pkg => {
     const lines = items.filter(i => pkg.itemIds.includes(i.itemId));
-    return `<div style="border:1px solid ${A3_LINE};border-radius:8px;padding:10px 12px;margin-bottom:8px;background:#ffffff;">
-      <div style="font-size:13px;font-weight:600;color:${A3_INK};">${escape(pkg.packageName)}</div>
+    const rows = lines.map(l => {
+      const d = l.dimensions;
+      const dimsBits: string[] = [];
+      if (d.enteredWidth != null && d.enteredHeight != null) dimsBits.push(`${d.enteredWidth} × ${d.enteredHeight} ${escape(d.sizeUnit || "in")}`);
+      if (d.packedW != null && d.packedH != null) dimsBits.push(`packed ${d.packedW} × ${d.packedH}${d.packedD != null ? ` × ${d.packedD}` : ""} ${escape(d.packedUnit || "in")}`);
+      const meta: string[] = [];
+      if (l.productSku) meta.push(`SKU ${escape(l.productSku)}`);
+      if (l.productCategory) meta.push(escape(l.productCategory));
+      if (l.selectedMaterial) meta.push(`<strong>Material:</strong> ${escape(l.selectedMaterial)}`);
+      if (l.hardwareSummary) meta.push(`<strong>Hardware:</strong> ${escape(l.hardwareSummary)}`);
+      if (l.vendor.supplierName) meta.push(`<strong>Vendor:</strong> ${escape(l.vendor.supplierName)}`);
+      if (l.artwork.fileUrl) meta.push(`<strong>Artwork:</strong> <a href="${escape(l.artwork.fileUrl)}" style="color:${A3_NAVY};">file</a>`);
+      else if (l.artwork.needed) meta.push(`<strong style="color:${A3_ACCENT};">Artwork needed</strong>`);
+      return `<tr>
+        <td style="padding:8px 8px;border-top:1px solid ${A3_LINE};vertical-align:top;width:64px;">
+          ${l.productImageUrl ? `<img src="${escape(l.productImageUrl)}" alt="" width="56" height="56" style="display:block;width:56px;height:56px;border-radius:6px;border:1px solid ${A3_LINE};object-fit:cover;" />` : `<div style="width:56px;height:56px;border-radius:6px;border:1px dashed ${A3_LINE};background:${A3_BG};"></div>`}
+        </td>
+        <td style="padding:8px 8px;border-top:1px solid ${A3_LINE};vertical-align:top;font-size:12px;color:${A3_INK};">
+          <div style="font-weight:600;">${escape(l.itemName)} <span style="color:${A3_MUTED};font-weight:400;">× ${l.quantity}</span> ${inventorySourceChip(l.inventorySourceLabel)}</div>
+          ${dimsBits.length ? `<div style="margin-top:2px;color:${A3_MUTED};">${dimsBits.join(" · ")}</div>` : ""}
+          ${meta.length ? `<div style="margin-top:4px;color:${A3_INK};line-height:1.5;">${meta.join(" · ")}</div>` : ""}
+        </td>
+      </tr>`;
+    }).join("");
+    return `<div style="border:1px solid ${A3_LINE};border-radius:8px;padding:10px 12px;margin-bottom:10px;background:#ffffff;">
+      <div style="font-size:13px;font-weight:600;color:${A3_INK};">${escape(pkg.packageName)} <span style="color:${A3_MUTED};font-weight:400;font-size:11px;">· ${lines.length} line${lines.length === 1 ? "" : "s"}</span></div>
       ${pkg.packageDescription ? `<div style="font-size:12px;color:${A3_MUTED};margin-top:2px;">${escape(pkg.packageDescription)}</div>` : ""}
-      <div style="margin-top:6px;font-size:12px;color:${A3_MUTED};">${lines.length} line${lines.length === 1 ? "" : "s"}: ${lines.map(l => `<span style="color:${A3_INK};">${escape(l.itemName)} ×${l.quantity}</span>`).join(" · ") || "—"}</div>
+      ${lines.length ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-top:6px;">${rows}</table>` : `<div style="margin-top:6px;font-size:12px;color:${A3_MUTED};">No lines tied to this package.</div>`}
     </div>`;
   }).join("");
 }
 
-function renderVendorMatchesBlock(matches: IntakeVendorMatch[], items: IntakeItemAnalysis[]): string {
+function renderVendorMatchesBlock(matches: IntakeVendorMatch[], _items: IntakeItemAnalysis[]): string {
   if (!matches.length) {
     return `<div style="font-size:13px;color:${A3_ACCENT};border:1px dashed ${A3_ACCENT};border-radius:8px;padding:10px 12px;background:#fdf3f3;">No deterministic vendor match — PM must assign suppliers manually.</div>`;
   }
   const sourceLabel = (s: string) => s === "order_assigned" ? "Order" : s === "product_default" ? "Product default" : s === "branding_location_default" ? "Branding location" : "—";
-  const itemNameById = new Map(items.map(i => [i.itemId, i.itemName]));
-  return matches.map(m => `<div style="border:1px solid ${A3_LINE};border-radius:8px;padding:10px 12px;margin-bottom:6px;background:#ffffff;">
-    <div style="font-size:13px;font-weight:600;color:${A3_INK};">${escape(m.supplierName)} <span style="color:${A3_MUTED};font-weight:400;font-size:11px;">· ${m.matchSources.map(sourceLabel).join(", ")}</span></div>
-    <div style="font-size:12px;color:${A3_MUTED};margin-top:4px;">Lines: ${m.itemIds.map(id => escape(itemNameById.get(id) || `#${id}`)).join(" · ")}</div>
-  </div>`).join("");
+  return matches.map(m => {
+    const meta: string[] = [];
+    if (m.contactName) meta.push(`<strong>Contact:</strong> ${escape(m.contactName)}`);
+    if (m.contactEmail) meta.push(`<a href="mailto:${escape(m.contactEmail)}" style="color:${A3_NAVY};">${escape(m.contactEmail)}</a>`);
+    if (m.contactPhone) meta.push(escape(m.contactPhone));
+    if (m.leadTimeDays != null) meta.push(`<strong>Lead time:</strong> ${m.leadTimeDays}d`);
+    if (m.city || m.country) meta.push([m.city, m.country].filter(Boolean).map(v => escape(v!)).join(", "));
+    if (!m.isActive) meta.push(`<span style="color:${A3_ACCENT};font-weight:600;">INACTIVE</span>`);
+    const cats = m.categories.length ? `<div style="margin-top:4px;font-size:11px;color:${A3_MUTED};">Categories: ${m.categories.map(c => `<span style="background:${A3_BG};border:1px solid ${A3_LINE};padding:1px 6px;border-radius:999px;color:${A3_INK};margin-right:3px;">${escape(c)}</span>`).join("")}</div>` : "";
+    const lineRows = m.lineSummaries.map(ls => {
+      const bits: string[] = [];
+      if (ls.sku) bits.push(`SKU ${escape(ls.sku)}`);
+      if (ls.dimensions) bits.push(escape(ls.dimensions));
+      if (ls.material) bits.push(`mat: ${escape(ls.material)}`);
+      if (ls.productLeadTimeDays != null) bits.push(`prod lead ${ls.productLeadTimeDays}d`);
+      return `<tr>
+        <td style="padding:4px 6px;border-top:1px solid ${A3_LINE};font-size:11px;color:${A3_INK};">${escape(ls.itemName)} <span style="color:${A3_MUTED};">×${ls.quantity}</span>${ls.productCategory ? ` <span style="color:${A3_MUTED};">· ${escape(ls.productCategory)}</span>` : ""}</td>
+        <td style="padding:4px 6px;border-top:1px solid ${A3_LINE};font-size:11px;color:${A3_MUTED};text-align:right;">${bits.join(" · ") || "—"}</td>
+      </tr>`;
+    }).join("");
+    return `<div style="border:1px solid ${A3_LINE};border-radius:8px;padding:10px 12px;margin-bottom:8px;background:#ffffff;">
+      <div style="font-size:13px;font-weight:600;color:${A3_INK};">${escape(m.supplierName)} <span style="color:${A3_MUTED};font-weight:400;font-size:11px;">· match: ${m.matchSources.map(sourceLabel).join(", ") || "—"}</span></div>
+      ${meta.length ? `<div style="font-size:12px;color:${A3_INK};margin-top:4px;line-height:1.5;">${meta.join(" · ")}</div>` : ""}
+      ${cats}
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-top:6px;">${lineRows}</table>
+    </div>`;
+  }).join("");
+}
+
+function renderQuickActionsBlock(orderId: number, partnerId: number, customerEmail: string | null, fileCount: number): string {
+  const orderLink = publicLink(`/admin/orders/${orderId}`);
+  const partnerLink = publicLink(`/admin/partners/${partnerId}/edit`);
+  const filesLink = publicLink(`/admin/orders/${orderId}#files`);
+  const customerHref = customerEmail ? `mailto:${customerEmail}` : null;
+  const btn = (href: string, label: string) =>
+    `<a href="${escape(href)}" style="display:inline-block;background:${A3_NAVY};color:#fff;padding:8px 12px;border-radius:6px;text-decoration:none;font-size:12px;font-weight:600;margin:0 6px 6px 0;">${escape(label)}</a>`;
+  const ghostBtn = (href: string, label: string) =>
+    `<a href="${escape(href)}" style="display:inline-block;background:#fff;color:${A3_NAVY};border:1px solid ${A3_NAVY};padding:7px 11px;border-radius:6px;text-decoration:none;font-size:12px;font-weight:600;margin:0 6px 6px 0;">${escape(label)}</a>`;
+  return `<div>
+    ${btn(orderLink, "View order")}
+    ${ghostBtn(partnerLink, "Open partner")}
+    ${customerHref ? ghostBtn(customerHref, "Email customer") : ""}
+    ${ghostBtn(filesLink, `Files${fileCount ? ` (${fileCount})` : ""}`)}
+  </div>`;
 }
 
 function renderFilesBlock(files: IntakeFile[]): string {

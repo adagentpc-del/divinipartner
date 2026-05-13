@@ -106,6 +106,12 @@ export interface Partner {
   /** @nullable */
   addonDisplayFormat?: string | null;
   addonCategoryGroupingEnabled?: boolean;
+  /** @nullable */
+  salespersonName?: string | null;
+  /** @nullable */
+  salespersonEmail?: string | null;
+  /** @nullable */
+  salespersonPhone?: string | null;
   createdAt: Date;
   updatedAt: Date;
   [key: string]: unknown;

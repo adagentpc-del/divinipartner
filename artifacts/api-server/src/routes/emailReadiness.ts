@@ -139,11 +139,21 @@ router.get("/admin/email-readiness", async (req, res): Promise<void> => {
 const TestBody = z.object({
   partnerId: z.number().int().positive(),
   toEmail: z.string().email(),
+  orderId: z.number().int().positive().optional(),
 });
 
 // Helper: find or build a tiny throwaway order context to render & send a
-// realistic test message without polluting real order history.
-async function pickTestOrderContext(partnerId: number) {
+// realistic test message without polluting real order history. When an
+// orderId is supplied, it is verified to belong to the partner before use.
+async function pickTestOrderContext(partnerId: number, orderId?: number) {
+  if (orderId) {
+    const [row] = await db.select({ id: ordersTable.id })
+      .from(ordersTable)
+      .where(and(eq(ordersTable.id, orderId), eq(ordersTable.partnerId, partnerId)))
+      .limit(1);
+    if (!row) return null;
+    return await buildOrderEmailContext(row.id);
+  }
   const [latest] = await db.select({ id: ordersTable.id })
     .from(ordersTable)
     .where(eq(ordersTable.partnerId, partnerId))
@@ -156,8 +166,8 @@ async function pickTestOrderContext(partnerId: number) {
 router.post("/admin/email-readiness/test/customer-confirmation", async (req, res): Promise<void> => {
   const parsed = TestBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid body", details: parsed.error.format() }); return; }
-  const ctx = await pickTestOrderContext(parsed.data.partnerId);
-  if (!ctx) { res.status(409).json({ error: "Partner has no orders yet — create one first to test the customer confirmation template." }); return; }
+  const ctx = await pickTestOrderContext(parsed.data.partnerId, parsed.data.orderId);
+  if (!ctx) { res.status(409).json({ error: parsed.data.orderId ? "Order not found for this partner." : "Partner has no orders yet — create one first to test the customer confirmation template." }); return; }
   // Re-target the recipient to the supplied address so we don't email a real
   // customer during testing. We clone the order so we don't mutate the row.
   const testCtx = { ...ctx, order: { ...ctx.order, contactEmail: parsed.data.toEmail, contactName: ctx.order.contactName || "Test Recipient" } };
@@ -165,33 +175,28 @@ router.post("/admin/email-readiness/test/customer-confirmation", async (req, res
   res.status(result.ok ? 200 : 500).json({ ok: result.ok, error: (result as any).error, providerId: (result as any).id, sentTo: parsed.data.toEmail, basedOnOrderId: ctx.order.id });
 });
 
-// Task #27: dedicated test send for the PM intake packet template. Reuses
-// sendOpsForward (which is what production uses) but with the same single-
-// recipient + cc/bcc suppression guarantees as the internal-routing test
-// so admins can preview the packet without spamming routing addresses.
+// PM intake packet test: reuses sendOpsForward but with overrideTo +
+// suppressCcBcc so configured cc/bcc addresses are skipped. Accepts an
+// optional orderId so admins can preview a specific order's packet.
 router.post("/admin/email-readiness/test/pm-intake", async (req, res): Promise<void> => {
   const parsed = TestBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid body", details: parsed.error.format() }); return; }
-  const ctx = await pickTestOrderContext(parsed.data.partnerId);
-  if (!ctx) { res.status(409).json({ error: "Partner has no orders yet — create one first to preview the PM intake packet." }); return; }
-  const result = await sendOpsForward(ctx as any, [parsed.data.toEmail], { suppressCcBcc: true });
-  res.status(result.ok ? 200 : 500).json({ ok: result.ok, error: (result as any).error, providerId: (result as any).id, sentTo: parsed.data.toEmail, basedOnOrderId: ctx.order.id });
+  const ctx = await pickTestOrderContext(parsed.data.partnerId, parsed.data.orderId);
+  if (!ctx) { res.status(409).json({ error: parsed.data.orderId ? "Order not found for this partner." : "Partner has no orders yet — create one first to preview the PM intake packet." }); return; }
+  const result = await sendOpsForward(ctx, [parsed.data.toEmail], { suppressCcBcc: true });
+  res.status(result.ok ? 200 : 500).json({ ok: result.ok, error: (result as { error?: string }).error, providerId: (result as { id?: string }).id, sentTo: parsed.data.toEmail, basedOnOrderId: ctx.order.id });
 });
 
 router.post("/admin/email-readiness/test/internal-routing", async (req, res): Promise<void> => {
   const parsed = TestBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid body", details: parsed.error.format() }); return; }
-  const ctx = await pickTestOrderContext(parsed.data.partnerId);
-  if (!ctx) { res.status(409).json({ error: "Partner has no orders yet — create one first to test internal routing." }); return; }
-  // CRITICAL: do NOT call sendInternalOrderForward here — its underlying
-  // sendOpsForward resolves recipients from partner_email_recipients first
-  // and only falls back to partner fields, so configured ops/cc/bcc rows
-  // would still receive the test email. Use sendOpsForward's explicit
-  // overrideTo to force exactly one recipient AND suppressCcBcc to skip
-  // every configured cc/bcc address — together they guarantee the test
-  // reaches only the address the admin entered.
-  const result = await sendOpsForward(ctx as any, [parsed.data.toEmail], { suppressCcBcc: true });
-  res.status(result.ok ? 200 : 500).json({ ok: result.ok, error: (result as any).error, providerId: (result as any).id, sentTo: parsed.data.toEmail, basedOnOrderId: ctx.order.id });
+  const ctx = await pickTestOrderContext(parsed.data.partnerId, parsed.data.orderId);
+  if (!ctx) { res.status(409).json({ error: parsed.data.orderId ? "Order not found for this partner." : "Partner has no orders yet — create one first to test internal routing." }); return; }
+  // Do NOT call sendInternalOrderForward here — it resolves recipients from
+  // partner_email_recipients first and would still send to configured rows.
+  // sendOpsForward + overrideTo + suppressCcBcc guarantees a single recipient.
+  const result = await sendOpsForward(ctx, [parsed.data.toEmail], { suppressCcBcc: true });
+  res.status(result.ok ? 200 : 500).json({ ok: result.ok, error: (result as { error?: string }).error, providerId: (result as { id?: string }).id, sentTo: parsed.data.toEmail, basedOnOrderId: ctx.order.id });
 });
 
 // ---------------------------------------------------------------------------

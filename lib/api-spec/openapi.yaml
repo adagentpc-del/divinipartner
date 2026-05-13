@@ -4268,6 +4268,12 @@ components:
           type: ["string", "null"]
         addonCategoryGroupingEnabled:
           type: boolean
+        salespersonName:
+          type: ["string", "null"]
+        salespersonEmail:
+          type: ["string", "null"]
+        salespersonPhone:
+          type: ["string", "null"]
         createdAt:
           type: string
           format: date-time

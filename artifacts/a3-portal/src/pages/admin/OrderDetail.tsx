@@ -414,7 +414,7 @@ export default function OrderDetail() {
             </div>
           </Card>
 
-          <Card className="p-5">
+          <Card id="files" className="p-5">
             <h2 className="font-semibold text-lg mb-3 flex items-center gap-2"><FolderOpen className="h-5 w-5 text-muted-foreground" />Production Assets</h2>
             <OrderAssetsPanel orderId={order.id} partnerId={order.partnerId} eventId={order.eventId} />
             <TaskPanel orderId={order.id} partnerId={order.partnerId} eventId={order.eventId ?? undefined} supplierId={order.assignedSupplierId ?? undefined} />

@@ -78,12 +78,19 @@ export default function EmailReadinessPage() {
   const [testEmail, setTestEmail] = useState("");
   const [testSubject, setTestSubject] = useState("");
   const [testMessage, setTestMessage] = useState("");
+  const [testOrderId, setTestOrderId] = useState<number | "">("");
+
+  const partnerOrdersQuery = useQuery<Array<{ id: number; orderNumber: string; status: string; createdAt: string; eventName?: string | null }>>({
+    queryKey: ["/api/admin/orders", testTarget?.partnerId, "pm-intake-picker"],
+    queryFn: () => apiFetch(`/api/admin/orders?partnerId=${testTarget!.partnerId}`),
+    enabled: !!testTarget && testTarget.kind === "pm_intake",
+  });
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
   const [retryingId, setRetryingId] = useState<number | null>(null);
   const [retryFeedback, setRetryFeedback] = useState<{ id: number; ok: boolean; text: string } | null>(null);
 
   const sendTest = useMutation({
-    mutationFn: (args: { partnerId: number; toEmail: string; kind: "customer" | "internal" | "generic" | "pm_intake"; subject?: string; message?: string }) => {
+    mutationFn: (args: { partnerId: number; toEmail: string; kind: "customer" | "internal" | "generic" | "pm_intake"; subject?: string; message?: string; orderId?: number }) => {
       if (args.kind === "generic") {
         return apiFetch("/api/admin/email-readiness/test/generic", {
           method: "POST",
@@ -95,7 +102,7 @@ export default function EmailReadinessPage() {
         : args.kind === "pm_intake"
           ? "/api/admin/email-readiness/test/pm-intake"
           : "/api/admin/email-readiness/test/internal-routing";
-      return apiFetch(path, { method: "POST", body: JSON.stringify({ partnerId: args.partnerId, toEmail: args.toEmail }) });
+      return apiFetch(path, { method: "POST", body: JSON.stringify({ partnerId: args.partnerId, toEmail: args.toEmail, orderId: args.orderId }) });
     },
     onSuccess: (r: any, vars) => setTestResult({
       ok: !!r.ok,
@@ -319,23 +326,49 @@ export default function EmailReadinessPage() {
       </Card>
 
       {/* TEST DIALOG */}
-      <Dialog open={!!testTarget} onOpenChange={(o) => { if (!o) { setTestTarget(null); setTestResult(null); } }}>
+      <Dialog open={!!testTarget} onOpenChange={(o) => { if (!o) { setTestTarget(null); setTestResult(null); setTestOrderId(""); } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
               {testTarget?.kind === "customer" ? "Send test customer confirmation"
                 : testTarget?.kind === "internal" ? "Send test internal routing email"
+                : testTarget?.kind === "pm_intake" ? "Send test PM intake packet"
                 : "Send generic branded test"}
             </DialogTitle>
             <DialogDescription>
               {testTarget?.kind === "generic"
                 ? <>Sends a small branded email for <strong>{testTarget?.partnerName}</strong> using the partner's sender label and brand colors. No order required — useful for verifying deliverability for newly onboarded partners.</>
-                : <>Sends a real branded email for <strong>{testTarget?.partnerName}</strong> using the partner's most recent order as the template payload. The recipient is overridden to the address you enter — no real customer is contacted.</>}
+                : testTarget?.kind === "pm_intake"
+                  ? <>Renders the full PM intake packet for <strong>{testTarget?.partnerName}</strong> using the order you select below (defaults to most recent). The recipient is overridden to the address you enter — no configured ops/cc/bcc address is contacted.</>
+                  : <>Sends a real branded email for <strong>{testTarget?.partnerName}</strong> using the partner's most recent order as the template payload. The recipient is overridden to the address you enter — no real customer is contacted.</>}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 py-2">
             <Label className="text-xs">Send to</Label>
             <Input type="email" placeholder="you@yourdomain.com" value={testEmail} onChange={e => setTestEmail(e.target.value)} />
+            {testTarget?.kind === "pm_intake" && (
+              <>
+                <Label className="text-xs mt-2">Order to render</Label>
+                {partnerOrdersQuery.isLoading ? (
+                  <div className="text-xs text-muted-foreground flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> Loading orders…</div>
+                ) : !partnerOrdersQuery.data || partnerOrdersQuery.data.length === 0 ? (
+                  <div className="text-xs text-amber-700">No orders for this partner yet — create one first.</div>
+                ) : (
+                  <select
+                    className="w-full border rounded h-9 px-2 text-sm bg-background"
+                    value={testOrderId}
+                    onChange={e => setTestOrderId(e.target.value ? parseInt(e.target.value) : "")}
+                  >
+                    <option value="">Most recent order (default)</option>
+                    {partnerOrdersQuery.data.map(o => (
+                      <option key={o.id} value={o.id}>
+                        #{o.orderNumber} · {o.status}{o.eventName ? ` · ${o.eventName}` : ""} · {new Date(o.createdAt).toLocaleDateString()}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </>
+            )}
             {testTarget?.kind === "generic" && (
               <>
                 <Label className="text-xs mt-2">Subject (optional)</Label>
@@ -364,6 +397,7 @@ export default function EmailReadinessPage() {
                 kind: testTarget.kind,
                 subject: testSubject,
                 message: testMessage,
+                orderId: testTarget.kind === "pm_intake" && typeof testOrderId === "number" ? testOrderId : undefined,
               })}>
               {sendTest.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Send className="h-3.5 w-3.5 mr-1" />} Send test
             </Button>

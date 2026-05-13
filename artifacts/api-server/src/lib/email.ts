@@ -158,6 +158,8 @@ export interface OrderEmailContext {
   items: OrderItem[];
   event?: { name: string; eventDate?: string | Date | null } | null;
   venue?: { name: string; city?: string | null; country?: string | null } | null;
+  eventRow?: import("@workspace/db").Event | null;
+  venueRow?: import("@workspace/db").Venue | null;
 }
 
 export async function buildOrderEmailContext(orderId: number): Promise<OrderEmailContext | null> {
@@ -169,21 +171,26 @@ export async function buildOrderEmailContext(orderId: number): Promise<OrderEmai
   const items = await db.select().from(orderItemsTable).where(eq(orderItemsTable.orderId, orderId));
   let event = null;
   let venue = null;
+  let eventRow: import("@workspace/db").Event | null = null;
+  let venueRow: import("@workspace/db").Venue | null = null;
   if (order.eventId) {
     const [ev] = await db.select().from(eventsTable).where(eq(eventsTable.id, order.eventId));
+    eventRow = ev ?? null;
     event = ev ? { name: ev.name, eventDate: ev.eventStartDate } : null;
     if (ev?.venueId) {
       const [vn] = await db.select().from(venuesTable).where(eq(venuesTable.id, ev.venueId));
+      venueRow = vn ?? null;
       const cityName = vn?.cityId ? (await db.select().from(citiesTable).where(eq(citiesTable.id, vn.cityId)))[0]?.name ?? null : null;
       venue = vn ? { name: vn.name, city: cityName, country: vn.country ?? null } : null;
     }
   }
   if (!venue && order.shippingVenueId) {
     const [vn] = await db.select().from(venuesTable).where(eq(venuesTable.id, order.shippingVenueId));
+    venueRow = vn ?? null;
     const cityName = vn?.cityId ? (await db.select().from(citiesTable).where(eq(citiesTable.id, vn.cityId)))[0]?.name ?? null : null;
     venue = vn ? { name: vn.name, city: cityName, country: vn.country ?? null } : null;
   }
-  return { partner, theme: theme ?? null, order, items, event, venue };
+  return { partner, theme: theme ?? null, order, items, event, venue, eventRow, venueRow };
 }
 
 export function renderCustomerConfirmationHtml(ctx: OrderEmailContext): string {
