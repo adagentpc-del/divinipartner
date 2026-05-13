@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { SiteHeader } from "@/components/home/SiteHeader";
 import { SiteFooter } from "@/components/home/SiteFooter";
 import { VideoEmbed } from "@/components/home/VideoEmbed";
@@ -103,40 +103,57 @@ const BENEFITS = [
   "Support public, private, or password-protected portal access",
 ];
 
-// Existing portal routes use /partner/<slug> (singular). The Move Miami here
-// is the A3 podcast/event studio partner — NOT "Move Mi" the moving platform.
-const PARTNERS: PartnerTileData[] = [
-  {
-    name: "Social Commerce Festival",
-    route: "/partner/social-commerce-festival",
-    accessType: "Public",
-    description:
-      "Public partner portal for Social Commerce Festival event production and ordering requests.",
-    isPasswordProtected: false,
-  },
-  {
-    name: "Wynwood Marketplace",
-    route: "/partner/wynwood-marketplace",
-    accessType: "Public",
-    description:
-      "Public partner portal for Wynwood Marketplace visual production and event requests.",
-    isPasswordProtected: false,
-  },
-  {
-    name: "The Move Miami",
-    route: "/partner/move-miami",
-    accessType: "Public",
-    description:
-      "Public partner portal for The Move Miami podcast and event studio partnership requests.",
-    isPasswordProtected: false,
-  },
-];
+interface ApiPartnerPortal {
+  slug: string;
+  companyName: string;
+  introText: string | null;
+  introHeadline: string | null;
+  portalMode: string | null;
+  launchStatus: string | null;
+}
+
+function usePartnerPortals(): { partners: PartnerTileData[]; loading: boolean } {
+  const [partners, setPartners] = useState<PartnerTileData[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch(`${import.meta.env.BASE_URL}api/public/partner-portals`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json: { partners?: ApiPartnerPortal[] } = await res.json();
+        if (!alive) return;
+        const tiles: PartnerTileData[] = (json.partners ?? []).map((p) => ({
+          name: p.companyName,
+          // Partner portals live at the bare-slug URL; /partner/<slug> also works.
+          route: `/${p.slug}`,
+          accessType: "Public",
+          isPasswordProtected: false,
+          description:
+            p.introText?.trim() ||
+            p.introHeadline?.trim() ||
+            `Public partner portal for ${p.companyName} event production and ordering requests.`,
+        }));
+        setPartners(tiles);
+      } catch {
+        if (alive) setPartners([]);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return { partners, loading };
+}
 
 const SECTION_EYEBROW = "text-[11px] font-bold uppercase tracking-[0.22em] text-[#C99A2E] mb-3";
 const SECTION_TITLE =
   "text-3xl sm:text-4xl lg:text-5xl font-extrabold uppercase tracking-tight text-[#0E1B3D] leading-[1.05]";
 
 export default function PartnerHomePage() {
+  const { partners: PARTNERS, loading: partnersLoading } = usePartnerPortals();
   useEffect(() => {
     document.title =
       "A3 Visual Partnership Portal | Integrated Visual Solutions & Event Resource Management";
@@ -413,11 +430,30 @@ export default function PartnerHomePage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-7">
-              {PARTNERS.map((p) => (
-                <PartnerTile key={p.route} partner={p} />
-              ))}
-            </div>
+            {partnersLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-7">
+                {[0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    className="rounded-lg bg-white/5 border border-white/10 aspect-[16/10] animate-pulse"
+                  />
+                ))}
+              </div>
+            ) : PARTNERS.length === 0 ? (
+              <div className="text-center text-slate-300 max-w-xl mx-auto py-10 border border-white/10 rounded-lg bg-white/5">
+                No public partner portals are live yet. Check back soon, or{" "}
+                <a href="#become-partner" className="text-[#E9B947] underline font-semibold">
+                  request your own
+                </a>
+                .
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-7">
+                {PARTNERS.map((p) => (
+                  <PartnerTile key={p.route} partner={p} />
+                ))}
+              </div>
+            )}
           </div>
         </section>
       </main>

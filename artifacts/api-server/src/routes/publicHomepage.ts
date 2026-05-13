@@ -1,10 +1,43 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
-import { db, partnershipRequestsTable } from "@workspace/db";
+import { and, asc, eq, inArray, isNotNull, isNull, ne } from "drizzle-orm";
+import { db, partnersTable, partnershipRequestsTable } from "@workspace/db";
 import { getUncachableResendClient } from "../lib/resend";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
+
+// Public list of partner portals shown on the homepage. Filters to active,
+// non-archived partners with a usable slug and a launch_status that means
+// "the public portal page is reachable" (preview or launched).
+router.get("/public/partner-portals", async (_req, res) => {
+  try {
+    const rows = await db
+      .select({
+        slug: partnersTable.slug,
+        companyName: partnersTable.companyName,
+        introText: partnersTable.introText,
+        introHeadline: partnersTable.introHeadline,
+        portalMode: partnersTable.portalMode,
+        launchStatus: partnersTable.launchStatus,
+      })
+      .from(partnersTable)
+      .where(
+        and(
+          eq(partnersTable.isActive, true),
+          isNull(partnersTable.archivedAt),
+          isNotNull(partnersTable.slug),
+          ne(partnersTable.slug, ""),
+          inArray(partnersTable.launchStatus, ["preview", "launched"]),
+        ),
+      )
+      .orderBy(asc(partnersTable.companyName));
+    res.json({ partners: rows });
+  } catch (err) {
+    logger.error({ err }, "Failed to list public partner portals");
+    res.status(500).json({ error: "Failed to list partners", partners: [] });
+  }
+});
 
 const PARTNER_TYPES = [
   "Hotel or Resort",
