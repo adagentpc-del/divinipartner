@@ -92,6 +92,10 @@ const formSchema = z.object({
   internalAccountOwnerEmail: z.string().optional(),
   supportContactName: z.string().optional(),
   supportContactEmail: z.string().optional(),
+  // Task #27: salesperson routing for the PM intake packet.
+  salespersonName: z.string().optional(),
+  salespersonEmail: z.string().optional(),
+  salespersonPhone: z.string().optional(),
   // Section 36: add-on display defaults.
   addonDisplayFormat: z.enum(["flat", "grid", "category_tiles"]).default("grid"),
   addonCategoryGroupingEnabled: z.boolean().default(false),
@@ -152,6 +156,7 @@ export default function PartnerForm() {
       programManagerName: "", programManagerEmail: "",
       internalAccountOwnerName: "", internalAccountOwnerEmail: "",
       supportContactName: "", supportContactEmail: "",
+      salespersonName: "", salespersonEmail: "", salespersonPhone: "",
       defaultCurrency: "USD", defaultTaxMode: "none", defaultTaxLabel: "", defaultTaxRate: "",
       taxInclusive: false, billingCountry: "", invoiceDisplayNotes: "",
       addonDisplayFormat: "grid", addonCategoryGroupingEnabled: false,
@@ -209,6 +214,9 @@ export default function PartnerForm() {
         internalAccountOwnerEmail: (partner as any).internalAccountOwnerEmail || "",
         supportContactName: (partner as any).supportContactName || "",
         supportContactEmail: (partner as any).supportContactEmail || "",
+        salespersonName: (partner as any).salespersonName || "",
+        salespersonEmail: (partner as any).salespersonEmail || "",
+        salespersonPhone: (partner as any).salespersonPhone || "",
         defaultCurrency: (partner as any).defaultCurrency || "USD",
         defaultTaxMode: (partner as any).defaultTaxMode || "none",
         defaultTaxLabel: (partner as any).defaultTaxLabel || "",
@@ -1058,6 +1066,26 @@ function CommunicationsCard({ partnerId, form }: { partnerId: number; form: any 
               <FormItem>
                 <FormLabel>Support contact (email)</FormLabel>
                 <FormControl><Input type="text" placeholder="support@a3visual.com" {...field} value={field.value || ""} /></FormControl>
+              </FormItem>
+            )} />
+            {/* Task #27: salesperson routing for PM intake. Defaults to
+                Alyssa DelTorre when blank — handled server-side. */}
+            <FormField control={form.control} name="salespersonName" render={({ field }: any) => (
+              <FormItem>
+                <FormLabel>Salesperson (name)</FormLabel>
+                <FormControl><Input placeholder="Defaults to Alyssa DelTorre" {...field} value={field.value || ""} /></FormControl>
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="salespersonEmail" render={({ field }: any) => (
+              <FormItem>
+                <FormLabel>Salesperson (email)</FormLabel>
+                <FormControl><Input type="text" placeholder="adeltorre@a3visual.com" {...field} value={field.value || ""} /></FormControl>
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="salespersonPhone" render={({ field }: any) => (
+              <FormItem>
+                <FormLabel>Salesperson (phone)</FormLabel>
+                <FormControl><Input type="text" placeholder="optional" {...field} value={field.value || ""} /></FormControl>
               </FormItem>
             )} />
           </div>

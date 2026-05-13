@@ -79,23 +79,51 @@ interface IntakeFamily {
   status: "ok" | "low" | "depleted";
   perCity: Array<{ cityName: string; onHand: number; reservedAfter: number; remaining: number }>;
 }
+// Task #27: PM intake packet — extended types mirroring the email.
+type InventorySourceLabel = "customer_stock" | "partner_stock" | "a3_stock" | "third_party" | "confirm_manually";
+interface PmIntakeItemExtras {
+  inventorySourceLabel: InventorySourceLabel;
+  dimensions: { enteredWidth: number | null; enteredHeight: number | null; enteredDepth: number | null; sizeUnit: string | null; packedW: number | null; packedH: number | null; packedD: number | null; packedUnit: string | null };
+  artwork: { fileUrl: string | null; needed: boolean };
+  selectedMaterial: string | null;
+  hardwareSummary: string | null;
+  vendor: { supplierId: number | null; supplierName: string | null; matchSource: "order_assigned" | "product_default" | "branding_location_default" | "none" };
+}
 interface IntakeAnalysis {
   orderType: "print_only" | "full_unit" | "mixed" | "rental" | "other";
   orderTypeReason: string;
+  quoteType?: "Print Production" | "Hardware + Print" | "Mixed Fulfillment" | "Rental" | "Standard";
   netsuiteCustomerNumber: string | null;
+  salesperson?: IntakeContact;
   programManager: IntakeContact | null;
   accountOwner: IntakeContact | null;
   supportContact: IntakeContact | null;
   partnerContacts: IntakeContact[];
   opsRecipients: string[];
-  items: IntakeItem[];
+  customer?: { contactName: string; contactEmail: string; contactPhone: string | null; companyName: string | null };
+  billing?: { contactName: string | null; contactEmail: string | null; contactPhone: string | null; addressLine: string | null; paymentModel: string | null; paymentTerms: string | null; netsuiteCustomerNumber: string | null };
+  event?: { eventName: string | null; eventStartDate: string | null; eventEndDate: string | null; installDate: string | null; teardownDate: string | null; shippingDeadline: string | null; venueName: string | null; venueAddress: string | null; venueContacts: Array<{ name: string; email?: string | null; phone?: string | null; role?: string | null }> };
+  packages?: Array<{ packageId: number; packageName: string; packageDescription: string | null; itemIds: number[] }>;
+  items: Array<IntakeItem & Partial<PmIntakeItemExtras>>;
   familiesRemaining: IntakeFamily[];
+  vendorMatches?: Array<{ supplierId: number; supplierName: string; itemIds: number[]; matchSources: Array<"order_assigned" | "product_default" | "branding_location_default"> }>;
+  files?: Array<{ url: string; name: string; kind: "artwork" | "product_image" | "survey_photo"; contextLabel: string | null }>;
+  missingFields?: Array<{ field: string; severity: "critical" | "warning"; reason: string }>;
+  pmChecklist?: Array<{ key: string; label: string; done: boolean; detail: string | null }>;
   recommendedSupplierName: string | null;
   followUpQuestions: string[];
   nextSteps: string[];
   readinessLabel: "ready_to_dispatch" | "needs_clarification" | "needs_artwork" | "blocked_inventory";
   readinessReason: string;
 }
+
+const INV_SOURCE_LABEL: Record<InventorySourceLabel, { text: string; tone: string }> = {
+  customer_stock:   { text: "Customer stock",   tone: "bg-slate-50 text-slate-700 border-slate-200" },
+  partner_stock:    { text: "Partner stock",    tone: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  a3_stock:         { text: "A3 stock",         tone: "bg-indigo-50 text-indigo-700 border-indigo-200" },
+  third_party:      { text: "Third-party",      tone: "bg-amber-50 text-amber-700 border-amber-200" },
+  confirm_manually: { text: "Confirm source",   tone: "bg-rose-50 text-rose-700 border-rose-200" },
+};
 
 const ORDER_TYPE_TONE: Record<IntakeAnalysis["orderType"], string> = {
   print_only: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -175,12 +203,34 @@ export default function OrderInternalIntakePanel({ orderId }: { orderId: number 
       <div className="text-xs text-muted-foreground mt-2">{a.orderTypeReason}</div>
       {a.readinessReason && <div className="text-xs text-muted-foreground mt-1">{a.readinessReason}</div>}
 
+      {/* Missing-info banner (PM packet, task #27) */}
+      {a.missingFields && a.missingFields.length > 0 && (() => {
+        const crit = a.missingFields!.filter(m => m.severity === "critical").length;
+        const tone = crit > 0 ? "border-rose-300 bg-rose-50 text-rose-800" : "border-amber-300 bg-amber-50 text-amber-800";
+        return (
+          <div className={`mt-3 rounded-md border px-3 py-2 ${tone}`}>
+            <div className="text-[11px] uppercase tracking-wider font-bold flex items-center gap-1">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              {crit > 0 ? `Missing info — ${crit} critical, ${a.missingFields!.length - crit} warning` : `Heads up — ${a.missingFields!.length} item${a.missingFields!.length === 1 ? "" : "s"} to confirm`}
+            </div>
+            <ul className="mt-1.5 space-y-0.5 text-xs">
+              {a.missingFields!.map((m, i) => (
+                <li key={i}><strong>{m.field}</strong> — <span className="opacity-80">{m.reason}</span></li>
+              ))}
+            </ul>
+          </div>
+        );
+      })()}
+
       {/* Account snapshot */}
       <Section title="Account snapshot" icon={<Building2 className="h-3.5 w-3.5" />}>
+        {a.quoteType && (
+          <KvRow label="Quote type"><span className="text-sm font-semibold">{a.quoteType}</span></KvRow>
+        )}
         <KvRow label="NetSuite customer #">
           {a.netsuiteCustomerNumber
             ? <code className="text-xs px-1.5 py-0.5 rounded border bg-muted">{a.netsuiteCustomerNumber}</code>
-            : <span className="text-muted-foreground text-xs">— not on file —</span>}
+            : <span className="text-rose-700 text-xs font-medium">— missing —</span>}
         </KvRow>
         {a.recommendedSupplierName && (
           <KvRow label="Suggested production partner">
@@ -196,14 +246,76 @@ export default function OrderInternalIntakePanel({ orderId }: { orderId: number 
         )}
       </Section>
 
+      {/* Customer + billing block (PM packet) */}
+      {(a.customer || a.billing) && (
+        <Section title="Customer & billing" icon={<Building2 className="h-3.5 w-3.5" />}>
+          <div className="grid sm:grid-cols-2 gap-3 text-xs">
+            {a.customer && (
+              <div className="space-y-0.5">
+                <div className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">Customer</div>
+                <div className="font-medium text-sm">{a.customer.companyName || a.customer.contactName}</div>
+                <div className="text-muted-foreground">{a.customer.contactName}</div>
+                <div className="text-muted-foreground">{a.customer.contactEmail || "—"}{a.customer.contactPhone ? ` · ${a.customer.contactPhone}` : ""}</div>
+              </div>
+            )}
+            {a.billing && (
+              <div className="space-y-0.5">
+                <div className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">Billing</div>
+                <div className="text-muted-foreground">{a.billing.contactName || <em>same as customer</em>}</div>
+                <div className="text-muted-foreground">{a.billing.contactEmail || "—"}{a.billing.contactPhone ? ` · ${a.billing.contactPhone}` : ""}</div>
+                {a.billing.addressLine && <div className="text-muted-foreground">{a.billing.addressLine}</div>}
+                <div className="text-muted-foreground">Payment: {a.billing.paymentModel || "—"}{a.billing.paymentTerms ? ` · ${a.billing.paymentTerms}` : ""}</div>
+                {a.billing.netsuiteCustomerNumber && <div className="text-muted-foreground">NS #: <code className="text-[10px]">{a.billing.netsuiteCustomerNumber}</code></div>}
+              </div>
+            )}
+          </div>
+        </Section>
+      )}
+
+      {/* Event timeline (PM packet) */}
+      {a.event && (
+        <Section title="Event & timeline">
+          <div className="grid sm:grid-cols-3 gap-2 text-xs">
+            <div><span className="text-muted-foreground">Event:</span> <span className="font-medium">{a.event.eventName || "—"}</span></div>
+            <div><span className="text-muted-foreground">Window:</span> {fmtPanelDate(a.event.eventStartDate)}{a.event.eventEndDate ? ` → ${fmtPanelDate(a.event.eventEndDate)}` : ""}</div>
+            <div><span className="text-muted-foreground">Install:</span> {fmtPanelDate(a.event.installDate)}</div>
+            <div><span className="text-muted-foreground">Teardown:</span> {fmtPanelDate(a.event.teardownDate)}</div>
+            <div><span className="text-muted-foreground">Ship by:</span> {fmtPanelDate(a.event.shippingDeadline)}</div>
+            <div><span className="text-muted-foreground">Venue:</span> {a.event.venueName || "—"}</div>
+          </div>
+          {a.event.venueAddress && <div className="text-xs text-muted-foreground mt-1">{a.event.venueAddress}</div>}
+          {a.event.venueContacts.length > 0 && (
+            <div className="text-xs text-muted-foreground mt-1">Contacts: {a.event.venueContacts.map((v, i) => <span key={i}>{i ? " · " : ""}{v.name}{v.role ? ` (${v.role})` : ""}{v.email ? ` ${v.email}` : ""}</span>)}</div>
+          )}
+        </Section>
+      )}
+
       {/* People */}
-      {(a.programManager || a.accountOwner || a.supportContact || a.partnerContacts.length > 0) && (
+      {(a.salesperson || a.programManager || a.accountOwner || a.supportContact || a.partnerContacts.length > 0) && (
         <Section title="People to call">
           <div className="grid sm:grid-cols-2 gap-2">
-            {[a.programManager, a.accountOwner, a.supportContact].filter((c): c is IntakeContact => !!c).map(c => (
+            {[a.salesperson, a.programManager, a.accountOwner, a.supportContact].filter((c): c is IntakeContact => !!c).map(c => (
               <ContactCard key={c.label} c={c} />
             ))}
             {a.partnerContacts.slice(0, 4).map(c => <ContactCard key={c.label + (c.email ?? "")} c={c} />)}
+          </div>
+        </Section>
+      )}
+
+      {/* Packages (PM packet) */}
+      {a.packages && a.packages.length > 0 && (
+        <Section title="Packages">
+          <div className="space-y-1.5">
+            {a.packages.map(pkg => {
+              const lines = a.items.filter(i => pkg.itemIds.includes(i.itemId));
+              return (
+                <div key={pkg.packageId} className="border rounded-md p-2.5 bg-white">
+                  <div className="text-sm font-medium">{pkg.packageName}</div>
+                  {pkg.packageDescription && <div className="text-xs text-muted-foreground mt-0.5">{pkg.packageDescription}</div>}
+                  <div className="text-[11px] text-muted-foreground mt-1">{lines.length} line{lines.length === 1 ? "" : "s"}: {lines.map(l => `${l.itemName} ×${l.quantity}`).join(" · ") || "—"}</div>
+                </div>
+              );
+            })}
           </div>
         </Section>
       )}
@@ -219,11 +331,38 @@ export default function OrderInternalIntakePanel({ orderId }: { orderId: number 
                     <div className="text-sm font-medium truncate">{it.itemName} <span className="text-xs text-muted-foreground font-normal">× {it.quantity}</span></div>
                     {it.familyName && <div className="text-[11px] text-muted-foreground">{it.familyName}{it.memberRole ? ` · ${it.memberRole}` : ""}</div>}
                   </div>
-                  <Badge variant="outline" className={`${ITEM_LABEL[it.label].tone} text-[10px] font-semibold whitespace-nowrap`}>
-                    {ITEM_LABEL[it.label].text}
-                  </Badge>
+                  <div className="flex flex-wrap gap-1 justify-end">
+                    <Badge variant="outline" className={`${ITEM_LABEL[it.label].tone} text-[10px] font-semibold whitespace-nowrap`}>
+                      {ITEM_LABEL[it.label].text}
+                    </Badge>
+                    {it.inventorySourceLabel && (
+                      <Badge variant="outline" className={`${INV_SOURCE_LABEL[it.inventorySourceLabel].tone} text-[10px] font-semibold whitespace-nowrap`}>
+                        {INV_SOURCE_LABEL[it.inventorySourceLabel].text}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">{it.note}</div>
+                {/* PM packet per-line detail (dimensions / material / hardware / vendor / artwork) */}
+                {(it.dimensions || it.selectedMaterial || it.hardwareSummary || it.vendor?.supplierName || it.artwork?.fileUrl || it.artwork?.needed) && (
+                  <div className="mt-1.5 rounded border bg-slate-50/60 px-2 py-1.5 text-[11px] text-foreground space-y-0.5">
+                    {it.dimensions && (it.dimensions.enteredWidth != null && it.dimensions.enteredHeight != null) && (
+                      <div><span className="font-semibold">Dims:</span> {it.dimensions.enteredWidth} × {it.dimensions.enteredHeight}{it.dimensions.enteredDepth != null ? ` × ${it.dimensions.enteredDepth}` : ""} {it.dimensions.sizeUnit || "in"}
+                      {(it.dimensions.packedW != null && it.dimensions.packedH != null) && (
+                        <span className="text-muted-foreground"> · packed {it.dimensions.packedW} × {it.dimensions.packedH}{it.dimensions.packedD != null ? ` × ${it.dimensions.packedD}` : ""} {it.dimensions.packedUnit || "in"}</span>
+                      )}
+                      </div>
+                    )}
+                    {it.selectedMaterial && <div><span className="font-semibold">Material:</span> {it.selectedMaterial}</div>}
+                    {it.hardwareSummary && <div><span className="font-semibold">Hardware:</span> {it.hardwareSummary}</div>}
+                    {it.vendor?.supplierName && <div><span className="font-semibold">Vendor:</span> {it.vendor.supplierName} <span className="text-muted-foreground">({it.vendor.matchSource.replace(/_/g, " ")})</span></div>}
+                    {it.artwork?.fileUrl
+                      ? <div><span className="font-semibold">Artwork:</span> <a href={it.artwork.fileUrl} target="_blank" rel="noreferrer" className="text-blue-700 underline">file</a></div>
+                      : it.artwork?.needed
+                        ? <div className="text-rose-700"><span className="font-semibold">Artwork needed</span></div>
+                        : null}
+                  </div>
+                )}
                 {it.inventorySource && (
                   <div className="text-[11px] text-muted-foreground mt-1">
                     Reserved from <span className="font-medium text-foreground">{it.inventorySource.inventoryName ?? "partner stock"}</span>
@@ -371,6 +510,50 @@ export default function OrderInternalIntakePanel({ orderId }: { orderId: number 
         </Section>
       )}
 
+      {/* Vendor matches (PM packet) */}
+      {a.vendorMatches && a.vendorMatches.length > 0 && (
+        <Section title="Vendor matches">
+          <div className="space-y-1">
+            {a.vendorMatches.map(v => (
+              <div key={v.supplierId} className="border rounded-md p-2 bg-white text-xs">
+                <div className="font-medium text-sm">{v.supplierName}</div>
+                <div className="text-muted-foreground">{v.itemIds.length} line{v.itemIds.length === 1 ? "" : "s"} · sources: {v.matchSources.map(s => s.replace(/_/g, " ")).join(", ")}</div>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* Files (PM packet) */}
+      {a.files && a.files.length > 0 && (
+        <Section title="Files">
+          <ul className="space-y-0.5 text-xs">
+            {a.files.map((f, i) => (
+              <li key={i}>
+                <a href={f.url} target="_blank" rel="noreferrer" className="text-blue-700 underline">{f.name}</a>
+                <span className="text-muted-foreground"> · {f.kind.replace(/_/g, " ")}{f.contextLabel ? ` · ${f.contextLabel}` : ""}</span>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+
+      {/* PM checklist (PM packet) */}
+      {a.pmChecklist && a.pmChecklist.length > 0 && (
+        <Section title="PM checklist" icon={<CheckCircle2 className="h-3.5 w-3.5" />}>
+          <ul className="space-y-1 text-sm">
+            {a.pmChecklist.map(c => (
+              <li key={c.key} className="flex items-start gap-2">
+                <span className={`flex-shrink-0 mt-0.5 inline-block w-3.5 h-3.5 rounded border ${c.done ? "bg-emerald-500 border-emerald-600" : "bg-white border-slate-300"}`} />
+                <span className={c.done ? "text-foreground" : "text-muted-foreground"}>
+                  {c.label}{c.detail ? <span className="text-muted-foreground"> — {c.detail}</span> : null}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+
       {a.followUpQuestions.length === 0 && a.readinessLabel === "ready_to_dispatch" && (
         <div className="mt-4 flex items-center gap-2 text-xs text-emerald-700">
           <CheckCircle2 className="h-4 w-4" /> No outstanding questions — this one is ready to move.
@@ -378,6 +561,13 @@ export default function OrderInternalIntakePanel({ orderId }: { orderId: number 
       )}
     </Card>
   );
+}
+
+function fmtPanelDate(s: string | null | undefined): string {
+  if (!s) return "—";
+  const d = new Date(s);
+  if (isNaN(d.getTime())) return s;
+  return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
 function Section({ title, icon, children }: { title: string; icon?: React.ReactNode; children: React.ReactNode }) {

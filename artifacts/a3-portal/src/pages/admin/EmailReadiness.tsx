@@ -74,7 +74,7 @@ export default function EmailReadinessPage() {
     queryFn: () => apiFetch("/api/admin/email-readiness/dns"),
   });
 
-  const [testTarget, setTestTarget] = useState<{ partnerId: number; partnerName: string; kind: "customer" | "internal" | "generic" } | null>(null);
+  const [testTarget, setTestTarget] = useState<{ partnerId: number; partnerName: string; kind: "customer" | "internal" | "generic" | "pm_intake" } | null>(null);
   const [testEmail, setTestEmail] = useState("");
   const [testSubject, setTestSubject] = useState("");
   const [testMessage, setTestMessage] = useState("");
@@ -83,7 +83,7 @@ export default function EmailReadinessPage() {
   const [retryFeedback, setRetryFeedback] = useState<{ id: number; ok: boolean; text: string } | null>(null);
 
   const sendTest = useMutation({
-    mutationFn: (args: { partnerId: number; toEmail: string; kind: "customer" | "internal" | "generic"; subject?: string; message?: string }) => {
+    mutationFn: (args: { partnerId: number; toEmail: string; kind: "customer" | "internal" | "generic" | "pm_intake"; subject?: string; message?: string }) => {
       if (args.kind === "generic") {
         return apiFetch("/api/admin/email-readiness/test/generic", {
           method: "POST",
@@ -92,7 +92,9 @@ export default function EmailReadinessPage() {
       }
       const path = args.kind === "customer"
         ? "/api/admin/email-readiness/test/customer-confirmation"
-        : "/api/admin/email-readiness/test/internal-routing";
+        : args.kind === "pm_intake"
+          ? "/api/admin/email-readiness/test/pm-intake"
+          : "/api/admin/email-readiness/test/internal-routing";
       return apiFetch(path, { method: "POST", body: JSON.stringify({ partnerId: args.partnerId, toEmail: args.toEmail }) });
     },
     onSuccess: (r: any, vars) => setTestResult({
@@ -238,6 +240,10 @@ export default function EmailReadinessPage() {
                       <Button size="sm" variant="outline" className="h-7 text-xs"
                         onClick={() => { setTestTarget({ partnerId: p.partnerId, partnerName: p.name, kind: "internal" }); setTestEmail(""); setTestSubject(""); setTestMessage(""); setTestResult(null); }}>
                         <Send className="h-3 w-3 mr-1" /> Test internal routing
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-7 text-xs"
+                        onClick={() => { setTestTarget({ partnerId: p.partnerId, partnerName: p.name, kind: "pm_intake" }); setTestEmail(""); setTestSubject(""); setTestMessage(""); setTestResult(null); }}>
+                        <Send className="h-3 w-3 mr-1" /> Send PM Intake Test
                       </Button>
                       <Button size="sm" variant="outline" className="h-7 text-xs"
                         onClick={() => { setTestTarget({ partnerId: p.partnerId, partnerName: p.name, kind: "generic" }); setTestEmail(""); setTestSubject(""); setTestMessage(""); setTestResult(null); }}>

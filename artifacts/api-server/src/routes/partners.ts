@@ -99,6 +99,10 @@ const PartnerBody = z.object({
   internalAccountOwnerEmail: z.string().max(320).optional().nullable(),
   supportContactName: z.string().max(160).optional().nullable(),
   supportContactEmail: z.string().max(320).optional().nullable(),
+  // Task #27: per-partner A3 salesperson routing for PM intake packet (default Alyssa DelTorre).
+  salespersonName: z.string().max(160).optional().nullable(),
+  salespersonEmail: z.string().max(320).optional().nullable(),
+  salespersonPhone: z.string().max(64).optional().nullable(),
   // Currency & tax defaults (April 2026 international billing extension)
   defaultCurrency: z.string().min(3).max(3).optional(),
   defaultTaxMode: z.enum(["none","sales_tax","vat","gst","custom"]).optional(),

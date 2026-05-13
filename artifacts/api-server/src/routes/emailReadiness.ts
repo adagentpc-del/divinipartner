@@ -165,6 +165,19 @@ router.post("/admin/email-readiness/test/customer-confirmation", async (req, res
   res.status(result.ok ? 200 : 500).json({ ok: result.ok, error: (result as any).error, providerId: (result as any).id, sentTo: parsed.data.toEmail, basedOnOrderId: ctx.order.id });
 });
 
+// Task #27: dedicated test send for the PM intake packet template. Reuses
+// sendOpsForward (which is what production uses) but with the same single-
+// recipient + cc/bcc suppression guarantees as the internal-routing test
+// so admins can preview the packet without spamming routing addresses.
+router.post("/admin/email-readiness/test/pm-intake", async (req, res): Promise<void> => {
+  const parsed = TestBody.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid body", details: parsed.error.format() }); return; }
+  const ctx = await pickTestOrderContext(parsed.data.partnerId);
+  if (!ctx) { res.status(409).json({ error: "Partner has no orders yet — create one first to preview the PM intake packet." }); return; }
+  const result = await sendOpsForward(ctx as any, [parsed.data.toEmail], { suppressCcBcc: true });
+  res.status(result.ok ? 200 : 500).json({ ok: result.ok, error: (result as any).error, providerId: (result as any).id, sentTo: parsed.data.toEmail, basedOnOrderId: ctx.order.id });
+});
+
 router.post("/admin/email-readiness/test/internal-routing", async (req, res): Promise<void> => {
   const parsed = TestBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid body", details: parsed.error.format() }); return; }

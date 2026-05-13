@@ -37,7 +37,10 @@ import {
   citiesTable,
   partnerContactsTable,
   partnerEmailRecipientsTable,
+  partnerBrandingLocationsTable,
   suppliersTable,
+  packagesTable,
+  packageItemsTable,
   type Partner,
   type Order,
   type OrderItem,
@@ -45,6 +48,14 @@ import {
   type ProductFamilyMember,
 } from "@workspace/db";
 import type { OrderEmailContext } from "./email";
+
+// Default A3-side salesperson when a partner has no salesperson_* fields set.
+// Stored as a constant so the default can move without a data migration.
+export const DEFAULT_A3_SALESPERSON = {
+  name: "Alyssa DelTorre",
+  email: "adeltorre@a3visual.com",
+  phone: null as string | null,
+};
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -58,6 +69,18 @@ export type ItemFulfillmentLabel =
   | "rental_asset"
   | "addon_or_misc"
   | "unknown";
+
+// Inventory provenance for a line item — what stock pool A3 ops should
+// pull from when fulfilling. Deterministic, derived from the order's
+// fulfillment_mode, reservedQuantity and partner inventory state. Used by
+// the PM intake email so NetSuite quoting knows whether to invoice for
+// hardware or just the print run.
+export type InventorySourceLabel =
+  | "customer_stock"        // partner-supplied stock — A3 prints only
+  | "partner_stock"         // partner's reusable inventory (was their hardware)
+  | "a3_stock"              // A3-owned reusable inventory
+  | "third_party"           // ship from an outside supplier (e.g. dropship)
+  | "confirm_manually";     // ambiguous — flag in the PM packet
 
 export interface IntakeItemAnalysis {
   itemId: number;
@@ -81,6 +104,31 @@ export interface IntakeItemAnalysis {
     onHandBefore: number | null;
     onHandAfter: number | null;
   } | null;
+  // Deterministic provenance label rendered as a chip in the PM packet.
+  inventorySourceLabel: InventorySourceLabel;
+  // Physical dimensions / artwork / hardware / material — everything PM
+  // needs to build the NetSuite quote line without opening the order.
+  dimensions: {
+    enteredWidth: number | null;
+    enteredHeight: number | null;
+    enteredDepth: number | null;
+    sizeUnit: string | null;
+    packedW: number | null;
+    packedH: number | null;
+    packedD: number | null;
+    packedUnit: string | null;
+  };
+  artwork: {
+    fileUrl: string | null;
+    needed: boolean;
+  };
+  selectedMaterial: string | null;
+  hardwareSummary: string | null; // e.g. "2 frames + base"; null when n/a
+  vendor: {
+    supplierId: number | null;
+    supplierName: string | null;
+    matchSource: "order_assigned" | "product_default" | "branding_location_default" | "none";
+  };
   // Per-line human note rendered in the email + UI.
   note: string;
   // Task #5: when this order line is tied to a venue survey asset, A3 ops
@@ -138,20 +186,104 @@ export interface IntakeContact {
   source: "partner_field" | "partner_contact" | "recipient_role";
 }
 
+// ----- PM Intake packet types ------------------------------------------------
+// Task #27: the internal ops email is upgraded into a full Project Manager
+// intake packet that NetSuite quoting can use without opening the portal.
+
+export interface IntakeCustomerBlock {
+  contactName: string;
+  contactEmail: string;
+  contactPhone: string | null;
+  companyName: string | null;
+}
+
+export interface IntakeBillingBlock {
+  contactName: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  addressLine: string | null;
+  paymentModel: string | null;
+  paymentTerms: string | null;
+  netsuiteCustomerNumber: string | null;
+}
+
+export interface IntakeEventBlock {
+  eventName: string | null;
+  eventStartDate: string | null;
+  eventEndDate: string | null;
+  installDate: string | null;
+  teardownDate: string | null;
+  shippingDeadline: string | null;
+  venueName: string | null;
+  venueAddress: string | null;
+  venueContacts: Array<{ name: string; email?: string | null; phone?: string | null; role?: string | null }>;
+}
+
+export interface IntakePackageBlock {
+  packageId: number;
+  packageName: string;
+  packageDescription: string | null;
+  // Order items grouped under this package (matched by orderItem.packageId).
+  itemIds: number[];
+}
+
+export interface IntakeVendorMatch {
+  supplierId: number;
+  supplierName: string;
+  itemIds: number[];
+  matchSources: Array<"order_assigned" | "product_default" | "branding_location_default">;
+}
+
+export interface IntakeFile {
+  url: string;
+  name: string;
+  kind: "artwork" | "product_image" | "survey_photo";
+  contextLabel: string | null; // e.g. "Line: SureBoard 24x36" or "Asset #123"
+}
+
+export interface IntakeMissingField {
+  field: string;
+  severity: "critical" | "warning";
+  reason: string;
+}
+
+export interface IntakeChecklistItem {
+  key: string;
+  label: string;
+  done: boolean;
+  detail: string | null;
+}
+
 export interface IntakeAnalysis {
   // Header summary
   orderType: "print_only" | "full_unit" | "mixed" | "rental" | "other";
   orderTypeReason: string;
+  // Quote type is derived from orderType for NetSuite quoting language.
+  quoteType: "Print Production" | "Hardware + Print" | "Mixed Fulfillment" | "Rental" | "Standard";
   netsuiteCustomerNumber: string | null;
   // People
+  salesperson: IntakeContact;            // always present (defaults to Alyssa DelTorre)
   programManager: IntakeContact | null;
   accountOwner: IntakeContact | null;
   supportContact: IntakeContact | null;
   partnerContacts: IntakeContact[]; // primary, billing, graphic_designer, onsite, project, other
   opsRecipients: string[];
+  // PM packet blocks
+  customer: IntakeCustomerBlock;
+  billing: IntakeBillingBlock;
+  event: IntakeEventBlock;
+  packages: IntakePackageBlock[];
   // Per-item + remaining
   items: IntakeItemAnalysis[];
   familiesRemaining: IntakeFamilyRemaining[];
+  // Deterministic vendor matches (one row per distinct supplier).
+  vendorMatches: IntakeVendorMatch[];
+  // All file links bundled for the packet.
+  files: IntakeFile[];
+  // Missing-info warning block.
+  missingFields: IntakeMissingField[];
+  // PM checklist for handoff into NetSuite quoting.
+  pmChecklist: IntakeChecklistItem[];
   // Workflow guidance
   recommendedSupplierName: string | null;
   followUpQuestions: string[];
@@ -303,6 +435,8 @@ export async function buildA3IntakeAnalysis(ctx: OrderEmailContext): Promise<Int
       printDemand: it.printDemandQuantity ?? 0,
     });
 
+    const inventorySourceLabel = deriveInventorySourceLabel(label, it);
+    const hardwareSummary = deriveHardwareSummary(label, it, fam);
     itemsOut.push({
       itemId: it.id,
       itemName: it.name,
@@ -317,6 +451,24 @@ export async function buildA3IntakeAnalysis(ctx: OrderEmailContext): Promise<Int
       reservedFromInventoryQty: it.reservedQuantity ?? 0,
       shortageQty: it.shortageQuantity ?? 0,
       inventorySource: invSnap,
+      inventorySourceLabel,
+      dimensions: {
+        enteredWidth: (it as any).enteredWidth ?? null,
+        enteredHeight: (it as any).enteredHeight ?? null,
+        enteredDepth: null,
+        sizeUnit: (it as any).enteredSizeUnit ?? null,
+        packedW: (it as any).packedWidth ?? null,
+        packedH: (it as any).packedHeight ?? null,
+        packedD: (it as any).packedDepth ?? null,
+        packedUnit: (it as any).packedSizeUnit ?? null,
+      },
+      artwork: {
+        fileUrl: (it as any).artworkFileUrl ?? null,
+        needed: !!(it as any).artworkRequired && !(it as any).artworkFileUrl,
+      },
+      selectedMaterial: it.selectedMaterial ?? null,
+      hardwareSummary,
+      vendor: { supplierId: null, supplierName: null, matchSource: "none" }, // resolved below
       note: itemNote(label, it, fam, invSnap),
       surveyAsset: (() => {
         const sId = it.surveyAssetId;
@@ -374,29 +526,335 @@ export async function buildA3IntakeAnalysis(ctx: OrderEmailContext): Promise<Int
     if (s) recommendedSupplierName = s.name;
   }
 
+  // 6b) Deterministic vendor matching for PM packet. Resolution order per
+  // line: assignedSupplierId on the order → product.supplierId → branding
+  // location's defaultSupplierId. Lines with no resolution are surfaced in
+  // the missing-info block. NO AI is involved — all data-driven.
+  const branchingLocIds = Array.from(new Set(items.map(i => i.brandingZoneId).filter((v): v is number => !!v)));
+  const branchingLocs = branchingLocIds.length
+    ? await db.select().from(partnerBrandingLocationsTable).where(inArray(partnerBrandingLocationsTable.id, branchingLocIds))
+    : [];
+  const branchingLocById = new Map(branchingLocs.map(b => [b.id, b]));
+
+  const allSupplierIds = new Set<number>();
+  if (order.assignedSupplierId) allSupplierIds.add(order.assignedSupplierId);
+  for (const p of products) if ((p as any).supplierId) allSupplierIds.add((p as any).supplierId);
+  for (const b of branchingLocs) if (b.defaultSupplierId) allSupplierIds.add(b.defaultSupplierId);
+  const supplierRows = allSupplierIds.size
+    ? await db.select().from(suppliersTable).where(inArray(suppliersTable.id, Array.from(allSupplierIds)))
+    : [];
+  const supplierById = new Map(supplierRows.map(s => [s.id, s]));
+
+  const vendorAccum = new Map<number, IntakeVendorMatch>();
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
+    const out = itemsOut[i];
+    let supplierId: number | null = null;
+    let matchSource: IntakeItemAnalysis["vendor"]["matchSource"] = "none";
+    if (order.assignedSupplierId) {
+      supplierId = order.assignedSupplierId;
+      matchSource = "order_assigned";
+    } else if (it.productId && productById.get(it.productId)) {
+      const ps = (productById.get(it.productId) as any).supplierId;
+      if (ps) { supplierId = ps; matchSource = "product_default"; }
+    }
+    if (!supplierId && it.brandingZoneId) {
+      const bl = branchingLocById.get(it.brandingZoneId);
+      if (bl?.defaultSupplierId) { supplierId = bl.defaultSupplierId; matchSource = "branding_location_default"; }
+    }
+    const supplierName = supplierId ? supplierById.get(supplierId)?.name ?? null : null;
+    out.vendor = { supplierId, supplierName, matchSource };
+    if (supplierId && supplierName) {
+      const cur = vendorAccum.get(supplierId);
+      if (cur) {
+        cur.itemIds.push(out.itemId);
+        if (!cur.matchSources.includes(matchSource as any)) cur.matchSources.push(matchSource as any);
+      } else {
+        vendorAccum.set(supplierId, {
+          supplierId, supplierName,
+          itemIds: [out.itemId],
+          matchSources: matchSource === "none" ? [] : [matchSource as any],
+        });
+      }
+    }
+  }
+  const vendorMatches = Array.from(vendorAccum.values()).sort((a, b) => a.supplierName.localeCompare(b.supplierName));
+
+  // 6c) Package grouping — load packages referenced by the order or its items.
+  const packageIds = Array.from(new Set([
+    order.packageId,
+    ...items.map(i => i.packageId),
+  ].filter((v): v is number => !!v)));
+  const packageRows = packageIds.length
+    ? await db.select().from(packagesTable).where(inArray(packagesTable.id, packageIds))
+    : [];
+  const packagesOut: IntakePackageBlock[] = packageRows.map(pkg => ({
+    packageId: pkg.id,
+    packageName: pkg.displayName || pkg.name,
+    packageDescription: pkg.description ?? null,
+    itemIds: items.filter(i => i.packageId === pkg.id).map(i => i.id),
+  }));
+
+  // 6d) Customer / billing / event blocks.
+  const customer: IntakeCustomerBlock = {
+    contactName: order.contactName,
+    contactEmail: order.contactEmail,
+    contactPhone: order.contactPhone ?? null,
+    companyName: order.companyName ?? null,
+  };
+  const bj = (order.billingContactJson as any) || {};
+  const ba = (order.billingAddressJson as any) || null;
+  const billingAddrLine = ba ? [ba.line1, ba.line2, ba.city, ba.state || ba.region, ba.postalCode, ba.country].filter(Boolean).join(", ") : null;
+  const billing: IntakeBillingBlock = {
+    contactName: bj.name || partner.billingContactName || null,
+    contactEmail: bj.email || partner.billingContactEmail || null,
+    contactPhone: bj.phone || partner.billingContactPhone || null,
+    addressLine: billingAddrLine,
+    paymentModel: order.paymentModel ?? null,
+    paymentTerms: partner.paymentTerms ?? null,
+    netsuiteCustomerNumber: partner.netsuiteCustomerNumber || null,
+  };
+  const venueAddr = ctx.venue
+    ? [(ctx.venue as any).address, ctx.venue.city, (ctx.venue as any).state, ctx.venue.country].filter(Boolean).join(", ")
+    : null;
+  const eventBlock: IntakeEventBlock = {
+    eventName: ctx.event?.name ?? null,
+    eventStartDate: (ctx.event as any)?.eventStartDate ?? (ctx.event as any)?.eventDate ?? null,
+    eventEndDate: (ctx.event as any)?.eventEndDate ?? null,
+    installDate: (ctx.event as any)?.installDate ?? null,
+    teardownDate: (ctx.event as any)?.teardownDate ?? null,
+    shippingDeadline: (ctx.event as any)?.shippingDeadline ?? null,
+    venueName: ctx.venue?.name ?? null,
+    venueAddress: venueAddr || null,
+    venueContacts: ((ctx.event as any)?.venueContactsJson as any[] | null) ?? [],
+  };
+
+  // 6e) Files: artwork attachments + per-line artwork file + product images
+  // for visual reference.
+  const files: IntakeFile[] = [];
+  for (const f of (order.artworkFilesJson as any[] | null) ?? []) {
+    if (f?.url) files.push({ url: f.url, name: f.name || f.url.split("/").pop() || "artwork", kind: "artwork", contextLabel: "Order-level artwork" });
+  }
+  for (const it of itemsOut) {
+    if (it.artwork.fileUrl) {
+      files.push({ url: it.artwork.fileUrl, name: it.artwork.fileUrl.split("/").pop() || "artwork", kind: "artwork", contextLabel: `Line: ${it.itemName}` });
+    }
+  }
+  for (const p of products) {
+    if ((p as any).imageUrl) files.push({ url: (p as any).imageUrl, name: `${p.name} reference`, kind: "product_image", contextLabel: `Product: ${p.name}` });
+  }
+  for (const it of itemsOut) {
+    if (it.surveyAsset) {
+      for (const ph of it.surveyAsset.internalPhotos) {
+        files.push({ url: ph.url, name: ph.caption || `survey-${it.surveyAsset.id}`, kind: "survey_photo", contextLabel: `Survey asset #${it.surveyAsset.id}` });
+      }
+    }
+  }
+
+  // 6f) Salesperson — defaults to Alyssa DelTorre when unset.
+  const salesperson: IntakeContact = {
+    label: "Salesperson",
+    name: (partner as any).salespersonName || DEFAULT_A3_SALESPERSON.name,
+    email: (partner as any).salespersonEmail || DEFAULT_A3_SALESPERSON.email,
+    source: "partner_field",
+  };
+
   // 7) Follow-up questions + next steps + readiness label.
   const orderTypeInfo = classifyOrderType(itemsOut);
   const followUps = buildFollowUpQuestions(ctx, itemsOut, partner);
   const nextSteps = buildNextSteps(ctx, itemsOut, familiesRemaining, recommendedSupplierName);
   const readiness = computeReadiness(ctx, itemsOut, familiesRemaining, followUps);
+  const missingFields = buildMissingFields(ctx, itemsOut, partner, vendorMatches);
+  const pmChecklist = buildPmChecklist(ctx, itemsOut, partner, files, vendorMatches, missingFields);
+  const quoteType = deriveQuoteType(orderTypeInfo.type);
 
   return {
     orderType: orderTypeInfo.type,
     orderTypeReason: orderTypeInfo.reason,
+    quoteType,
     netsuiteCustomerNumber: partner.netsuiteCustomerNumber || null,
+    salesperson,
     programManager,
     accountOwner,
     supportContact,
     partnerContacts: partnerContactsOut,
     opsRecipients,
+    customer,
+    billing,
+    event: eventBlock,
+    packages: packagesOut,
     items: itemsOut,
     familiesRemaining,
+    vendorMatches,
+    files,
+    missingFields,
+    pmChecklist,
     recommendedSupplierName,
     followUpQuestions: followUps,
     nextSteps,
     readinessLabel: readiness.label,
     readinessReason: readiness.reason,
   };
+}
+
+function deriveQuoteType(orderType: IntakeAnalysis["orderType"]): IntakeAnalysis["quoteType"] {
+  switch (orderType) {
+    case "print_only": return "Print Production";
+    case "full_unit":  return "Hardware + Print";
+    case "mixed":      return "Mixed Fulfillment";
+    case "rental":     return "Rental";
+    default:           return "Standard";
+  }
+}
+
+function deriveInventorySourceLabel(label: ItemFulfillmentLabel, it: OrderItem): InventorySourceLabel {
+  // Customer-supplied stock is implied when partner reuses their own
+  // hardware via use_existing_partner_inventory. A3 stock is implied when
+  // a rental asset is reserved without a partner inventory pointer (A3
+  // owns the rental pool). Hardware shipped in this order means we're
+  // sourcing from the order itself (vendor → A3 → ship). Anything we
+  // can't classify deterministically defers to PM judgement.
+  if (label === "print_only_on_partner_inventory") return "partner_stock";
+  if (label === "rental_asset" && !it.inventorySourceInventoryId) return "a3_stock";
+  if (label === "rental_asset") return "partner_stock";
+  if (label === "hardware_supplied_in_order") return "third_party";
+  if (label === "full_unit_required") return "third_party";
+  if (label === "print_only_no_hardware_link") return "customer_stock";
+  return "confirm_manually";
+}
+
+function deriveHardwareSummary(label: ItemFulfillmentLabel, it: OrderItem, fam: { fam: ProductFamily; member: ProductFamilyMember } | undefined): string | null {
+  if (label === "print_only_no_hardware_link" || label === "addon_or_misc" || label === "rental_asset") return null;
+  const hwName = fam?.fam.name ?? null;
+  const hwQty = it.hardwareDemandQuantity ?? 0;
+  if (hwQty <= 0 && !hwName) return null;
+  const base = hwName ? `${hwQty || it.quantity} × ${hwName}` : `${hwQty} hardware unit${hwQty === 1 ? "" : "s"}`;
+  if (label === "full_unit_required") return `${base} (full unit ship)`;
+  if (label === "hardware_supplied_in_order") return `${base} (hardware in this order)`;
+  if (label === "print_only_on_partner_inventory") return `${base} (reuse partner stock)`;
+  return base;
+}
+
+function buildMissingFields(
+  ctx: OrderEmailContext,
+  items: IntakeItemAnalysis[],
+  partner: Partner,
+  vendorMatches: IntakeVendorMatch[],
+): IntakeMissingField[] {
+  const missing: IntakeMissingField[] = [];
+  const { order, event, venue } = ctx;
+  if (!partner.netsuiteCustomerNumber) {
+    missing.push({ field: "NetSuite customer #", severity: "critical", reason: "Required to post the quote in NetSuite." });
+  }
+  if (!order.companyName && !order.contactName) {
+    missing.push({ field: "Customer name", severity: "critical", reason: "No company or contact name on the order." });
+  }
+  if (!order.contactEmail) {
+    missing.push({ field: "Customer email", severity: "critical", reason: "PM cannot send the quote without an email." });
+  }
+  if (!order.contactPhone) {
+    missing.push({ field: "Customer phone", severity: "warning", reason: "Phone helps for rush approvals." });
+  }
+  if (!order.shippingAddressJson || !(order.shippingAddressJson as any).line1) {
+    missing.push({ field: "Shipping address", severity: "critical", reason: "Cannot quote freight without a destination." });
+  }
+  if (!event) {
+    missing.push({ field: "Event link", severity: "warning", reason: "Order is not associated with an event — confirm timeline." });
+  } else if (!(event as any).eventStartDate && !(event as any).eventDate) {
+    missing.push({ field: "Event start date", severity: "warning", reason: "Event has no date set — install/ship math may be wrong." });
+  }
+  if (event && !(event as any).installDate && !(event as any).shippingDeadline) {
+    missing.push({ field: "Install / ship deadline", severity: "warning", reason: "No install or ship-by date — production lead time is unknown." });
+  }
+  if (!venue) {
+    missing.push({ field: "Venue", severity: "warning", reason: "No venue captured — required for freight + on-site contact." });
+  }
+  for (const it of items) {
+    if (it.label === "print_only_no_hardware_link" || it.label === "print_only_on_partner_inventory" || it.label === "full_unit_required") {
+      const d = it.dimensions;
+      if ((d.enteredWidth == null || d.enteredHeight == null) && !it.surveyAsset) {
+        missing.push({ field: `Dimensions for "${it.itemName}"`, severity: "critical", reason: "Print line has no width × height — cannot quote material." });
+      }
+    }
+    if (it.artwork.needed) {
+      missing.push({ field: `Artwork for "${it.itemName}"`, severity: "warning", reason: "Marked artwork-required; no file attached yet." });
+    }
+    if (it.vendor.matchSource === "none") {
+      missing.push({ field: `Vendor for "${it.itemName}"`, severity: "warning", reason: "No supplier resolved — assign manually." });
+    }
+  }
+  if (vendorMatches.length === 0 && items.length > 0) {
+    missing.push({ field: "Production vendor", severity: "warning", reason: "No vendor matched any line — PM must assign manually." });
+  }
+  return missing;
+}
+
+function buildPmChecklist(
+  ctx: OrderEmailContext,
+  items: IntakeItemAnalysis[],
+  partner: Partner,
+  files: IntakeFile[],
+  vendorMatches: IntakeVendorMatch[],
+  missing: IntakeMissingField[],
+): IntakeChecklistItem[] {
+  const { order, event } = ctx;
+  const out: IntakeChecklistItem[] = [];
+  out.push({
+    key: "ns_customer",
+    label: "Confirm NetSuite customer record",
+    done: !!partner.netsuiteCustomerNumber,
+    detail: partner.netsuiteCustomerNumber ? `NS #${partner.netsuiteCustomerNumber}` : "Missing — create or link customer in NetSuite",
+  });
+  out.push({
+    key: "ship_to",
+    label: "Confirm ship-to address",
+    done: !!(order.shippingAddressJson && (order.shippingAddressJson as any).line1),
+    detail: order.shippingAddressJson ? "Captured on order" : "Missing on order",
+  });
+  out.push({
+    key: "timeline",
+    label: "Lock event/install/ship dates",
+    done: !!(event && ((event as any).installDate || (event as any).shippingDeadline)),
+    detail: event ? "Event linked" : "No event linked",
+  });
+  out.push({
+    key: "dimensions",
+    label: "Verify dimensions on every print line",
+    done: items.filter(i => ["print_only_no_hardware_link", "print_only_on_partner_inventory", "full_unit_required"].includes(i.label))
+      .every(i => (i.dimensions.enteredWidth != null && i.dimensions.enteredHeight != null) || !!i.surveyAsset),
+    detail: null,
+  });
+  out.push({
+    key: "artwork",
+    label: "Collect artwork files for every print line",
+    done: items.filter(i => i.artwork.needed).length === 0,
+    detail: files.filter(f => f.kind === "artwork").length ? `${files.filter(f => f.kind === "artwork").length} file(s) attached` : "No artwork attached yet",
+  });
+  out.push({
+    key: "vendor",
+    label: "Confirm production vendor(s)",
+    done: vendorMatches.length > 0 && items.every(i => i.vendor.matchSource !== "none" || i.label === "addon_or_misc"),
+    detail: vendorMatches.length ? vendorMatches.map(v => v.supplierName).join(", ") : "None resolved",
+  });
+  out.push({
+    key: "inventory",
+    label: "Confirm inventory source per line (customer / partner / A3 / 3P)",
+    done: items.every(i => i.inventorySourceLabel !== "confirm_manually"),
+    detail: null,
+  });
+  out.push({
+    key: "missing",
+    label: "Resolve missing-info warnings",
+    done: missing.filter(m => m.severity === "critical").length === 0,
+    detail: missing.length ? `${missing.length} flagged (${missing.filter(m => m.severity === "critical").length} critical)` : "Clean",
+  });
+  out.push({
+    key: "quote",
+    label: "Build NetSuite quote and send for approval",
+    done: false,
+    detail: null,
+  });
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -462,20 +920,33 @@ export function renderA3InternalIntakeHtml(ctx: OrderEmailContext, analysis: Int
           <div style="font-size:12px;color:${A3_MUTED};margin-top:2px;">Submitted ${escape(submittedAt)}</div>
         </td></tr>
 
+        <!-- Missing-info warning band (only when there's anything to flag) -->
+        ${analysis.missingFields.length ? `<tr><td style="padding:8px 24px 0 24px;">
+          ${renderMissingFieldsBlock(analysis.missingFields)}
+        </td></tr>` : ""}
+
         <!-- A. Account snapshot -->
         ${section("A · Account snapshot", `
           ${kvTable([
             ["Partner", `${escape(partner.companyName)}${partner.slug ? ` <span style="color:${A3_MUTED};">/${escape(partner.slug)}</span>` : ""}`],
-            ["NetSuite customer #", analysis.netsuiteCustomerNumber ? `<code style="background:${A3_BG};padding:2px 6px;border-radius:4px;border:1px solid ${A3_LINE};">${escape(analysis.netsuiteCustomerNumber)}</code>` : `<span style="color:${A3_MUTED};">— not on file —</span>`],
+            ["Quote type", `<strong>${escape(analysis.quoteType)}</strong>`],
+            ["NetSuite customer #", analysis.netsuiteCustomerNumber ? `<code style="background:${A3_BG};padding:2px 6px;border-radius:4px;border:1px solid ${A3_LINE};">${escape(analysis.netsuiteCustomerNumber)}</code>` : `<span style="color:${A3_ACCENT};">— missing —</span>`],
             ["Event", eventLine],
             ["Venue", venueLine],
             shipLine ? ["Ship to", shipLine] : null,
           ].filter(Boolean) as Array<[string, string]>)}
         `)}
 
-        <!-- B. People to call -->
+        <!-- A2. Customer + Billing block (PM packet) -->
+        ${section("A2 · Customer & billing", renderCustomerBillingBlock(analysis.customer, analysis.billing))}
+
+        <!-- A3. Event timeline (PM packet) -->
+        ${section("A3 · Event & timeline", renderEventBlock(analysis.event))}
+
+        <!-- B. People to call (salesperson always present, defaults to Alyssa) -->
         ${section("B · People to call", `
           ${peopleBlock([
+            analysis.salesperson,
             analysis.programManager,
             analysis.accountOwner,
             analysis.supportContact,
@@ -484,11 +955,23 @@ export function renderA3InternalIntakeHtml(ctx: OrderEmailContext, analysis: Int
           <div style="margin-top:10px;font-size:12px;color:${A3_MUTED};">Submitter: <span style="color:${A3_INK};font-weight:600;">${escape(order.contactName)}</span> · <a href="mailto:${escape(order.contactEmail)}" style="color:${A3_NAVY};">${escape(order.contactEmail)}</a>${order.contactPhone ? ` · ${escape(order.contactPhone)}` : ""}</div>
         `)}
 
+        <!-- B2. Packages (PM packet) -->
+        ${analysis.packages.length ? section("B2 · Packages", renderPackagesBlock(analysis.packages, analysis.items)) : ""}
+
         <!-- C. Order line items + fulfillment intent -->
         ${section("C · Items + fulfillment intent", renderItemsTable(analysis.items))}
 
+        <!-- C2. Vendor matches (deterministic) -->
+        ${section("C2 · Vendor matches", renderVendorMatchesBlock(analysis.vendorMatches, analysis.items))}
+
+        <!-- C3. Files bundle for PM -->
+        ${analysis.files.length ? section("C3 · Files", renderFilesBlock(analysis.files)) : ""}
+
         <!-- D. Inventory left after this order -->
         ${analysis.familiesRemaining.length ? section("D · Inventory after this order", renderFamiliesRemaining(analysis.familiesRemaining)) : ""}
+
+        <!-- D2. PM handoff checklist -->
+        ${section("D2 · PM handoff checklist", renderPmChecklistBlock(analysis.pmChecklist))}
 
         <!-- E. Recommended next steps -->
         ${section("E · Next steps for A3", renderList(analysis.nextSteps, A3_NAVY))}
@@ -566,7 +1049,12 @@ function renderItemsTable(items: IntakeItemAnalysis[]): string {
           ${it.familyName ? `<div style="font-size:11px;color:${A3_MUTED};margin-top:2px;">${escape(it.familyName)}${it.memberRole ? ` · ${escape(it.memberRole)}` : ""}</div>` : ""}
         </td>
         <td align="right" style="padding:10px 12px;font-size:13px;color:${A3_INK};${i ? `border-top:1px solid ${A3_LINE};` : ""}vertical-align:top;font-variant-numeric:tabular-nums;">${it.quantity}</td>
-        <td style="padding:10px 12px;font-size:12px;color:${A3_INK};${i ? `border-top:1px solid ${A3_LINE};` : ""}vertical-align:top;">${labelChip(it.label)}<div style="margin-top:4px;color:${A3_MUTED};">${escape(it.note)}</div>${renderSurveyAssetBlock(it.surveyAsset)}</td>
+        <td style="padding:10px 12px;font-size:12px;color:${A3_INK};${i ? `border-top:1px solid ${A3_LINE};` : ""}vertical-align:top;">
+          ${labelChip(it.label)} ${inventorySourceChip(it.inventorySourceLabel)}
+          <div style="margin-top:4px;color:${A3_MUTED};">${escape(it.note)}</div>
+          ${renderItemPmDetail(it)}
+          ${renderSurveyAssetBlock(it.surveyAsset)}
+        </td>
       </tr>`).join("")}
     </tbody>
   </table>`;
@@ -871,3 +1359,159 @@ function computeReadiness(ctx: OrderEmailContext, items: IntakeItemAnalysis[], r
   return { label: "ready_to_dispatch", reason: "All inputs look complete — production can begin." };
 }
 
+
+// ---------------------------------------------------------------------------
+// PM packet render helpers (task #27)
+// ---------------------------------------------------------------------------
+
+function renderMissingFieldsBlock(missing: IntakeMissingField[]): string {
+  const crit = missing.filter(m => m.severity === "critical");
+  const warn = missing.filter(m => m.severity === "warning");
+  const bg = crit.length ? "#fdecec" : "#fff8e1";
+  const border = crit.length ? A3_ACCENT : A3_AMBER;
+  const heading = crit.length
+    ? `Missing info — ${crit.length} critical${warn.length ? `, ${warn.length} warning` : ""}`
+    : `Heads up — ${warn.length} item${warn.length === 1 ? "" : "s"} to confirm before quoting`;
+  return `<div style="border:1px solid ${border};background:${bg};border-radius:8px;padding:10px 12px;">
+    <div style="font-size:12px;font-weight:700;color:${border};text-transform:uppercase;letter-spacing:0.06em;">${escape(heading)}</div>
+    <ul style="margin:6px 0 0 18px;padding:0;font-size:12px;color:${A3_INK};">
+      ${missing.map(m => `<li style="margin:2px 0;"><strong>${escape(m.field)}</strong> — <span style="color:${A3_MUTED};">${escape(m.reason)}</span></li>`).join("")}
+    </ul>
+  </div>`;
+}
+
+function renderCustomerBillingBlock(c: IntakeCustomerBlock, b: IntakeBillingBlock): string {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+    <tr>
+      <td valign="top" width="50%" style="padding-right:8px;">
+        ${kvTable([
+          ["Customer", `<strong>${escape(c.companyName || c.contactName)}</strong>`],
+          ["Contact", escape(c.contactName)],
+          ["Email", c.contactEmail ? `<a href="mailto:${escape(c.contactEmail)}" style="color:${A3_NAVY};">${escape(c.contactEmail)}</a>` : `<span style="color:${A3_MUTED};">—</span>`],
+          ["Phone", c.contactPhone ? escape(c.contactPhone) : `<span style="color:${A3_MUTED};">—</span>`],
+        ])}
+      </td>
+      <td valign="top" width="50%" style="padding-left:8px;">
+        ${kvTable([
+          ["Bill to", b.contactName ? escape(b.contactName) : `<span style="color:${A3_MUTED};">— same as customer —</span>`],
+          ["Bill email", b.contactEmail ? `<a href="mailto:${escape(b.contactEmail)}" style="color:${A3_NAVY};">${escape(b.contactEmail)}</a>` : `<span style="color:${A3_MUTED};">—</span>`],
+          ["Bill phone", b.contactPhone ? escape(b.contactPhone) : `<span style="color:${A3_MUTED};">—</span>`],
+          ["Bill address", b.addressLine ? escape(b.addressLine) : `<span style="color:${A3_MUTED};">—</span>`],
+          ["Payment", `${escape(b.paymentModel || "—")}${b.paymentTerms ? ` · ${escape(b.paymentTerms)}` : ""}`],
+          ["NetSuite #", b.netsuiteCustomerNumber ? `<code>${escape(b.netsuiteCustomerNumber)}</code>` : `<span style="color:${A3_ACCENT};">missing</span>`],
+        ])}
+      </td>
+    </tr>
+  </table>`;
+}
+
+function fmtDate(s: string | null): string {
+  if (!s) return `<span style="color:${A3_MUTED};">—</span>`;
+  try {
+    const d = new Date(s);
+    if (isNaN(d.getTime())) return escape(s);
+    return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
+  } catch { return escape(s); }
+}
+
+function renderEventBlock(e: IntakeEventBlock): string {
+  const rows: Array<[string, string]> = [
+    ["Event", e.eventName ? escape(e.eventName) : `<span style="color:${A3_MUTED};">— not linked —</span>`],
+    ["Event window", `${fmtDate(e.eventStartDate)}${e.eventEndDate ? ` → ${fmtDate(e.eventEndDate)}` : ""}`],
+    ["Install", fmtDate(e.installDate)],
+    ["Teardown", fmtDate(e.teardownDate)],
+    ["Ship by", fmtDate(e.shippingDeadline)],
+    ["Venue", e.venueName ? escape(e.venueName) : `<span style="color:${A3_MUTED};">—</span>`],
+  ];
+  if (e.venueAddress) rows.push(["Venue address", escape(e.venueAddress)]);
+  let venueContacts = "";
+  if (e.venueContacts.length) {
+    venueContacts = `<div style="margin-top:8px;font-size:12px;color:${A3_MUTED};">Venue contacts: ${e.venueContacts.map(v => `<span style="color:${A3_INK};">${escape(v.name)}${v.role ? ` (${escape(v.role)})` : ""}</span>${v.email ? ` · <a href="mailto:${escape(v.email)}" style="color:${A3_NAVY};">${escape(v.email)}</a>` : ""}${v.phone ? ` · ${escape(v.phone)}` : ""}`).join(" · ")}</div>`;
+  }
+  return kvTable(rows) + venueContacts;
+}
+
+function renderPackagesBlock(packages: IntakePackageBlock[], items: IntakeItemAnalysis[]): string {
+  return packages.map(pkg => {
+    const lines = items.filter(i => pkg.itemIds.includes(i.itemId));
+    return `<div style="border:1px solid ${A3_LINE};border-radius:8px;padding:10px 12px;margin-bottom:8px;background:#ffffff;">
+      <div style="font-size:13px;font-weight:600;color:${A3_INK};">${escape(pkg.packageName)}</div>
+      ${pkg.packageDescription ? `<div style="font-size:12px;color:${A3_MUTED};margin-top:2px;">${escape(pkg.packageDescription)}</div>` : ""}
+      <div style="margin-top:6px;font-size:12px;color:${A3_MUTED};">${lines.length} line${lines.length === 1 ? "" : "s"}: ${lines.map(l => `<span style="color:${A3_INK};">${escape(l.itemName)} ×${l.quantity}</span>`).join(" · ") || "—"}</div>
+    </div>`;
+  }).join("");
+}
+
+function renderVendorMatchesBlock(matches: IntakeVendorMatch[], items: IntakeItemAnalysis[]): string {
+  if (!matches.length) {
+    return `<div style="font-size:13px;color:${A3_ACCENT};border:1px dashed ${A3_ACCENT};border-radius:8px;padding:10px 12px;background:#fdf3f3;">No deterministic vendor match — PM must assign suppliers manually.</div>`;
+  }
+  const sourceLabel = (s: string) => s === "order_assigned" ? "Order" : s === "product_default" ? "Product default" : s === "branding_location_default" ? "Branding location" : "—";
+  const itemNameById = new Map(items.map(i => [i.itemId, i.itemName]));
+  return matches.map(m => `<div style="border:1px solid ${A3_LINE};border-radius:8px;padding:10px 12px;margin-bottom:6px;background:#ffffff;">
+    <div style="font-size:13px;font-weight:600;color:${A3_INK};">${escape(m.supplierName)} <span style="color:${A3_MUTED};font-weight:400;font-size:11px;">· ${m.matchSources.map(sourceLabel).join(", ")}</span></div>
+    <div style="font-size:12px;color:${A3_MUTED};margin-top:4px;">Lines: ${m.itemIds.map(id => escape(itemNameById.get(id) || `#${id}`)).join(" · ")}</div>
+  </div>`).join("");
+}
+
+function renderFilesBlock(files: IntakeFile[]): string {
+  const groups: Record<IntakeFile["kind"], IntakeFile[]> = { artwork: [], product_image: [], survey_photo: [] };
+  for (const f of files) groups[f.kind].push(f);
+  const groupLabel: Record<IntakeFile["kind"], string> = { artwork: "Artwork", product_image: "Product reference", survey_photo: "Survey photos" };
+  return (Object.keys(groups) as IntakeFile["kind"][]).map(k => {
+    const arr = groups[k];
+    if (!arr.length) return "";
+    return `<div style="margin-bottom:8px;">
+      <div style="font-size:11px;color:${A3_MUTED};font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">${groupLabel[k]}</div>
+      <ul style="margin:0;padding:0 0 0 18px;font-size:12px;">
+        ${arr.map(f => `<li style="margin:2px 0;"><a href="${escape(f.url)}" style="color:${A3_NAVY};">${escape(f.name)}</a>${f.contextLabel ? ` <span style="color:${A3_MUTED};">— ${escape(f.contextLabel)}</span>` : ""}</li>`).join("")}
+      </ul>
+    </div>`;
+  }).join("");
+}
+
+function renderPmChecklistBlock(items: IntakeChecklistItem[]): string {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:${A3_BG};border:1px solid ${A3_LINE};border-radius:8px;overflow:hidden;">
+    ${items.map((c, i) => `<tr>
+      <td style="padding:8px 12px;width:24px;${i ? `border-top:1px solid ${A3_LINE};` : ""}vertical-align:top;font-size:14px;">${c.done ? `<span style="color:${A3_GREEN};">✔</span>` : `<span style="color:${A3_MUTED};">▢</span>`}</td>
+      <td style="padding:8px 12px;font-size:13px;color:${A3_INK};${i ? `border-top:1px solid ${A3_LINE};` : ""}">
+        <div style="${c.done ? `color:${A3_MUTED};` : "font-weight:600;"}">${escape(c.label)}</div>
+        ${c.detail ? `<div style="font-size:11px;color:${A3_MUTED};margin-top:2px;">${escape(c.detail)}</div>` : ""}
+      </td>
+    </tr>`).join("")}
+  </table>`;
+}
+
+function inventorySourceChip(label: InventorySourceLabel): string {
+  const map: Record<InventorySourceLabel, { bg: string; fg: string; text: string }> = {
+    customer_stock:    { bg: "#eef1f6", fg: A3_INK,    text: "Customer stock" },
+    partner_stock:     { bg: "#e9f6ee", fg: A3_GREEN, text: "Partner stock" },
+    a3_stock:          { bg: "#eef0ff", fg: "#3a47b8", text: "A3 stock" },
+    third_party:       { bg: "#fff4e0", fg: A3_AMBER, text: "Third-party" },
+    confirm_manually:  { bg: "#fdecec", fg: A3_ACCENT, text: "Confirm source" },
+  };
+  const m = map[label];
+  return `<span style="display:inline-block;padding:2px 8px;border-radius:999px;background:${m.bg};color:${m.fg};font-size:11px;font-weight:600;margin-left:4px;">${escape(m.text)}</span>`;
+}
+
+function renderItemPmDetail(it: IntakeItemAnalysis): string {
+  const d = it.dimensions;
+  const dimsLine: string[] = [];
+  if (d.enteredWidth != null && d.enteredHeight != null) {
+    const u = d.sizeUnit || "in";
+    dimsLine.push(`${d.enteredWidth} × ${d.enteredHeight}${d.enteredDepth != null ? ` × ${d.enteredDepth}` : ""} ${escape(u)}`);
+  }
+  if (d.packedW != null && d.packedH != null) {
+    const u = d.packedUnit || "in";
+    dimsLine.push(`packed ${d.packedW} × ${d.packedH}${d.packedD != null ? ` × ${d.packedD}` : ""} ${escape(u)}`);
+  }
+  const bits: string[] = [];
+  if (dimsLine.length) bits.push(`<strong>Dims:</strong> ${dimsLine.join(" · ")}`);
+  if (it.selectedMaterial) bits.push(`<strong>Material:</strong> ${escape(it.selectedMaterial)}`);
+  if (it.hardwareSummary) bits.push(`<strong>Hardware:</strong> ${escape(it.hardwareSummary)}`);
+  if (it.vendor.supplierName) bits.push(`<strong>Vendor:</strong> ${escape(it.vendor.supplierName)}`);
+  if (it.artwork.fileUrl) bits.push(`<strong>Artwork:</strong> <a href="${escape(it.artwork.fileUrl)}" style="color:${A3_NAVY};">file</a>`);
+  else if (it.artwork.needed) bits.push(`<strong style="color:${A3_ACCENT};">Artwork needed</strong>`);
+  if (!bits.length) return "";
+  return `<div style="margin-top:6px;padding:6px 8px;background:${A3_BG};border:1px solid ${A3_LINE};border-radius:6px;font-size:11px;color:${A3_INK};line-height:1.5;">${bits.join(" · ")}</div>`;
+}

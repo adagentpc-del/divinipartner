@@ -663,8 +663,11 @@ export async function sendOpsForward(ctx: OrderEmailContext, overrideTo?: string
     const { buildA3IntakeAnalysis, renderA3InternalIntakeHtml } = await import("./internalIntakeEmail");
     const analysis = await buildA3IntakeAnalysis(ctx);
     html = renderA3InternalIntakeHtml(ctx, analysis);
-    const eventTag = ctx.event?.name ? ` · ${ctx.event.name}` : "";
-    subject = `[A3 Intake] ${partner.companyName} · ${order.orderNumber}${eventTag}`;
+    // Subject spec (task #27): "New Partner Portal Order: <Partner> | <Event> | <Reference> | <Customer Company>"
+    // Reference is the orderNumber; Customer Company falls back to contact name when missing.
+    const eventPart = ctx.event?.name || "No event";
+    const customerPart = order.companyName || order.contactName || "Unknown customer";
+    subject = `New Partner Portal Order: ${partner.companyName} | ${eventPart} | ${order.orderNumber} | ${customerPart}`;
   } catch (err) {
     logger.error({ err, orderId: order.id }, "A3 intake analysis failed; falling back to legacy ops template");
     html = renderInternalForwardHtml(ctx);

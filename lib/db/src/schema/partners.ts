@@ -110,6 +110,14 @@ export const partnersTable = pgTable("partners", {
   internalAccountOwnerEmail: text("internal_account_owner_email"),
   supportContactName: text("support_contact_name"),
   supportContactEmail: text("support_contact_email"),
+  // Salesperson is the A3-side commercial owner for this partner. Defaults
+  // to Alyssa DelTorre (adeltorre@a3visual.com) when blank — applied in the
+  // intake builder, not at column level, so the default can move without a
+  // migration. Phone is optional — populated when the partner needs SMS
+  // routing in addition to email.
+  salespersonName: text("salesperson_name"),
+  salespersonEmail: text("salesperson_email"),
+  salespersonPhone: text("salesperson_phone"),
   // Section 36: default add-on display format on this partner's portal.
   // Values: "flat" | "grid" | "category_tiles" (default "grid").
   addonDisplayFormat: text("addon_display_format").notNull().default("grid"),
