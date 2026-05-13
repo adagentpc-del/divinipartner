@@ -93,7 +93,7 @@ interface PmIntakeItemExtras {
 interface IntakeAnalysis {
   orderType: "print_only" | "full_unit" | "mixed" | "rental" | "other";
   orderTypeReason: string;
-  quoteType?: "Print Production" | "Hardware + Print" | "Mixed Fulfillment" | "Rental" | "Standard";
+  quoteType?: "Package" | "Individual Items" | "Package + Add-Ons" | "Rental" | "Production" | "Mixed";
   netsuiteCustomerNumber: string | null;
   salesperson?: IntakeContact;
   programManager: IntakeContact | null;

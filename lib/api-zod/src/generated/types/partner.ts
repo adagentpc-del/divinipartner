@@ -112,6 +112,8 @@ export interface Partner {
   salespersonEmail?: string | null;
   /** @nullable */
   salespersonPhone?: string | null;
+  /** @nullable */
+  internalReplyToEmail?: string | null;
   createdAt: Date;
   updatedAt: Date;
   [key: string]: unknown;

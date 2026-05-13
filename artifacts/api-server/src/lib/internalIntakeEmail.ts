@@ -79,6 +79,16 @@ export type ItemFulfillmentLabel =
 // fulfillment_mode, reservedQuantity and partner inventory state. Used by
 // the PM intake email so NetSuite quoting knows whether to invoice for
 // hardware or just the print run.
+// Quote type taxonomy used by NetSuite quoting language (PM packet).
+// Derived deterministically from the order's items + packages composition.
+export type PmQuoteType =
+  | "Package"
+  | "Individual Items"
+  | "Package + Add-Ons"
+  | "Rental"
+  | "Production"
+  | "Mixed";
+
 export type InventorySourceLabel =
   | "customer_stock"        // partner-supplied stock — A3 prints only
   | "partner_stock"         // partner's reusable inventory (was their hardware)
@@ -99,6 +109,11 @@ export interface IntakeItemAnalysis {
   familyId: number | null;
   familyName: string | null;
   memberRole: "hardware" | "component" | "accessory" | null;
+  // Order item type ("regular" | "addon" | "branding_zone" | "rental" …)
+  // and parent package linkage — both needed by deriveQuoteType so the PM
+  // packet renders the correct NetSuite quoting category.
+  itemType: string;
+  packageId: number | null;
   // Resolved fulfillment intent.
   label: ItemFulfillmentLabel;
   fulfillmentMode: string | null;
@@ -210,7 +225,7 @@ export interface IntakeContact {
 // uses as a "quote-entry packet". Combines customer/billing/contact +
 // salesperson + quote-type + NetSuite customer #.
 export interface IntakeNetsuiteSummary {
-  quoteType: "Print Production" | "Hardware + Print" | "Mixed Fulfillment" | "Rental" | "Standard";
+  quoteType: PmQuoteType;
   netsuiteCustomerNumber: string | null;
   partnerName: string;
   customerCompany: string | null;
@@ -324,7 +339,7 @@ export interface IntakeAnalysis {
   orderType: "print_only" | "full_unit" | "mixed" | "rental" | "other";
   orderTypeReason: string;
   // Quote type is derived from orderType for NetSuite quoting language.
-  quoteType: "Print Production" | "Hardware + Print" | "Mixed Fulfillment" | "Rental" | "Standard";
+  quoteType: PmQuoteType;
   netsuiteCustomerNumber: string | null;
   // People
   salesperson: IntakeContact;            // always present (defaults to Alyssa DelTorre)
@@ -517,6 +532,8 @@ export async function buildA3IntakeAnalysis(ctx: OrderEmailContext): Promise<Int
       familyId,
       familyName,
       memberRole: role ?? null,
+      itemType: it.itemType,
+      packageId: it.packageId ?? null,
       label,
       fulfillmentMode: it.fulfillmentMode ?? null,
       hardwareUnitsNeeded: it.hardwareDemandQuantity ?? 0,
@@ -811,7 +828,7 @@ export async function buildA3IntakeAnalysis(ctx: OrderEmailContext): Promise<Int
   const readiness = computeReadiness(ctx, itemsOut, familiesRemaining, followUps);
   const missingFields = buildMissingFields(ctx, itemsOut, partner, vendorMatches);
   const pmChecklist = buildPmChecklist(ctx, itemsOut, partner, files, vendorMatches, missingFields);
-  const quoteType = deriveQuoteType(orderTypeInfo.type);
+  const quoteType = deriveQuoteType(itemsOut);
 
   const netsuiteSummary: IntakeNetsuiteSummary = {
     quoteType,
@@ -971,14 +988,27 @@ function scoreSupplierCandidates(
   return best;
 }
 
-function deriveQuoteType(orderType: IntakeAnalysis["orderType"]): IntakeAnalysis["quoteType"] {
-  switch (orderType) {
-    case "print_only": return "Print Production";
-    case "full_unit":  return "Hardware + Print";
-    case "mixed":      return "Mixed Fulfillment";
-    case "rental":     return "Rental";
-    default:           return "Standard";
-  }
+// Deterministic PM quote-type derivation. Categories are independent and
+// counted from the items themselves: rental (asset hold), production (new
+// fabrication via produce_new), package-bound (items tied to a package),
+// add-ons (line-level extras), and individual items (everything else).
+// Single category → that category. Packages + add-ons → Package + Add-Ons.
+// Anything else with two or more categories present → Mixed.
+function deriveQuoteType(items: IntakeItemAnalysis[]): PmQuoteType {
+  if (!items.length) return "Individual Items";
+  const hasRental = items.some(i => i.label === "rental_asset");
+  const hasProduction = items.some(i => i.inventorySourceLabel === "produce_new");
+  const hasPackage = items.some(i => i.packageId != null);
+  const hasAddon = items.some(i => i.itemType === "addon" || i.label === "addon_or_misc");
+  const hasIndividual = items.some(i => i.packageId == null && i.label !== "rental_asset" && i.inventorySourceLabel !== "produce_new" && !(i.itemType === "addon" || i.label === "addon_or_misc"));
+  const categories = [hasRental, hasProduction, hasPackage, hasAddon, hasIndividual].filter(Boolean).length;
+  if (hasPackage && hasAddon && !hasRental && !hasProduction && !hasIndividual) return "Package + Add-Ons";
+  if (categories > 1) return "Mixed";
+  if (hasRental) return "Rental";
+  if (hasProduction) return "Production";
+  if (hasPackage) return "Package";
+  if (hasAddon) return "Individual Items";
+  return "Individual Items";
 }
 
 function deriveInventorySourceLabel(label: ItemFulfillmentLabel, it: OrderItem): InventorySourceLabel {
@@ -991,8 +1021,13 @@ function deriveInventorySourceLabel(label: ItemFulfillmentLabel, it: OrderItem):
   if (label === "print_only_on_partner_inventory") return "partner_stock";
   if (label === "rental_asset" && !it.inventorySourceInventoryId) return "a3_stock";
   if (label === "rental_asset") return "partner_stock";
-  if (label === "hardware_supplied_in_order") return "third_party";
-  if (label === "full_unit_required") return "third_party";
+  // Hardware fabricated as part of this order, or full units shipped when
+  // no partner hardware exists, are brand-new production runs by A3 — not
+  // dropshipped from a third-party supplier. Surface them deterministically
+  // as `produce_new` so the PM packet's inventory plan shows the correct
+  // sourcing intent for NetSuite quoting.
+  if (label === "hardware_supplied_in_order") return "produce_new";
+  if (label === "full_unit_required") return "produce_new";
   if (label === "print_only_no_hardware_link") return "customer_stock";
   return "confirm_manually";
 }

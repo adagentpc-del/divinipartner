@@ -1344,6 +1344,8 @@ export interface Partner {
   salespersonEmail?: string | null;
   /** @nullable */
   salespersonPhone?: string | null;
+  /** @nullable */
+  internalReplyToEmail?: string | null;
   createdAt: string;
   updatedAt: string;
   [key: string]: unknown;

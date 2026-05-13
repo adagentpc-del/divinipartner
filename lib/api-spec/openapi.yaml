@@ -4274,6 +4274,8 @@ components:
           type: ["string", "null"]
         salespersonPhone:
           type: ["string", "null"]
+        internalReplyToEmail:
+          type: ["string", "null"]
         createdAt:
           type: string
           format: date-time

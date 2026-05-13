@@ -83,6 +83,7 @@ export const ListPartnersResponseItem = zod.object({
   salespersonName: zod.string().nullish(),
   salespersonEmail: zod.string().nullish(),
   salespersonPhone: zod.string().nullish(),
+  internalReplyToEmail: zod.string().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -224,6 +225,7 @@ export const GetPartnerResponse = zod.object({
   salespersonName: zod.string().nullish(),
   salespersonEmail: zod.string().nullish(),
   salespersonPhone: zod.string().nullish(),
+  internalReplyToEmail: zod.string().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -361,6 +363,7 @@ export const UpdatePartnerResponse = zod.object({
   salespersonName: zod.string().nullish(),
   salespersonEmail: zod.string().nullish(),
   salespersonPhone: zod.string().nullish(),
+  internalReplyToEmail: zod.string().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -977,6 +980,7 @@ export const GetDashboardSummaryResponse = zod.object({
         salespersonName: zod.string().nullish(),
         salespersonEmail: zod.string().nullish(),
         salespersonPhone: zod.string().nullish(),
+        internalReplyToEmail: zod.string().nullish(),
         createdAt: zod.coerce.date(),
         updatedAt: zod.coerce.date(),
       }),
