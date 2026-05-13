@@ -27,7 +27,7 @@
  *     to the partner) so it always reads as an "internal A3 ops" email.
  */
 
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNotNull } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   productFamiliesTable,
@@ -41,13 +41,16 @@ import {
   suppliersTable,
   packagesTable,
   packageItemsTable,
+  ordersTable,
   type Partner,
   type Order,
   type OrderItem,
   type ProductFamily,
   type ProductFamilyMember,
+  type Supplier,
 } from "@workspace/db";
 import type { OrderEmailContext } from "./email";
+import { buildOrderEmailContext } from "./email";
 import { publicLink } from "./publicUrl";
 
 // Default A3-side salesperson when a partner has no salesperson_* fields set.
@@ -81,6 +84,7 @@ export type InventorySourceLabel =
   | "partner_stock"         // partner's reusable inventory (was their hardware)
   | "a3_stock"              // A3-owned reusable inventory
   | "third_party"           // ship from an outside supplier (e.g. dropship)
+  | "produce_new"           // brand-new production run (no existing stock)
   | "confirm_manually";     // ambiguous — flag in the PM packet
 
 export interface IntakeItemAnalysis {
@@ -128,10 +132,22 @@ export interface IntakeItemAnalysis {
   };
   selectedMaterial: string | null;
   hardwareSummary: string | null; // e.g. "2 frames + base"; null when n/a
+  // Per-line inventory accounting: explicit requested vs available vs
+  // remaining-after, plus deterministic warnings (over-allocated, unknown
+  // source, produce-new path) so PM doesn't have to compute these by hand.
+  inventoryQty: {
+    requested: number;
+    available: number | null;     // null when source is produce_new / unknown
+    reservedFromInventory: number;
+    remainingAfter: number | null; // null when source is produce_new / unknown
+    warnings: string[];           // e.g. "over-allocated", "no source", "shortage 3"
+  };
   vendor: {
     supplierId: number | null;
     supplierName: string | null;
-    matchSource: "order_assigned" | "product_default" | "branding_location_default" | "none";
+    matchSource: "order_assigned" | "product_default" | "branding_location_default" | "scored" | "none";
+    matchScore: number | null;
+    matchReasons: string[];        // why this supplier won (or "no candidates")
   };
   // Per-line human note rendered in the email + UI.
   note: string;
@@ -190,6 +206,28 @@ export interface IntakeContact {
   source: "partner_field" | "partner_contact" | "recipient_role";
 }
 
+// Top-of-email NetSuite Quote Entry Summary — single discrete block A3 ops
+// uses as a "quote-entry packet". Combines customer/billing/contact +
+// salesperson + quote-type + NetSuite customer #.
+export interface IntakeNetsuiteSummary {
+  quoteType: "Print Production" | "Hardware + Print" | "Mixed Fulfillment" | "Rental" | "Standard";
+  netsuiteCustomerNumber: string | null;
+  partnerName: string;
+  customerCompany: string | null;
+  customerContactName: string;
+  customerContactEmail: string;
+  customerContactPhone: string | null;
+  billingContactName: string | null;
+  billingContactEmail: string | null;
+  billingContactPhone: string | null;
+  billingTerms: string | null;
+  salespersonName: string;
+  salespersonEmail: string;
+  salespersonPhone: string | null;
+  totalLines: number;
+  totalQuantity: number;
+}
+
 // ----- PM Intake packet types ------------------------------------------------
 // Task #27: the internal ops email is upgraded into a full Project Manager
 // intake packet that NetSuite quoting can use without opening the portal.
@@ -235,7 +273,11 @@ export interface IntakeVendorMatch {
   supplierId: number;
   supplierName: string;
   itemIds: number[];
-  matchSources: Array<"order_assigned" | "product_default" | "branding_location_default">;
+  matchSources: Array<"order_assigned" | "product_default" | "branding_location_default" | "scored">;
+  // Best (max) deterministic score among the lines this supplier matched on.
+  // Null when supplier was resolved purely by fallback chain.
+  bestMatchScore: number | null;
+  matchReasons: string[]; // de-duplicated reasons across all lines
   contactName: string | null;
   contactEmail: string | null;
   contactPhone: string | null;
@@ -291,6 +333,7 @@ export interface IntakeAnalysis {
   partnerContacts: IntakeContact[]; // primary, billing, graphic_designer, onsite, project, other
   opsRecipients: string[];
   // PM packet blocks
+  netsuiteSummary: IntakeNetsuiteSummary;
   customer: IntakeCustomerBlock;
   billing: IntakeBillingBlock;
   event: IntakeEventBlock;
@@ -493,7 +536,8 @@ export async function buildA3IntakeAnalysis(ctx: OrderEmailContext): Promise<Int
       },
       selectedMaterial: it.selectedMaterial ?? null,
       hardwareSummary,
-      vendor: { supplierId: null, supplierName: null, matchSource: "none" }, // resolved below
+      inventoryQty: deriveInventoryQty(it, inventorySourceLabel, invSnap),
+      vendor: { supplierId: null, supplierName: null, matchSource: "none", matchScore: null, matchReasons: [] }, // resolved below
       note: itemNote(label, it, fam, invSnap),
       surveyAsset: (() => {
         const sId = it.surveyAssetId;
@@ -570,26 +614,62 @@ export async function buildA3IntakeAnalysis(ctx: OrderEmailContext): Promise<Int
     : [];
   const supplierById = new Map(supplierRows.map(s => [s.id, s]));
 
+  // Pull every active supplier on the platform once for the deterministic
+  // scoring fallback (see scoreSupplierForLine). Bounded by isActive=true so
+  // we never propose retired vendors.
+  const allActiveSuppliers = await db.select().from(suppliersTable).where(eq(suppliersTable.isActive, true));
+  for (const s of allActiveSuppliers) if (!supplierById.has(s.id)) supplierById.set(s.id, s);
+
+  const eventCity = ctx.venue?.city ?? null;
+  const eventCountry = ctx.venue?.country ?? null;
+  // Partner-preference signal: any supplier already explicitly assigned by
+  // this partner on prior orders (assignedSupplierId) wins a soft tiebreaker
+  // in the scoring fallback. Computed once per analysis call.
+  const partnerPreferredSupplierIds = await loadPartnerPreferredSupplierIds(partner.id);
+
   const vendorAccum = new Map<number, IntakeVendorMatch>();
   for (let i = 0; i < items.length; i++) {
     const it = items[i];
     const out = itemsOut[i];
     let supplierId: number | null = null;
     let matchSource: IntakeItemAnalysis["vendor"]["matchSource"] = "none";
+    let matchScore: number | null = null;
+    let matchReasons: string[] = [];
     if (order.assignedSupplierId) {
       supplierId = order.assignedSupplierId;
       matchSource = "order_assigned";
+      matchReasons = ["assigned on the order"];
     } else if (it.productId && productById.get(it.productId)) {
       const ps = productById.get(it.productId)?.supplierId;
-      if (ps) { supplierId = ps; matchSource = "product_default"; }
+      if (ps) { supplierId = ps; matchSource = "product_default"; matchReasons = ["product default supplier"]; }
     }
     if (!supplierId && it.brandingZoneId) {
       const bl = branchingLocById.get(it.brandingZoneId);
-      if (bl?.defaultSupplierId) { supplierId = bl.defaultSupplierId; matchSource = "branding_location_default"; }
+      if (bl?.defaultSupplierId) { supplierId = bl.defaultSupplierId; matchSource = "branding_location_default"; matchReasons = ["branding location default supplier"]; }
+    }
+    if (!supplierId) {
+      const product = it.productId ? productById.get(it.productId) : undefined;
+      const scored = scoreSupplierCandidates(allActiveSuppliers, {
+        product,
+        material: out.selectedMaterial,
+        widthIn: out.dimensions.enteredWidth,
+        heightIn: out.dimensions.enteredHeight,
+        eventCity,
+        eventCountry,
+        partnerPreferredSupplierIds,
+      });
+      if (scored && scored.score > 0) {
+        supplierId = scored.supplier.id;
+        matchSource = "scored";
+        matchScore = scored.score;
+        matchReasons = scored.reasons;
+      } else {
+        matchReasons = scored ? ["no positive scoring match"] : ["no active supplier candidates"];
+      }
     }
     const supplier = supplierId ? supplierById.get(supplierId) : undefined;
     const supplierName = supplier?.name ?? null;
-    out.vendor = { supplierId, supplierName, matchSource };
+    out.vendor = { supplierId, supplierName, matchSource, matchScore, matchReasons };
     if (supplierId && supplierName && supplier) {
       const product = it.productId ? productById.get(it.productId) : undefined;
       const d = out.dimensions;
@@ -613,12 +693,17 @@ export async function buildA3IntakeAnalysis(ctx: OrderEmailContext): Promise<Int
       if (cur) {
         cur.itemIds.push(out.itemId);
         cur.lineSummaries.push(lineSummary);
-        if (matchSource !== "none" && !cur.matchSources.includes(matchSource)) cur.matchSources.push(matchSource);
+        if (matchSource !== "none" && matchSource !== "scored" && !cur.matchSources.includes(matchSource)) cur.matchSources.push(matchSource);
+        if (matchSource === "scored" && !cur.matchSources.includes("scored")) cur.matchSources.push("scored");
+        if (matchScore != null && (cur.bestMatchScore == null || matchScore > cur.bestMatchScore)) cur.bestMatchScore = matchScore;
+        for (const r of matchReasons) if (!cur.matchReasons.includes(r)) cur.matchReasons.push(r);
       } else {
         vendorAccum.set(supplierId, {
           supplierId, supplierName,
           itemIds: [out.itemId],
           matchSources: matchSource === "none" ? [] : [matchSource],
+          bestMatchScore: matchScore,
+          matchReasons: [...matchReasons],
           contactName: supplier.contactName ?? null,
           contactEmail: supplier.contactEmail ?? null,
           contactPhone: supplier.contactPhone ?? null,
@@ -723,6 +808,25 @@ export async function buildA3IntakeAnalysis(ctx: OrderEmailContext): Promise<Int
   const pmChecklist = buildPmChecklist(ctx, itemsOut, partner, files, vendorMatches, missingFields);
   const quoteType = deriveQuoteType(orderTypeInfo.type);
 
+  const netsuiteSummary: IntakeNetsuiteSummary = {
+    quoteType,
+    netsuiteCustomerNumber: partner.netsuiteCustomerNumber || null,
+    partnerName: partner.companyName,
+    customerCompany: customer.companyName,
+    customerContactName: customer.contactName,
+    customerContactEmail: customer.contactEmail,
+    customerContactPhone: customer.contactPhone,
+    billingContactName: billing.contactName,
+    billingContactEmail: billing.contactEmail,
+    billingContactPhone: billing.contactPhone,
+    billingTerms: billing.paymentTerms,
+    salespersonName: salesperson.name || DEFAULT_A3_SALESPERSON.name,
+    salespersonEmail: salesperson.email || DEFAULT_A3_SALESPERSON.email,
+    salespersonPhone: partner.salespersonPhone || DEFAULT_A3_SALESPERSON.phone,
+    totalLines: itemsOut.length,
+    totalQuantity: itemsOut.reduce((sum, i) => sum + (i.quantity || 0), 0),
+  };
+
   return {
     orderType: orderTypeInfo.type,
     orderTypeReason: orderTypeInfo.reason,
@@ -734,6 +838,7 @@ export async function buildA3IntakeAnalysis(ctx: OrderEmailContext): Promise<Int
     supportContact,
     partnerContacts: partnerContactsOut,
     opsRecipients,
+    netsuiteSummary,
     customer,
     billing,
     event: eventBlock,
@@ -750,6 +855,115 @@ export async function buildA3IntakeAnalysis(ctx: OrderEmailContext): Promise<Int
     readinessLabel: readiness.label,
     readinessReason: readiness.reason,
   };
+}
+
+// Single shared entry point used by both the email render path and the
+// admin Intake Panel API endpoint, so they can never drift. Returns null
+// when the order id doesn't resolve.
+export async function buildInternalOrderEmailData(orderId: number): Promise<{
+  ctx: OrderEmailContext;
+  analysis: IntakeAnalysis;
+  html: string;
+} | null> {
+  const ctx = await buildOrderEmailContext(orderId);
+  if (!ctx) return null;
+  const analysis = await buildA3IntakeAnalysis(ctx);
+  const html = renderA3InternalIntakeHtml(ctx, analysis);
+  return { ctx, analysis, html };
+}
+
+// Compute the per-line inventory accounting block (requested vs available
+// vs remaining-after) plus deterministic warning strings. Pure function of
+// already-resolved values — no extra DB hits.
+function deriveInventoryQty(
+  it: OrderItem,
+  label: InventorySourceLabel,
+  invSnap: IntakeItemAnalysis["inventorySource"],
+): IntakeItemAnalysis["inventoryQty"] {
+  const requested = it.quantity ?? 0;
+  const reserved = it.reservedQuantity ?? 0;
+  const shortage = it.shortageQuantity ?? 0;
+  const warnings: string[] = [];
+  let available: number | null = null;
+  let remainingAfter: number | null = null;
+
+  if (label === "produce_new" || label === "third_party") {
+    // No existing stock involved — produce-new pathway.
+    warnings.push(label === "produce_new" ? "produce-new run" : "ships from outside supplier");
+  } else if (label === "confirm_manually") {
+    warnings.push("inventory source unknown — confirm manually");
+  } else if (invSnap) {
+    available = invSnap.onHandBefore ?? null;
+    remainingAfter = invSnap.onHandAfter ?? null;
+    if (available != null && reserved > available) warnings.push(`over-allocated by ${reserved - available}`);
+    if (remainingAfter != null && remainingAfter === 0) warnings.push("depletes this inventory pool");
+  } else if (label === "partner_stock" || label === "a3_stock") {
+    warnings.push("no inventory pool linked — confirm source");
+  }
+  if (shortage > 0) warnings.push(`shortage of ${shortage}`);
+
+  return { requested, available, reservedFromInventory: reserved, remainingAfter, warnings };
+}
+
+// Soft tiebreaker signal: which suppliers has this partner explicitly
+// assigned on past orders? Returns at most ~20 supplier ids.
+async function loadPartnerPreferredSupplierIds(partnerId: number): Promise<Set<number>> {
+  const rows = await db
+    .select({ id: ordersTable.assignedSupplierId })
+    .from(ordersTable)
+    .where(and(eq(ordersTable.partnerId, partnerId), isNotNull(ordersTable.assignedSupplierId)))
+    .limit(200);
+  const out = new Set<number>();
+  for (const r of rows) if (r.id != null) out.add(r.id);
+  return out;
+}
+
+// Fully deterministic supplier scoring used as a fallback when no order /
+// product / branding-location default supplier is set. Higher score = better
+// fit. Score is a sum of weighted signals — no AI, no randomness, fully
+// reproducible. Returns the top supplier (or null when no candidates).
+function scoreSupplierCandidates(
+  candidates: Supplier[],
+  ctx: {
+    product: { category?: string | null } | undefined;
+    material: string | null;
+    widthIn: number | null;
+    heightIn: number | null;
+    eventCity: string | null;
+    eventCountry: string | null;
+    partnerPreferredSupplierIds: Set<number>;
+  },
+): { supplier: Supplier; score: number; reasons: string[] } | null {
+  if (candidates.length === 0) return null;
+  let best: { supplier: Supplier; score: number; reasons: string[] } | null = null;
+  const targetCat = (ctx.product?.category ?? "").toLowerCase().trim();
+  const targetMat = (ctx.material ?? "").toLowerCase().trim();
+  const targetCity = (ctx.eventCity ?? "").toLowerCase().trim();
+  const targetCountry = (ctx.eventCountry ?? "").toLowerCase().trim();
+  const maxDim = Math.max(ctx.widthIn ?? 0, ctx.heightIn ?? 0);
+
+  for (const s of candidates) {
+    if (!s.isActive) continue;
+    let score = 0;
+    const reasons: string[] = [];
+    const cats = (s.categoriesJson ?? []).map(c => String(c).toLowerCase());
+    if (targetCat && cats.some(c => c === targetCat)) { score += 40; reasons.push(`category match: ${targetCat}`); }
+    else if (targetCat && cats.some(c => c.includes(targetCat) || targetCat.includes(c))) { score += 20; reasons.push(`category partial: ${targetCat}`); }
+    if (targetMat && cats.some(c => c.includes(targetMat))) { score += 20; reasons.push(`material capability: ${targetMat}`); }
+    if (maxDim > 0) {
+      const maxW = (s as Supplier & { maxWidthIn?: number | null }).maxWidthIn ?? null;
+      const maxH = (s as Supplier & { maxHeightIn?: number | null }).maxHeightIn ?? null;
+      const supMax = Math.max(maxW ?? 0, maxH ?? 0);
+      if (supMax > 0 && maxDim <= supMax) { score += 15; reasons.push(`fits ${maxDim}" within supplier max ${supMax}"`); }
+      else if (supMax > 0 && maxDim > supMax) { score -= 30; reasons.push(`exceeds supplier max ${supMax}"`); }
+    }
+    if (targetCity && (s.city ?? "").toLowerCase() === targetCity) { score += 12; reasons.push(`local to ${targetCity}`); }
+    else if (targetCountry && (s.country ?? "").toLowerCase() === targetCountry) { score += 6; reasons.push(`in-country: ${targetCountry}`); }
+    if (ctx.partnerPreferredSupplierIds.has(s.id)) { score += 8; reasons.push("partner has used this supplier before"); }
+    if (s.defaultLeadTimeDays != null && s.defaultLeadTimeDays <= 7) { score += 3; reasons.push(`fast lead time ${s.defaultLeadTimeDays}d`); }
+    if (!best || score > best.score) best = { supplier: s, score, reasons };
+  }
+  return best;
 }
 
 function deriveQuoteType(orderType: IntakeAnalysis["orderType"]): IntakeAnalysis["quoteType"] {
@@ -982,6 +1196,9 @@ export function renderA3InternalIntakeHtml(ctx: OrderEmailContext, analysis: Int
         </td></tr>` : ""}
 
         <tr><td style="padding:0 24px 12px 24px;">${renderQuickActionsBlock(order.id, partner.id, analysis.customer.contactEmail || order.contactEmail || null, analysis.files.length)}</td></tr>
+
+        <!-- NetSuite Quote Entry Summary — single discrete top block. -->
+        ${section("NetSuite Quote Entry Summary", renderNetsuiteSummaryBlock(analysis.netsuiteSummary))}
 
         <!-- A. Account snapshot -->
         ${section("A · Account snapshot", `
@@ -1528,7 +1745,7 @@ function renderVendorMatchesBlock(matches: IntakeVendorMatch[], _items: IntakeIt
   if (!matches.length) {
     return `<div style="font-size:13px;color:${A3_ACCENT};border:1px dashed ${A3_ACCENT};border-radius:8px;padding:10px 12px;background:#fdf3f3;">No deterministic vendor match — PM must assign suppliers manually.</div>`;
   }
-  const sourceLabel = (s: string) => s === "order_assigned" ? "Order" : s === "product_default" ? "Product default" : s === "branding_location_default" ? "Branding location" : "—";
+  const sourceLabel = (s: string) => s === "order_assigned" ? "Order" : s === "product_default" ? "Product default" : s === "branding_location_default" ? "Branding location" : s === "scored" ? "Scored fallback" : "—";
   return matches.map(m => {
     const meta: string[] = [];
     if (m.contactName) meta.push(`<strong>Contact:</strong> ${escape(m.contactName)}`);
@@ -1549,13 +1766,54 @@ function renderVendorMatchesBlock(matches: IntakeVendorMatch[], _items: IntakeIt
         <td style="padding:4px 6px;border-top:1px solid ${A3_LINE};font-size:11px;color:${A3_MUTED};text-align:right;">${bits.join(" · ") || "—"}</td>
       </tr>`;
     }).join("");
+    const scoreChip = m.bestMatchScore != null
+      ? ` <span style="background:${A3_BG};border:1px solid ${A3_LINE};color:${A3_INK};padding:1px 6px;border-radius:999px;font-size:10px;margin-left:4px;">score ${m.bestMatchScore}</span>`
+      : "";
+    const reasons = (m.matchReasons && m.matchReasons.length)
+      ? `<div style="margin-top:4px;font-size:11px;color:${A3_MUTED};"><strong>Why:</strong> ${m.matchReasons.map(r => escape(r)).join(" · ")}</div>`
+      : "";
     return `<div style="border:1px solid ${A3_LINE};border-radius:8px;padding:10px 12px;margin-bottom:8px;background:#ffffff;">
-      <div style="font-size:13px;font-weight:600;color:${A3_INK};">${escape(m.supplierName)} <span style="color:${A3_MUTED};font-weight:400;font-size:11px;">· match: ${m.matchSources.map(sourceLabel).join(", ") || "—"}</span></div>
+      <div style="font-size:13px;font-weight:600;color:${A3_INK};">${escape(m.supplierName)} <span style="color:${A3_MUTED};font-weight:400;font-size:11px;">· match: ${m.matchSources.map(sourceLabel).join(", ") || "—"}</span>${scoreChip}</div>
+      ${reasons}
       ${meta.length ? `<div style="font-size:12px;color:${A3_INK};margin-top:4px;line-height:1.5;">${meta.join(" · ")}</div>` : ""}
       ${cats}
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-top:6px;">${lineRows}</table>
     </div>`;
   }).join("");
+}
+
+function renderNetsuiteSummaryBlock(s: IntakeNetsuiteSummary): string {
+  const row = (label: string, value: string) =>
+    `<tr><td style="padding:4px 8px;font-size:12px;color:${A3_MUTED};width:38%;vertical-align:top;">${escape(label)}</td><td style="padding:4px 8px;font-size:12px;color:${A3_INK};vertical-align:top;">${value}</td></tr>`;
+  const ns = s.netsuiteCustomerNumber
+    ? `<code style="background:${A3_BG};padding:2px 6px;border-radius:4px;border:1px solid ${A3_LINE};">${escape(s.netsuiteCustomerNumber)}</code>`
+    : `<span style="color:${A3_ACCENT};font-weight:600;">— missing —</span>`;
+  const customerBits = [
+    `<strong>${escape(s.customerContactName)}</strong>`,
+    s.customerCompany ? escape(s.customerCompany) : null,
+    `<a href="mailto:${escape(s.customerContactEmail)}" style="color:${A3_NAVY};">${escape(s.customerContactEmail)}</a>`,
+    s.customerContactPhone ? escape(s.customerContactPhone) : null,
+  ].filter(Boolean).join(" · ");
+  const billingBits = [
+    s.billingContactName ? `<strong>${escape(s.billingContactName)}</strong>` : null,
+    s.billingContactEmail ? `<a href="mailto:${escape(s.billingContactEmail)}" style="color:${A3_NAVY};">${escape(s.billingContactEmail)}</a>` : null,
+    s.billingContactPhone ? escape(s.billingContactPhone) : null,
+    s.billingTerms ? `terms: ${escape(s.billingTerms)}` : null,
+  ].filter(Boolean).join(" · ") || `<span style="color:${A3_ACCENT};">— missing billing contact —</span>`;
+  const salesBits = [
+    `<strong>${escape(s.salespersonName)}</strong>`,
+    `<a href="mailto:${escape(s.salespersonEmail)}" style="color:${A3_NAVY};">${escape(s.salespersonEmail)}</a>`,
+    s.salespersonPhone ? escape(s.salespersonPhone) : null,
+  ].filter(Boolean).join(" · ");
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid ${A3_LINE};border-radius:8px;background:#fbfbfb;">
+    ${row("Quote type", `<strong>${escape(s.quoteType)}</strong>`)}
+    ${row("NetSuite customer #", ns)}
+    ${row("Partner", `<strong>${escape(s.partnerName)}</strong>`)}
+    ${row("Customer contact", customerBits)}
+    ${row("Billing contact", billingBits)}
+    ${row("Salesperson", salesBits)}
+    ${row("Lines / total qty", `${s.totalLines} line${s.totalLines === 1 ? "" : "s"} · ${s.totalQuantity} units`)}
+  </table>`;
 }
 
 function renderQuickActionsBlock(orderId: number, partnerId: number, customerEmail: string | null, fileCount: number): string {
@@ -1609,6 +1867,7 @@ function inventorySourceChip(label: InventorySourceLabel): string {
     partner_stock:     { bg: "#e9f6ee", fg: A3_GREEN, text: "Partner stock" },
     a3_stock:          { bg: "#eef0ff", fg: "#3a47b8", text: "A3 stock" },
     third_party:       { bg: "#fff4e0", fg: A3_AMBER, text: "Third-party" },
+    produce_new:       { bg: "#f1ecfd", fg: "#5b3fb6", text: "Produce new" },
     confirm_manually:  { bg: "#fdecec", fg: A3_ACCENT, text: "Confirm source" },
   };
   const m = map[label];
@@ -1630,7 +1889,28 @@ function renderItemPmDetail(it: IntakeItemAnalysis): string {
   if (dimsLine.length) bits.push(`<strong>Dims:</strong> ${dimsLine.join(" · ")}`);
   if (it.selectedMaterial) bits.push(`<strong>Material:</strong> ${escape(it.selectedMaterial)}`);
   if (it.hardwareSummary) bits.push(`<strong>Hardware:</strong> ${escape(it.hardwareSummary)}`);
-  if (it.vendor.supplierName) bits.push(`<strong>Vendor:</strong> ${escape(it.vendor.supplierName)}`);
+  if (it.vendor.supplierName) {
+    const vsrc = it.vendor.matchSource;
+    const srcText = vsrc === "order_assigned" ? "order" : vsrc === "product_default" ? "product default" : vsrc === "branding_location_default" ? "branding location" : vsrc === "scored" ? "scored" : "—";
+    const scoreText = it.vendor.matchScore != null ? ` (${it.vendor.matchScore})` : "";
+    bits.push(`<strong>Vendor:</strong> ${escape(it.vendor.supplierName)} <span style="color:${A3_MUTED};">· ${srcText}${scoreText}</span>`);
+  } else if (it.vendor.matchSource === "none") {
+    bits.push(`<strong style="color:${A3_ACCENT};">Vendor: unmatched — assign manually</strong>`);
+  }
+  const iq = it.inventoryQty;
+  if (iq) {
+    const parts: string[] = [`req ${iq.requested}`];
+    if (iq.available != null) parts.push(`avail ${iq.available}`);
+    if (iq.reservedFromInventory > 0) parts.push(`reserved ${iq.reservedFromInventory}`);
+    if (iq.remainingAfter != null) parts.push(`remaining ${iq.remainingAfter}`);
+    const warn = iq.warnings.length
+      ? ` <span style="color:${A3_ACCENT};font-weight:600;">⚠ ${iq.warnings.map(w => escape(w)).join(" · ")}</span>`
+      : "";
+    bits.push(`<strong>Inventory:</strong> ${parts.join(" · ")}${warn}`);
+  }
+  if (it.vendor.matchReasons && it.vendor.matchReasons.length) {
+    bits.push(`<span style="color:${A3_MUTED};">Why: ${it.vendor.matchReasons.map(r => escape(r)).join(" · ")}</span>`);
+  }
   if (it.artwork.fileUrl) bits.push(`<strong>Artwork:</strong> <a href="${escape(it.artwork.fileUrl)}" style="color:${A3_NAVY};">file</a>`);
   else if (it.artwork.needed) bits.push(`<strong style="color:${A3_ACCENT};">Artwork needed</strong>`);
   if (!bits.length) return "";

@@ -80,14 +80,15 @@ interface IntakeFamily {
   perCity: Array<{ cityName: string; onHand: number; reservedAfter: number; remaining: number }>;
 }
 // Task #27: PM intake packet — extended types mirroring the email.
-type InventorySourceLabel = "customer_stock" | "partner_stock" | "a3_stock" | "third_party" | "confirm_manually";
+type InventorySourceLabel = "customer_stock" | "partner_stock" | "a3_stock" | "third_party" | "produce_new" | "confirm_manually";
 interface PmIntakeItemExtras {
   inventorySourceLabel: InventorySourceLabel;
   dimensions: { enteredWidth: number | null; enteredHeight: number | null; enteredDepth: number | null; sizeUnit: string | null; packedW: number | null; packedH: number | null; packedD: number | null; packedUnit: string | null };
   artwork: { fileUrl: string | null; needed: boolean };
   selectedMaterial: string | null;
   hardwareSummary: string | null;
-  vendor: { supplierId: number | null; supplierName: string | null; matchSource: "order_assigned" | "product_default" | "branding_location_default" | "none" };
+  vendor: { supplierId: number | null; supplierName: string | null; matchSource: "order_assigned" | "product_default" | "branding_location_default" | "scored" | "none"; matchScore?: number | null; matchReasons?: string[] };
+  inventoryQty?: { requested: number; available: number | null; reservedFromInventory: number; remainingAfter: number | null; warnings: string[] };
 }
 interface IntakeAnalysis {
   orderType: "print_only" | "full_unit" | "mixed" | "rental" | "other";
@@ -106,7 +107,8 @@ interface IntakeAnalysis {
   packages?: Array<{ packageId: number; packageName: string; packageDescription: string | null; itemIds: number[] }>;
   items: Array<IntakeItem & Partial<PmIntakeItemExtras>>;
   familiesRemaining: IntakeFamily[];
-  vendorMatches?: Array<{ supplierId: number; supplierName: string; itemIds: number[]; matchSources: Array<"order_assigned" | "product_default" | "branding_location_default"> }>;
+  netsuiteSummary?: { quoteType: string; netsuiteCustomerNumber: string | null; partnerName: string; customerCompany: string | null; customerContactName: string; customerContactEmail: string; customerContactPhone: string | null; billingContactName: string | null; billingContactEmail: string | null; billingContactPhone: string | null; billingTerms: string | null; salespersonName: string; salespersonEmail: string; salespersonPhone: string | null; totalLines: number; totalQuantity: number };
+  vendorMatches?: Array<{ supplierId: number; supplierName: string; itemIds: number[]; matchSources: Array<"order_assigned" | "product_default" | "branding_location_default" | "scored">; bestMatchScore?: number | null; matchReasons?: string[] }>;
   files?: Array<{ url: string; name: string; kind: "artwork" | "product_image" | "survey_photo"; contextLabel: string | null }>;
   missingFields?: Array<{ field: string; severity: "critical" | "warning"; reason: string }>;
   pmChecklist?: Array<{ key: string; label: string; done: boolean; detail: string | null }>;
@@ -122,6 +124,7 @@ const INV_SOURCE_LABEL: Record<InventorySourceLabel, { text: string; tone: strin
   partner_stock:    { text: "Partner stock",    tone: "bg-emerald-50 text-emerald-700 border-emerald-200" },
   a3_stock:         { text: "A3 stock",         tone: "bg-indigo-50 text-indigo-700 border-indigo-200" },
   third_party:      { text: "Third-party",      tone: "bg-amber-50 text-amber-700 border-amber-200" },
+  produce_new:      { text: "Produce new",      tone: "bg-violet-50 text-violet-700 border-violet-200" },
   confirm_manually: { text: "Confirm source",   tone: "bg-rose-50 text-rose-700 border-rose-200" },
 };
 
@@ -221,6 +224,49 @@ export default function OrderInternalIntakePanel({ orderId }: { orderId: number 
           </div>
         );
       })()}
+
+      {/* NetSuite Quote Entry Summary — discrete top block mirroring the email. */}
+      {a.netsuiteSummary && (
+        <Section title="NetSuite Quote Entry Summary" icon={<Building2 className="h-3.5 w-3.5" />}>
+          <KvRow label="Quote type"><span className="text-sm font-semibold">{a.netsuiteSummary.quoteType}</span></KvRow>
+          <KvRow label="NetSuite customer #">
+            {a.netsuiteSummary.netsuiteCustomerNumber
+              ? <code className="text-xs px-1.5 py-0.5 rounded border bg-muted">{a.netsuiteSummary.netsuiteCustomerNumber}</code>
+              : <span className="text-rose-700 text-xs font-medium">— missing —</span>}
+          </KvRow>
+          <KvRow label="Partner"><span className="text-sm font-semibold">{a.netsuiteSummary.partnerName}</span></KvRow>
+          <KvRow label="Customer contact">
+            <div className="text-xs">
+              <span className="font-semibold">{a.netsuiteSummary.customerContactName}</span>
+              {a.netsuiteSummary.customerCompany ? ` · ${a.netsuiteSummary.customerCompany}` : ""}
+              {" · "}<a href={`mailto:${a.netsuiteSummary.customerContactEmail}`} className="text-blue-700 underline">{a.netsuiteSummary.customerContactEmail}</a>
+              {a.netsuiteSummary.customerContactPhone ? ` · ${a.netsuiteSummary.customerContactPhone}` : ""}
+            </div>
+          </KvRow>
+          <KvRow label="Billing contact">
+            <div className="text-xs">
+              {a.netsuiteSummary.billingContactName || a.netsuiteSummary.billingContactEmail
+                ? <>
+                    {a.netsuiteSummary.billingContactName && <span className="font-semibold">{a.netsuiteSummary.billingContactName}</span>}
+                    {a.netsuiteSummary.billingContactEmail && <> · <a href={`mailto:${a.netsuiteSummary.billingContactEmail}`} className="text-blue-700 underline">{a.netsuiteSummary.billingContactEmail}</a></>}
+                    {a.netsuiteSummary.billingContactPhone && ` · ${a.netsuiteSummary.billingContactPhone}`}
+                    {a.netsuiteSummary.billingTerms && ` · terms: ${a.netsuiteSummary.billingTerms}`}
+                  </>
+                : <span className="text-rose-700 font-medium">— missing billing contact —</span>}
+            </div>
+          </KvRow>
+          <KvRow label="Salesperson">
+            <div className="text-xs">
+              <span className="font-semibold">{a.netsuiteSummary.salespersonName}</span>
+              {" · "}<a href={`mailto:${a.netsuiteSummary.salespersonEmail}`} className="text-blue-700 underline">{a.netsuiteSummary.salespersonEmail}</a>
+              {a.netsuiteSummary.salespersonPhone ? ` · ${a.netsuiteSummary.salespersonPhone}` : ""}
+            </div>
+          </KvRow>
+          <KvRow label="Lines / qty">
+            <span className="text-xs">{a.netsuiteSummary.totalLines} line{a.netsuiteSummary.totalLines === 1 ? "" : "s"} · {a.netsuiteSummary.totalQuantity} units</span>
+          </KvRow>
+        </Section>
+      )}
 
       {/* Account snapshot */}
       <Section title="Account snapshot" icon={<Building2 className="h-3.5 w-3.5" />}>
@@ -355,7 +401,25 @@ export default function OrderInternalIntakePanel({ orderId }: { orderId: number 
                     )}
                     {it.selectedMaterial && <div><span className="font-semibold">Material:</span> {it.selectedMaterial}</div>}
                     {it.hardwareSummary && <div><span className="font-semibold">Hardware:</span> {it.hardwareSummary}</div>}
-                    {it.vendor?.supplierName && <div><span className="font-semibold">Vendor:</span> {it.vendor.supplierName} <span className="text-muted-foreground">({it.vendor.matchSource.replace(/_/g, " ")})</span></div>}
+                    {it.vendor?.supplierName
+                      ? <div><span className="font-semibold">Vendor:</span> {it.vendor.supplierName} <span className="text-muted-foreground">({it.vendor.matchSource.replace(/_/g, " ")}{it.vendor.matchScore != null ? ` · score ${it.vendor.matchScore}` : ""})</span></div>
+                      : it.vendor?.matchSource === "none"
+                        ? <div className="text-rose-700"><span className="font-semibold">Vendor: unmatched — assign manually</span></div>
+                        : null}
+                    {it.inventoryQty && (
+                      <div>
+                        <span className="font-semibold">Inventory:</span> req {it.inventoryQty.requested}
+                        {it.inventoryQty.available != null ? ` · avail ${it.inventoryQty.available}` : ""}
+                        {it.inventoryQty.reservedFromInventory > 0 ? ` · reserved ${it.inventoryQty.reservedFromInventory}` : ""}
+                        {it.inventoryQty.remainingAfter != null ? ` · remaining ${it.inventoryQty.remainingAfter}` : ""}
+                        {it.inventoryQty.warnings.length > 0 && (
+                          <span className="text-rose-700 font-semibold"> ⚠ {it.inventoryQty.warnings.join(" · ")}</span>
+                        )}
+                      </div>
+                    )}
+                    {it.vendor?.matchReasons && it.vendor.matchReasons.length > 0 && (
+                      <div className="text-muted-foreground"><span className="font-semibold">Why:</span> {it.vendor.matchReasons.join(" · ")}</div>
+                    )}
                     {it.artwork?.fileUrl
                       ? <div><span className="font-semibold">Artwork:</span> <a href={it.artwork.fileUrl} target="_blank" rel="noreferrer" className="text-blue-700 underline">file</a></div>
                       : it.artwork?.needed
@@ -517,7 +581,10 @@ export default function OrderInternalIntakePanel({ orderId }: { orderId: number 
             {a.vendorMatches.map(v => (
               <div key={v.supplierId} className="border rounded-md p-2 bg-white text-xs">
                 <div className="font-medium text-sm">{v.supplierName}</div>
-                <div className="text-muted-foreground">{v.itemIds.length} line{v.itemIds.length === 1 ? "" : "s"} · sources: {v.matchSources.map(s => s.replace(/_/g, " ")).join(", ")}</div>
+                <div className="text-muted-foreground">{v.itemIds.length} line{v.itemIds.length === 1 ? "" : "s"} · sources: {v.matchSources.map(s => s.replace(/_/g, " ")).join(", ")}{v.bestMatchScore != null ? ` · score ${v.bestMatchScore}` : ""}</div>
+                {v.matchReasons && v.matchReasons.length > 0 && (
+                  <div className="text-muted-foreground mt-0.5"><span className="font-semibold">Why:</span> {v.matchReasons.join(" · ")}</div>
+                )}
               </div>
             ))}
           </div>
