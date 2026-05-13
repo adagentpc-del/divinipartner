@@ -91,7 +91,21 @@ app.use(express.json({
 }));
 app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 
-app.use(clerkMiddleware());
+// The server-side Clerk SDK (@clerk/express) reads CLERK_PUBLISHABLE_KEY by
+// default, but our deployments historically only set VITE_CLERK_PUBLISHABLE_KEY
+// (the Vite-exposed variant for the SPA). Without a publishable key the SDK
+// cannot verify session JWTs and getAuth(req) returns no userId, causing every
+// admin call to 401 immediately after sign-in. Pass it explicitly so it works
+// regardless of which name the operator used in deployment secrets.
+const clerkPublishableKey =
+  process.env.CLERK_PUBLISHABLE_KEY || process.env.VITE_CLERK_PUBLISHABLE_KEY;
+const clerkSecretKey = process.env.CLERK_SECRET_KEY;
+app.use(
+  clerkMiddleware({
+    ...(clerkPublishableKey ? { publishableKey: clerkPublishableKey } : {}),
+    ...(clerkSecretKey ? { secretKey: clerkSecretKey } : {}),
+  }),
+);
 
 app.use("/api", router);
 
