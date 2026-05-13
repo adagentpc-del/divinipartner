@@ -1849,67 +1849,174 @@ export const GetDeploymentReadinessResponse = zod.record(
   zod.unknown(),
 );
 
-export const ListCitiesResponseItem = zod.record(zod.string(), zod.unknown());
+export const ListCitiesResponseItem = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  name: zod.string().nullish(),
+  state: zod.string().nullish(),
+  country: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  isActive: zod.boolean().nullish(),
+  sortOrder: zod.number().nullish(),
+});
 export const ListCitiesResponse = zod.array(ListCitiesResponseItem);
 
 export const UpdateCityParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const UpdateCityResponse = zod.record(zod.string(), zod.unknown());
+export const UpdateCityResponse = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  name: zod.string().nullish(),
+  state: zod.string().nullish(),
+  country: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  isActive: zod.boolean().nullish(),
+  sortOrder: zod.number().nullish(),
+});
 
 export const DeleteCityParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const DeleteCityResponse = zod.record(zod.string(), zod.unknown());
+export const DeleteCityResponse = zod.object({
+  success: zod.boolean(),
+  count: zod.number().optional(),
+});
 
-export const ListSuppliersResponseItem = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListSuppliersResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string().nullish(),
+  slug: zod.string().nullish(),
+  logoUrl: zod.string().nullish(),
+  description: zod.string().nullish(),
+  contactName: zod.string().nullish(),
+  contactEmail: zod.string().nullish(),
+  contactPhone: zod.string().nullish(),
+  companyName: zod.string().nullish(),
+  website: zod.string().nullish(),
+  addressLine: zod.string().nullish(),
+  city: zod.string().nullish(),
+  state: zod.string().nullish(),
+  postalCode: zod.string().nullish(),
+  country: zod.string().nullish(),
+  defaultLeadTimeDays: zod.number().nullish(),
+  notes: zod.string().nullish(),
+  isActive: zod.boolean().nullish(),
+});
 export const ListSuppliersResponse = zod.array(ListSuppliersResponseItem);
 
 export const GetSupplierParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const GetSupplierResponse = zod.record(zod.string(), zod.unknown());
+export const GetSupplierResponse = zod.object({
+  id: zod.number(),
+  name: zod.string().nullish(),
+  slug: zod.string().nullish(),
+  logoUrl: zod.string().nullish(),
+  description: zod.string().nullish(),
+  contactName: zod.string().nullish(),
+  contactEmail: zod.string().nullish(),
+  contactPhone: zod.string().nullish(),
+  companyName: zod.string().nullish(),
+  website: zod.string().nullish(),
+  addressLine: zod.string().nullish(),
+  city: zod.string().nullish(),
+  state: zod.string().nullish(),
+  postalCode: zod.string().nullish(),
+  country: zod.string().nullish(),
+  defaultLeadTimeDays: zod.number().nullish(),
+  notes: zod.string().nullish(),
+  isActive: zod.boolean().nullish(),
+});
 
 export const UpdateSupplierParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const UpdateSupplierResponse = zod.record(zod.string(), zod.unknown());
+export const UpdateSupplierResponse = zod.object({
+  id: zod.number(),
+  name: zod.string().nullish(),
+  slug: zod.string().nullish(),
+  logoUrl: zod.string().nullish(),
+  description: zod.string().nullish(),
+  contactName: zod.string().nullish(),
+  contactEmail: zod.string().nullish(),
+  contactPhone: zod.string().nullish(),
+  companyName: zod.string().nullish(),
+  website: zod.string().nullish(),
+  addressLine: zod.string().nullish(),
+  city: zod.string().nullish(),
+  state: zod.string().nullish(),
+  postalCode: zod.string().nullish(),
+  country: zod.string().nullish(),
+  defaultLeadTimeDays: zod.number().nullish(),
+  notes: zod.string().nullish(),
+  isActive: zod.boolean().nullish(),
+});
 
 export const DeleteSupplierParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const DeleteSupplierResponse = zod.record(zod.string(), zod.unknown());
+export const DeleteSupplierResponse = zod.object({
+  success: zod.boolean(),
+  count: zod.number().optional(),
+});
 
-export const ListUserRolesResponseItem = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListUserRolesResponseItem = zod.object({
+  id: zod.number(),
+  userId: zod.string().nullish(),
+  email: zod.string().nullish(),
+  fullName: zod.string().nullish(),
+  role: zod.string().nullish(),
+  partnerId: zod.number().nullish(),
+  supplierId: zod.number().nullish(),
+  isActive: zod.boolean().nullish(),
+});
 export const ListUserRolesResponse = zod.array(ListUserRolesResponseItem);
 
 export const UpdateUserRoleParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const UpdateUserRoleResponse = zod.record(zod.string(), zod.unknown());
+export const UpdateUserRoleResponse = zod.object({
+  id: zod.number(),
+  userId: zod.string().nullish(),
+  email: zod.string().nullish(),
+  fullName: zod.string().nullish(),
+  role: zod.string().nullish(),
+  partnerId: zod.number().nullish(),
+  supplierId: zod.number().nullish(),
+  isActive: zod.boolean().nullish(),
+});
 
 export const DeleteUserRoleParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const DeleteUserRoleResponse = zod.record(zod.string(), zod.unknown());
+export const DeleteUserRoleResponse = zod.object({
+  success: zod.boolean(),
+  count: zod.number().optional(),
+});
 
-export const ListSavedAddressesResponseItem = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListSavedAddressesResponseItem = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  label: zod.string().nullish(),
+  fullName: zod.string().nullish(),
+  company: zod.string().nullish(),
+  line1: zod.string().nullish(),
+  line2: zod.string().nullish(),
+  city: zod.string().nullish(),
+  state: zod.string().nullish(),
+  postalCode: zod.string().nullish(),
+  country: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  isDefault: zod.boolean().nullish(),
+});
 export const ListSavedAddressesResponse = zod.array(
   ListSavedAddressesResponseItem,
 );
@@ -1918,24 +2025,41 @@ export const UpdateSavedAddressParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const UpdateSavedAddressResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const UpdateSavedAddressResponse = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  label: zod.string().nullish(),
+  fullName: zod.string().nullish(),
+  company: zod.string().nullish(),
+  line1: zod.string().nullish(),
+  line2: zod.string().nullish(),
+  city: zod.string().nullish(),
+  state: zod.string().nullish(),
+  postalCode: zod.string().nullish(),
+  country: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  isDefault: zod.boolean().nullish(),
+});
 
 export const DeleteSavedAddressParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const DeleteSavedAddressResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const DeleteSavedAddressResponse = zod.object({
+  success: zod.boolean(),
+  count: zod.number().optional(),
+});
 
-export const ListSavedContactsResponseItem = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListSavedContactsResponseItem = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  label: zod.string().nullish(),
+  name: zod.string().nullish(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  role: zod.string().nullish(),
+  isDefault: zod.boolean().nullish(),
+});
 export const ListSavedContactsResponse = zod.array(
   ListSavedContactsResponseItem,
 );
@@ -1944,26 +2068,57 @@ export const UpdateSavedContactParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const UpdateSavedContactResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const UpdateSavedContactResponse = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  label: zod.string().nullish(),
+  name: zod.string().nullish(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  role: zod.string().nullish(),
+  isDefault: zod.boolean().nullish(),
+});
 
 export const DeleteSavedContactParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const DeleteSavedContactResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const DeleteSavedContactResponse = zod.object({
+  success: zod.boolean(),
+  count: zod.number().optional(),
+});
 
 export const GetPartnerThemeParams = zod.object({
   id: zod.coerce.number(),
 });
 
 export const GetPartnerThemeResponse = zod.union([
-  zod.record(zod.string(), zod.unknown()),
+  zod.object({
+    id: zod.number(),
+    partnerId: zod.number().nullish(),
+    templateKey: zod.string().nullish(),
+    primaryColor: zod.string().nullish(),
+    secondaryColor: zod.string().nullish(),
+    accentColor: zod.string().nullish(),
+    backgroundColor: zod.string().nullish(),
+    buttonColor: zod.string().nullish(),
+    textColor: zod.string().nullish(),
+    headingFont: zod.string().nullish(),
+    bodyFont: zod.string().nullish(),
+    buttonStyle: zod.string().nullish(),
+    cardStyle: zod.string().nullish(),
+    borderRadiusStyle: zod.string().nullish(),
+    tonePreset: zod.string().nullish(),
+    isApproved: zod.string().nullish(),
+    isPublished: zod.boolean().nullish(),
+    logoUrl: zod.string().nullish(),
+    logoPlacement: zod.string().nullish(),
+    heroBackgroundMode: zod.string().nullish(),
+    heroHeadline: zod.string().nullish(),
+    heroSubheadline: zod.string().nullish(),
+    ctaLabel: zod.string().nullish(),
+    secondaryCtaLabel: zod.string().nullish(),
+  }),
   zod.null(),
 ]);
 
@@ -1971,10 +2126,32 @@ export const UpsertPartnerThemeParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const UpsertPartnerThemeResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const UpsertPartnerThemeResponse = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  templateKey: zod.string().nullish(),
+  primaryColor: zod.string().nullish(),
+  secondaryColor: zod.string().nullish(),
+  accentColor: zod.string().nullish(),
+  backgroundColor: zod.string().nullish(),
+  buttonColor: zod.string().nullish(),
+  textColor: zod.string().nullish(),
+  headingFont: zod.string().nullish(),
+  bodyFont: zod.string().nullish(),
+  buttonStyle: zod.string().nullish(),
+  cardStyle: zod.string().nullish(),
+  borderRadiusStyle: zod.string().nullish(),
+  tonePreset: zod.string().nullish(),
+  isApproved: zod.string().nullish(),
+  isPublished: zod.boolean().nullish(),
+  logoUrl: zod.string().nullish(),
+  logoPlacement: zod.string().nullish(),
+  heroBackgroundMode: zod.string().nullish(),
+  heroHeadline: zod.string().nullish(),
+  heroSubheadline: zod.string().nullish(),
+  ctaLabel: zod.string().nullish(),
+  secondaryCtaLabel: zod.string().nullish(),
+});
 
 export const GetPartnerInventorySummaryParams = zod.object({
   id: zod.coerce.number(),
@@ -1989,10 +2166,15 @@ export const ListPartnerSectionsParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const ListPartnerSectionsResponseItem = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListPartnerSectionsResponseItem = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  sectionKey: zod.string().nullish(),
+  title: zod.string().nullish(),
+  body: zod.string().nullish(),
+  sortOrder: zod.number().nullish(),
+  isActive: zod.boolean().nullish(),
+});
 export const ListPartnerSectionsResponse = zod.array(
   ListPartnerSectionsResponseItem,
 );
@@ -2006,19 +2188,29 @@ export const UpdatePartnerSectionParams = zod.object({
   sectionId: zod.coerce.number(),
 });
 
-export const UpdatePartnerSectionResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const UpdatePartnerSectionResponse = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  sectionKey: zod.string().nullish(),
+  title: zod.string().nullish(),
+  body: zod.string().nullish(),
+  sortOrder: zod.number().nullish(),
+  isActive: zod.boolean().nullish(),
+});
 
 export const BulkReplacePartnerSectionsParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const BulkReplacePartnerSectionsResponseItem = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const BulkReplacePartnerSectionsResponseItem = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  sectionKey: zod.string().nullish(),
+  title: zod.string().nullish(),
+  body: zod.string().nullish(),
+  sortOrder: zod.number().nullish(),
+  isActive: zod.boolean().nullish(),
+});
 export const BulkReplacePartnerSectionsResponse = zod.array(
   BulkReplacePartnerSectionsResponseItem,
 );
@@ -2027,10 +2219,17 @@ export const ListBrandingLocationsParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const ListBrandingLocationsResponseItem = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListBrandingLocationsResponseItem = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  name: zod.string().nullish(),
+  category: zod.string().nullish(),
+  cityId: zod.number().nullish(),
+  venueId: zod.number().nullish(),
+  notes: zod.string().nullish(),
+  isActive: zod.boolean().nullish(),
+  sortOrder: zod.number().nullish(),
+});
 export const ListBrandingLocationsResponse = zod.array(
   ListBrandingLocationsResponseItem,
 );
@@ -2048,19 +2247,33 @@ export const UpdateBrandingLocationParams = zod.object({
   locationId: zod.coerce.number(),
 });
 
-export const UpdateBrandingLocationResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const UpdateBrandingLocationResponse = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  name: zod.string().nullish(),
+  category: zod.string().nullish(),
+  cityId: zod.number().nullish(),
+  venueId: zod.number().nullish(),
+  notes: zod.string().nullish(),
+  isActive: zod.boolean().nullish(),
+  sortOrder: zod.number().nullish(),
+});
 
 export const BulkUpdateBrandingLocationsParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const BulkUpdateBrandingLocationsResponseItem = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const BulkUpdateBrandingLocationsResponseItem = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  name: zod.string().nullish(),
+  category: zod.string().nullish(),
+  cityId: zod.number().nullish(),
+  venueId: zod.number().nullish(),
+  notes: zod.string().nullish(),
+  isActive: zod.boolean().nullish(),
+  sortOrder: zod.number().nullish(),
+});
 export const BulkUpdateBrandingLocationsResponse = zod.array(
   BulkUpdateBrandingLocationsResponseItem,
 );
@@ -2069,10 +2282,14 @@ export const ListEmailRecipientsParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const ListEmailRecipientsResponseItem = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListEmailRecipientsResponseItem = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  role: zod.string().nullish(),
+  email: zod.string().nullish(),
+  name: zod.string().nullish(),
+  isActive: zod.boolean().nullish(),
+});
 export const ListEmailRecipientsResponse = zod.array(
   ListEmailRecipientsResponseItem,
 );
@@ -2086,44 +2303,57 @@ export const UpdateEmailRecipientParams = zod.object({
   rid: zod.coerce.number(),
 });
 
-export const UpdateEmailRecipientResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const UpdateEmailRecipientResponse = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  role: zod.string().nullish(),
+  email: zod.string().nullish(),
+  name: zod.string().nullish(),
+  isActive: zod.boolean().nullish(),
+});
 
 export const DeleteEmailRecipientParams = zod.object({
   id: zod.coerce.number(),
   rid: zod.coerce.number(),
 });
 
-export const DeleteEmailRecipientResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const DeleteEmailRecipientResponse = zod.object({
+  success: zod.boolean(),
+  count: zod.number().optional(),
+});
 
 export const TestRoleEmailParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const TestRoleEmailResponse = zod.record(zod.string(), zod.unknown());
+export const TestRoleEmailResponse = zod.object({
+  ok: zod.boolean().nullish(),
+  messageId: zod.string().nullish(),
+  error: zod.string().nullish(),
+});
 
-export const GetOnboardingProgressResponseItem = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const GetOnboardingProgressResponseItem = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  stepKey: zod.string().nullish(),
+  status: zod.string().nullish(),
+  completedAt: zod.string().nullish(),
+});
 export const GetOnboardingProgressResponse = zod.array(
   GetOnboardingProgressResponseItem,
 );
 
-export const UpsertOnboardingProgressResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const UpsertOnboardingProgressResponse = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  stepKey: zod.string().nullish(),
+  status: zod.string().nullish(),
+  completedAt: zod.string().nullish(),
+});
 
-export const DismissOnboardingResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const DismissOnboardingResponse = zod.object({
+  ok: zod.boolean(),
+});
 
 export const GetLaunchPlatformResponse = zod.record(
   zod.string(),
@@ -2142,35 +2372,87 @@ export const ActivateLaunchParams = zod.object({
 
 export const ActivateLaunchResponse = zod.record(zod.string(), zod.unknown());
 
-export const ListEventsResponseItem = zod.record(zod.string(), zod.unknown());
+export const ListEventsResponseItem = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  name: zod.string().nullish(),
+  slug: zod.string().nullish(),
+  cityId: zod.number().nullish(),
+  venueId: zod.number().nullish(),
+  status: zod.string().nullish(),
+  eventStartDate: zod.string().nullish(),
+  eventEndDate: zod.string().nullish(),
+  installDate: zod.string().nullish(),
+  teardownDate: zod.string().nullish(),
+  shippingDeadline: zod.string().nullish(),
+  currency: zod.string().nullish(),
+  isActive: zod.boolean().nullish(),
+});
 export const ListEventsResponse = zod.array(ListEventsResponseItem);
 
 export const GetEventParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const GetEventResponse = zod.record(zod.string(), zod.unknown());
+export const GetEventResponse = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  name: zod.string().nullish(),
+  slug: zod.string().nullish(),
+  cityId: zod.number().nullish(),
+  venueId: zod.number().nullish(),
+  status: zod.string().nullish(),
+  eventStartDate: zod.string().nullish(),
+  eventEndDate: zod.string().nullish(),
+  installDate: zod.string().nullish(),
+  teardownDate: zod.string().nullish(),
+  shippingDeadline: zod.string().nullish(),
+  currency: zod.string().nullish(),
+  isActive: zod.boolean().nullish(),
+});
 
 export const UpdateEventParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const UpdateEventResponse = zod.record(zod.string(), zod.unknown());
+export const UpdateEventResponse = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  name: zod.string().nullish(),
+  slug: zod.string().nullish(),
+  cityId: zod.number().nullish(),
+  venueId: zod.number().nullish(),
+  status: zod.string().nullish(),
+  eventStartDate: zod.string().nullish(),
+  eventEndDate: zod.string().nullish(),
+  installDate: zod.string().nullish(),
+  teardownDate: zod.string().nullish(),
+  shippingDeadline: zod.string().nullish(),
+  currency: zod.string().nullish(),
+  isActive: zod.boolean().nullish(),
+});
 
 export const DeleteEventParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const DeleteEventResponse = zod.record(zod.string(), zod.unknown());
+export const DeleteEventResponse = zod.object({
+  success: zod.boolean(),
+  count: zod.number().optional(),
+});
 
 export const ListPartnerAddonsParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const ListPartnerAddonsResponseItem = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListPartnerAddonsResponseItem = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  productId: zod.number().nullish(),
+  category: zod.string().nullish(),
+  sortOrder: zod.number().nullish(),
+  isActive: zod.boolean().nullish(),
+});
 export const ListPartnerAddonsResponse = zod.array(
   ListPartnerAddonsResponseItem,
 );
@@ -2179,10 +2461,14 @@ export const ReplacePartnerAddonsParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const ReplacePartnerAddonsResponseItem = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ReplacePartnerAddonsResponseItem = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  productId: zod.number().nullish(),
+  category: zod.string().nullish(),
+  sortOrder: zod.number().nullish(),
+  isActive: zod.boolean().nullish(),
+});
 export const ReplacePartnerAddonsResponse = zod.array(
   ReplacePartnerAddonsResponseItem,
 );
@@ -2298,32 +2584,80 @@ export const ListBillingOrdersResponse = zod.array(
   ListBillingOrdersResponseItem,
 );
 
-export const BillingBulkResponse = zod.record(zod.string(), zod.unknown());
+export const BillingBulkResponse = zod.object({
+  success: zod.boolean(),
+  count: zod.number().optional(),
+});
 
 export const GetLiveReadinessResponse = zod.record(zod.string(), zod.unknown());
 
-export const ListPackagesResponseItem = zod.record(zod.string(), zod.unknown());
+export const ListPackagesResponseItem = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  supplierId: zod.number().nullish(),
+  name: zod.string().nullish(),
+  displayName: zod.string().nullish(),
+  description: zod.string().nullish(),
+  tier: zod.number().nullish(),
+  price: zod.union([zod.string(), zod.number()]).nullish(),
+  currency: zod.string().nullish(),
+  imageUrl: zod.string().nullish(),
+  isActive: zod.boolean().nullish(),
+  sortOrder: zod.number().nullish(),
+});
 export const ListPackagesResponse = zod.array(ListPackagesResponseItem);
 
 export const GetPackageParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const GetPackageResponse = zod.record(zod.string(), zod.unknown());
+export const GetPackageResponse = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  supplierId: zod.number().nullish(),
+  name: zod.string().nullish(),
+  displayName: zod.string().nullish(),
+  description: zod.string().nullish(),
+  tier: zod.number().nullish(),
+  price: zod.union([zod.string(), zod.number()]).nullish(),
+  currency: zod.string().nullish(),
+  imageUrl: zod.string().nullish(),
+  isActive: zod.boolean().nullish(),
+  sortOrder: zod.number().nullish(),
+});
 
 export const UpdatePackageParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const UpdatePackageResponse = zod.record(zod.string(), zod.unknown());
+export const UpdatePackageResponse = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  supplierId: zod.number().nullish(),
+  name: zod.string().nullish(),
+  displayName: zod.string().nullish(),
+  description: zod.string().nullish(),
+  tier: zod.number().nullish(),
+  price: zod.union([zod.string(), zod.number()]).nullish(),
+  currency: zod.string().nullish(),
+  imageUrl: zod.string().nullish(),
+  isActive: zod.boolean().nullish(),
+  sortOrder: zod.number().nullish(),
+});
 
 export const DeletePackageParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const DeletePackageResponse = zod.record(zod.string(), zod.unknown());
+export const DeletePackageResponse = zod.object({
+  success: zod.boolean(),
+  count: zod.number().optional(),
+});
 
-export const ReorderPackagesResponse = zod.record(zod.string(), zod.unknown());
+export const ReorderPackagesResponse = zod.object({
+  ok: zod.boolean(),
+  count: zod.number().optional(),
+});
 
 export const UpdatePackageItemParams = zod.object({
   itemId: zod.coerce.number(),
@@ -2338,10 +2672,10 @@ export const DeletePackageItemParams = zod.object({
   itemId: zod.coerce.number(),
 });
 
-export const DeletePackageItemResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const DeletePackageItemResponse = zod.object({
+  success: zod.boolean(),
+  count: zod.number().optional(),
+});
 
 export const ListPartnerContactsParams = zod.object({
   partnerId: zod.coerce.number(),
@@ -2368,10 +2702,10 @@ export const DeletePartnerContactParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const DeletePartnerContactResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const DeletePartnerContactResponse = zod.object({
+  success: zod.boolean(),
+  count: zod.number().optional(),
+});
 
 export const MakePrimaryPartnerContactParams = zod.object({
   id: zod.coerce.number(),
@@ -2382,10 +2716,12 @@ export const MakePrimaryPartnerContactResponse = zod.record(
   zod.unknown(),
 );
 
-export const ListOnboardingSubmissionsResponseItem = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListOnboardingSubmissionsResponseItem = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  formKey: zod.string().nullish(),
+  status: zod.string().nullish(),
+});
 export const ListOnboardingSubmissionsResponse = zod.array(
   ListOnboardingSubmissionsResponseItem,
 );
@@ -2394,56 +2730,67 @@ export const GetOnboardingSubmissionParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const GetOnboardingSubmissionResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const GetOnboardingSubmissionResponse = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  formKey: zod.string().nullish(),
+  status: zod.string().nullish(),
+});
 
 export const UpdateOnboardingSubmissionParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const UpdateOnboardingSubmissionResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const UpdateOnboardingSubmissionResponse = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  formKey: zod.string().nullish(),
+  status: zod.string().nullish(),
+});
 
-export const ListAdminAlertsResponse = zod.record(zod.string(), zod.unknown());
+export const ListAdminAlertsResponse = zod.object({
+  alerts: zod.array(zod.record(zod.string(), zod.unknown())),
+  summary: zod.record(zod.string(), zod.unknown()).optional(),
+});
 
-export const GetAdminAlertsSummaryResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const GetAdminAlertsSummaryResponse = zod.object({
+  summary: zod.record(zod.string(), zod.unknown()).optional(),
+  top: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+});
 
 export const GetPartnerAlertsParams = zod.object({
   partnerId: zod.coerce.number(),
 });
 
-export const GetPartnerAlertsResponse = zod.record(zod.string(), zod.unknown());
+export const GetPartnerAlertsResponse = zod.object({
+  alerts: zod.array(zod.record(zod.string(), zod.unknown())),
+  summary: zod.record(zod.string(), zod.unknown()).optional(),
+});
 
 export const GetOrderAlertsParams = zod.object({
   orderId: zod.coerce.number(),
 });
 
-export const GetOrderAlertsResponse = zod.record(zod.string(), zod.unknown());
+export const GetOrderAlertsResponse = zod.object({
+  alerts: zod.array(zod.record(zod.string(), zod.unknown())),
+  summary: zod.record(zod.string(), zod.unknown()).optional(),
+});
 
 export const ResolveManualFollowupParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const ResolveManualFollowupResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ResolveManualFollowupResponse = zod.object({
+  ok: zod.boolean(),
+});
 
 export const ResolveSupportIssueParams = zod.object({
   issueId: zod.coerce.string(),
 });
 
-export const ResolveSupportIssueResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ResolveSupportIssueResponse = zod.object({
+  ok: zod.boolean(),
+});
 
 export const ArchivePartnerParams = zod.object({
   id: zod.coerce.number(),
@@ -2469,7 +2816,19 @@ export const UnarchiveAssetParams = zod.object({
 
 export const UnarchiveAssetResponse = zod.record(zod.string(), zod.unknown());
 
-export const ListInvoicesResponseItem = zod.record(zod.string(), zod.unknown());
+export const ListInvoicesResponseItem = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  orderId: zod.number().nullish(),
+  eventId: zod.number().nullish(),
+  invoiceNumber: zod.string().nullish(),
+  status: zod.string().nullish(),
+  currency: zod.string().nullish(),
+  totalAmount: zod.union([zod.string(), zod.number()]).nullish(),
+  amountDue: zod.union([zod.string(), zod.number()]).nullish(),
+  issuedAt: zod.string().nullish(),
+  dueAt: zod.string().nullish(),
+});
 export const ListInvoicesResponse = zod.array(ListInvoicesResponseItem);
 
 export const GetInvoiceParams = zod.object({
@@ -2482,7 +2841,19 @@ export const UpdateInvoiceParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const UpdateInvoiceResponse = zod.record(zod.string(), zod.unknown());
+export const UpdateInvoiceResponse = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  orderId: zod.number().nullish(),
+  eventId: zod.number().nullish(),
+  invoiceNumber: zod.string().nullish(),
+  status: zod.string().nullish(),
+  currency: zod.string().nullish(),
+  totalAmount: zod.union([zod.string(), zod.number()]).nullish(),
+  amountDue: zod.union([zod.string(), zod.number()]).nullish(),
+  issuedAt: zod.string().nullish(),
+  dueAt: zod.string().nullish(),
+});
 
 export const GetPublicInvoiceParams = zod.object({
   token: zod.coerce.string(),
@@ -2494,30 +2865,50 @@ export const RegenerateInvoiceParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const RegenerateInvoiceResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const RegenerateInvoiceResponse = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  orderId: zod.number().nullish(),
+  eventId: zod.number().nullish(),
+  invoiceNumber: zod.string().nullish(),
+  status: zod.string().nullish(),
+  currency: zod.string().nullish(),
+  totalAmount: zod.union([zod.string(), zod.number()]).nullish(),
+  amountDue: zod.union([zod.string(), zod.number()]).nullish(),
+  issuedAt: zod.string().nullish(),
+  dueAt: zod.string().nullish(),
+});
 
 export const DeleteInvoicePaymentParams = zod.object({
   id: zod.coerce.number(),
   pid: zod.coerce.number(),
 });
 
-export const DeleteInvoicePaymentResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const DeleteInvoicePaymentResponse = zod.object({
+  success: zod.boolean(),
+  count: zod.number().optional(),
+});
 
-export const ScanOverdueInvoicesResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ScanOverdueInvoicesResponse = zod.object({
+  markedOverdue: zod.number(),
+});
 
-export const ListInventoryResponseItem = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListInventoryResponseItem = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  cityId: zod.number().nullish(),
+  productId: zod.number().nullish(),
+  name: zod.string().nullish(),
+  category: zod.string().nullish(),
+  assetType: zod.string().nullish(),
+  storageLocation: zod.string().nullish(),
+  totalQuantity: zod.number().nullish(),
+  hardwareOnHand: zod.number().nullish(),
+  reserved: zod.number().nullish(),
+  inUse: zod.number().nullish(),
+  damaged: zod.number().nullish(),
+  rentable: zod.boolean().nullish(),
+});
 export const ListInventoryResponse = zod.array(ListInventoryResponseItem);
 
 export const GetInventoryShortagesResponseItem = zod.record(
@@ -2532,18 +2923,42 @@ export const UpdateInventoryParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const UpdateInventoryResponse = zod.record(zod.string(), zod.unknown());
+export const UpdateInventoryResponse = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  cityId: zod.number().nullish(),
+  productId: zod.number().nullish(),
+  name: zod.string().nullish(),
+  category: zod.string().nullish(),
+  assetType: zod.string().nullish(),
+  storageLocation: zod.string().nullish(),
+  totalQuantity: zod.number().nullish(),
+  hardwareOnHand: zod.number().nullish(),
+  reserved: zod.number().nullish(),
+  inUse: zod.number().nullish(),
+  damaged: zod.number().nullish(),
+  rentable: zod.boolean().nullish(),
+});
 
 export const DeleteInventoryParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const DeleteInventoryResponse = zod.record(zod.string(), zod.unknown());
+export const DeleteInventoryResponse = zod.object({
+  success: zod.boolean(),
+  count: zod.number().optional(),
+});
 
-export const ListInventoryReservationsResponseItem = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListInventoryReservationsResponseItem = zod.object({
+  id: zod.number(),
+  inventoryId: zod.number().nullish(),
+  eventId: zod.number().nullish(),
+  quantity: zod.number().nullish(),
+  status: zod.string().nullish(),
+  startDate: zod.string().nullish(),
+  endDate: zod.string().nullish(),
+  holdReason: zod.string().nullish(),
+});
 export const ListInventoryReservationsResponse = zod.array(
   ListInventoryReservationsResponseItem,
 );
@@ -2552,45 +2967,109 @@ export const UpdateInventoryReservationParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const UpdateInventoryReservationResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const UpdateInventoryReservationResponse = zod.object({
+  id: zod.number(),
+  inventoryId: zod.number().nullish(),
+  eventId: zod.number().nullish(),
+  quantity: zod.number().nullish(),
+  status: zod.string().nullish(),
+  startDate: zod.string().nullish(),
+  endDate: zod.string().nullish(),
+  holdReason: zod.string().nullish(),
+});
 
 export const DeleteInventoryReservationParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const DeleteInventoryReservationResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const DeleteInventoryReservationResponse = zod.object({
+  success: zod.boolean(),
+  count: zod.number().optional(),
+});
 
-export const ListAssetsResponseItem = zod.record(zod.string(), zod.unknown());
+export const ListAssetsResponseItem = zod.object({
+  id: zod.number(),
+  title: zod.string().nullish(),
+  fileUrl: zod.string().nullish(),
+  fileName: zod.string().nullish(),
+  mimeType: zod.string().nullish(),
+  category: zod.string().nullish(),
+  visibility: zod.string().nullish(),
+  partnerId: zod.number().nullish(),
+  eventId: zod.number().nullish(),
+  orderId: zod.number().nullish(),
+  productId: zod.number().nullish(),
+  packageId: zod.number().nullish(),
+  version: zod.number().nullish(),
+  isCurrent: zod.boolean().nullish(),
+  status: zod.string().nullish(),
+  approvalStatus: zod.string().nullish(),
+});
 export const ListAssetsResponse = zod.array(ListAssetsResponseItem);
 
 export const GetAssetParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const GetAssetResponse = zod.record(zod.string(), zod.unknown());
+export const GetAssetResponse = zod.object({
+  id: zod.number(),
+  title: zod.string().nullish(),
+  fileUrl: zod.string().nullish(),
+  fileName: zod.string().nullish(),
+  mimeType: zod.string().nullish(),
+  category: zod.string().nullish(),
+  visibility: zod.string().nullish(),
+  partnerId: zod.number().nullish(),
+  eventId: zod.number().nullish(),
+  orderId: zod.number().nullish(),
+  productId: zod.number().nullish(),
+  packageId: zod.number().nullish(),
+  version: zod.number().nullish(),
+  isCurrent: zod.boolean().nullish(),
+  status: zod.string().nullish(),
+  approvalStatus: zod.string().nullish(),
+});
 
 export const UpdateAssetParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const UpdateAssetResponse = zod.record(zod.string(), zod.unknown());
+export const UpdateAssetResponse = zod.object({
+  id: zod.number(),
+  title: zod.string().nullish(),
+  fileUrl: zod.string().nullish(),
+  fileName: zod.string().nullish(),
+  mimeType: zod.string().nullish(),
+  category: zod.string().nullish(),
+  visibility: zod.string().nullish(),
+  partnerId: zod.number().nullish(),
+  eventId: zod.number().nullish(),
+  orderId: zod.number().nullish(),
+  productId: zod.number().nullish(),
+  packageId: zod.number().nullish(),
+  version: zod.number().nullish(),
+  isCurrent: zod.boolean().nullish(),
+  status: zod.string().nullish(),
+  approvalStatus: zod.string().nullish(),
+});
 
 export const DeleteAssetParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const DeleteAssetResponse = zod.record(zod.string(), zod.unknown());
+export const DeleteAssetResponse = zod.object({
+  success: zod.boolean(),
+  count: zod.number().optional(),
+});
 
-export const ListAssetEventsResponseItem = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListAssetEventsResponseItem = zod.object({
+  id: zod.number(),
+  assetId: zod.number().nullish(),
+  orderId: zod.number().nullish(),
+  orderItemId: zod.number().nullish(),
+  eventType: zod.string().nullish(),
+  actorUserId: zod.string().nullish(),
+});
 export const ListAssetEventsResponse = zod.array(ListAssetEventsResponseItem);
 
 export const GetUsageSummaryResponse = zod.record(zod.string(), zod.unknown());
@@ -2601,22 +3080,30 @@ export const GetUsageTimelineResponseItem = zod.record(
 );
 export const GetUsageTimelineResponse = zod.array(GetUsageTimelineResponseItem);
 
-export const EmitUsageResponse = zod.record(zod.string(), zod.unknown());
+export const EmitUsageResponse = zod.object({
+  ok: zod.boolean(),
+});
 
-export const ListFeedbackResponseItem = zod.record(zod.string(), zod.unknown());
+export const ListFeedbackResponseItem = zod.object({
+  id: zod.number(),
+});
 export const ListFeedbackResponse = zod.array(ListFeedbackResponseItem);
 
 export const UpdateFeedbackParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const UpdateFeedbackResponse = zod.record(zod.string(), zod.unknown());
+export const UpdateFeedbackResponse = zod.object({
+  id: zod.number(),
+});
 
 export const DeleteFeedbackParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const DeleteFeedbackResponse = zod.record(zod.string(), zod.unknown());
+export const DeleteFeedbackResponse = zod.object({
+  ok: zod.boolean(),
+});
 
 export const ListPartnerHealthResponseItem = zod.record(
   zod.string(),
@@ -2637,13 +3124,14 @@ export const GetPostLaunchDashboardResponse = zod.record(
   zod.unknown(),
 );
 
-export const ListObjectionsResponseItem = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListObjectionsResponseItem = zod.object({
+  id: zod.number(),
+});
 export const ListObjectionsResponse = zod.array(ListObjectionsResponseItem);
 
-export const CreateObjectionResponse = zod.record(zod.string(), zod.unknown());
+export const CreateObjectionResponse = zod.object({
+  id: zod.number(),
+});
 
 export const GetObjectionsSummaryResponse = zod.record(
   zod.string(),
@@ -2659,61 +3147,69 @@ export const GetObjectionParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const GetObjectionResponse = zod.record(zod.string(), zod.unknown());
+export const GetObjectionResponse = zod.object({
+  id: zod.number(),
+});
 
 export const UpdateObjectionParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const UpdateObjectionResponse = zod.record(zod.string(), zod.unknown());
+export const UpdateObjectionResponse = zod.object({
+  id: zod.number(),
+});
 
 export const DeleteObjectionParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const DeleteObjectionResponse = zod.record(zod.string(), zod.unknown());
+export const DeleteObjectionResponse = zod.object({
+  ok: zod.boolean(),
+});
 
-export const ListDemoFollowupsResponseItem = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListDemoFollowupsResponseItem = zod.object({
+  id: zod.number(),
+});
 export const ListDemoFollowupsResponse = zod.array(
   ListDemoFollowupsResponseItem,
 );
 
-export const CreateDemoFollowupResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const CreateDemoFollowupResponse = zod.object({
+  id: zod.number(),
+});
 
 export const GetDemoFollowupParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const GetDemoFollowupResponse = zod.record(zod.string(), zod.unknown());
+export const GetDemoFollowupResponse = zod.object({
+  id: zod.number(),
+});
 
 export const UpdateDemoFollowupParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const UpdateDemoFollowupResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const UpdateDemoFollowupResponse = zod.object({
+  id: zod.number(),
+});
 
 export const DeleteDemoFollowupParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const DeleteDemoFollowupResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const DeleteDemoFollowupResponse = zod.object({
+  ok: zod.boolean(),
+});
 
-export const ListFaqResponseItem = zod.record(zod.string(), zod.unknown());
+export const ListFaqResponseItem = zod.object({
+  id: zod.number(),
+});
 export const ListFaqResponse = zod.array(ListFaqResponseItem);
 
-export const CreateFaqResponse = zod.record(zod.string(), zod.unknown());
+export const CreateFaqResponse = zod.object({
+  id: zod.number(),
+});
 
 export const GetFaqConstantsResponse = zod.record(zod.string(), zod.unknown());
 
@@ -2721,13 +3217,17 @@ export const UpdateFaqParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const UpdateFaqResponse = zod.record(zod.string(), zod.unknown());
+export const UpdateFaqResponse = zod.object({
+  id: zod.number(),
+});
 
 export const DeleteFaqParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const DeleteFaqResponse = zod.record(zod.string(), zod.unknown());
+export const DeleteFaqResponse = zod.object({
+  ok: zod.boolean(),
+});
 
 export const GetStabilizationRolloutResponse = zod.record(
   zod.string(),
@@ -2748,10 +3248,9 @@ export const GetReconciliationSummaryResponse = zod.record(
   zod.unknown(),
 );
 
-export const ListReconciliationOrdersResponseItem = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListReconciliationOrdersResponseItem = zod.object({
+  id: zod.number(),
+});
 export const ListReconciliationOrdersResponse = zod.array(
   ListReconciliationOrdersResponseItem,
 );
@@ -2760,10 +3259,9 @@ export const UpdateReconciliationOrderParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const UpdateReconciliationOrderResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const UpdateReconciliationOrderResponse = zod.object({
+  id: zod.number(),
+});
 
 export const AutoFlagReconciliationParams = zod.object({
   id: zod.coerce.number(),
@@ -2774,10 +3272,9 @@ export const AutoFlagReconciliationResponse = zod.record(
   zod.unknown(),
 );
 
-export const ListDiscrepanciesResponseItem = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListDiscrepanciesResponseItem = zod.object({
+  id: zod.number(),
+});
 export const ListDiscrepanciesResponse = zod.array(
   ListDiscrepanciesResponseItem,
 );
@@ -2786,19 +3283,18 @@ export const UpdateDiscrepancyParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const UpdateDiscrepancyResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const UpdateDiscrepancyResponse = zod.object({
+  id: zod.number(),
+});
 
 export const DeleteDiscrepancyParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const DeleteDiscrepancyResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const DeleteDiscrepancyResponse = zod.object({
+  success: zod.boolean(),
+  count: zod.number().optional(),
+});
 
 export const ListCommissionPayoutsParams = zod.object({
   id: zod.coerce.number(),
@@ -2817,35 +3313,80 @@ export const DeleteCommissionPayoutParams = zod.object({
   payoutId: zod.coerce.number(),
 });
 
-export const DeleteCommissionPayoutResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const DeleteCommissionPayoutResponse = zod.object({
+  success: zod.boolean(),
+  count: zod.number().optional(),
+});
 
-export const BulkUpdateReconciliationResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const BulkUpdateReconciliationResponse = zod.object({
+  success: zod.boolean(),
+  count: zod.number().optional(),
+});
 
-export const ListProductsResponseItem = zod.record(zod.string(), zod.unknown());
+export const ListProductsResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string().nullish(),
+  displayName: zod.string().nullish(),
+  sku: zod.string().nullish(),
+  slug: zod.string().nullish(),
+  category: zod.string().nullish(),
+  description: zod.string().nullish(),
+  imageUrl: zod.string().nullish(),
+  pricingModel: zod.string().nullish(),
+  unitRate: zod.union([zod.string(), zod.number()]).nullish(),
+  pricingUnit: zod.string().nullish(),
+  rentalEligible: zod.boolean().nullish(),
+  inventoryTracked: zod.boolean().nullish(),
+});
 export const ListProductsResponse = zod.array(ListProductsResponseItem);
 
 export const GetProductParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const GetProductResponse = zod.record(zod.string(), zod.unknown());
+export const GetProductResponse = zod.object({
+  id: zod.number(),
+  name: zod.string().nullish(),
+  displayName: zod.string().nullish(),
+  sku: zod.string().nullish(),
+  slug: zod.string().nullish(),
+  category: zod.string().nullish(),
+  description: zod.string().nullish(),
+  imageUrl: zod.string().nullish(),
+  pricingModel: zod.string().nullish(),
+  unitRate: zod.union([zod.string(), zod.number()]).nullish(),
+  pricingUnit: zod.string().nullish(),
+  rentalEligible: zod.boolean().nullish(),
+  inventoryTracked: zod.boolean().nullish(),
+});
 
 export const UpdateProductParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const UpdateProductResponse = zod.record(zod.string(), zod.unknown());
+export const UpdateProductResponse = zod.object({
+  id: zod.number(),
+  name: zod.string().nullish(),
+  displayName: zod.string().nullish(),
+  sku: zod.string().nullish(),
+  slug: zod.string().nullish(),
+  category: zod.string().nullish(),
+  description: zod.string().nullish(),
+  imageUrl: zod.string().nullish(),
+  pricingModel: zod.string().nullish(),
+  unitRate: zod.union([zod.string(), zod.number()]).nullish(),
+  pricingUnit: zod.string().nullish(),
+  rentalEligible: zod.boolean().nullish(),
+  inventoryTracked: zod.boolean().nullish(),
+});
 
-export const ListProductFamiliesResponseItem = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListProductFamiliesResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string().nullish(),
+  slug: zod.string().nullish(),
+  baseProductId: zod.number().nullish(),
+  members: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+});
 export const ListProductFamiliesResponse = zod.array(
   ListProductFamiliesResponseItem,
 );
@@ -2854,25 +3395,33 @@ export const GetProductFamilyParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const GetProductFamilyResponse = zod.record(zod.string(), zod.unknown());
+export const GetProductFamilyResponse = zod.object({
+  id: zod.number(),
+  name: zod.string().nullish(),
+  slug: zod.string().nullish(),
+  baseProductId: zod.number().nullish(),
+  members: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+});
 
 export const UpdateProductFamilyParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const UpdateProductFamilyResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const UpdateProductFamilyResponse = zod.object({
+  id: zod.number(),
+  name: zod.string().nullish(),
+  slug: zod.string().nullish(),
+  baseProductId: zod.number().nullish(),
+  members: zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+});
 
 export const DeleteProductFamilyParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const DeleteProductFamilyResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const DeleteProductFamilyResponse = zod.object({
+  ok: zod.boolean(),
+});
 
 export const UpdateProductFamilyMemberParams = zod.object({
   id: zod.coerce.number(),
@@ -2889,10 +3438,9 @@ export const DeleteProductFamilyMemberParams = zod.object({
   memberId: zod.coerce.number(),
 });
 
-export const DeleteProductFamilyMemberResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const DeleteProductFamilyMemberResponse = zod.object({
+  ok: zod.boolean(),
+});
 
 export const GetPartnerFamilyAvailabilityParams = zod.object({
   partnerId: zod.coerce.number(),
@@ -2912,7 +3460,10 @@ export const GetProductFamilyContextResponse = zod.record(
   zod.unknown(),
 );
 
-export const SeedEasyUpFamilyResponse = zod.record(zod.string(), zod.unknown());
+export const SeedEasyUpFamilyResponse = zod.object({
+  ok: zod.boolean().optional(),
+  familyId: zod.number().optional(),
+});
 
 export const ListPartnerRentableAssetsParams = zod.object({
   partnerId: zod.coerce.number(),
@@ -2956,10 +3507,9 @@ export const DeleteInventoryBlackoutParams = zod.object({
   blackoutId: zod.coerce.number(),
 });
 
-export const DeleteInventoryBlackoutResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const DeleteInventoryBlackoutResponse = zod.object({
+  ok: zod.boolean(),
+});
 
 export const GetInventoryBookingsParams = zod.object({
   id: zod.coerce.number(),
@@ -2979,10 +3529,13 @@ export const GetInventoryAvailabilityResponse = zod.record(
   zod.unknown(),
 );
 
-export const ListQuoteAssetsResponseItem = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListQuoteAssetsResponseItem = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  supplierId: zod.number().nullish(),
+  title: zod.string().nullish(),
+  status: zod.string().nullish(),
+});
 export const ListQuoteAssetsResponse = zod.array(ListQuoteAssetsResponseItem);
 
 export const GetQuoteIngestionStatsResponse = zod.record(
@@ -2994,45 +3547,59 @@ export const ApproveBillingSignalsParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const ApproveBillingSignalsResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ApproveBillingSignalsResponse = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  supplierId: zod.number().nullish(),
+  title: zod.string().nullish(),
+  status: zod.string().nullish(),
+});
 
 export const DismissBillingSignalsParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const DismissBillingSignalsResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const DismissBillingSignalsResponse = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  supplierId: zod.number().nullish(),
+  title: zod.string().nullish(),
+  status: zod.string().nullish(),
+});
 
 export const RerunBillingSignalsParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const RerunBillingSignalsResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const RerunBillingSignalsResponse = zod.object({
+  ok: zod.boolean(),
+});
 
 export const UpdateQuoteAssetParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const UpdateQuoteAssetResponse = zod.record(zod.string(), zod.unknown());
+export const UpdateQuoteAssetResponse = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  supplierId: zod.number().nullish(),
+  title: zod.string().nullish(),
+  status: zod.string().nullish(),
+});
 
 export const DeleteQuoteAssetParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const DeleteQuoteAssetResponse = zod.record(zod.string(), zod.unknown());
+export const DeleteQuoteAssetResponse = zod.object({
+  success: zod.boolean(),
+  count: zod.number().optional(),
+});
 
-export const BulkUpdateQuoteAssetsResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const BulkUpdateQuoteAssetsResponse = zod.object({
+  success: zod.boolean(),
+  count: zod.number().optional(),
+});
 
 export const ListQuoteAssetMappingsParams = zod.object({
   id: zod.coerce.number(),
@@ -3060,10 +3627,10 @@ export const DeleteQuoteAssetMappingParams = zod.object({
   mappingId: zod.coerce.number(),
 });
 
-export const DeleteQuoteAssetMappingResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const DeleteQuoteAssetMappingResponse = zod.object({
+  success: zod.boolean(),
+  count: zod.number().optional(),
+});
 
 export const ListSpecStandardsParams = zod.object({
   productId: zod.coerce.number(),
@@ -3092,20 +3659,20 @@ export const DeleteSpecStandardParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const DeleteSpecStandardResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const DeleteSpecStandardResponse = zod.object({
+  success: zod.boolean(),
+  count: zod.number().optional(),
+});
 
 export const SetCurrentSpecStandardParams = zod.object({
   productId: zod.coerce.number(),
   id: zod.coerce.number(),
 });
 
-export const SetCurrentSpecStandardResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const SetCurrentSpecStandardResponse = zod.object({
+  success: zod.boolean(),
+  count: zod.number().optional(),
+});
 
 export const GetCatalogIntelligenceOverviewResponse = zod.record(
   zod.string(),
@@ -3146,10 +3713,9 @@ export const DeleteDeckExtractionItemParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const DeleteDeckExtractionItemResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const DeleteDeckExtractionItemResponse = zod.object({
+  ok: zod.boolean(),
+});
 
 export const CheckDeckExtractionDuplicateParams = zod.object({
   partnerId: zod.coerce.number(),
@@ -3164,24 +3730,27 @@ export const RerunDeckExtractionParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const RerunDeckExtractionResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const RerunDeckExtractionResponse = zod.object({
+  ok: zod.boolean(),
+  id: zod.number().optional(),
+  status: zod.string().optional(),
+});
 
-export const ApproveDeckExtractionItemsResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ApproveDeckExtractionItemsResponse = zod.object({
+  approved: zod.number(),
+  locationIds: zod.array(zod.number()).optional(),
+});
 
 export const ListPackageExtractionsParams = zod.object({
   partnerId: zod.coerce.number(),
 });
 
-export const ListPackageExtractionsResponseItem = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListPackageExtractionsResponseItem = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  status: zod.string().nullish(),
+  sourceFileUrl: zod.string().nullish(),
+});
 export const ListPackageExtractionsResponse = zod.array(
   ListPackageExtractionsResponseItem,
 );
@@ -3190,28 +3759,31 @@ export const GetPackageExtractionParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const GetPackageExtractionResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const GetPackageExtractionResponse = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  status: zod.string().nullish(),
+  sourceFileUrl: zod.string().nullish(),
+});
 
 export const UpdatePackageExtractionParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const UpdatePackageExtractionResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const UpdatePackageExtractionResponse = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  status: zod.string().nullish(),
+  sourceFileUrl: zod.string().nullish(),
+});
 
 export const DeletePackageExtractionParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const DeletePackageExtractionResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const DeletePackageExtractionResponse = zod.object({
+  ok: zod.boolean(),
+});
 
 export const CheckPackageExtractionDuplicateParams = zod.object({
   partnerId: zod.coerce.number(),
@@ -3226,10 +3798,11 @@ export const RerunPackageExtractionParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const RerunPackageExtractionResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const RerunPackageExtractionResponse = zod.object({
+  ok: zod.boolean(),
+  id: zod.number().optional(),
+  status: zod.string().optional(),
+});
 
 export const CommitPackageExtractionParams = zod.object({
   id: zod.coerce.number(),
@@ -4601,10 +5174,17 @@ export const SetOrderArtworkNeededResponse = zod.object({
   }),
 });
 
-export const ListWorkflowRulesResponseItem = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListWorkflowRulesResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string().nullish(),
+  description: zod.string().nullish(),
+  triggerType: zod.string().nullish(),
+  objectType: zod.string().nullish(),
+  priority: zod.string().nullish(),
+  escalationLevel: zod.string().nullish(),
+  isActive: zod.boolean().nullish(),
+  isSystem: zod.boolean().nullish(),
+});
 export const ListWorkflowRulesResponse = zod.array(
   ListWorkflowRulesResponseItem,
 );
@@ -4613,28 +5193,62 @@ export const GetWorkflowRuleParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const GetWorkflowRuleResponse = zod.record(zod.string(), zod.unknown());
+export const GetWorkflowRuleResponse = zod.object({
+  id: zod.number(),
+  name: zod.string().nullish(),
+  description: zod.string().nullish(),
+  triggerType: zod.string().nullish(),
+  objectType: zod.string().nullish(),
+  priority: zod.string().nullish(),
+  escalationLevel: zod.string().nullish(),
+  isActive: zod.boolean().nullish(),
+  isSystem: zod.boolean().nullish(),
+});
 
 export const UpdateWorkflowRuleParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const UpdateWorkflowRuleResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const UpdateWorkflowRuleResponse = zod.object({
+  id: zod.number(),
+  name: zod.string().nullish(),
+  description: zod.string().nullish(),
+  triggerType: zod.string().nullish(),
+  objectType: zod.string().nullish(),
+  priority: zod.string().nullish(),
+  escalationLevel: zod.string().nullish(),
+  isActive: zod.boolean().nullish(),
+  isSystem: zod.boolean().nullish(),
+});
 
-export const CreateWorkflowRuleResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const CreateWorkflowRuleResponse = zod.object({
+  id: zod.number(),
+  name: zod.string().nullish(),
+  description: zod.string().nullish(),
+  triggerType: zod.string().nullish(),
+  objectType: zod.string().nullish(),
+  priority: zod.string().nullish(),
+  escalationLevel: zod.string().nullish(),
+  isActive: zod.boolean().nullish(),
+  isSystem: zod.boolean().nullish(),
+});
 
 export const ToggleWorkflowRuleParams = zod.object({
   id: zod.coerce.number(),
 });
 
 export const ToggleWorkflowRuleResponse = zod.union([
-  zod.record(zod.string(), zod.unknown()),
+  zod.object({
+    id: zod.number(),
+    name: zod.string().nullish(),
+    description: zod.string().nullish(),
+    triggerType: zod.string().nullish(),
+    objectType: zod.string().nullish(),
+    priority: zod.string().nullish(),
+    escalationLevel: zod.string().nullish(),
+    isActive: zod.boolean().nullish(),
+    isSystem: zod.boolean().nullish(),
+  }),
   zod.null(),
 ]);
 
@@ -4642,64 +5256,142 @@ export const DuplicateWorkflowRuleParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const DuplicateWorkflowRuleResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const DuplicateWorkflowRuleResponse = zod.object({
+  id: zod.number(),
+  name: zod.string().nullish(),
+  description: zod.string().nullish(),
+  triggerType: zod.string().nullish(),
+  objectType: zod.string().nullish(),
+  priority: zod.string().nullish(),
+  escalationLevel: zod.string().nullish(),
+  isActive: zod.boolean().nullish(),
+  isSystem: zod.boolean().nullish(),
+});
 
 export const DeleteWorkflowRuleParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const DeleteWorkflowRuleResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const DeleteWorkflowRuleResponse = zod.object({
+  success: zod.boolean(),
+  count: zod.number().optional(),
+});
 
-export const ListWorkflowTasksResponseItem = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListWorkflowTasksResponseItem = zod.object({
+  id: zod.number(),
+  title: zod.string().nullish(),
+  description: zod.string().nullish(),
+  category: zod.string().nullish(),
+  status: zod.string().nullish(),
+  priority: zod.string().nullish(),
+  escalationLevel: zod.string().nullish(),
+  deadlineHealth: zod.string().nullish(),
+  ownerUserId: zod.string().nullish(),
+  dueDate: zod.string().nullish(),
+  partnerId: zod.number().nullish(),
+  eventId: zod.number().nullish(),
+  orderId: zod.number().nullish(),
+  supplierId: zod.number().nullish(),
+  assetId: zod.number().nullish(),
+});
 export const ListWorkflowTasksResponse = zod.array(
   ListWorkflowTasksResponseItem,
 );
 
-export const CreateWorkflowTaskResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const CreateWorkflowTaskResponse = zod.object({
+  id: zod.number(),
+  title: zod.string().nullish(),
+  description: zod.string().nullish(),
+  category: zod.string().nullish(),
+  status: zod.string().nullish(),
+  priority: zod.string().nullish(),
+  escalationLevel: zod.string().nullish(),
+  deadlineHealth: zod.string().nullish(),
+  ownerUserId: zod.string().nullish(),
+  dueDate: zod.string().nullish(),
+  partnerId: zod.number().nullish(),
+  eventId: zod.number().nullish(),
+  orderId: zod.number().nullish(),
+  supplierId: zod.number().nullish(),
+  assetId: zod.number().nullish(),
+});
 
 export const UpdateWorkflowTaskParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const UpdateWorkflowTaskResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const UpdateWorkflowTaskResponse = zod.object({
+  id: zod.number(),
+  title: zod.string().nullish(),
+  description: zod.string().nullish(),
+  category: zod.string().nullish(),
+  status: zod.string().nullish(),
+  priority: zod.string().nullish(),
+  escalationLevel: zod.string().nullish(),
+  deadlineHealth: zod.string().nullish(),
+  ownerUserId: zod.string().nullish(),
+  dueDate: zod.string().nullish(),
+  partnerId: zod.number().nullish(),
+  eventId: zod.number().nullish(),
+  orderId: zod.number().nullish(),
+  supplierId: zod.number().nullish(),
+  assetId: zod.number().nullish(),
+});
 
 export const CompleteWorkflowTaskParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const CompleteWorkflowTaskResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const CompleteWorkflowTaskResponse = zod.object({
+  id: zod.number(),
+  title: zod.string().nullish(),
+  description: zod.string().nullish(),
+  category: zod.string().nullish(),
+  status: zod.string().nullish(),
+  priority: zod.string().nullish(),
+  escalationLevel: zod.string().nullish(),
+  deadlineHealth: zod.string().nullish(),
+  ownerUserId: zod.string().nullish(),
+  dueDate: zod.string().nullish(),
+  partnerId: zod.number().nullish(),
+  eventId: zod.number().nullish(),
+  orderId: zod.number().nullish(),
+  supplierId: zod.number().nullish(),
+  assetId: zod.number().nullish(),
+});
 
 export const SnoozeWorkflowTaskParams = zod.object({
   id: zod.coerce.number(),
 });
 
 export const SnoozeWorkflowTaskResponse = zod.union([
-  zod.record(zod.string(), zod.unknown()),
+  zod.object({
+    id: zod.number(),
+    title: zod.string().nullish(),
+    description: zod.string().nullish(),
+    category: zod.string().nullish(),
+    status: zod.string().nullish(),
+    priority: zod.string().nullish(),
+    escalationLevel: zod.string().nullish(),
+    deadlineHealth: zod.string().nullish(),
+    ownerUserId: zod.string().nullish(),
+    dueDate: zod.string().nullish(),
+    partnerId: zod.number().nullish(),
+    eventId: zod.number().nullish(),
+    orderId: zod.number().nullish(),
+    supplierId: zod.number().nullish(),
+    assetId: zod.number().nullish(),
+  }),
   zod.null(),
 ]);
 
-export const ListWorkflowAlertsResponseItem = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListWorkflowAlertsResponseItem = zod.object({
+  id: zod.number(),
+  severity: zod.string().nullish(),
+  title: zod.string().nullish(),
+  message: zod.string().nullish(),
+  status: zod.string().nullish(),
+});
 export const ListWorkflowAlertsResponse = zod.array(
   ListWorkflowAlertsResponseItem,
 );
@@ -4709,7 +5401,13 @@ export const MarkWorkflowAlertReadParams = zod.object({
 });
 
 export const MarkWorkflowAlertReadResponse = zod.union([
-  zod.record(zod.string(), zod.unknown()),
+  zod.object({
+    id: zod.number(),
+    severity: zod.string().nullish(),
+    title: zod.string().nullish(),
+    message: zod.string().nullish(),
+    status: zod.string().nullish(),
+  }),
   zod.null(),
 ]);
 
@@ -4717,23 +5415,27 @@ export const ResolveWorkflowAlertParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const ResolveWorkflowAlertResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ResolveWorkflowAlertResponse = zod.object({
+  id: zod.number(),
+  severity: zod.string().nullish(),
+  title: zod.string().nullish(),
+  message: zod.string().nullish(),
+  status: zod.string().nullish(),
+});
 
-export const ListWorkflowAuditResponseItem = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListWorkflowAuditResponseItem = zod.object({
+  id: zod.number(),
+  eventType: zod.string().nullish(),
+  actorUserId: zod.string().nullish(),
+});
 export const ListWorkflowAuditResponse = zod.array(
   ListWorkflowAuditResponseItem,
 );
 
-export const ApplyWorkflowOverrideResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ApplyWorkflowOverrideResponse = zod.object({
+  success: zod.boolean(),
+  count: zod.number().optional(),
+});
 
 export const GetWorkflowQueueResponse = zod.record(zod.string(), zod.unknown());
 
@@ -4742,42 +5444,56 @@ export const FireWorkflowTriggerResponse = zod.record(
   zod.unknown(),
 );
 
-export const TickWorkflowDeadlinesResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const TickWorkflowDeadlinesResponse = zod.object({
+  success: zod.boolean(),
+  count: zod.number().optional(),
+});
 
-export const SeedWorkflowDefaultsResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const SeedWorkflowDefaultsResponse = zod.object({
+  defaults: zod.number(),
+});
 
-export const ListCommercialPlansResponseItem = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListCommercialPlansResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string().nullish(),
+  slug: zod.string().nullish(),
+  tier: zod.string().nullish(),
+  priceMonthly: zod.union([zod.string(), zod.number()]).nullish(),
+  priceAnnual: zod.union([zod.string(), zod.number()]).nullish(),
+  isActive: zod.boolean().nullish(),
+});
 export const ListCommercialPlansResponse = zod.array(
   ListCommercialPlansResponseItem,
 );
 
-export const SeedCommercialPlansResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const SeedCommercialPlansResponse = zod.object({
+  created: zod.number().optional(),
+});
 
 export const UpdateCommercialPlanParams = zod.object({
   id: zod.coerce.number(),
 });
 
 export const UpdateCommercialPlanResponse = zod.union([
-  zod.record(zod.string(), zod.unknown()),
+  zod.object({
+    id: zod.number(),
+    name: zod.string().nullish(),
+    slug: zod.string().nullish(),
+    tier: zod.string().nullish(),
+    priceMonthly: zod.union([zod.string(), zod.number()]).nullish(),
+    priceAnnual: zod.union([zod.string(), zod.number()]).nullish(),
+    isActive: zod.boolean().nullish(),
+  }),
   zod.null(),
 ]);
 
-export const ListCommercialBrandingPackagesResponseItem = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListCommercialBrandingPackagesResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string().nullish(),
+  slug: zod.string().nullish(),
+  price: zod.union([zod.string(), zod.number()]).nullish(),
+  isActive: zod.boolean().nullish(),
+});
 export const ListCommercialBrandingPackagesResponse = zod.array(
   ListCommercialBrandingPackagesResponseItem,
 );
@@ -4787,14 +5503,23 @@ export const UpdateCommercialBrandingPackageParams = zod.object({
 });
 
 export const UpdateCommercialBrandingPackageResponse = zod.union([
-  zod.record(zod.string(), zod.unknown()),
+  zod.object({
+    id: zod.number(),
+    name: zod.string().nullish(),
+    slug: zod.string().nullish(),
+    price: zod.union([zod.string(), zod.number()]).nullish(),
+    isActive: zod.boolean().nullish(),
+  }),
   zod.null(),
 ]);
 
-export const ListCommercialAccountsResponseItem = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListCommercialAccountsResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string().nullish(),
+  slug: zod.string().nullish(),
+  planId: zod.number().nullish(),
+  status: zod.string().nullish(),
+});
 export const ListCommercialAccountsResponse = zod.array(
   ListCommercialAccountsResponseItem,
 );
@@ -4813,7 +5538,13 @@ export const UpdateCommercialAccountParams = zod.object({
 });
 
 export const UpdateCommercialAccountResponse = zod.union([
-  zod.record(zod.string(), zod.unknown()),
+  zod.object({
+    id: zod.number(),
+    name: zod.string().nullish(),
+    slug: zod.string().nullish(),
+    planId: zod.number().nullish(),
+    status: zod.string().nullish(),
+  }),
   zod.null(),
 ]);
 
@@ -4830,10 +5561,10 @@ export const LinkCommercialAccountPartnersParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const LinkCommercialAccountPartnersResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const LinkCommercialAccountPartnersResponse = zod.object({
+  ok: zod.boolean(),
+  linked: zod.number().optional(),
+});
 
 export const GetCommercialAccountEntitlementsParams = zod.object({
   id: zod.coerce.number(),
@@ -4870,10 +5601,11 @@ export const GetSalesDashboardResponse = zod.record(
 
 export const GetSalesShowcaseResponse = zod.record(zod.string(), zod.unknown());
 
-export const ListSalesProposalsResponseItem = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListSalesProposalsResponseItem = zod.object({
+  id: zod.number(),
+  accountId: zod.number().nullish(),
+  status: zod.string().nullish(),
+});
 export const ListSalesProposalsResponse = zod.array(
   ListSalesProposalsResponseItem,
 );
@@ -4889,7 +5621,11 @@ export const UpdateSalesProposalParams = zod.object({
 });
 
 export const UpdateSalesProposalResponse = zod.union([
-  zod.record(zod.string(), zod.unknown()),
+  zod.object({
+    id: zod.number(),
+    accountId: zod.number().nullish(),
+    status: zod.string().nullish(),
+  }),
   zod.null(),
 ]);
 
@@ -4897,10 +5633,9 @@ export const DeleteSalesProposalParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const DeleteSalesProposalResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const DeleteSalesProposalResponse = zod.object({
+  ok: zod.boolean(),
+});
 
 export const BuildSalesComparisonMatrixResponse = zod.record(
   zod.string(),
@@ -4930,7 +5665,9 @@ export const UpdateSalesActivationItemParams = zod.object({
 });
 
 export const UpdateSalesActivationItemResponse = zod.union([
-  zod.record(zod.string(), zod.unknown()),
+  zod.object({
+    id: zod.number(),
+  }),
   zod.null(),
 ]);
 
@@ -4938,10 +5675,13 @@ export const AdvanceSalesAccountActivationParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const AdvanceSalesAccountActivationResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const AdvanceSalesAccountActivationResponse = zod.object({
+  id: zod.number(),
+  name: zod.string().nullish(),
+  slug: zod.string().nullish(),
+  planId: zod.number().nullish(),
+  status: zod.string().nullish(),
+});
 
 export const GetSalesConstantsResponse = zod.record(
   zod.string(),
@@ -4952,62 +5692,97 @@ export const PullSurveyAssetsParams = zod.object({
   partnerId: zod.coerce.number(),
 });
 
-export const PullSurveyAssetsResponse = zod.record(zod.string(), zod.unknown());
+export const PullSurveyAssetsResponse = zod.object({
+  ok: zod.boolean().optional(),
+});
 
-export const ListAdminSurveyAssetsResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListAdminSurveyAssetsResponse = zod.object({
+  assets: zod.array(
+    zod.object({
+      id: zod.number(),
+      partnerId: zod.number().nullish(),
+      venueId: zod.number().nullish(),
+      title: zod.string().nullish(),
+      category: zod.string().nullish(),
+      materialMode: zod.string().nullish(),
+      approvalStatus: zod.string().nullish(),
+    }),
+  ),
+});
 
 export const GetAdminSurveyAssetParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const GetAdminSurveyAssetResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const GetAdminSurveyAssetResponse = zod.object({
+  asset: zod.object({
+    id: zod.number(),
+    partnerId: zod.number().nullish(),
+    venueId: zod.number().nullish(),
+    title: zod.string().nullish(),
+    category: zod.string().nullish(),
+    materialMode: zod.string().nullish(),
+    approvalStatus: zod.string().nullish(),
+  }),
+});
 
 export const UpdateAdminSurveyAssetParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const UpdateAdminSurveyAssetResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const UpdateAdminSurveyAssetResponse = zod.object({
+  asset: zod.object({
+    id: zod.number(),
+    partnerId: zod.number().nullish(),
+    venueId: zod.number().nullish(),
+    title: zod.string().nullish(),
+    category: zod.string().nullish(),
+    materialMode: zod.string().nullish(),
+    approvalStatus: zod.string().nullish(),
+  }),
+});
 
 export const DeleteAdminSurveyAssetParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const DeleteAdminSurveyAssetResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const DeleteAdminSurveyAssetResponse = zod.object({
+  ok: zod.boolean(),
+});
 
-export const ListApprovedMaterialsResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const ListApprovedMaterialsResponse = zod.object({
+  materials: zod.array(
+    zod.object({
+      id: zod.number(),
+      name: zod.string().nullish(),
+      slug: zod.string().nullish(),
+      category: zod.string().nullish(),
+      isActive: zod.boolean().nullish(),
+    }),
+  ),
+});
 
 export const UpdateApprovedMaterialParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const UpdateApprovedMaterialResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const UpdateApprovedMaterialResponse = zod.object({
+  material: zod.object({
+    id: zod.number(),
+    name: zod.string().nullish(),
+    slug: zod.string().nullish(),
+    category: zod.string().nullish(),
+    isActive: zod.boolean().nullish(),
+  }),
+});
 
 export const DeleteApprovedMaterialParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const DeleteApprovedMaterialResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const DeleteApprovedMaterialResponse = zod.object({
+  ok: zod.boolean(),
+});
 
 export const GetPartnerSurveyIntegrationParams = zod.object({
   partnerId: zod.coerce.number(),
@@ -5022,61 +5797,162 @@ export const UpsertPartnerSurveyIntegrationParams = zod.object({
   partnerId: zod.coerce.number(),
 });
 
-export const UpsertPartnerSurveyIntegrationResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const UpsertPartnerSurveyIntegrationResponse = zod.object({
+  ok: zod.boolean(),
+  newWebhookSecret: zod.string().optional(),
+});
 
-export const ListVenuesResponseItem = zod.record(zod.string(), zod.unknown());
+export const ListVenuesResponseItem = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  cityId: zod.number().nullish(),
+  name: zod.string().nullish(),
+  venueAddress: zod.string().nullish(),
+  shippingAddress: zod.string().nullish(),
+  onsiteContactName: zod.string().nullish(),
+  onsiteContactPhone: zod.string().nullish(),
+  onsiteContactEmail: zod.string().nullish(),
+  country: zod.string().nullish(),
+  unitPreference: zod.string().nullish(),
+  isActive: zod.boolean().nullish(),
+  sortOrder: zod.number().nullish(),
+});
 export const ListVenuesResponse = zod.array(ListVenuesResponseItem);
 
 export const UpdateVenueParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const UpdateVenueResponse = zod.record(zod.string(), zod.unknown());
+export const UpdateVenueResponse = zod.object({
+  id: zod.number(),
+  partnerId: zod.number().nullish(),
+  cityId: zod.number().nullish(),
+  name: zod.string().nullish(),
+  venueAddress: zod.string().nullish(),
+  shippingAddress: zod.string().nullish(),
+  onsiteContactName: zod.string().nullish(),
+  onsiteContactPhone: zod.string().nullish(),
+  onsiteContactEmail: zod.string().nullish(),
+  country: zod.string().nullish(),
+  unitPreference: zod.string().nullish(),
+  isActive: zod.boolean().nullish(),
+  sortOrder: zod.number().nullish(),
+});
 
 export const DeleteVenueParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const DeleteVenueResponse = zod.record(zod.string(), zod.unknown());
+export const DeleteVenueResponse = zod.object({
+  success: zod.boolean(),
+  count: zod.number().optional(),
+});
 
-export const CreateAssetResponse = zod.record(zod.string(), zod.unknown());
+export const CreateAssetResponse = zod.object({
+  id: zod.number(),
+  title: zod.string().nullish(),
+  fileUrl: zod.string().nullish(),
+  fileName: zod.string().nullish(),
+  mimeType: zod.string().nullish(),
+  category: zod.string().nullish(),
+  visibility: zod.string().nullish(),
+  partnerId: zod.number().nullish(),
+  eventId: zod.number().nullish(),
+  orderId: zod.number().nullish(),
+  productId: zod.number().nullish(),
+  packageId: zod.number().nullish(),
+  version: zod.number().nullish(),
+  isCurrent: zod.boolean().nullish(),
+  status: zod.string().nullish(),
+  approvalStatus: zod.string().nullish(),
+});
 
 export const ApproveAssetParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const ApproveAssetResponse = zod.record(zod.string(), zod.unknown());
+export const ApproveAssetResponse = zod.object({
+  id: zod.number(),
+  title: zod.string().nullish(),
+  fileUrl: zod.string().nullish(),
+  fileName: zod.string().nullish(),
+  mimeType: zod.string().nullish(),
+  category: zod.string().nullish(),
+  visibility: zod.string().nullish(),
+  partnerId: zod.number().nullish(),
+  eventId: zod.number().nullish(),
+  orderId: zod.number().nullish(),
+  productId: zod.number().nullish(),
+  packageId: zod.number().nullish(),
+  version: zod.number().nullish(),
+  isCurrent: zod.boolean().nullish(),
+  status: zod.string().nullish(),
+  approvalStatus: zod.string().nullish(),
+});
 
 export const RequestAssetRevisionParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const RequestAssetRevisionResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const RequestAssetRevisionResponse = zod.object({
+  id: zod.number(),
+  title: zod.string().nullish(),
+  fileUrl: zod.string().nullish(),
+  fileName: zod.string().nullish(),
+  mimeType: zod.string().nullish(),
+  category: zod.string().nullish(),
+  visibility: zod.string().nullish(),
+  partnerId: zod.number().nullish(),
+  eventId: zod.number().nullish(),
+  orderId: zod.number().nullish(),
+  productId: zod.number().nullish(),
+  packageId: zod.number().nullish(),
+  version: zod.number().nullish(),
+  isCurrent: zod.boolean().nullish(),
+  status: zod.string().nullish(),
+  approvalStatus: zod.string().nullish(),
+});
 
 export const CreateAssetVersionParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const CreateAssetVersionResponse = zod.record(
-  zod.string(),
-  zod.unknown(),
-);
+export const CreateAssetVersionResponse = zod.object({
+  id: zod.number(),
+  title: zod.string().nullish(),
+  fileUrl: zod.string().nullish(),
+  fileName: zod.string().nullish(),
+  mimeType: zod.string().nullish(),
+  category: zod.string().nullish(),
+  visibility: zod.string().nullish(),
+  partnerId: zod.number().nullish(),
+  eventId: zod.number().nullish(),
+  orderId: zod.number().nullish(),
+  productId: zod.number().nullish(),
+  packageId: zod.number().nullish(),
+  version: zod.number().nullish(),
+  isCurrent: zod.boolean().nullish(),
+  status: zod.string().nullish(),
+  approvalStatus: zod.string().nullish(),
+});
 
 export const CreateAssetLinkParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const CreateAssetLinkResponse = zod.record(zod.string(), zod.unknown());
+export const CreateAssetLinkResponse = zod.object({
+  id: zod.number(),
+  assetId: zod.number().nullish(),
+  orderItemId: zod.number().nullish(),
+  role: zod.string().nullish(),
+});
 
 export const DeleteAssetLinkParams = zod.object({
   id: zod.coerce.number(),
   linkId: zod.coerce.number(),
 });
 
-export const DeleteAssetLinkResponse = zod.record(zod.string(), zod.unknown());
+export const DeleteAssetLinkResponse = zod.object({
+  success: zod.boolean(),
+  count: zod.number().optional(),
+});

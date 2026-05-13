@@ -5,6 +5,7 @@
  * A3 Partner Portal API
  * OpenAPI spec version: 0.1.0
  */
-import type { AdminGenericArrayItem } from "./adminGenericArrayItem";
 
-export type AdminGenericArray = AdminGenericArrayItem[];
+export interface PartnerSurveyIntegration {
+  [key: string]: unknown;
+}

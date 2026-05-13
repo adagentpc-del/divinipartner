@@ -6,4 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type AdminGenericObjectOrNull = { [key: string]: unknown } | null;
+export type DeleteEmailRecipient200 = {
+  success: boolean;
+  count?: number;
+  [key: string]: unknown;
+};

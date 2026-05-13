@@ -17,76 +17,239 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
-  AdminGenericArray,
-  AdminGenericObject,
-  AdminGenericObjectOrNull,
   AdminNote,
+  AlertsListResponse,
+  AlertsSummaryResponse,
+  AnalyticsForecast,
+  AnalyticsKpis,
+  AnalyticsPackageRow,
+  AnalyticsProductRow,
+  AnalyticsProfitabilityRow,
+  AnalyticsRisk,
+  AnalyticsSupplierRow,
+  AnalyticsTrendPoint,
+  AnalyticsZoneRow,
+  ApplyWorkflowOverride200,
+  ApproveDeckExtractionItems200,
   ApproveDocumentRequestSend200,
+  ArchiveAsset200,
+  ArchivePartner200,
+  AssetEventRow,
+  AssetLinkRow,
+  AssetRow,
   AssetsLibrary,
+  AutoFlagReconciliation200,
+  BillingBulk200,
+  BrandingLocationRow,
   BrandingRequestListItem,
+  BuildSalesComparisonMatrix200,
   BulkAssignOrderItemSupplier200,
+  BulkUpdateQuoteAssets200,
+  BulkUpdateReconciliation200,
+  CatalogIntelligenceOverview,
+  CheckDeckExtractionDuplicate200,
+  CityRow,
+  CommercialAccountRow,
+  CommercialBrandingPackageRow,
+  CommercialDashboard,
+  CommercialFeatureKeys,
+  CommercialPlanRow,
+  CommitImport200,
+  CommitPackageExtraction200,
   CreateNoteBody,
   CreatePartnerAssetBody,
   CreatePartnerBody,
   CreatePricingRuleBody,
+  CreateQuoteAssetMappingExisting200,
   DashboardSummary,
   DeactivateAdminDocument200,
+  DeleteAdminSurveyAsset200,
+  DeleteApprovedMaterial200,
+  DeleteAsset200,
+  DeleteAssetLink200,
+  DeleteCity200,
+  DeleteCommissionPayout200,
+  DeleteDeckExtractionItem200,
+  DeleteDemoFollowup200,
+  DeleteDiscrepancy200,
+  DeleteEmailRecipient200,
+  DeleteEvent200,
+  DeleteFaq200,
+  DeleteFeedback200,
+  DeleteInventory200,
+  DeleteInventoryBlackout200,
+  DeleteInventoryReservation200,
+  DeleteInvoicePayment200,
+  DeleteObjection200,
   DeleteOrder200,
+  DeletePackage200,
+  DeletePackageExtraction200,
+  DeletePackageItem200,
+  DeletePartnerContact200,
+  DeleteProductFamily200,
+  DeleteProductFamilyMember200,
+  DeleteQuoteAsset200,
+  DeleteQuoteAssetMapping200,
+  DeleteSalesProposal200,
+  DeleteSavedAddress200,
+  DeleteSavedContact200,
+  DeleteSpecStandard200,
+  DeleteSupplier200,
+  DeleteUserRole200,
+  DeleteVenue200,
+  DeleteWorkflowRule200,
+  DemoFollowupRow,
   DenyDocumentRequest200,
+  DeploymentReadinessReport,
+  DiscrepancyRow,
+  DismissOnboarding200,
+  EmailRecipientRow,
+  EmailSendResult,
+  EmitUsage200,
   ErrorEnvelope,
+  EventEffectiveAddonsResponse,
+  EventRow,
+  FaqConstants,
+  FaqRow,
+  FeedbackRow,
+  FireWorkflowTrigger200,
+  GetAccountBlockers200,
   GetAdminDocument200,
   GetAdminDocumentActivity200,
   GetAdminDocumentSettings200,
+  GetAdminSurveyAsset200,
   GetAllRequestsSummary200,
+  GetBillingSummary200,
   GetBrandingRequest200,
+  GetCommercialAccount200,
+  GetCommercialAccountEntitlements200,
+  GetCommercialPartnerEntitlements200,
+  GetDeckExtraction200,
   GetEmailReadiness200,
   GetEmailReadinessDns200,
   GetFulfillmentCommandCenter200,
+  GetImportFields200,
+  GetInventoryAvailability200,
+  GetInventoryBookings200,
+  GetInvoice200,
+  GetLiveReadiness200,
   GetOrder200,
   GetOrderEmailEvents200,
   GetOrderIntakeAnalysis200,
   GetOrderItemHistory200,
+  GetPartnerFamilyAvailability200,
   GetPortalRequest200,
+  GetProductFamilyContext200,
   GetProductRequest200,
+  GetPublicInvoice200,
   GetRecentRequestsParams,
+  GetSalesAccountActivation200,
+  GetSalesProposal200,
   GetVendorOrderPacket200,
   HealthStatus,
+  InventoryReservationRow,
+  InventoryRow,
+  InventoryShortageRow,
+  InvoiceRow,
+  LaunchReadiness,
+  LinkCommercialAccountPartners200,
   ListAdminDocumentAssignments200,
   ListAdminDocumentEvents200,
   ListAdminDocumentRequests200,
   ListAdminDocuments200,
+  ListAdminSurveyAssets200,
+  ListApprovedMaterials200,
+  ListBillingOrders200Item,
+  ListCommissionPayouts200Item,
+  ListDeckExtractions200Item,
+  ListInventoryBlackouts200,
+  ListPartnerContacts200Item,
+  ListPartnerRentableAssets200,
   ListPartnersParams,
   ListPricingRulesParams,
+  ListQuoteAssetMappings200Item,
   ListRequestsParams,
+  ListSpecStandards200Item,
   ListVendorItems200,
+  MakePrimaryPartnerContact200,
+  ObjectionRow,
+  ObjectionsConstants,
+  ObjectionsSummary,
+  OnboardingProgressRow,
+  OnboardingSubmissionRow,
   OrderItemProductionBlockResponse,
   OrderItemRow,
   OrderListItem,
   OrderReadinessResponse,
   OrderRow,
+  OverrideBilling200,
+  PackageExtractionDuplicateCheck,
+  PackageExtractionRow,
+  PackageRow,
+  ParseImport200,
   Partner,
+  PartnerAddonRow,
   PartnerAsset,
+  PartnerHealthRow,
+  PartnerInventorySummary,
+  PartnerSectionRow,
+  PartnerSurveyIntegration,
+  PartnerThemeRow,
+  PartnershipRequestRow,
   PdfResponse,
   PortalRequestRow,
+  PostLaunchDashboard,
   PricingRule,
+  ProductFamilyRow,
   ProductRequestListItem,
+  ProductRow,
   ProductionDashboardResponse,
+  PublicConfigPayload,
   PublicPartner,
   PublicPricingItem,
+  PullSurveyAssets200,
+  QuoteAssetRow,
+  QuoteIngestionStats,
   ReactivateAdminDocument200,
+  RecomputeCommercialAccountUsage200,
+  ReconciliationOrderRow,
+  ReconciliationSummary,
+  ReorderPackages200,
   ReplaceAdminDocument200,
   RequestDetail,
   RequestListResponse,
   RequestSummary,
+  RerunBillingSignals200,
+  RerunDeckExtraction200,
+  RerunPackageExtraction200,
+  ResolveBilling200,
+  ResolveManualFollowup200,
+  ResolveSupportIssue200,
+  SalesActivationItemRow,
+  SalesConstants,
+  SalesDashboard,
+  SalesProposalRow,
+  SalesShowcase,
+  SavedAddressRow,
+  SavedContactRow,
+  ScanOverdueInvoices200,
+  SecurityReadinessReport,
+  SeedCommercialPlans200,
+  SeedEasyUpFamily200,
+  SeedSalesAccountActivation200,
+  SeedWorkflowDefaults200,
   SendAdminDocuments200,
+  SetCurrentSpecStandard200,
   SetOrderArtworkNeeded200,
   SetOrderException200,
   SetOrderItemProductionBlockBody,
+  StabilizationDashboard,
   StatusCount,
   SubmitRequestBody,
   SubmitRequestResponse,
   SupplierPacketResponse,
   SupplierRecommendation,
+  SupplierRow,
   SurveyAdminPull200,
   SurveyAssetDelete200,
   SurveyAssetPatch,
@@ -98,16 +261,40 @@ import type {
   SurveyWebhook200,
   SurveyWebhookBody,
   TestAdminDocumentLink200,
+  TickWorkflowDeadlines200,
+  UnarchiveAsset200,
+  UnarchivePartner200,
+  UnitsMetaPayload,
+  UnitsResolvePayload,
   UpdateAdminDocument200,
+  UpdateAdminSurveyAsset200,
+  UpdateApprovedMaterial200,
   UpdateBrandingRequest200,
+  UpdateDeckExtractionItem200,
+  UpdateInventoryBlackout200,
+  UpdatePackageItem200,
   UpdatePartnerBody,
+  UpdatePartnerContact200,
   UpdatePricingRuleBody,
+  UpdateProductFamilyMember200,
   UpdateProductRequest200,
+  UpdateRentalInventory200,
   UpdateRequestBody,
+  UpdateSpecStandard200,
   UploadAdminDocument200,
   UploadUrlRequest,
   UploadUrlResponse,
+  UpsertPartnerSurveyIntegration200,
+  UsageSummary,
+  UsageTimelinePoint,
+  UserRoleRow,
   VendorOrderGroup,
+  VenueRow,
+  WorkflowAlertRow,
+  WorkflowAuditRow,
+  WorkflowQueue,
+  WorkflowRuleRow,
+  WorkflowTaskRow,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -3677,8 +3864,8 @@ export const getGetPublicConfigUrl = () => {
 
 export const getPublicConfig = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetPublicConfigUrl(), {
+): Promise<PublicConfigPayload> => {
+  return customFetch<PublicConfigPayload>(getGetPublicConfigUrl(), {
     ...options,
     method: "GET",
   });
@@ -3745,8 +3932,8 @@ export const getGetUnitsMetaUrl = () => {
 
 export const getUnitsMeta = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetUnitsMetaUrl(), {
+): Promise<UnitsMetaPayload> => {
+  return customFetch<UnitsMetaPayload>(getGetUnitsMetaUrl(), {
     ...options,
     method: "GET",
   });
@@ -3813,8 +4000,8 @@ export const getGetUnitsResolveUrl = () => {
 
 export const getUnitsResolve = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetUnitsResolveUrl(), {
+): Promise<UnitsResolvePayload> => {
+  return customFetch<UnitsResolvePayload>(getGetUnitsResolveUrl(), {
     ...options,
     method: "GET",
   });
@@ -3881,8 +4068,8 @@ export const getGetSecurityReadinessUrl = () => {
 
 export const getSecurityReadiness = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetSecurityReadinessUrl(), {
+): Promise<SecurityReadinessReport> => {
+  return customFetch<SecurityReadinessReport>(getGetSecurityReadinessUrl(), {
     ...options,
     method: "GET",
   });
@@ -3949,11 +4136,14 @@ export const getGetDeploymentReadinessUrl = () => {
 
 export const getDeploymentReadiness = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetDeploymentReadinessUrl(), {
-    ...options,
-    method: "GET",
-  });
+): Promise<DeploymentReadinessReport> => {
+  return customFetch<DeploymentReadinessReport>(
+    getGetDeploymentReadinessUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
 };
 
 export const getGetDeploymentReadinessQueryKey = () => {
@@ -4016,10 +4206,8 @@ export const getListCitiesUrl = () => {
   return `/api/cities`;
 };
 
-export const listCities = async (
-  options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListCitiesUrl(), {
+export const listCities = async (options?: RequestInit): Promise<CityRow[]> => {
+  return customFetch<CityRow[]>(getListCitiesUrl(), {
     ...options,
     method: "GET",
   });
@@ -4084,10 +4272,8 @@ export const getCreateCityUrl = () => {
   return `/api/cities`;
 };
 
-export const createCity = async (
-  options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getCreateCityUrl(), {
+export const createCity = async (options?: RequestInit): Promise<CityRow> => {
+  return customFetch<CityRow>(getCreateCityUrl(), {
     ...options,
     method: "POST",
   });
@@ -4162,8 +4348,8 @@ export const getUpdateCityUrl = (id: number) => {
 export const updateCity = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdateCityUrl(id), {
+): Promise<CityRow> => {
+  return customFetch<CityRow>(getUpdateCityUrl(id), {
     ...options,
     method: "PATCH",
   });
@@ -4240,8 +4426,8 @@ export const getDeleteCityUrl = (id: number) => {
 export const deleteCity = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getDeleteCityUrl(id), {
+): Promise<DeleteCity200> => {
+  return customFetch<DeleteCity200>(getDeleteCityUrl(id), {
     ...options,
     method: "DELETE",
   });
@@ -4317,8 +4503,8 @@ export const getListSuppliersUrl = () => {
 
 export const listSuppliers = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListSuppliersUrl(), {
+): Promise<SupplierRow[]> => {
+  return customFetch<SupplierRow[]>(getListSuppliersUrl(), {
     ...options,
     method: "GET",
   });
@@ -4385,8 +4571,8 @@ export const getCreateSupplierUrl = () => {
 
 export const createSupplier = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getCreateSupplierUrl(), {
+): Promise<SupplierRow> => {
+  return customFetch<SupplierRow>(getCreateSupplierUrl(), {
     ...options,
     method: "POST",
   });
@@ -4461,8 +4647,8 @@ export const getGetSupplierUrl = (id: number) => {
 export const getSupplier = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetSupplierUrl(id), {
+): Promise<SupplierRow> => {
+  return customFetch<SupplierRow>(getGetSupplierUrl(id), {
     ...options,
     method: "GET",
   });
@@ -4541,8 +4727,8 @@ export const getUpdateSupplierUrl = (id: number) => {
 export const updateSupplier = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdateSupplierUrl(id), {
+): Promise<SupplierRow> => {
+  return customFetch<SupplierRow>(getUpdateSupplierUrl(id), {
     ...options,
     method: "PATCH",
   });
@@ -4619,8 +4805,8 @@ export const getDeleteSupplierUrl = (id: number) => {
 export const deleteSupplier = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getDeleteSupplierUrl(id), {
+): Promise<DeleteSupplier200> => {
+  return customFetch<DeleteSupplier200>(getDeleteSupplierUrl(id), {
     ...options,
     method: "DELETE",
   });
@@ -4696,8 +4882,8 @@ export const getListUserRolesUrl = () => {
 
 export const listUserRoles = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListUserRolesUrl(), {
+): Promise<UserRoleRow[]> => {
+  return customFetch<UserRoleRow[]>(getListUserRolesUrl(), {
     ...options,
     method: "GET",
   });
@@ -4764,8 +4950,8 @@ export const getCreateUserRoleUrl = () => {
 
 export const createUserRole = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getCreateUserRoleUrl(), {
+): Promise<UserRoleRow> => {
+  return customFetch<UserRoleRow>(getCreateUserRoleUrl(), {
     ...options,
     method: "POST",
   });
@@ -4840,8 +5026,8 @@ export const getUpdateUserRoleUrl = (id: number) => {
 export const updateUserRole = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdateUserRoleUrl(id), {
+): Promise<UserRoleRow> => {
+  return customFetch<UserRoleRow>(getUpdateUserRoleUrl(id), {
     ...options,
     method: "PATCH",
   });
@@ -4918,8 +5104,8 @@ export const getDeleteUserRoleUrl = (id: number) => {
 export const deleteUserRole = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getDeleteUserRoleUrl(id), {
+): Promise<DeleteUserRole200> => {
+  return customFetch<DeleteUserRole200>(getDeleteUserRoleUrl(id), {
     ...options,
     method: "DELETE",
   });
@@ -4995,8 +5181,8 @@ export const getListSavedAddressesUrl = () => {
 
 export const listSavedAddresses = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListSavedAddressesUrl(), {
+): Promise<SavedAddressRow[]> => {
+  return customFetch<SavedAddressRow[]>(getListSavedAddressesUrl(), {
     ...options,
     method: "GET",
   });
@@ -5063,8 +5249,8 @@ export const getCreateSavedAddressUrl = () => {
 
 export const createSavedAddress = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getCreateSavedAddressUrl(), {
+): Promise<SavedAddressRow> => {
+  return customFetch<SavedAddressRow>(getCreateSavedAddressUrl(), {
     ...options,
     method: "POST",
   });
@@ -5139,8 +5325,8 @@ export const getUpdateSavedAddressUrl = (id: number) => {
 export const updateSavedAddress = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdateSavedAddressUrl(id), {
+): Promise<SavedAddressRow> => {
+  return customFetch<SavedAddressRow>(getUpdateSavedAddressUrl(id), {
     ...options,
     method: "PATCH",
   });
@@ -5217,8 +5403,8 @@ export const getDeleteSavedAddressUrl = (id: number) => {
 export const deleteSavedAddress = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getDeleteSavedAddressUrl(id), {
+): Promise<DeleteSavedAddress200> => {
+  return customFetch<DeleteSavedAddress200>(getDeleteSavedAddressUrl(id), {
     ...options,
     method: "DELETE",
   });
@@ -5294,8 +5480,8 @@ export const getListSavedContactsUrl = () => {
 
 export const listSavedContacts = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListSavedContactsUrl(), {
+): Promise<SavedContactRow[]> => {
+  return customFetch<SavedContactRow[]>(getListSavedContactsUrl(), {
     ...options,
     method: "GET",
   });
@@ -5362,8 +5548,8 @@ export const getCreateSavedContactUrl = () => {
 
 export const createSavedContact = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getCreateSavedContactUrl(), {
+): Promise<SavedContactRow> => {
+  return customFetch<SavedContactRow>(getCreateSavedContactUrl(), {
     ...options,
     method: "POST",
   });
@@ -5438,8 +5624,8 @@ export const getUpdateSavedContactUrl = (id: number) => {
 export const updateSavedContact = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdateSavedContactUrl(id), {
+): Promise<SavedContactRow> => {
+  return customFetch<SavedContactRow>(getUpdateSavedContactUrl(id), {
     ...options,
     method: "PATCH",
   });
@@ -5516,8 +5702,8 @@ export const getDeleteSavedContactUrl = (id: number) => {
 export const deleteSavedContact = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getDeleteSavedContactUrl(id), {
+): Promise<DeleteSavedContact200> => {
+  return customFetch<DeleteSavedContact200>(getDeleteSavedContactUrl(id), {
     ...options,
     method: "DELETE",
   });
@@ -5594,8 +5780,8 @@ export const getGetPartnerThemeUrl = (id: number) => {
 export const getPartnerTheme = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObjectOrNull> => {
-  return customFetch<AdminGenericObjectOrNull>(getGetPartnerThemeUrl(id), {
+): Promise<PartnerThemeRow | null> => {
+  return customFetch<PartnerThemeRow | null>(getGetPartnerThemeUrl(id), {
     ...options,
     method: "GET",
   });
@@ -5674,8 +5860,8 @@ export const getUpsertPartnerThemeUrl = (id: number) => {
 export const upsertPartnerTheme = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpsertPartnerThemeUrl(id), {
+): Promise<PartnerThemeRow> => {
+  return customFetch<PartnerThemeRow>(getUpsertPartnerThemeUrl(id), {
     ...options,
     method: "PUT",
   });
@@ -5752,11 +5938,14 @@ export const getGetPartnerInventorySummaryUrl = (id: number) => {
 export const getPartnerInventorySummary = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetPartnerInventorySummaryUrl(id), {
-    ...options,
-    method: "GET",
-  });
+): Promise<PartnerInventorySummary> => {
+  return customFetch<PartnerInventorySummary>(
+    getGetPartnerInventorySummaryUrl(id),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
 };
 
 export const getGetPartnerInventorySummaryQueryKey = (id: number) => {
@@ -5834,8 +6023,8 @@ export const getListPartnerSectionsUrl = (id: number) => {
 export const listPartnerSections = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListPartnerSectionsUrl(id), {
+): Promise<PartnerSectionRow[]> => {
+  return customFetch<PartnerSectionRow[]>(getListPartnerSectionsUrl(id), {
     ...options,
     method: "GET",
   });
@@ -5914,8 +6103,8 @@ export const getCreatePartnerSectionUrl = (id: number) => {
 export const createPartnerSection = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getCreatePartnerSectionUrl(id), {
+): Promise<PartnerSectionRow> => {
+  return customFetch<PartnerSectionRow>(getCreatePartnerSectionUrl(id), {
     ...options,
     method: "POST",
   });
@@ -5993,8 +6182,8 @@ export const updatePartnerSection = async (
   id: number,
   sectionId: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(
+): Promise<PartnerSectionRow> => {
+  return customFetch<PartnerSectionRow>(
     getUpdatePartnerSectionUrl(id, sectionId),
     {
       ...options,
@@ -6074,11 +6263,14 @@ export const getBulkReplacePartnerSectionsUrl = (id: number) => {
 export const bulkReplacePartnerSections = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getBulkReplacePartnerSectionsUrl(id), {
-    ...options,
-    method: "PUT",
-  });
+): Promise<PartnerSectionRow[]> => {
+  return customFetch<PartnerSectionRow[]>(
+    getBulkReplacePartnerSectionsUrl(id),
+    {
+      ...options,
+      method: "PUT",
+    },
+  );
 };
 
 export const getBulkReplacePartnerSectionsMutationOptions = <
@@ -6152,8 +6344,8 @@ export const getListBrandingLocationsUrl = (id: number) => {
 export const listBrandingLocations = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListBrandingLocationsUrl(id), {
+): Promise<BrandingLocationRow[]> => {
+  return customFetch<BrandingLocationRow[]>(getListBrandingLocationsUrl(id), {
     ...options,
     method: "GET",
   });
@@ -6233,8 +6425,8 @@ export const getCreateBrandingLocationUrl = (id: number) => {
 export const createBrandingLocation = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getCreateBrandingLocationUrl(id), {
+): Promise<BrandingLocationRow> => {
+  return customFetch<BrandingLocationRow>(getCreateBrandingLocationUrl(id), {
     ...options,
     method: "POST",
   });
@@ -6311,11 +6503,14 @@ export const getBulkCreateBrandingLocationsUrl = (id: number) => {
 export const bulkCreateBrandingLocations = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getBulkCreateBrandingLocationsUrl(id), {
-    ...options,
-    method: "POST",
-  });
+): Promise<BrandingLocationRow[]> => {
+  return customFetch<BrandingLocationRow[]>(
+    getBulkCreateBrandingLocationsUrl(id),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
 };
 
 export const getBulkCreateBrandingLocationsMutationOptions = <
@@ -6393,8 +6588,8 @@ export const updateBrandingLocation = async (
   id: number,
   locationId: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(
+): Promise<BrandingLocationRow> => {
+  return customFetch<BrandingLocationRow>(
     getUpdateBrandingLocationUrl(id, locationId),
     {
       ...options,
@@ -6474,11 +6669,14 @@ export const getBulkUpdateBrandingLocationsUrl = (id: number) => {
 export const bulkUpdateBrandingLocations = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getBulkUpdateBrandingLocationsUrl(id), {
-    ...options,
-    method: "POST",
-  });
+): Promise<BrandingLocationRow[]> => {
+  return customFetch<BrandingLocationRow[]>(
+    getBulkUpdateBrandingLocationsUrl(id),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
 };
 
 export const getBulkUpdateBrandingLocationsMutationOptions = <
@@ -6552,8 +6750,8 @@ export const getListEmailRecipientsUrl = (id: number) => {
 export const listEmailRecipients = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListEmailRecipientsUrl(id), {
+): Promise<EmailRecipientRow[]> => {
+  return customFetch<EmailRecipientRow[]>(getListEmailRecipientsUrl(id), {
     ...options,
     method: "GET",
   });
@@ -6632,8 +6830,8 @@ export const getCreateEmailRecipientUrl = (id: number) => {
 export const createEmailRecipient = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getCreateEmailRecipientUrl(id), {
+): Promise<EmailRecipientRow> => {
+  return customFetch<EmailRecipientRow>(getCreateEmailRecipientUrl(id), {
     ...options,
     method: "POST",
   });
@@ -6711,8 +6909,8 @@ export const updateEmailRecipient = async (
   id: number,
   rid: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdateEmailRecipientUrl(id, rid), {
+): Promise<EmailRecipientRow> => {
+  return customFetch<EmailRecipientRow>(getUpdateEmailRecipientUrl(id, rid), {
     ...options,
     method: "PUT",
   });
@@ -6790,11 +6988,14 @@ export const deleteEmailRecipient = async (
   id: number,
   rid: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getDeleteEmailRecipientUrl(id, rid), {
-    ...options,
-    method: "DELETE",
-  });
+): Promise<DeleteEmailRecipient200> => {
+  return customFetch<DeleteEmailRecipient200>(
+    getDeleteEmailRecipientUrl(id, rid),
+    {
+      ...options,
+      method: "DELETE",
+    },
+  );
 };
 
 export const getDeleteEmailRecipientMutationOptions = <
@@ -6868,15 +7069,15 @@ export const getTestRoleEmailUrl = (id: number) => {
 export const testRoleEmail = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getTestRoleEmailUrl(id), {
+): Promise<EmailSendResult> => {
+  return customFetch<EmailSendResult>(getTestRoleEmailUrl(id), {
     ...options,
     method: "POST",
   });
 };
 
 export const getTestRoleEmailMutationOptions = <
-  TError = ErrorType<AdminGenericObject>,
+  TError = ErrorType<EmailSendResult>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -6917,10 +7118,10 @@ export type TestRoleEmailMutationResult = NonNullable<
   Awaited<ReturnType<typeof testRoleEmail>>
 >;
 
-export type TestRoleEmailMutationError = ErrorType<AdminGenericObject>;
+export type TestRoleEmailMutationError = ErrorType<EmailSendResult>;
 
 export const useTestRoleEmail = <
-  TError = ErrorType<AdminGenericObject>,
+  TError = ErrorType<EmailSendResult>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -6945,8 +7146,8 @@ export const getGetOnboardingProgressUrl = () => {
 
 export const getOnboardingProgress = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getGetOnboardingProgressUrl(), {
+): Promise<OnboardingProgressRow[]> => {
+  return customFetch<OnboardingProgressRow[]>(getGetOnboardingProgressUrl(), {
     ...options,
     method: "GET",
   });
@@ -7013,8 +7214,8 @@ export const getUpsertOnboardingProgressUrl = () => {
 
 export const upsertOnboardingProgress = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpsertOnboardingProgressUrl(), {
+): Promise<OnboardingProgressRow> => {
+  return customFetch<OnboardingProgressRow>(getUpsertOnboardingProgressUrl(), {
     ...options,
     method: "POST",
   });
@@ -7088,8 +7289,8 @@ export const getDismissOnboardingUrl = () => {
 
 export const dismissOnboarding = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getDismissOnboardingUrl(), {
+): Promise<DismissOnboarding200> => {
+  return customFetch<DismissOnboarding200>(getDismissOnboardingUrl(), {
     ...options,
     method: "POST",
   });
@@ -7163,8 +7364,8 @@ export const getGetLaunchPlatformUrl = () => {
 
 export const getLaunchPlatform = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetLaunchPlatformUrl(), {
+): Promise<LaunchReadiness> => {
+  return customFetch<LaunchReadiness>(getGetLaunchPlatformUrl(), {
     ...options,
     method: "GET",
   });
@@ -7232,8 +7433,8 @@ export const getGetLaunchPartnerUrl = (id: number) => {
 export const getLaunchPartner = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetLaunchPartnerUrl(id), {
+): Promise<LaunchReadiness> => {
+  return customFetch<LaunchReadiness>(getGetLaunchPartnerUrl(id), {
     ...options,
     method: "GET",
   });
@@ -7312,8 +7513,8 @@ export const getActivateLaunchUrl = (id: number) => {
 export const activateLaunch = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getActivateLaunchUrl(id), {
+): Promise<LaunchReadiness> => {
+  return customFetch<LaunchReadiness>(getActivateLaunchUrl(id), {
     ...options,
     method: "POST",
   });
@@ -7389,8 +7590,8 @@ export const getSubmitPartnershipRequestUrl = () => {
 
 export const submitPartnershipRequest = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getSubmitPartnershipRequestUrl(), {
+): Promise<PartnershipRequestRow> => {
+  return customFetch<PartnershipRequestRow>(getSubmitPartnershipRequestUrl(), {
     ...options,
     method: "POST",
   });
@@ -7464,8 +7665,8 @@ export const getListEventsUrl = () => {
 
 export const listEvents = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListEventsUrl(), {
+): Promise<EventRow[]> => {
+  return customFetch<EventRow[]>(getListEventsUrl(), {
     ...options,
     method: "GET",
   });
@@ -7533,8 +7734,8 @@ export const getGetEventUrl = (id: number) => {
 export const getEvent = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetEventUrl(id), {
+): Promise<EventRow> => {
+  return customFetch<EventRow>(getGetEventUrl(id), {
     ...options,
     method: "GET",
   });
@@ -7611,8 +7812,8 @@ export const getUpdateEventUrl = (id: number) => {
 export const updateEvent = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdateEventUrl(id), {
+): Promise<EventRow> => {
+  return customFetch<EventRow>(getUpdateEventUrl(id), {
     ...options,
     method: "PATCH",
   });
@@ -7689,8 +7890,8 @@ export const getDeleteEventUrl = (id: number) => {
 export const deleteEvent = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getDeleteEventUrl(id), {
+): Promise<DeleteEvent200> => {
+  return customFetch<DeleteEvent200>(getDeleteEventUrl(id), {
     ...options,
     method: "DELETE",
   });
@@ -7767,8 +7968,8 @@ export const getListPartnerAddonsUrl = (id: number) => {
 export const listPartnerAddons = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListPartnerAddonsUrl(id), {
+): Promise<PartnerAddonRow[]> => {
+  return customFetch<PartnerAddonRow[]>(getListPartnerAddonsUrl(id), {
     ...options,
     method: "GET",
   });
@@ -7847,8 +8048,8 @@ export const getReplacePartnerAddonsUrl = (id: number) => {
 export const replacePartnerAddons = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getReplacePartnerAddonsUrl(id), {
+): Promise<PartnerAddonRow[]> => {
+  return customFetch<PartnerAddonRow[]>(getReplacePartnerAddonsUrl(id), {
     ...options,
     method: "PUT",
   });
@@ -7925,11 +8126,14 @@ export const getGetEventEffectiveAddonsUrl = (id: number) => {
 export const getEventEffectiveAddons = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetEventEffectiveAddonsUrl(id), {
-    ...options,
-    method: "GET",
-  });
+): Promise<EventEffectiveAddonsResponse> => {
+  return customFetch<EventEffectiveAddonsResponse>(
+    getGetEventEffectiveAddonsUrl(id),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
 };
 
 export const getGetEventEffectiveAddonsQueryKey = (id: number) => {
@@ -8008,8 +8212,8 @@ export const getPublicEventAddons = async (
   slug: string,
   eventId: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(
+): Promise<EventEffectiveAddonsResponse> => {
+  return customFetch<EventEffectiveAddonsResponse>(
     getGetPublicEventAddonsUrl(slug, eventId),
     {
       ...options,
@@ -8101,8 +8305,8 @@ export const getGetAnalyticsKpisUrl = () => {
 
 export const getAnalyticsKpis = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetAnalyticsKpisUrl(), {
+): Promise<AnalyticsKpis> => {
+  return customFetch<AnalyticsKpis>(getGetAnalyticsKpisUrl(), {
     ...options,
     method: "GET",
   });
@@ -8169,11 +8373,14 @@ export const getGetAnalyticsProfitabilityUrl = () => {
 
 export const getAnalyticsProfitability = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getGetAnalyticsProfitabilityUrl(), {
-    ...options,
-    method: "GET",
-  });
+): Promise<AnalyticsProfitabilityRow[]> => {
+  return customFetch<AnalyticsProfitabilityRow[]>(
+    getGetAnalyticsProfitabilityUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
 };
 
 export const getGetAnalyticsProfitabilityQueryKey = () => {
@@ -8238,8 +8445,8 @@ export const getGetAnalyticsSuppliersUrl = () => {
 
 export const getAnalyticsSuppliers = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getGetAnalyticsSuppliersUrl(), {
+): Promise<AnalyticsSupplierRow[]> => {
+  return customFetch<AnalyticsSupplierRow[]>(getGetAnalyticsSuppliersUrl(), {
     ...options,
     method: "GET",
   });
@@ -8306,8 +8513,8 @@ export const getGetAnalyticsPackagesUrl = () => {
 
 export const getAnalyticsPackages = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getGetAnalyticsPackagesUrl(), {
+): Promise<AnalyticsPackageRow[]> => {
+  return customFetch<AnalyticsPackageRow[]>(getGetAnalyticsPackagesUrl(), {
     ...options,
     method: "GET",
   });
@@ -8374,8 +8581,8 @@ export const getGetAnalyticsZonesUrl = () => {
 
 export const getAnalyticsZones = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getGetAnalyticsZonesUrl(), {
+): Promise<AnalyticsZoneRow[]> => {
+  return customFetch<AnalyticsZoneRow[]>(getGetAnalyticsZonesUrl(), {
     ...options,
     method: "GET",
   });
@@ -8442,8 +8649,8 @@ export const getGetAnalyticsProductsUrl = () => {
 
 export const getAnalyticsProducts = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getGetAnalyticsProductsUrl(), {
+): Promise<AnalyticsProductRow[]> => {
+  return customFetch<AnalyticsProductRow[]>(getGetAnalyticsProductsUrl(), {
     ...options,
     method: "GET",
   });
@@ -8510,8 +8717,8 @@ export const getGetAnalyticsForecastUrl = () => {
 
 export const getAnalyticsForecast = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetAnalyticsForecastUrl(), {
+): Promise<AnalyticsForecast> => {
+  return customFetch<AnalyticsForecast>(getGetAnalyticsForecastUrl(), {
     ...options,
     method: "GET",
   });
@@ -8578,8 +8785,8 @@ export const getGetAnalyticsRiskUrl = () => {
 
 export const getAnalyticsRisk = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetAnalyticsRiskUrl(), {
+): Promise<AnalyticsRisk> => {
+  return customFetch<AnalyticsRisk>(getGetAnalyticsRiskUrl(), {
     ...options,
     method: "GET",
   });
@@ -8646,8 +8853,8 @@ export const getGetAnalyticsTrendsUrl = () => {
 
 export const getAnalyticsTrends = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getGetAnalyticsTrendsUrl(), {
+): Promise<AnalyticsTrendPoint[]> => {
+  return customFetch<AnalyticsTrendPoint[]>(getGetAnalyticsTrendsUrl(), {
     ...options,
     method: "GET",
   });
@@ -8715,8 +8922,8 @@ export const getGetImportFieldsUrl = (resource: string) => {
 export const getImportFields = async (
   resource: string,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetImportFieldsUrl(resource), {
+): Promise<GetImportFields200> => {
+  return customFetch<GetImportFields200>(getGetImportFieldsUrl(resource), {
     ...options,
     method: "GET",
   });
@@ -8795,8 +9002,8 @@ export const getParseImportUrl = () => {
 
 export const parseImport = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getParseImportUrl(), {
+): Promise<ParseImport200> => {
+  return customFetch<ParseImport200>(getParseImportUrl(), {
     ...options,
     method: "POST",
   });
@@ -8870,8 +9077,8 @@ export const getCommitImportUrl = () => {
 
 export const commitImport = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getCommitImportUrl(), {
+): Promise<CommitImport200> => {
+  return customFetch<CommitImport200>(getCommitImportUrl(), {
     ...options,
     method: "POST",
   });
@@ -8946,8 +9153,8 @@ export const getResolveBillingUrl = (id: number) => {
 export const resolveBilling = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getResolveBillingUrl(id), {
+): Promise<ResolveBilling200> => {
+  return customFetch<ResolveBilling200>(getResolveBillingUrl(id), {
     ...options,
     method: "GET",
   });
@@ -9026,8 +9233,8 @@ export const getOverrideBillingUrl = (id: number) => {
 export const overrideBilling = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getOverrideBillingUrl(id), {
+): Promise<OverrideBilling200> => {
+  return customFetch<OverrideBilling200>(getOverrideBillingUrl(id), {
     ...options,
     method: "POST",
   });
@@ -9103,8 +9310,8 @@ export const getGetBillingSummaryUrl = () => {
 
 export const getBillingSummary = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetBillingSummaryUrl(), {
+): Promise<GetBillingSummary200> => {
+  return customFetch<GetBillingSummary200>(getGetBillingSummaryUrl(), {
     ...options,
     method: "GET",
   });
@@ -9171,8 +9378,8 @@ export const getListBillingOrdersUrl = () => {
 
 export const listBillingOrders = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListBillingOrdersUrl(), {
+): Promise<ListBillingOrders200Item[]> => {
+  return customFetch<ListBillingOrders200Item[]>(getListBillingOrdersUrl(), {
     ...options,
     method: "GET",
   });
@@ -9239,8 +9446,8 @@ export const getBillingBulkUrl = () => {
 
 export const billingBulk = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getBillingBulkUrl(), {
+): Promise<BillingBulk200> => {
+  return customFetch<BillingBulk200>(getBillingBulkUrl(), {
     ...options,
     method: "POST",
   });
@@ -9314,8 +9521,8 @@ export const getGetLiveReadinessUrl = () => {
 
 export const getLiveReadiness = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetLiveReadinessUrl(), {
+): Promise<GetLiveReadiness200> => {
+  return customFetch<GetLiveReadiness200>(getGetLiveReadinessUrl(), {
     ...options,
     method: "GET",
   });
@@ -9382,8 +9589,8 @@ export const getListPackagesUrl = () => {
 
 export const listPackages = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListPackagesUrl(), {
+): Promise<PackageRow[]> => {
+  return customFetch<PackageRow[]>(getListPackagesUrl(), {
     ...options,
     method: "GET",
   });
@@ -9451,8 +9658,8 @@ export const getGetPackageUrl = (id: number) => {
 export const getPackage = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetPackageUrl(id), {
+): Promise<PackageRow> => {
+  return customFetch<PackageRow>(getGetPackageUrl(id), {
     ...options,
     method: "GET",
   });
@@ -9531,8 +9738,8 @@ export const getUpdatePackageUrl = (id: number) => {
 export const updatePackage = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdatePackageUrl(id), {
+): Promise<PackageRow> => {
+  return customFetch<PackageRow>(getUpdatePackageUrl(id), {
     ...options,
     method: "PATCH",
   });
@@ -9609,8 +9816,8 @@ export const getDeletePackageUrl = (id: number) => {
 export const deletePackage = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getDeletePackageUrl(id), {
+): Promise<DeletePackage200> => {
+  return customFetch<DeletePackage200>(getDeletePackageUrl(id), {
     ...options,
     method: "DELETE",
   });
@@ -9686,8 +9893,8 @@ export const getReorderPackagesUrl = () => {
 
 export const reorderPackages = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getReorderPackagesUrl(), {
+): Promise<ReorderPackages200> => {
+  return customFetch<ReorderPackages200>(getReorderPackagesUrl(), {
     ...options,
     method: "POST",
   });
@@ -9762,8 +9969,8 @@ export const getUpdatePackageItemUrl = (itemId: number) => {
 export const updatePackageItem = async (
   itemId: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdatePackageItemUrl(itemId), {
+): Promise<UpdatePackageItem200> => {
+  return customFetch<UpdatePackageItem200>(getUpdatePackageItemUrl(itemId), {
     ...options,
     method: "PATCH",
   });
@@ -9840,8 +10047,8 @@ export const getDeletePackageItemUrl = (itemId: number) => {
 export const deletePackageItem = async (
   itemId: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getDeletePackageItemUrl(itemId), {
+): Promise<DeletePackageItem200> => {
+  return customFetch<DeletePackageItem200>(getDeletePackageItemUrl(itemId), {
     ...options,
     method: "DELETE",
   });
@@ -9918,11 +10125,14 @@ export const getListPartnerContactsUrl = (partnerId: number) => {
 export const listPartnerContacts = async (
   partnerId: number,
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListPartnerContactsUrl(partnerId), {
-    ...options,
-    method: "GET",
-  });
+): Promise<ListPartnerContacts200Item[]> => {
+  return customFetch<ListPartnerContacts200Item[]>(
+    getListPartnerContactsUrl(partnerId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
 };
 
 export const getListPartnerContactsQueryKey = (partnerId: number) => {
@@ -10000,8 +10210,8 @@ export const getUpdatePartnerContactUrl = (id: number) => {
 export const updatePartnerContact = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdatePartnerContactUrl(id), {
+): Promise<UpdatePartnerContact200> => {
+  return customFetch<UpdatePartnerContact200>(getUpdatePartnerContactUrl(id), {
     ...options,
     method: "PATCH",
   });
@@ -10078,8 +10288,8 @@ export const getDeletePartnerContactUrl = (id: number) => {
 export const deletePartnerContact = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getDeletePartnerContactUrl(id), {
+): Promise<DeletePartnerContact200> => {
+  return customFetch<DeletePartnerContact200>(getDeletePartnerContactUrl(id), {
     ...options,
     method: "DELETE",
   });
@@ -10156,11 +10366,14 @@ export const getMakePrimaryPartnerContactUrl = (id: number) => {
 export const makePrimaryPartnerContact = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getMakePrimaryPartnerContactUrl(id), {
-    ...options,
-    method: "POST",
-  });
+): Promise<MakePrimaryPartnerContact200> => {
+  return customFetch<MakePrimaryPartnerContact200>(
+    getMakePrimaryPartnerContactUrl(id),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
 };
 
 export const getMakePrimaryPartnerContactMutationOptions = <
@@ -10233,11 +10446,14 @@ export const getListOnboardingSubmissionsUrl = () => {
 
 export const listOnboardingSubmissions = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListOnboardingSubmissionsUrl(), {
-    ...options,
-    method: "GET",
-  });
+): Promise<OnboardingSubmissionRow[]> => {
+  return customFetch<OnboardingSubmissionRow[]>(
+    getListOnboardingSubmissionsUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
 };
 
 export const getListOnboardingSubmissionsQueryKey = () => {
@@ -10303,11 +10519,14 @@ export const getGetOnboardingSubmissionUrl = (id: number) => {
 export const getOnboardingSubmission = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetOnboardingSubmissionUrl(id), {
-    ...options,
-    method: "GET",
-  });
+): Promise<OnboardingSubmissionRow> => {
+  return customFetch<OnboardingSubmissionRow>(
+    getGetOnboardingSubmissionUrl(id),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
 };
 
 export const getGetOnboardingSubmissionQueryKey = (id: number) => {
@@ -10385,11 +10604,14 @@ export const getUpdateOnboardingSubmissionUrl = (id: number) => {
 export const updateOnboardingSubmission = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdateOnboardingSubmissionUrl(id), {
-    ...options,
-    method: "PATCH",
-  });
+): Promise<OnboardingSubmissionRow> => {
+  return customFetch<OnboardingSubmissionRow>(
+    getUpdateOnboardingSubmissionUrl(id),
+    {
+      ...options,
+      method: "PATCH",
+    },
+  );
 };
 
 export const getUpdateOnboardingSubmissionMutationOptions = <
@@ -10462,8 +10684,8 @@ export const getListAdminAlertsUrl = () => {
 
 export const listAdminAlerts = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getListAdminAlertsUrl(), {
+): Promise<AlertsListResponse> => {
+  return customFetch<AlertsListResponse>(getListAdminAlertsUrl(), {
     ...options,
     method: "GET",
   });
@@ -10530,8 +10752,8 @@ export const getGetAdminAlertsSummaryUrl = () => {
 
 export const getAdminAlertsSummary = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetAdminAlertsSummaryUrl(), {
+): Promise<AlertsSummaryResponse> => {
+  return customFetch<AlertsSummaryResponse>(getGetAdminAlertsSummaryUrl(), {
     ...options,
     method: "GET",
   });
@@ -10599,8 +10821,8 @@ export const getGetPartnerAlertsUrl = (partnerId: number) => {
 export const getPartnerAlerts = async (
   partnerId: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetPartnerAlertsUrl(partnerId), {
+): Promise<AlertsListResponse> => {
+  return customFetch<AlertsListResponse>(getGetPartnerAlertsUrl(partnerId), {
     ...options,
     method: "GET",
   });
@@ -10681,8 +10903,8 @@ export const getGetOrderAlertsUrl = (orderId: number) => {
 export const getOrderAlerts = async (
   orderId: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetOrderAlertsUrl(orderId), {
+): Promise<AlertsListResponse> => {
+  return customFetch<AlertsListResponse>(getGetOrderAlertsUrl(orderId), {
     ...options,
     method: "GET",
   });
@@ -10761,11 +10983,14 @@ export const getResolveManualFollowupUrl = (id: number) => {
 export const resolveManualFollowup = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getResolveManualFollowupUrl(id), {
-    ...options,
-    method: "POST",
-  });
+): Promise<ResolveManualFollowup200> => {
+  return customFetch<ResolveManualFollowup200>(
+    getResolveManualFollowupUrl(id),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
 };
 
 export const getResolveManualFollowupMutationOptions = <
@@ -10839,11 +11064,14 @@ export const getResolveSupportIssueUrl = (issueId: string) => {
 export const resolveSupportIssue = async (
   issueId: string,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getResolveSupportIssueUrl(issueId), {
-    ...options,
-    method: "POST",
-  });
+): Promise<ResolveSupportIssue200> => {
+  return customFetch<ResolveSupportIssue200>(
+    getResolveSupportIssueUrl(issueId),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
 };
 
 export const getResolveSupportIssueMutationOptions = <
@@ -10917,8 +11145,8 @@ export const getArchivePartnerUrl = (id: number) => {
 export const archivePartner = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getArchivePartnerUrl(id), {
+): Promise<ArchivePartner200> => {
+  return customFetch<ArchivePartner200>(getArchivePartnerUrl(id), {
     ...options,
     method: "POST",
   });
@@ -10995,8 +11223,8 @@ export const getUnarchivePartnerUrl = (id: number) => {
 export const unarchivePartner = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUnarchivePartnerUrl(id), {
+): Promise<UnarchivePartner200> => {
+  return customFetch<UnarchivePartner200>(getUnarchivePartnerUrl(id), {
     ...options,
     method: "POST",
   });
@@ -11073,8 +11301,8 @@ export const getArchiveAssetUrl = (id: number) => {
 export const archiveAsset = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getArchiveAssetUrl(id), {
+): Promise<ArchiveAsset200> => {
+  return customFetch<ArchiveAsset200>(getArchiveAssetUrl(id), {
     ...options,
     method: "POST",
   });
@@ -11151,8 +11379,8 @@ export const getUnarchiveAssetUrl = (id: number) => {
 export const unarchiveAsset = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUnarchiveAssetUrl(id), {
+): Promise<UnarchiveAsset200> => {
+  return customFetch<UnarchiveAsset200>(getUnarchiveAssetUrl(id), {
     ...options,
     method: "POST",
   });
@@ -11228,8 +11456,8 @@ export const getListInvoicesUrl = () => {
 
 export const listInvoices = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListInvoicesUrl(), {
+): Promise<InvoiceRow[]> => {
+  return customFetch<InvoiceRow[]>(getListInvoicesUrl(), {
     ...options,
     method: "GET",
   });
@@ -11297,8 +11525,8 @@ export const getGetInvoiceUrl = (id: number) => {
 export const getInvoice = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetInvoiceUrl(id), {
+): Promise<GetInvoice200> => {
+  return customFetch<GetInvoice200>(getGetInvoiceUrl(id), {
     ...options,
     method: "GET",
   });
@@ -11377,8 +11605,8 @@ export const getUpdateInvoiceUrl = (id: number) => {
 export const updateInvoice = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdateInvoiceUrl(id), {
+): Promise<InvoiceRow> => {
+  return customFetch<InvoiceRow>(getUpdateInvoiceUrl(id), {
     ...options,
     method: "PATCH",
   });
@@ -11455,8 +11683,8 @@ export const getGetPublicInvoiceUrl = (token: string) => {
 export const getPublicInvoice = async (
   token: string,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetPublicInvoiceUrl(token), {
+): Promise<GetPublicInvoice200> => {
+  return customFetch<GetPublicInvoice200>(getGetPublicInvoiceUrl(token), {
     ...options,
     method: "GET",
   });
@@ -11535,8 +11763,8 @@ export const getRegenerateInvoiceUrl = (id: number) => {
 export const regenerateInvoice = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getRegenerateInvoiceUrl(id), {
+): Promise<InvoiceRow> => {
+  return customFetch<InvoiceRow>(getRegenerateInvoiceUrl(id), {
     ...options,
     method: "POST",
   });
@@ -11614,11 +11842,14 @@ export const deleteInvoicePayment = async (
   id: number,
   pid: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getDeleteInvoicePaymentUrl(id, pid), {
-    ...options,
-    method: "DELETE",
-  });
+): Promise<DeleteInvoicePayment200> => {
+  return customFetch<DeleteInvoicePayment200>(
+    getDeleteInvoicePaymentUrl(id, pid),
+    {
+      ...options,
+      method: "DELETE",
+    },
+  );
 };
 
 export const getDeleteInvoicePaymentMutationOptions = <
@@ -11691,8 +11922,8 @@ export const getScanOverdueInvoicesUrl = () => {
 
 export const scanOverdueInvoices = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getScanOverdueInvoicesUrl(), {
+): Promise<ScanOverdueInvoices200> => {
+  return customFetch<ScanOverdueInvoices200>(getScanOverdueInvoicesUrl(), {
     ...options,
     method: "POST",
   });
@@ -11766,8 +11997,8 @@ export const getListInventoryUrl = () => {
 
 export const listInventory = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListInventoryUrl(), {
+): Promise<InventoryRow[]> => {
+  return customFetch<InventoryRow[]>(getListInventoryUrl(), {
     ...options,
     method: "GET",
   });
@@ -11834,8 +12065,8 @@ export const getGetInventoryShortagesUrl = () => {
 
 export const getInventoryShortages = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getGetInventoryShortagesUrl(), {
+): Promise<InventoryShortageRow[]> => {
+  return customFetch<InventoryShortageRow[]>(getGetInventoryShortagesUrl(), {
     ...options,
     method: "GET",
   });
@@ -11903,8 +12134,8 @@ export const getUpdateInventoryUrl = (id: number) => {
 export const updateInventory = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdateInventoryUrl(id), {
+): Promise<InventoryRow> => {
+  return customFetch<InventoryRow>(getUpdateInventoryUrl(id), {
     ...options,
     method: "PATCH",
   });
@@ -11981,8 +12212,8 @@ export const getDeleteInventoryUrl = (id: number) => {
 export const deleteInventory = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getDeleteInventoryUrl(id), {
+): Promise<DeleteInventory200> => {
+  return customFetch<DeleteInventory200>(getDeleteInventoryUrl(id), {
     ...options,
     method: "DELETE",
   });
@@ -12058,11 +12289,14 @@ export const getListInventoryReservationsUrl = () => {
 
 export const listInventoryReservations = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListInventoryReservationsUrl(), {
-    ...options,
-    method: "GET",
-  });
+): Promise<InventoryReservationRow[]> => {
+  return customFetch<InventoryReservationRow[]>(
+    getListInventoryReservationsUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
 };
 
 export const getListInventoryReservationsQueryKey = () => {
@@ -12128,11 +12362,14 @@ export const getUpdateInventoryReservationUrl = (id: number) => {
 export const updateInventoryReservation = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdateInventoryReservationUrl(id), {
-    ...options,
-    method: "PATCH",
-  });
+): Promise<InventoryReservationRow> => {
+  return customFetch<InventoryReservationRow>(
+    getUpdateInventoryReservationUrl(id),
+    {
+      ...options,
+      method: "PATCH",
+    },
+  );
 };
 
 export const getUpdateInventoryReservationMutationOptions = <
@@ -12206,11 +12443,14 @@ export const getDeleteInventoryReservationUrl = (id: number) => {
 export const deleteInventoryReservation = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getDeleteInventoryReservationUrl(id), {
-    ...options,
-    method: "DELETE",
-  });
+): Promise<DeleteInventoryReservation200> => {
+  return customFetch<DeleteInventoryReservation200>(
+    getDeleteInventoryReservationUrl(id),
+    {
+      ...options,
+      method: "DELETE",
+    },
+  );
 };
 
 export const getDeleteInventoryReservationMutationOptions = <
@@ -12283,8 +12523,8 @@ export const getListAssetsUrl = () => {
 
 export const listAssets = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListAssetsUrl(), {
+): Promise<AssetRow[]> => {
+  return customFetch<AssetRow[]>(getListAssetsUrl(), {
     ...options,
     method: "GET",
   });
@@ -12352,8 +12592,8 @@ export const getGetAssetUrl = (id: number) => {
 export const getAsset = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetAssetUrl(id), {
+): Promise<AssetRow> => {
+  return customFetch<AssetRow>(getGetAssetUrl(id), {
     ...options,
     method: "GET",
   });
@@ -12430,8 +12670,8 @@ export const getUpdateAssetUrl = (id: number) => {
 export const updateAsset = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdateAssetUrl(id), {
+): Promise<AssetRow> => {
+  return customFetch<AssetRow>(getUpdateAssetUrl(id), {
     ...options,
     method: "PATCH",
   });
@@ -12508,8 +12748,8 @@ export const getDeleteAssetUrl = (id: number) => {
 export const deleteAsset = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getDeleteAssetUrl(id), {
+): Promise<DeleteAsset200> => {
+  return customFetch<DeleteAsset200>(getDeleteAssetUrl(id), {
     ...options,
     method: "DELETE",
   });
@@ -12585,8 +12825,8 @@ export const getListAssetEventsUrl = () => {
 
 export const listAssetEvents = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListAssetEventsUrl(), {
+): Promise<AssetEventRow[]> => {
+  return customFetch<AssetEventRow[]>(getListAssetEventsUrl(), {
     ...options,
     method: "GET",
   });
@@ -12653,8 +12893,8 @@ export const getGetUsageSummaryUrl = () => {
 
 export const getUsageSummary = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetUsageSummaryUrl(), {
+): Promise<UsageSummary> => {
+  return customFetch<UsageSummary>(getGetUsageSummaryUrl(), {
     ...options,
     method: "GET",
   });
@@ -12721,8 +12961,8 @@ export const getGetUsageTimelineUrl = () => {
 
 export const getUsageTimeline = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getGetUsageTimelineUrl(), {
+): Promise<UsageTimelinePoint[]> => {
+  return customFetch<UsageTimelinePoint[]>(getGetUsageTimelineUrl(), {
     ...options,
     method: "GET",
   });
@@ -12789,8 +13029,8 @@ export const getEmitUsageUrl = () => {
 
 export const emitUsage = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getEmitUsageUrl(), {
+): Promise<EmitUsage200> => {
+  return customFetch<EmitUsage200>(getEmitUsageUrl(), {
     ...options,
     method: "POST",
   });
@@ -12864,8 +13104,8 @@ export const getListFeedbackUrl = () => {
 
 export const listFeedback = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListFeedbackUrl(), {
+): Promise<FeedbackRow[]> => {
+  return customFetch<FeedbackRow[]>(getListFeedbackUrl(), {
     ...options,
     method: "GET",
   });
@@ -12933,8 +13173,8 @@ export const getUpdateFeedbackUrl = (id: number) => {
 export const updateFeedback = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdateFeedbackUrl(id), {
+): Promise<FeedbackRow> => {
+  return customFetch<FeedbackRow>(getUpdateFeedbackUrl(id), {
     ...options,
     method: "PATCH",
   });
@@ -13011,8 +13251,8 @@ export const getDeleteFeedbackUrl = (id: number) => {
 export const deleteFeedback = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getDeleteFeedbackUrl(id), {
+): Promise<DeleteFeedback200> => {
+  return customFetch<DeleteFeedback200>(getDeleteFeedbackUrl(id), {
     ...options,
     method: "DELETE",
   });
@@ -13088,8 +13328,8 @@ export const getListPartnerHealthUrl = () => {
 
 export const listPartnerHealth = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListPartnerHealthUrl(), {
+): Promise<PartnerHealthRow[]> => {
+  return customFetch<PartnerHealthRow[]>(getListPartnerHealthUrl(), {
     ...options,
     method: "GET",
   });
@@ -13157,8 +13397,8 @@ export const getGetPartnerHealthUrl = (id: number) => {
 export const getPartnerHealth = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetPartnerHealthUrl(id), {
+): Promise<PartnerHealthRow> => {
+  return customFetch<PartnerHealthRow>(getGetPartnerHealthUrl(id), {
     ...options,
     method: "GET",
   });
@@ -13236,8 +13476,8 @@ export const getGetPostLaunchDashboardUrl = () => {
 
 export const getPostLaunchDashboard = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetPostLaunchDashboardUrl(), {
+): Promise<PostLaunchDashboard> => {
+  return customFetch<PostLaunchDashboard>(getGetPostLaunchDashboardUrl(), {
     ...options,
     method: "GET",
   });
@@ -13305,8 +13545,8 @@ export const getListObjectionsUrl = () => {
 
 export const listObjections = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListObjectionsUrl(), {
+): Promise<ObjectionRow[]> => {
+  return customFetch<ObjectionRow[]>(getListObjectionsUrl(), {
     ...options,
     method: "GET",
   });
@@ -13373,8 +13613,8 @@ export const getCreateObjectionUrl = () => {
 
 export const createObjection = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getCreateObjectionUrl(), {
+): Promise<ObjectionRow> => {
+  return customFetch<ObjectionRow>(getCreateObjectionUrl(), {
     ...options,
     method: "POST",
   });
@@ -13448,8 +13688,8 @@ export const getGetObjectionsSummaryUrl = () => {
 
 export const getObjectionsSummary = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetObjectionsSummaryUrl(), {
+): Promise<ObjectionsSummary> => {
+  return customFetch<ObjectionsSummary>(getGetObjectionsSummaryUrl(), {
     ...options,
     method: "GET",
   });
@@ -13516,8 +13756,8 @@ export const getGetObjectionsConstantsUrl = () => {
 
 export const getObjectionsConstants = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetObjectionsConstantsUrl(), {
+): Promise<ObjectionsConstants> => {
+  return customFetch<ObjectionsConstants>(getGetObjectionsConstantsUrl(), {
     ...options,
     method: "GET",
   });
@@ -13586,8 +13826,8 @@ export const getGetObjectionUrl = (id: number) => {
 export const getObjection = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetObjectionUrl(id), {
+): Promise<ObjectionRow> => {
+  return customFetch<ObjectionRow>(getGetObjectionUrl(id), {
     ...options,
     method: "GET",
   });
@@ -13666,8 +13906,8 @@ export const getUpdateObjectionUrl = (id: number) => {
 export const updateObjection = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdateObjectionUrl(id), {
+): Promise<ObjectionRow> => {
+  return customFetch<ObjectionRow>(getUpdateObjectionUrl(id), {
     ...options,
     method: "PATCH",
   });
@@ -13744,8 +13984,8 @@ export const getDeleteObjectionUrl = (id: number) => {
 export const deleteObjection = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getDeleteObjectionUrl(id), {
+): Promise<DeleteObjection200> => {
+  return customFetch<DeleteObjection200>(getDeleteObjectionUrl(id), {
     ...options,
     method: "DELETE",
   });
@@ -13821,8 +14061,8 @@ export const getListDemoFollowupsUrl = () => {
 
 export const listDemoFollowups = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListDemoFollowupsUrl(), {
+): Promise<DemoFollowupRow[]> => {
+  return customFetch<DemoFollowupRow[]>(getListDemoFollowupsUrl(), {
     ...options,
     method: "GET",
   });
@@ -13889,8 +14129,8 @@ export const getCreateDemoFollowupUrl = () => {
 
 export const createDemoFollowup = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getCreateDemoFollowupUrl(), {
+): Promise<DemoFollowupRow> => {
+  return customFetch<DemoFollowupRow>(getCreateDemoFollowupUrl(), {
     ...options,
     method: "POST",
   });
@@ -13965,8 +14205,8 @@ export const getGetDemoFollowupUrl = (id: number) => {
 export const getDemoFollowup = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetDemoFollowupUrl(id), {
+): Promise<DemoFollowupRow> => {
+  return customFetch<DemoFollowupRow>(getGetDemoFollowupUrl(id), {
     ...options,
     method: "GET",
   });
@@ -14045,8 +14285,8 @@ export const getUpdateDemoFollowupUrl = (id: number) => {
 export const updateDemoFollowup = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdateDemoFollowupUrl(id), {
+): Promise<DemoFollowupRow> => {
+  return customFetch<DemoFollowupRow>(getUpdateDemoFollowupUrl(id), {
     ...options,
     method: "PATCH",
   });
@@ -14123,8 +14363,8 @@ export const getDeleteDemoFollowupUrl = (id: number) => {
 export const deleteDemoFollowup = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getDeleteDemoFollowupUrl(id), {
+): Promise<DeleteDemoFollowup200> => {
+  return customFetch<DeleteDemoFollowup200>(getDeleteDemoFollowupUrl(id), {
     ...options,
     method: "DELETE",
   });
@@ -14198,10 +14438,8 @@ export const getListFaqUrl = () => {
   return `/api/faq`;
 };
 
-export const listFaq = async (
-  options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListFaqUrl(), {
+export const listFaq = async (options?: RequestInit): Promise<FaqRow[]> => {
+  return customFetch<FaqRow[]>(getListFaqUrl(), {
     ...options,
     method: "GET",
   });
@@ -14258,10 +14496,8 @@ export const getCreateFaqUrl = () => {
   return `/api/faq`;
 };
 
-export const createFaq = async (
-  options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getCreateFaqUrl(), {
+export const createFaq = async (options?: RequestInit): Promise<FaqRow> => {
+  return customFetch<FaqRow>(getCreateFaqUrl(), {
     ...options,
     method: "POST",
   });
@@ -14335,8 +14571,8 @@ export const getGetFaqConstantsUrl = () => {
 
 export const getFaqConstants = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetFaqConstantsUrl(), {
+): Promise<FaqConstants> => {
+  return customFetch<FaqConstants>(getGetFaqConstantsUrl(), {
     ...options,
     method: "GET",
   });
@@ -14404,8 +14640,8 @@ export const getUpdateFaqUrl = (id: number) => {
 export const updateFaq = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdateFaqUrl(id), {
+): Promise<FaqRow> => {
+  return customFetch<FaqRow>(getUpdateFaqUrl(id), {
     ...options,
     method: "PATCH",
   });
@@ -14482,8 +14718,8 @@ export const getDeleteFaqUrl = (id: number) => {
 export const deleteFaq = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getDeleteFaqUrl(id), {
+): Promise<DeleteFaq200> => {
+  return customFetch<DeleteFaq200>(getDeleteFaqUrl(id), {
     ...options,
     method: "DELETE",
   });
@@ -14559,8 +14795,8 @@ export const getGetStabilizationRolloutUrl = () => {
 
 export const getStabilizationRollout = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetStabilizationRolloutUrl(), {
+): Promise<StabilizationDashboard> => {
+  return customFetch<StabilizationDashboard>(getGetStabilizationRolloutUrl(), {
     ...options,
     method: "GET",
   });
@@ -14629,8 +14865,8 @@ export const getGetAccountBlockersUrl = (id: number) => {
 export const getAccountBlockers = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetAccountBlockersUrl(id), {
+): Promise<GetAccountBlockers200> => {
+  return customFetch<GetAccountBlockers200>(getGetAccountBlockersUrl(id), {
     ...options,
     method: "GET",
   });
@@ -14708,8 +14944,8 @@ export const getGetReconciliationSummaryUrl = () => {
 
 export const getReconciliationSummary = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetReconciliationSummaryUrl(), {
+): Promise<ReconciliationSummary> => {
+  return customFetch<ReconciliationSummary>(getGetReconciliationSummaryUrl(), {
     ...options,
     method: "GET",
   });
@@ -14777,11 +15013,14 @@ export const getListReconciliationOrdersUrl = () => {
 
 export const listReconciliationOrders = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListReconciliationOrdersUrl(), {
-    ...options,
-    method: "GET",
-  });
+): Promise<ReconciliationOrderRow[]> => {
+  return customFetch<ReconciliationOrderRow[]>(
+    getListReconciliationOrdersUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
 };
 
 export const getListReconciliationOrdersQueryKey = () => {
@@ -14847,11 +15086,14 @@ export const getUpdateReconciliationOrderUrl = (id: number) => {
 export const updateReconciliationOrder = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdateReconciliationOrderUrl(id), {
-    ...options,
-    method: "PATCH",
-  });
+): Promise<ReconciliationOrderRow> => {
+  return customFetch<ReconciliationOrderRow>(
+    getUpdateReconciliationOrderUrl(id),
+    {
+      ...options,
+      method: "PATCH",
+    },
+  );
 };
 
 export const getUpdateReconciliationOrderMutationOptions = <
@@ -14925,11 +15167,14 @@ export const getAutoFlagReconciliationUrl = (id: number) => {
 export const autoFlagReconciliation = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getAutoFlagReconciliationUrl(id), {
-    ...options,
-    method: "POST",
-  });
+): Promise<AutoFlagReconciliation200> => {
+  return customFetch<AutoFlagReconciliation200>(
+    getAutoFlagReconciliationUrl(id),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
 };
 
 export const getAutoFlagReconciliationMutationOptions = <
@@ -15002,8 +15247,8 @@ export const getListDiscrepanciesUrl = () => {
 
 export const listDiscrepancies = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListDiscrepanciesUrl(), {
+): Promise<DiscrepancyRow[]> => {
+  return customFetch<DiscrepancyRow[]>(getListDiscrepanciesUrl(), {
     ...options,
     method: "GET",
   });
@@ -15071,8 +15316,8 @@ export const getUpdateDiscrepancyUrl = (id: number) => {
 export const updateDiscrepancy = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdateDiscrepancyUrl(id), {
+): Promise<DiscrepancyRow> => {
+  return customFetch<DiscrepancyRow>(getUpdateDiscrepancyUrl(id), {
     ...options,
     method: "PATCH",
   });
@@ -15149,8 +15394,8 @@ export const getDeleteDiscrepancyUrl = (id: number) => {
 export const deleteDiscrepancy = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getDeleteDiscrepancyUrl(id), {
+): Promise<DeleteDiscrepancy200> => {
+  return customFetch<DeleteDiscrepancy200>(getDeleteDiscrepancyUrl(id), {
     ...options,
     method: "DELETE",
   });
@@ -15227,11 +15472,14 @@ export const getListCommissionPayoutsUrl = (id: number) => {
 export const listCommissionPayouts = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListCommissionPayoutsUrl(id), {
-    ...options,
-    method: "GET",
-  });
+): Promise<ListCommissionPayouts200Item[]> => {
+  return customFetch<ListCommissionPayouts200Item[]>(
+    getListCommissionPayoutsUrl(id),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
 };
 
 export const getListCommissionPayoutsQueryKey = (id: number) => {
@@ -15309,8 +15557,8 @@ export const deleteCommissionPayout = async (
   id: number,
   payoutId: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(
+): Promise<DeleteCommissionPayout200> => {
+  return customFetch<DeleteCommissionPayout200>(
     getDeleteCommissionPayoutUrl(id, payoutId),
     {
       ...options,
@@ -15389,11 +15637,14 @@ export const getBulkUpdateReconciliationUrl = () => {
 
 export const bulkUpdateReconciliation = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getBulkUpdateReconciliationUrl(), {
-    ...options,
-    method: "POST",
-  });
+): Promise<BulkUpdateReconciliation200> => {
+  return customFetch<BulkUpdateReconciliation200>(
+    getBulkUpdateReconciliationUrl(),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
 };
 
 export const getBulkUpdateReconciliationMutationOptions = <
@@ -15464,8 +15715,8 @@ export const getListProductsUrl = () => {
 
 export const listProducts = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListProductsUrl(), {
+): Promise<ProductRow[]> => {
+  return customFetch<ProductRow[]>(getListProductsUrl(), {
     ...options,
     method: "GET",
   });
@@ -15533,8 +15784,8 @@ export const getGetProductUrl = (id: number) => {
 export const getProduct = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetProductUrl(id), {
+): Promise<ProductRow> => {
+  return customFetch<ProductRow>(getGetProductUrl(id), {
     ...options,
     method: "GET",
   });
@@ -15613,8 +15864,8 @@ export const getUpdateProductUrl = (id: number) => {
 export const updateProduct = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdateProductUrl(id), {
+): Promise<ProductRow> => {
+  return customFetch<ProductRow>(getUpdateProductUrl(id), {
     ...options,
     method: "PATCH",
   });
@@ -15690,8 +15941,8 @@ export const getListProductFamiliesUrl = () => {
 
 export const listProductFamilies = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListProductFamiliesUrl(), {
+): Promise<ProductFamilyRow[]> => {
+  return customFetch<ProductFamilyRow[]>(getListProductFamiliesUrl(), {
     ...options,
     method: "GET",
   });
@@ -15759,8 +16010,8 @@ export const getGetProductFamilyUrl = (id: number) => {
 export const getProductFamily = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetProductFamilyUrl(id), {
+): Promise<ProductFamilyRow> => {
+  return customFetch<ProductFamilyRow>(getGetProductFamilyUrl(id), {
     ...options,
     method: "GET",
   });
@@ -15839,8 +16090,8 @@ export const getUpdateProductFamilyUrl = (id: number) => {
 export const updateProductFamily = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdateProductFamilyUrl(id), {
+): Promise<ProductFamilyRow> => {
+  return customFetch<ProductFamilyRow>(getUpdateProductFamilyUrl(id), {
     ...options,
     method: "PATCH",
   });
@@ -15917,8 +16168,8 @@ export const getDeleteProductFamilyUrl = (id: number) => {
 export const deleteProductFamily = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getDeleteProductFamilyUrl(id), {
+): Promise<DeleteProductFamily200> => {
+  return customFetch<DeleteProductFamily200>(getDeleteProductFamilyUrl(id), {
     ...options,
     method: "DELETE",
   });
@@ -15999,8 +16250,8 @@ export const updateProductFamilyMember = async (
   id: number,
   memberId: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(
+): Promise<UpdateProductFamilyMember200> => {
+  return customFetch<UpdateProductFamilyMember200>(
     getUpdateProductFamilyMemberUrl(id, memberId),
     {
       ...options,
@@ -16084,8 +16335,8 @@ export const deleteProductFamilyMember = async (
   id: number,
   memberId: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(
+): Promise<DeleteProductFamilyMember200> => {
+  return customFetch<DeleteProductFamilyMember200>(
     getDeleteProductFamilyMemberUrl(id, memberId),
     {
       ...options,
@@ -16165,8 +16416,8 @@ export const getGetPartnerFamilyAvailabilityUrl = (partnerId: number) => {
 export const getPartnerFamilyAvailability = async (
   partnerId: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(
+): Promise<GetPartnerFamilyAvailability200> => {
+  return customFetch<GetPartnerFamilyAvailability200>(
     getGetPartnerFamilyAvailabilityUrl(partnerId),
     {
       ...options,
@@ -16254,8 +16505,8 @@ export const getGetProductFamilyContextUrl = (productId: number) => {
 export const getProductFamilyContext = async (
   productId: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(
+): Promise<GetProductFamilyContext200> => {
+  return customFetch<GetProductFamilyContext200>(
     getGetProductFamilyContextUrl(productId),
     {
       ...options,
@@ -16341,8 +16592,8 @@ export const getSeedEasyUpFamilyUrl = () => {
 
 export const seedEasyUpFamily = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getSeedEasyUpFamilyUrl(), {
+): Promise<SeedEasyUpFamily200> => {
+  return customFetch<SeedEasyUpFamily200>(getSeedEasyUpFamilyUrl(), {
     ...options,
     method: "POST",
   });
@@ -16417,8 +16668,8 @@ export const getListPartnerRentableAssetsUrl = (partnerId: number) => {
 export const listPartnerRentableAssets = async (
   partnerId: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(
+): Promise<ListPartnerRentableAssets200> => {
+  return customFetch<ListPartnerRentableAssets200>(
     getListPartnerRentableAssetsUrl(partnerId),
     {
       ...options,
@@ -16505,11 +16756,14 @@ export const getUpdateRentalInventoryUrl = (id: number) => {
 export const updateRentalInventory = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdateRentalInventoryUrl(id), {
-    ...options,
-    method: "PATCH",
-  });
+): Promise<UpdateRentalInventory200> => {
+  return customFetch<UpdateRentalInventory200>(
+    getUpdateRentalInventoryUrl(id),
+    {
+      ...options,
+      method: "PATCH",
+    },
+  );
 };
 
 export const getUpdateRentalInventoryMutationOptions = <
@@ -16583,11 +16837,14 @@ export const getListInventoryBlackoutsUrl = (id: number) => {
 export const listInventoryBlackouts = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getListInventoryBlackoutsUrl(id), {
-    ...options,
-    method: "GET",
-  });
+): Promise<ListInventoryBlackouts200> => {
+  return customFetch<ListInventoryBlackouts200>(
+    getListInventoryBlackoutsUrl(id),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
 };
 
 export const getListInventoryBlackoutsQueryKey = (id: number) => {
@@ -16668,8 +16925,8 @@ export const updateInventoryBlackout = async (
   id: number,
   blackoutId: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(
+): Promise<UpdateInventoryBlackout200> => {
+  return customFetch<UpdateInventoryBlackout200>(
     getUpdateInventoryBlackoutUrl(id, blackoutId),
     {
       ...options,
@@ -16753,8 +17010,8 @@ export const deleteInventoryBlackout = async (
   id: number,
   blackoutId: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(
+): Promise<DeleteInventoryBlackout200> => {
+  return customFetch<DeleteInventoryBlackout200>(
     getDeleteInventoryBlackoutUrl(id, blackoutId),
     {
       ...options,
@@ -16834,8 +17091,8 @@ export const getGetInventoryBookingsUrl = (id: number) => {
 export const getInventoryBookings = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetInventoryBookingsUrl(id), {
+): Promise<GetInventoryBookings200> => {
+  return customFetch<GetInventoryBookings200>(getGetInventoryBookingsUrl(id), {
     ...options,
     method: "GET",
   });
@@ -16915,11 +17172,14 @@ export const getGetInventoryAvailabilityUrl = (id: number) => {
 export const getInventoryAvailability = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetInventoryAvailabilityUrl(id), {
-    ...options,
-    method: "GET",
-  });
+): Promise<GetInventoryAvailability200> => {
+  return customFetch<GetInventoryAvailability200>(
+    getGetInventoryAvailabilityUrl(id),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
 };
 
 export const getGetInventoryAvailabilityQueryKey = (id: number) => {
@@ -16996,8 +17256,8 @@ export const getListQuoteAssetsUrl = () => {
 
 export const listQuoteAssets = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListQuoteAssetsUrl(), {
+): Promise<QuoteAssetRow[]> => {
+  return customFetch<QuoteAssetRow[]>(getListQuoteAssetsUrl(), {
     ...options,
     method: "GET",
   });
@@ -17064,8 +17324,8 @@ export const getGetQuoteIngestionStatsUrl = () => {
 
 export const getQuoteIngestionStats = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetQuoteIngestionStatsUrl(), {
+): Promise<QuoteIngestionStats> => {
+  return customFetch<QuoteIngestionStats>(getGetQuoteIngestionStatsUrl(), {
     ...options,
     method: "GET",
   });
@@ -17134,8 +17394,8 @@ export const getApproveBillingSignalsUrl = (id: number) => {
 export const approveBillingSignals = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getApproveBillingSignalsUrl(id), {
+): Promise<QuoteAssetRow> => {
+  return customFetch<QuoteAssetRow>(getApproveBillingSignalsUrl(id), {
     ...options,
     method: "POST",
   });
@@ -17212,8 +17472,8 @@ export const getDismissBillingSignalsUrl = (id: number) => {
 export const dismissBillingSignals = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getDismissBillingSignalsUrl(id), {
+): Promise<QuoteAssetRow> => {
+  return customFetch<QuoteAssetRow>(getDismissBillingSignalsUrl(id), {
     ...options,
     method: "POST",
   });
@@ -17290,8 +17550,8 @@ export const getRerunBillingSignalsUrl = (id: number) => {
 export const rerunBillingSignals = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getRerunBillingSignalsUrl(id), {
+): Promise<RerunBillingSignals200> => {
+  return customFetch<RerunBillingSignals200>(getRerunBillingSignalsUrl(id), {
     ...options,
     method: "POST",
   });
@@ -17368,8 +17628,8 @@ export const getUpdateQuoteAssetUrl = (id: number) => {
 export const updateQuoteAsset = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdateQuoteAssetUrl(id), {
+): Promise<QuoteAssetRow> => {
+  return customFetch<QuoteAssetRow>(getUpdateQuoteAssetUrl(id), {
     ...options,
     method: "PATCH",
   });
@@ -17446,8 +17706,8 @@ export const getDeleteQuoteAssetUrl = (id: number) => {
 export const deleteQuoteAsset = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getDeleteQuoteAssetUrl(id), {
+): Promise<DeleteQuoteAsset200> => {
+  return customFetch<DeleteQuoteAsset200>(getDeleteQuoteAssetUrl(id), {
     ...options,
     method: "DELETE",
   });
@@ -17523,8 +17783,8 @@ export const getBulkUpdateQuoteAssetsUrl = () => {
 
 export const bulkUpdateQuoteAssets = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getBulkUpdateQuoteAssetsUrl(), {
+): Promise<BulkUpdateQuoteAssets200> => {
+  return customFetch<BulkUpdateQuoteAssets200>(getBulkUpdateQuoteAssetsUrl(), {
     ...options,
     method: "POST",
   });
@@ -17599,11 +17859,14 @@ export const getListQuoteAssetMappingsUrl = (id: number) => {
 export const listQuoteAssetMappings = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListQuoteAssetMappingsUrl(id), {
-    ...options,
-    method: "GET",
-  });
+): Promise<ListQuoteAssetMappings200Item[]> => {
+  return customFetch<ListQuoteAssetMappings200Item[]>(
+    getListQuoteAssetMappingsUrl(id),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
 };
 
 export const getListQuoteAssetMappingsQueryKey = (id: number) => {
@@ -17680,8 +17943,8 @@ export const getCreateQuoteAssetMappingExistingUrl = (id: number) => {
 export const createQuoteAssetMappingExisting = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(
+): Promise<CreateQuoteAssetMappingExisting200> => {
+  return customFetch<CreateQuoteAssetMappingExisting200>(
     getCreateQuoteAssetMappingExistingUrl(id),
     {
       ...options,
@@ -17767,8 +18030,8 @@ export const deleteQuoteAssetMapping = async (
   id: number,
   mappingId: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(
+): Promise<DeleteQuoteAssetMapping200> => {
+  return customFetch<DeleteQuoteAssetMapping200>(
     getDeleteQuoteAssetMappingUrl(id, mappingId),
     {
       ...options,
@@ -17848,11 +18111,14 @@ export const getListSpecStandardsUrl = (productId: number) => {
 export const listSpecStandards = async (
   productId: number,
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListSpecStandardsUrl(productId), {
-    ...options,
-    method: "GET",
-  });
+): Promise<ListSpecStandards200Item[]> => {
+  return customFetch<ListSpecStandards200Item[]>(
+    getListSpecStandardsUrl(productId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
 };
 
 export const getListSpecStandardsQueryKey = (productId: number) => {
@@ -17931,8 +18197,8 @@ export const updateSpecStandard = async (
   productId: number,
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(
+): Promise<UpdateSpecStandard200> => {
+  return customFetch<UpdateSpecStandard200>(
     getUpdateSpecStandardUrl(productId, id),
     {
       ...options,
@@ -18013,8 +18279,8 @@ export const deleteSpecStandard = async (
   productId: number,
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(
+): Promise<DeleteSpecStandard200> => {
+  return customFetch<DeleteSpecStandard200>(
     getDeleteSpecStandardUrl(productId, id),
     {
       ...options,
@@ -18095,8 +18361,8 @@ export const setCurrentSpecStandard = async (
   productId: number,
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(
+): Promise<SetCurrentSpecStandard200> => {
+  return customFetch<SetCurrentSpecStandard200>(
     getSetCurrentSpecStandardUrl(productId, id),
     {
       ...options,
@@ -18175,8 +18441,8 @@ export const getGetCatalogIntelligenceOverviewUrl = () => {
 
 export const getCatalogIntelligenceOverview = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(
+): Promise<CatalogIntelligenceOverview> => {
+  return customFetch<CatalogIntelligenceOverview>(
     getGetCatalogIntelligenceOverviewUrl(),
     {
       ...options,
@@ -18249,11 +18515,14 @@ export const getListDeckExtractionsUrl = (partnerId: number) => {
 export const listDeckExtractions = async (
   partnerId: number,
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListDeckExtractionsUrl(partnerId), {
-    ...options,
-    method: "GET",
-  });
+): Promise<ListDeckExtractions200Item[]> => {
+  return customFetch<ListDeckExtractions200Item[]>(
+    getListDeckExtractionsUrl(partnerId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
 };
 
 export const getListDeckExtractionsQueryKey = (partnerId: number) => {
@@ -18331,8 +18600,8 @@ export const getGetDeckExtractionUrl = (id: number) => {
 export const getDeckExtraction = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetDeckExtractionUrl(id), {
+): Promise<GetDeckExtraction200> => {
+  return customFetch<GetDeckExtraction200>(getGetDeckExtractionUrl(id), {
     ...options,
     method: "GET",
   });
@@ -18411,11 +18680,14 @@ export const getUpdateDeckExtractionItemUrl = (id: number) => {
 export const updateDeckExtractionItem = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdateDeckExtractionItemUrl(id), {
-    ...options,
-    method: "PATCH",
-  });
+): Promise<UpdateDeckExtractionItem200> => {
+  return customFetch<UpdateDeckExtractionItem200>(
+    getUpdateDeckExtractionItemUrl(id),
+    {
+      ...options,
+      method: "PATCH",
+    },
+  );
 };
 
 export const getUpdateDeckExtractionItemMutationOptions = <
@@ -18489,11 +18761,14 @@ export const getDeleteDeckExtractionItemUrl = (id: number) => {
 export const deleteDeckExtractionItem = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getDeleteDeckExtractionItemUrl(id), {
-    ...options,
-    method: "DELETE",
-  });
+): Promise<DeleteDeckExtractionItem200> => {
+  return customFetch<DeleteDeckExtractionItem200>(
+    getDeleteDeckExtractionItemUrl(id),
+    {
+      ...options,
+      method: "DELETE",
+    },
+  );
 };
 
 export const getDeleteDeckExtractionItemMutationOptions = <
@@ -18567,8 +18842,8 @@ export const getCheckDeckExtractionDuplicateUrl = (partnerId: number) => {
 export const checkDeckExtractionDuplicate = async (
   partnerId: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(
+): Promise<CheckDeckExtractionDuplicate200> => {
+  return customFetch<CheckDeckExtractionDuplicate200>(
     getCheckDeckExtractionDuplicateUrl(partnerId),
     {
       ...options,
@@ -18658,8 +18933,8 @@ export const getRerunDeckExtractionUrl = (id: number) => {
 export const rerunDeckExtraction = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getRerunDeckExtractionUrl(id), {
+): Promise<RerunDeckExtraction200> => {
+  return customFetch<RerunDeckExtraction200>(getRerunDeckExtractionUrl(id), {
     ...options,
     method: "POST",
   });
@@ -18735,11 +19010,14 @@ export const getApproveDeckExtractionItemsUrl = () => {
 
 export const approveDeckExtractionItems = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getApproveDeckExtractionItemsUrl(), {
-    ...options,
-    method: "POST",
-  });
+): Promise<ApproveDeckExtractionItems200> => {
+  return customFetch<ApproveDeckExtractionItems200>(
+    getApproveDeckExtractionItemsUrl(),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
 };
 
 export const getApproveDeckExtractionItemsMutationOptions = <
@@ -18811,8 +19089,8 @@ export const getListPackageExtractionsUrl = (partnerId: number) => {
 export const listPackageExtractions = async (
   partnerId: number,
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(
+): Promise<PackageExtractionRow[]> => {
+  return customFetch<PackageExtractionRow[]>(
     getListPackageExtractionsUrl(partnerId),
     {
       ...options,
@@ -18899,8 +19177,8 @@ export const getGetPackageExtractionUrl = (id: number) => {
 export const getPackageExtraction = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetPackageExtractionUrl(id), {
+): Promise<PackageExtractionRow> => {
+  return customFetch<PackageExtractionRow>(getGetPackageExtractionUrl(id), {
     ...options,
     method: "GET",
   });
@@ -18980,8 +19258,8 @@ export const getUpdatePackageExtractionUrl = (id: number) => {
 export const updatePackageExtraction = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdatePackageExtractionUrl(id), {
+): Promise<PackageExtractionRow> => {
+  return customFetch<PackageExtractionRow>(getUpdatePackageExtractionUrl(id), {
     ...options,
     method: "PATCH",
   });
@@ -19058,11 +19336,14 @@ export const getDeletePackageExtractionUrl = (id: number) => {
 export const deletePackageExtraction = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getDeletePackageExtractionUrl(id), {
-    ...options,
-    method: "DELETE",
-  });
+): Promise<DeletePackageExtraction200> => {
+  return customFetch<DeletePackageExtraction200>(
+    getDeletePackageExtractionUrl(id),
+    {
+      ...options,
+      method: "DELETE",
+    },
+  );
 };
 
 export const getDeletePackageExtractionMutationOptions = <
@@ -19136,8 +19417,8 @@ export const getCheckPackageExtractionDuplicateUrl = (partnerId: number) => {
 export const checkPackageExtractionDuplicate = async (
   partnerId: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(
+): Promise<PackageExtractionDuplicateCheck> => {
+  return customFetch<PackageExtractionDuplicateCheck>(
     getCheckPackageExtractionDuplicateUrl(partnerId),
     {
       ...options,
@@ -19229,11 +19510,14 @@ export const getRerunPackageExtractionUrl = (id: number) => {
 export const rerunPackageExtraction = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getRerunPackageExtractionUrl(id), {
-    ...options,
-    method: "POST",
-  });
+): Promise<RerunPackageExtraction200> => {
+  return customFetch<RerunPackageExtraction200>(
+    getRerunPackageExtractionUrl(id),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
 };
 
 export const getRerunPackageExtractionMutationOptions = <
@@ -19307,11 +19591,14 @@ export const getCommitPackageExtractionUrl = (id: number) => {
 export const commitPackageExtraction = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getCommitPackageExtractionUrl(id), {
-    ...options,
-    method: "POST",
-  });
+): Promise<CommitPackageExtraction200> => {
+  return customFetch<CommitPackageExtraction200>(
+    getCommitPackageExtractionUrl(id),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
 };
 
 export const getCommitPackageExtractionMutationOptions = <
@@ -23035,8 +23322,8 @@ export const getListWorkflowRulesUrl = () => {
 
 export const listWorkflowRules = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListWorkflowRulesUrl(), {
+): Promise<WorkflowRuleRow[]> => {
+  return customFetch<WorkflowRuleRow[]>(getListWorkflowRulesUrl(), {
     ...options,
     method: "GET",
   });
@@ -23104,8 +23391,8 @@ export const getGetWorkflowRuleUrl = (id: number) => {
 export const getWorkflowRule = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetWorkflowRuleUrl(id), {
+): Promise<WorkflowRuleRow> => {
+  return customFetch<WorkflowRuleRow>(getGetWorkflowRuleUrl(id), {
     ...options,
     method: "GET",
   });
@@ -23184,8 +23471,8 @@ export const getUpdateWorkflowRuleUrl = (id: number) => {
 export const updateWorkflowRule = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdateWorkflowRuleUrl(id), {
+): Promise<WorkflowRuleRow> => {
+  return customFetch<WorkflowRuleRow>(getUpdateWorkflowRuleUrl(id), {
     ...options,
     method: "PATCH",
   });
@@ -23261,8 +23548,8 @@ export const getCreateWorkflowRuleUrl = () => {
 
 export const createWorkflowRule = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getCreateWorkflowRuleUrl(), {
+): Promise<WorkflowRuleRow> => {
+  return customFetch<WorkflowRuleRow>(getCreateWorkflowRuleUrl(), {
     ...options,
     method: "POST",
   });
@@ -23337,8 +23624,8 @@ export const getToggleWorkflowRuleUrl = (id: number) => {
 export const toggleWorkflowRule = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObjectOrNull> => {
-  return customFetch<AdminGenericObjectOrNull>(getToggleWorkflowRuleUrl(id), {
+): Promise<WorkflowRuleRow | null> => {
+  return customFetch<WorkflowRuleRow | null>(getToggleWorkflowRuleUrl(id), {
     ...options,
     method: "POST",
   });
@@ -23415,8 +23702,8 @@ export const getDuplicateWorkflowRuleUrl = (id: number) => {
 export const duplicateWorkflowRule = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getDuplicateWorkflowRuleUrl(id), {
+): Promise<WorkflowRuleRow> => {
+  return customFetch<WorkflowRuleRow>(getDuplicateWorkflowRuleUrl(id), {
     ...options,
     method: "POST",
   });
@@ -23493,8 +23780,8 @@ export const getDeleteWorkflowRuleUrl = (id: number) => {
 export const deleteWorkflowRule = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getDeleteWorkflowRuleUrl(id), {
+): Promise<DeleteWorkflowRule200> => {
+  return customFetch<DeleteWorkflowRule200>(getDeleteWorkflowRuleUrl(id), {
     ...options,
     method: "DELETE",
   });
@@ -23570,8 +23857,8 @@ export const getListWorkflowTasksUrl = () => {
 
 export const listWorkflowTasks = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListWorkflowTasksUrl(), {
+): Promise<WorkflowTaskRow[]> => {
+  return customFetch<WorkflowTaskRow[]>(getListWorkflowTasksUrl(), {
     ...options,
     method: "GET",
   });
@@ -23638,8 +23925,8 @@ export const getCreateWorkflowTaskUrl = () => {
 
 export const createWorkflowTask = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getCreateWorkflowTaskUrl(), {
+): Promise<WorkflowTaskRow> => {
+  return customFetch<WorkflowTaskRow>(getCreateWorkflowTaskUrl(), {
     ...options,
     method: "POST",
   });
@@ -23714,8 +24001,8 @@ export const getUpdateWorkflowTaskUrl = (id: number) => {
 export const updateWorkflowTask = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdateWorkflowTaskUrl(id), {
+): Promise<WorkflowTaskRow> => {
+  return customFetch<WorkflowTaskRow>(getUpdateWorkflowTaskUrl(id), {
     ...options,
     method: "PATCH",
   });
@@ -23792,8 +24079,8 @@ export const getCompleteWorkflowTaskUrl = (id: number) => {
 export const completeWorkflowTask = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getCompleteWorkflowTaskUrl(id), {
+): Promise<WorkflowTaskRow> => {
+  return customFetch<WorkflowTaskRow>(getCompleteWorkflowTaskUrl(id), {
     ...options,
     method: "POST",
   });
@@ -23870,8 +24157,8 @@ export const getSnoozeWorkflowTaskUrl = (id: number) => {
 export const snoozeWorkflowTask = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObjectOrNull> => {
-  return customFetch<AdminGenericObjectOrNull>(getSnoozeWorkflowTaskUrl(id), {
+): Promise<WorkflowTaskRow | null> => {
+  return customFetch<WorkflowTaskRow | null>(getSnoozeWorkflowTaskUrl(id), {
     ...options,
     method: "POST",
   });
@@ -23947,8 +24234,8 @@ export const getListWorkflowAlertsUrl = () => {
 
 export const listWorkflowAlerts = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListWorkflowAlertsUrl(), {
+): Promise<WorkflowAlertRow[]> => {
+  return customFetch<WorkflowAlertRow[]>(getListWorkflowAlertsUrl(), {
     ...options,
     method: "GET",
   });
@@ -24016,14 +24303,11 @@ export const getMarkWorkflowAlertReadUrl = (id: number) => {
 export const markWorkflowAlertRead = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObjectOrNull> => {
-  return customFetch<AdminGenericObjectOrNull>(
-    getMarkWorkflowAlertReadUrl(id),
-    {
-      ...options,
-      method: "POST",
-    },
-  );
+): Promise<WorkflowAlertRow | null> => {
+  return customFetch<WorkflowAlertRow | null>(getMarkWorkflowAlertReadUrl(id), {
+    ...options,
+    method: "POST",
+  });
 };
 
 export const getMarkWorkflowAlertReadMutationOptions = <
@@ -24097,8 +24381,8 @@ export const getResolveWorkflowAlertUrl = (id: number) => {
 export const resolveWorkflowAlert = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getResolveWorkflowAlertUrl(id), {
+): Promise<WorkflowAlertRow> => {
+  return customFetch<WorkflowAlertRow>(getResolveWorkflowAlertUrl(id), {
     ...options,
     method: "POST",
   });
@@ -24174,8 +24458,8 @@ export const getListWorkflowAuditUrl = () => {
 
 export const listWorkflowAudit = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListWorkflowAuditUrl(), {
+): Promise<WorkflowAuditRow[]> => {
+  return customFetch<WorkflowAuditRow[]>(getListWorkflowAuditUrl(), {
     ...options,
     method: "GET",
   });
@@ -24242,8 +24526,8 @@ export const getApplyWorkflowOverrideUrl = () => {
 
 export const applyWorkflowOverride = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getApplyWorkflowOverrideUrl(), {
+): Promise<ApplyWorkflowOverride200> => {
+  return customFetch<ApplyWorkflowOverride200>(getApplyWorkflowOverrideUrl(), {
     ...options,
     method: "POST",
   });
@@ -24317,8 +24601,8 @@ export const getGetWorkflowQueueUrl = () => {
 
 export const getWorkflowQueue = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetWorkflowQueueUrl(), {
+): Promise<WorkflowQueue> => {
+  return customFetch<WorkflowQueue>(getGetWorkflowQueueUrl(), {
     ...options,
     method: "GET",
   });
@@ -24385,8 +24669,8 @@ export const getFireWorkflowTriggerUrl = () => {
 
 export const fireWorkflowTrigger = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getFireWorkflowTriggerUrl(), {
+): Promise<FireWorkflowTrigger200> => {
+  return customFetch<FireWorkflowTrigger200>(getFireWorkflowTriggerUrl(), {
     ...options,
     method: "POST",
   });
@@ -24460,8 +24744,8 @@ export const getTickWorkflowDeadlinesUrl = () => {
 
 export const tickWorkflowDeadlines = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getTickWorkflowDeadlinesUrl(), {
+): Promise<TickWorkflowDeadlines200> => {
+  return customFetch<TickWorkflowDeadlines200>(getTickWorkflowDeadlinesUrl(), {
     ...options,
     method: "POST",
   });
@@ -24535,8 +24819,8 @@ export const getSeedWorkflowDefaultsUrl = () => {
 
 export const seedWorkflowDefaults = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getSeedWorkflowDefaultsUrl(), {
+): Promise<SeedWorkflowDefaults200> => {
+  return customFetch<SeedWorkflowDefaults200>(getSeedWorkflowDefaultsUrl(), {
     ...options,
     method: "POST",
   });
@@ -24610,8 +24894,8 @@ export const getListCommercialPlansUrl = () => {
 
 export const listCommercialPlans = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListCommercialPlansUrl(), {
+): Promise<CommercialPlanRow[]> => {
+  return customFetch<CommercialPlanRow[]>(getListCommercialPlansUrl(), {
     ...options,
     method: "GET",
   });
@@ -24678,8 +24962,8 @@ export const getSeedCommercialPlansUrl = () => {
 
 export const seedCommercialPlans = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getSeedCommercialPlansUrl(), {
+): Promise<SeedCommercialPlans200> => {
+  return customFetch<SeedCommercialPlans200>(getSeedCommercialPlansUrl(), {
     ...options,
     method: "POST",
   });
@@ -24754,8 +25038,8 @@ export const getUpdateCommercialPlanUrl = (id: number) => {
 export const updateCommercialPlan = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObjectOrNull> => {
-  return customFetch<AdminGenericObjectOrNull>(getUpdateCommercialPlanUrl(id), {
+): Promise<CommercialPlanRow | null> => {
+  return customFetch<CommercialPlanRow | null>(getUpdateCommercialPlanUrl(id), {
     ...options,
     method: "PATCH",
   });
@@ -24831,8 +25115,8 @@ export const getListCommercialBrandingPackagesUrl = () => {
 
 export const listCommercialBrandingPackages = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(
+): Promise<CommercialBrandingPackageRow[]> => {
+  return customFetch<CommercialBrandingPackageRow[]>(
     getListCommercialBrandingPackagesUrl(),
     {
       ...options,
@@ -24905,8 +25189,8 @@ export const getUpdateCommercialBrandingPackageUrl = (id: number) => {
 export const updateCommercialBrandingPackage = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObjectOrNull> => {
-  return customFetch<AdminGenericObjectOrNull>(
+): Promise<CommercialBrandingPackageRow | null> => {
+  return customFetch<CommercialBrandingPackageRow | null>(
     getUpdateCommercialBrandingPackageUrl(id),
     {
       ...options,
@@ -24987,8 +25271,8 @@ export const getListCommercialAccountsUrl = () => {
 
 export const listCommercialAccounts = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListCommercialAccountsUrl(), {
+): Promise<CommercialAccountRow[]> => {
+  return customFetch<CommercialAccountRow[]>(getListCommercialAccountsUrl(), {
     ...options,
     method: "GET",
   });
@@ -25057,8 +25341,8 @@ export const getGetCommercialAccountUrl = (id: number) => {
 export const getCommercialAccount = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetCommercialAccountUrl(id), {
+): Promise<GetCommercialAccount200> => {
+  return customFetch<GetCommercialAccount200>(getGetCommercialAccountUrl(id), {
     ...options,
     method: "GET",
   });
@@ -25138,8 +25422,8 @@ export const getUpdateCommercialAccountUrl = (id: number) => {
 export const updateCommercialAccount = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObjectOrNull> => {
-  return customFetch<AdminGenericObjectOrNull>(
+): Promise<CommercialAccountRow | null> => {
+  return customFetch<CommercialAccountRow | null>(
     getUpdateCommercialAccountUrl(id),
     {
       ...options,
@@ -25219,8 +25503,8 @@ export const getRecomputeCommercialAccountUsageUrl = (id: number) => {
 export const recomputeCommercialAccountUsage = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(
+): Promise<RecomputeCommercialAccountUsage200> => {
+  return customFetch<RecomputeCommercialAccountUsage200>(
     getRecomputeCommercialAccountUsageUrl(id),
     {
       ...options,
@@ -25302,8 +25586,8 @@ export const getLinkCommercialAccountPartnersUrl = (id: number) => {
 export const linkCommercialAccountPartners = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(
+): Promise<LinkCommercialAccountPartners200> => {
+  return customFetch<LinkCommercialAccountPartners200>(
     getLinkCommercialAccountPartnersUrl(id),
     {
       ...options,
@@ -25383,8 +25667,8 @@ export const getGetCommercialAccountEntitlementsUrl = (id: number) => {
 export const getCommercialAccountEntitlements = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(
+): Promise<GetCommercialAccountEntitlements200> => {
+  return customFetch<GetCommercialAccountEntitlements200>(
     getGetCommercialAccountEntitlementsUrl(id),
     {
       ...options,
@@ -25471,8 +25755,8 @@ export const getGetCommercialPartnerEntitlementsUrl = (id: number) => {
 export const getCommercialPartnerEntitlements = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(
+): Promise<GetCommercialPartnerEntitlements200> => {
+  return customFetch<GetCommercialPartnerEntitlements200>(
     getGetCommercialPartnerEntitlementsUrl(id),
     {
       ...options,
@@ -25558,8 +25842,8 @@ export const getGetCommercialDashboardUrl = () => {
 
 export const getCommercialDashboard = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetCommercialDashboardUrl(), {
+): Promise<CommercialDashboard> => {
+  return customFetch<CommercialDashboard>(getGetCommercialDashboardUrl(), {
     ...options,
     method: "GET",
   });
@@ -25627,8 +25911,8 @@ export const getGetCommercialFeatureKeysUrl = () => {
 
 export const getCommercialFeatureKeys = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetCommercialFeatureKeysUrl(), {
+): Promise<CommercialFeatureKeys> => {
+  return customFetch<CommercialFeatureKeys>(getGetCommercialFeatureKeysUrl(), {
     ...options,
     method: "GET",
   });
@@ -25696,8 +25980,8 @@ export const getGetSalesDashboardUrl = () => {
 
 export const getSalesDashboard = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetSalesDashboardUrl(), {
+): Promise<SalesDashboard> => {
+  return customFetch<SalesDashboard>(getGetSalesDashboardUrl(), {
     ...options,
     method: "GET",
   });
@@ -25764,8 +26048,8 @@ export const getGetSalesShowcaseUrl = () => {
 
 export const getSalesShowcase = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetSalesShowcaseUrl(), {
+): Promise<SalesShowcase> => {
+  return customFetch<SalesShowcase>(getGetSalesShowcaseUrl(), {
     ...options,
     method: "GET",
   });
@@ -25832,8 +26116,8 @@ export const getListSalesProposalsUrl = () => {
 
 export const listSalesProposals = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListSalesProposalsUrl(), {
+): Promise<SalesProposalRow[]> => {
+  return customFetch<SalesProposalRow[]>(getListSalesProposalsUrl(), {
     ...options,
     method: "GET",
   });
@@ -25901,8 +26185,8 @@ export const getGetSalesProposalUrl = (id: number) => {
 export const getSalesProposal = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetSalesProposalUrl(id), {
+): Promise<GetSalesProposal200> => {
+  return customFetch<GetSalesProposal200>(getGetSalesProposalUrl(id), {
     ...options,
     method: "GET",
   });
@@ -25981,8 +26265,8 @@ export const getUpdateSalesProposalUrl = (id: number) => {
 export const updateSalesProposal = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObjectOrNull> => {
-  return customFetch<AdminGenericObjectOrNull>(getUpdateSalesProposalUrl(id), {
+): Promise<SalesProposalRow | null> => {
+  return customFetch<SalesProposalRow | null>(getUpdateSalesProposalUrl(id), {
     ...options,
     method: "PATCH",
   });
@@ -26059,8 +26343,8 @@ export const getDeleteSalesProposalUrl = (id: number) => {
 export const deleteSalesProposal = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getDeleteSalesProposalUrl(id), {
+): Promise<DeleteSalesProposal200> => {
+  return customFetch<DeleteSalesProposal200>(getDeleteSalesProposalUrl(id), {
     ...options,
     method: "DELETE",
   });
@@ -26136,11 +26420,14 @@ export const getBuildSalesComparisonMatrixUrl = () => {
 
 export const buildSalesComparisonMatrix = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getBuildSalesComparisonMatrixUrl(), {
-    ...options,
-    method: "POST",
-  });
+): Promise<BuildSalesComparisonMatrix200> => {
+  return customFetch<BuildSalesComparisonMatrix200>(
+    getBuildSalesComparisonMatrixUrl(),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
 };
 
 export const getBuildSalesComparisonMatrixMutationOptions = <
@@ -26212,11 +26499,14 @@ export const getGetSalesAccountActivationUrl = (id: number) => {
 export const getSalesAccountActivation = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetSalesAccountActivationUrl(id), {
-    ...options,
-    method: "GET",
-  });
+): Promise<GetSalesAccountActivation200> => {
+  return customFetch<GetSalesAccountActivation200>(
+    getGetSalesAccountActivationUrl(id),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
 };
 
 export const getGetSalesAccountActivationQueryKey = (id: number) => {
@@ -26294,11 +26584,14 @@ export const getSeedSalesAccountActivationUrl = (id: number) => {
 export const seedSalesAccountActivation = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getSeedSalesAccountActivationUrl(id), {
-    ...options,
-    method: "POST",
-  });
+): Promise<SeedSalesAccountActivation200> => {
+  return customFetch<SeedSalesAccountActivation200>(
+    getSeedSalesAccountActivationUrl(id),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
 };
 
 export const getSeedSalesAccountActivationMutationOptions = <
@@ -26372,8 +26665,8 @@ export const getUpdateSalesActivationItemUrl = (itemId: number) => {
 export const updateSalesActivationItem = async (
   itemId: number,
   options?: RequestInit,
-): Promise<AdminGenericObjectOrNull> => {
-  return customFetch<AdminGenericObjectOrNull>(
+): Promise<SalesActivationItemRow | null> => {
+  return customFetch<SalesActivationItemRow | null>(
     getUpdateSalesActivationItemUrl(itemId),
     {
       ...options,
@@ -26453,8 +26746,8 @@ export const getAdvanceSalesAccountActivationUrl = (id: number) => {
 export const advanceSalesAccountActivation = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(
+): Promise<CommercialAccountRow> => {
+  return customFetch<CommercialAccountRow>(
     getAdvanceSalesAccountActivationUrl(id),
     {
       ...options,
@@ -26533,8 +26826,8 @@ export const getGetSalesConstantsUrl = () => {
 
 export const getSalesConstants = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetSalesConstantsUrl(), {
+): Promise<SalesConstants> => {
+  return customFetch<SalesConstants>(getGetSalesConstantsUrl(), {
     ...options,
     method: "GET",
   });
@@ -26602,8 +26895,8 @@ export const getPullSurveyAssetsUrl = (partnerId: number) => {
 export const pullSurveyAssets = async (
   partnerId: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getPullSurveyAssetsUrl(partnerId), {
+): Promise<PullSurveyAssets200> => {
+  return customFetch<PullSurveyAssets200>(getPullSurveyAssetsUrl(partnerId), {
     ...options,
     method: "POST",
   });
@@ -26679,8 +26972,8 @@ export const getListAdminSurveyAssetsUrl = () => {
 
 export const listAdminSurveyAssets = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getListAdminSurveyAssetsUrl(), {
+): Promise<ListAdminSurveyAssets200> => {
+  return customFetch<ListAdminSurveyAssets200>(getListAdminSurveyAssetsUrl(), {
     ...options,
     method: "GET",
   });
@@ -26748,8 +27041,8 @@ export const getGetAdminSurveyAssetUrl = (id: number) => {
 export const getAdminSurveyAsset = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getGetAdminSurveyAssetUrl(id), {
+): Promise<GetAdminSurveyAsset200> => {
+  return customFetch<GetAdminSurveyAsset200>(getGetAdminSurveyAssetUrl(id), {
     ...options,
     method: "GET",
   });
@@ -26828,11 +27121,14 @@ export const getUpdateAdminSurveyAssetUrl = (id: number) => {
 export const updateAdminSurveyAsset = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdateAdminSurveyAssetUrl(id), {
-    ...options,
-    method: "PATCH",
-  });
+): Promise<UpdateAdminSurveyAsset200> => {
+  return customFetch<UpdateAdminSurveyAsset200>(
+    getUpdateAdminSurveyAssetUrl(id),
+    {
+      ...options,
+      method: "PATCH",
+    },
+  );
 };
 
 export const getUpdateAdminSurveyAssetMutationOptions = <
@@ -26906,11 +27202,14 @@ export const getDeleteAdminSurveyAssetUrl = (id: number) => {
 export const deleteAdminSurveyAsset = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getDeleteAdminSurveyAssetUrl(id), {
-    ...options,
-    method: "DELETE",
-  });
+): Promise<DeleteAdminSurveyAsset200> => {
+  return customFetch<DeleteAdminSurveyAsset200>(
+    getDeleteAdminSurveyAssetUrl(id),
+    {
+      ...options,
+      method: "DELETE",
+    },
+  );
 };
 
 export const getDeleteAdminSurveyAssetMutationOptions = <
@@ -26983,8 +27282,8 @@ export const getListApprovedMaterialsUrl = () => {
 
 export const listApprovedMaterials = async (
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getListApprovedMaterialsUrl(), {
+): Promise<ListApprovedMaterials200> => {
+  return customFetch<ListApprovedMaterials200>(getListApprovedMaterialsUrl(), {
     ...options,
     method: "GET",
   });
@@ -27052,11 +27351,14 @@ export const getUpdateApprovedMaterialUrl = (id: number) => {
 export const updateApprovedMaterial = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdateApprovedMaterialUrl(id), {
-    ...options,
-    method: "PATCH",
-  });
+): Promise<UpdateApprovedMaterial200> => {
+  return customFetch<UpdateApprovedMaterial200>(
+    getUpdateApprovedMaterialUrl(id),
+    {
+      ...options,
+      method: "PATCH",
+    },
+  );
 };
 
 export const getUpdateApprovedMaterialMutationOptions = <
@@ -27130,11 +27432,14 @@ export const getDeleteApprovedMaterialUrl = (id: number) => {
 export const deleteApprovedMaterial = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getDeleteApprovedMaterialUrl(id), {
-    ...options,
-    method: "DELETE",
-  });
+): Promise<DeleteApprovedMaterial200> => {
+  return customFetch<DeleteApprovedMaterial200>(
+    getDeleteApprovedMaterialUrl(id),
+    {
+      ...options,
+      method: "DELETE",
+    },
+  );
 };
 
 export const getDeleteApprovedMaterialMutationOptions = <
@@ -27208,8 +27513,8 @@ export const getGetPartnerSurveyIntegrationUrl = (partnerId: number) => {
 export const getPartnerSurveyIntegration = async (
   partnerId: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(
+): Promise<PartnerSurveyIntegration> => {
+  return customFetch<PartnerSurveyIntegration>(
     getGetPartnerSurveyIntegrationUrl(partnerId),
     {
       ...options,
@@ -27298,8 +27603,8 @@ export const getUpsertPartnerSurveyIntegrationUrl = (partnerId: number) => {
 export const upsertPartnerSurveyIntegration = async (
   partnerId: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(
+): Promise<UpsertPartnerSurveyIntegration200> => {
+  return customFetch<UpsertPartnerSurveyIntegration200>(
     getUpsertPartnerSurveyIntegrationUrl(partnerId),
     {
       ...options,
@@ -27378,8 +27683,8 @@ export const getListVenuesUrl = () => {
 
 export const listVenues = async (
   options?: RequestInit,
-): Promise<AdminGenericArray> => {
-  return customFetch<AdminGenericArray>(getListVenuesUrl(), {
+): Promise<VenueRow[]> => {
+  return customFetch<VenueRow[]>(getListVenuesUrl(), {
     ...options,
     method: "GET",
   });
@@ -27447,8 +27752,8 @@ export const getUpdateVenueUrl = (id: number) => {
 export const updateVenue = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getUpdateVenueUrl(id), {
+): Promise<VenueRow> => {
+  return customFetch<VenueRow>(getUpdateVenueUrl(id), {
     ...options,
     method: "PATCH",
   });
@@ -27525,8 +27830,8 @@ export const getDeleteVenueUrl = (id: number) => {
 export const deleteVenue = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getDeleteVenueUrl(id), {
+): Promise<DeleteVenue200> => {
+  return customFetch<DeleteVenue200>(getDeleteVenueUrl(id), {
     ...options,
     method: "DELETE",
   });
@@ -27600,10 +27905,8 @@ export const getCreateAssetUrl = () => {
   return `/api/assets-create`;
 };
 
-export const createAsset = async (
-  options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getCreateAssetUrl(), {
+export const createAsset = async (options?: RequestInit): Promise<AssetRow> => {
+  return customFetch<AssetRow>(getCreateAssetUrl(), {
     ...options,
     method: "POST",
   });
@@ -27678,8 +27981,8 @@ export const getApproveAssetUrl = (id: number) => {
 export const approveAsset = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getApproveAssetUrl(id), {
+): Promise<AssetRow> => {
+  return customFetch<AssetRow>(getApproveAssetUrl(id), {
     ...options,
     method: "POST",
   });
@@ -27756,8 +28059,8 @@ export const getRequestAssetRevisionUrl = (id: number) => {
 export const requestAssetRevision = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getRequestAssetRevisionUrl(id), {
+): Promise<AssetRow> => {
+  return customFetch<AssetRow>(getRequestAssetRevisionUrl(id), {
     ...options,
     method: "POST",
   });
@@ -27834,8 +28137,8 @@ export const getCreateAssetVersionUrl = (id: number) => {
 export const createAssetVersion = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getCreateAssetVersionUrl(id), {
+): Promise<AssetRow> => {
+  return customFetch<AssetRow>(getCreateAssetVersionUrl(id), {
     ...options,
     method: "POST",
   });
@@ -27912,8 +28215,8 @@ export const getCreateAssetLinkUrl = (id: number) => {
 export const createAssetLink = async (
   id: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getCreateAssetLinkUrl(id), {
+): Promise<AssetLinkRow> => {
+  return customFetch<AssetLinkRow>(getCreateAssetLinkUrl(id), {
     ...options,
     method: "POST",
   });
@@ -27991,8 +28294,8 @@ export const deleteAssetLink = async (
   id: number,
   linkId: number,
   options?: RequestInit,
-): Promise<AdminGenericObject> => {
-  return customFetch<AdminGenericObject>(getDeleteAssetLinkUrl(id, linkId), {
+): Promise<DeleteAssetLink200> => {
+  return customFetch<DeleteAssetLink200>(getDeleteAssetLinkUrl(id, linkId), {
     ...options,
     method: "DELETE",
   });

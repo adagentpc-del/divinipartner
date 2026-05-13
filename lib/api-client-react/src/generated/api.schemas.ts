@@ -5,16 +5,6 @@
  * A3 Partner Portal API
  * OpenAPI spec version: 0.1.0
  */
-export interface AdminGenericObject {
-  [key: string]: unknown;
-}
-
-export type AdminGenericObjectOrNull = { [key: string]: unknown } | null;
-
-export type AdminGenericArrayItem = { [key: string]: unknown };
-
-export type AdminGenericArray = AdminGenericArrayItem[];
-
 export interface OrderListItem {
   id: number;
   /** @nullable */
@@ -2236,6 +2226,940 @@ export interface ProductionDashboardResponse {
   orderIssues: ProductionDashboardOrderIssue[];
 }
 
+export interface PublicConfigPayload {
+  [key: string]: unknown;
+}
+
+export interface UnitsMetaPayload {
+  [key: string]: unknown;
+}
+
+export interface UnitsResolvePayload {
+  [key: string]: unknown;
+}
+
+export interface SecurityReadinessReport {
+  [key: string]: unknown;
+}
+
+export interface DeploymentReadinessReport {
+  [key: string]: unknown;
+}
+
+export interface CityRow {
+  id: number;
+  /** @nullable */
+  partnerId?: number | null;
+  /** @nullable */
+  name?: string | null;
+  /** @nullable */
+  state?: string | null;
+  /** @nullable */
+  country?: string | null;
+  /** @nullable */
+  notes?: string | null;
+  /** @nullable */
+  isActive?: boolean | null;
+  /** @nullable */
+  sortOrder?: number | null;
+  [key: string]: unknown;
+}
+
+export interface SupplierRow {
+  id: number;
+  /** @nullable */
+  name?: string | null;
+  /** @nullable */
+  slug?: string | null;
+  /** @nullable */
+  logoUrl?: string | null;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  contactName?: string | null;
+  /** @nullable */
+  contactEmail?: string | null;
+  /** @nullable */
+  contactPhone?: string | null;
+  /** @nullable */
+  companyName?: string | null;
+  /** @nullable */
+  website?: string | null;
+  /** @nullable */
+  addressLine?: string | null;
+  /** @nullable */
+  city?: string | null;
+  /** @nullable */
+  state?: string | null;
+  /** @nullable */
+  postalCode?: string | null;
+  /** @nullable */
+  country?: string | null;
+  /** @nullable */
+  defaultLeadTimeDays?: number | null;
+  /** @nullable */
+  notes?: string | null;
+  /** @nullable */
+  isActive?: boolean | null;
+  [key: string]: unknown;
+}
+
+export interface UserRoleRow {
+  id: number;
+  /** @nullable */
+  userId?: string | null;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  fullName?: string | null;
+  /** @nullable */
+  role?: string | null;
+  /** @nullable */
+  partnerId?: number | null;
+  /** @nullable */
+  supplierId?: number | null;
+  /** @nullable */
+  isActive?: boolean | null;
+  [key: string]: unknown;
+}
+
+export interface SavedAddressRow {
+  id: number;
+  /** @nullable */
+  partnerId?: number | null;
+  /** @nullable */
+  label?: string | null;
+  /** @nullable */
+  fullName?: string | null;
+  /** @nullable */
+  company?: string | null;
+  /** @nullable */
+  line1?: string | null;
+  /** @nullable */
+  line2?: string | null;
+  /** @nullable */
+  city?: string | null;
+  /** @nullable */
+  state?: string | null;
+  /** @nullable */
+  postalCode?: string | null;
+  /** @nullable */
+  country?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  isDefault?: boolean | null;
+  [key: string]: unknown;
+}
+
+export interface SavedContactRow {
+  id: number;
+  /** @nullable */
+  partnerId?: number | null;
+  /** @nullable */
+  label?: string | null;
+  /** @nullable */
+  name?: string | null;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  role?: string | null;
+  /** @nullable */
+  isDefault?: boolean | null;
+  [key: string]: unknown;
+}
+
+export interface PartnerThemeRow {
+  id: number;
+  /** @nullable */
+  partnerId?: number | null;
+  /** @nullable */
+  templateKey?: string | null;
+  /** @nullable */
+  primaryColor?: string | null;
+  /** @nullable */
+  secondaryColor?: string | null;
+  /** @nullable */
+  accentColor?: string | null;
+  /** @nullable */
+  backgroundColor?: string | null;
+  /** @nullable */
+  buttonColor?: string | null;
+  /** @nullable */
+  textColor?: string | null;
+  /** @nullable */
+  headingFont?: string | null;
+  /** @nullable */
+  bodyFont?: string | null;
+  /** @nullable */
+  buttonStyle?: string | null;
+  /** @nullable */
+  cardStyle?: string | null;
+  /** @nullable */
+  borderRadiusStyle?: string | null;
+  /** @nullable */
+  tonePreset?: string | null;
+  /** @nullable */
+  isApproved?: string | null;
+  /** @nullable */
+  isPublished?: boolean | null;
+  /** @nullable */
+  logoUrl?: string | null;
+  /** @nullable */
+  logoPlacement?: string | null;
+  /** @nullable */
+  heroBackgroundMode?: string | null;
+  /** @nullable */
+  heroHeadline?: string | null;
+  /** @nullable */
+  heroSubheadline?: string | null;
+  /** @nullable */
+  ctaLabel?: string | null;
+  /** @nullable */
+  secondaryCtaLabel?: string | null;
+  [key: string]: unknown;
+}
+
+export interface PartnerInventorySummary {
+  [key: string]: unknown;
+}
+
+export interface PartnerSectionRow {
+  id: number;
+  /** @nullable */
+  partnerId?: number | null;
+  /** @nullable */
+  sectionKey?: string | null;
+  /** @nullable */
+  title?: string | null;
+  /** @nullable */
+  body?: string | null;
+  /** @nullable */
+  sortOrder?: number | null;
+  /** @nullable */
+  isActive?: boolean | null;
+  [key: string]: unknown;
+}
+
+export interface BrandingLocationRow {
+  id: number;
+  /** @nullable */
+  partnerId?: number | null;
+  /** @nullable */
+  name?: string | null;
+  /** @nullable */
+  category?: string | null;
+  /** @nullable */
+  cityId?: number | null;
+  /** @nullable */
+  venueId?: number | null;
+  /** @nullable */
+  notes?: string | null;
+  /** @nullable */
+  isActive?: boolean | null;
+  /** @nullable */
+  sortOrder?: number | null;
+  [key: string]: unknown;
+}
+
+export interface EmailRecipientRow {
+  id: number;
+  /** @nullable */
+  partnerId?: number | null;
+  /** @nullable */
+  role?: string | null;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  name?: string | null;
+  /** @nullable */
+  isActive?: boolean | null;
+  [key: string]: unknown;
+}
+
+export interface EmailSendResult {
+  /** @nullable */
+  ok?: boolean | null;
+  /** @nullable */
+  messageId?: string | null;
+  /** @nullable */
+  error?: string | null;
+  [key: string]: unknown;
+}
+
+export interface OnboardingProgressRow {
+  id: number;
+  /** @nullable */
+  partnerId?: number | null;
+  /** @nullable */
+  stepKey?: string | null;
+  /** @nullable */
+  status?: string | null;
+  /** @nullable */
+  completedAt?: string | null;
+  [key: string]: unknown;
+}
+
+export interface LaunchReadiness {
+  [key: string]: unknown;
+}
+
+export interface PartnershipRequestRow {
+  id: number;
+  [key: string]: unknown;
+}
+
+export interface EventRow {
+  id: number;
+  /** @nullable */
+  partnerId?: number | null;
+  /** @nullable */
+  name?: string | null;
+  /** @nullable */
+  slug?: string | null;
+  /** @nullable */
+  cityId?: number | null;
+  /** @nullable */
+  venueId?: number | null;
+  /** @nullable */
+  status?: string | null;
+  /** @nullable */
+  eventStartDate?: string | null;
+  /** @nullable */
+  eventEndDate?: string | null;
+  /** @nullable */
+  installDate?: string | null;
+  /** @nullable */
+  teardownDate?: string | null;
+  /** @nullable */
+  shippingDeadline?: string | null;
+  /** @nullable */
+  currency?: string | null;
+  /** @nullable */
+  isActive?: boolean | null;
+  [key: string]: unknown;
+}
+
+export interface PartnerAddonRow {
+  id: number;
+  /** @nullable */
+  partnerId?: number | null;
+  /** @nullable */
+  productId?: number | null;
+  /** @nullable */
+  category?: string | null;
+  /** @nullable */
+  sortOrder?: number | null;
+  /** @nullable */
+  isActive?: boolean | null;
+  [key: string]: unknown;
+}
+
+export interface EventEffectiveAddonsResponse {
+  [key: string]: unknown;
+}
+
+export interface AnalyticsKpis {
+  [key: string]: unknown;
+}
+
+export interface AnalyticsForecast {
+  [key: string]: unknown;
+}
+
+export interface AnalyticsRisk {
+  [key: string]: unknown;
+}
+
+export interface AnalyticsProfitabilityRow {
+  [key: string]: unknown;
+}
+
+export interface AnalyticsSupplierRow {
+  [key: string]: unknown;
+}
+
+export interface AnalyticsPackageRow {
+  [key: string]: unknown;
+}
+
+export interface AnalyticsZoneRow {
+  [key: string]: unknown;
+}
+
+export interface AnalyticsProductRow {
+  [key: string]: unknown;
+}
+
+export interface AnalyticsTrendPoint {
+  [key: string]: unknown;
+}
+
+export interface PackageRow {
+  id: number;
+  /** @nullable */
+  partnerId?: number | null;
+  /** @nullable */
+  supplierId?: number | null;
+  /** @nullable */
+  name?: string | null;
+  /** @nullable */
+  displayName?: string | null;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  tier?: number | null;
+  /** @nullable */
+  price?: string | number | null;
+  /** @nullable */
+  currency?: string | null;
+  /** @nullable */
+  imageUrl?: string | null;
+  /** @nullable */
+  isActive?: boolean | null;
+  /** @nullable */
+  sortOrder?: number | null;
+  [key: string]: unknown;
+}
+
+export interface OnboardingSubmissionRow {
+  id: number;
+  /** @nullable */
+  partnerId?: number | null;
+  /** @nullable */
+  formKey?: string | null;
+  /** @nullable */
+  status?: string | null;
+  [key: string]: unknown;
+}
+
+export type AlertsListResponseAlertsItem = { [key: string]: unknown };
+
+export type AlertsListResponseSummary = { [key: string]: unknown };
+
+export interface AlertsListResponse {
+  alerts: AlertsListResponseAlertsItem[];
+  summary?: AlertsListResponseSummary;
+  [key: string]: unknown;
+}
+
+export type AlertsSummaryResponseSummary = { [key: string]: unknown };
+
+export type AlertsSummaryResponseTopItem = { [key: string]: unknown };
+
+export interface AlertsSummaryResponse {
+  summary?: AlertsSummaryResponseSummary;
+  top?: AlertsSummaryResponseTopItem[];
+  [key: string]: unknown;
+}
+
+export interface InvoiceRow {
+  id: number;
+  /** @nullable */
+  partnerId?: number | null;
+  /** @nullable */
+  orderId?: number | null;
+  /** @nullable */
+  eventId?: number | null;
+  /** @nullable */
+  invoiceNumber?: string | null;
+  /** @nullable */
+  status?: string | null;
+  /** @nullable */
+  currency?: string | null;
+  /** @nullable */
+  totalAmount?: string | number | null;
+  /** @nullable */
+  amountDue?: string | number | null;
+  /** @nullable */
+  issuedAt?: string | null;
+  /** @nullable */
+  dueAt?: string | null;
+  [key: string]: unknown;
+}
+
+export interface InventoryRow {
+  id: number;
+  /** @nullable */
+  partnerId?: number | null;
+  /** @nullable */
+  cityId?: number | null;
+  /** @nullable */
+  productId?: number | null;
+  /** @nullable */
+  name?: string | null;
+  /** @nullable */
+  category?: string | null;
+  /** @nullable */
+  assetType?: string | null;
+  /** @nullable */
+  storageLocation?: string | null;
+  /** @nullable */
+  totalQuantity?: number | null;
+  /** @nullable */
+  hardwareOnHand?: number | null;
+  /** @nullable */
+  reserved?: number | null;
+  /** @nullable */
+  inUse?: number | null;
+  /** @nullable */
+  damaged?: number | null;
+  /** @nullable */
+  rentable?: boolean | null;
+  [key: string]: unknown;
+}
+
+export interface InventoryShortageRow {
+  [key: string]: unknown;
+}
+
+export interface InventoryReservationRow {
+  id: number;
+  /** @nullable */
+  inventoryId?: number | null;
+  /** @nullable */
+  eventId?: number | null;
+  /** @nullable */
+  quantity?: number | null;
+  /** @nullable */
+  status?: string | null;
+  /** @nullable */
+  startDate?: string | null;
+  /** @nullable */
+  endDate?: string | null;
+  /** @nullable */
+  holdReason?: string | null;
+  [key: string]: unknown;
+}
+
+export interface AssetRow {
+  id: number;
+  /** @nullable */
+  title?: string | null;
+  /** @nullable */
+  fileUrl?: string | null;
+  /** @nullable */
+  fileName?: string | null;
+  /** @nullable */
+  mimeType?: string | null;
+  /** @nullable */
+  category?: string | null;
+  /** @nullable */
+  visibility?: string | null;
+  /** @nullable */
+  partnerId?: number | null;
+  /** @nullable */
+  eventId?: number | null;
+  /** @nullable */
+  orderId?: number | null;
+  /** @nullable */
+  productId?: number | null;
+  /** @nullable */
+  packageId?: number | null;
+  /** @nullable */
+  version?: number | null;
+  /** @nullable */
+  isCurrent?: boolean | null;
+  /** @nullable */
+  status?: string | null;
+  /** @nullable */
+  approvalStatus?: string | null;
+  [key: string]: unknown;
+}
+
+export interface AssetEventRow {
+  id: number;
+  /** @nullable */
+  assetId?: number | null;
+  /** @nullable */
+  orderId?: number | null;
+  /** @nullable */
+  orderItemId?: number | null;
+  /** @nullable */
+  eventType?: string | null;
+  /** @nullable */
+  actorUserId?: string | null;
+  [key: string]: unknown;
+}
+
+export interface AssetLinkRow {
+  id: number;
+  /** @nullable */
+  assetId?: number | null;
+  /** @nullable */
+  orderItemId?: number | null;
+  /** @nullable */
+  role?: string | null;
+  [key: string]: unknown;
+}
+
+export interface UsageSummary {
+  [key: string]: unknown;
+}
+
+export interface UsageTimelinePoint {
+  [key: string]: unknown;
+}
+
+export interface FeedbackRow {
+  id: number;
+  [key: string]: unknown;
+}
+
+export interface PartnerHealthRow {
+  [key: string]: unknown;
+}
+
+export interface PostLaunchDashboard {
+  [key: string]: unknown;
+}
+
+export interface ObjectionRow {
+  id: number;
+  [key: string]: unknown;
+}
+
+export interface ObjectionsSummary {
+  [key: string]: unknown;
+}
+
+export interface ObjectionsConstants {
+  [key: string]: unknown;
+}
+
+export interface DemoFollowupRow {
+  id: number;
+  [key: string]: unknown;
+}
+
+export interface FaqRow {
+  id: number;
+  [key: string]: unknown;
+}
+
+export interface FaqConstants {
+  [key: string]: unknown;
+}
+
+export interface StabilizationDashboard {
+  [key: string]: unknown;
+}
+
+export interface ReconciliationSummary {
+  [key: string]: unknown;
+}
+
+export interface ReconciliationOrderRow {
+  id: number;
+  [key: string]: unknown;
+}
+
+export interface DiscrepancyRow {
+  id: number;
+  [key: string]: unknown;
+}
+
+export interface ProductRow {
+  id: number;
+  /** @nullable */
+  name?: string | null;
+  /** @nullable */
+  displayName?: string | null;
+  /** @nullable */
+  sku?: string | null;
+  /** @nullable */
+  slug?: string | null;
+  /** @nullable */
+  category?: string | null;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  imageUrl?: string | null;
+  /** @nullable */
+  pricingModel?: string | null;
+  /** @nullable */
+  unitRate?: string | number | null;
+  /** @nullable */
+  pricingUnit?: string | null;
+  /** @nullable */
+  rentalEligible?: boolean | null;
+  /** @nullable */
+  inventoryTracked?: boolean | null;
+  [key: string]: unknown;
+}
+
+export type ProductFamilyRowMembersItem = { [key: string]: unknown };
+
+export interface ProductFamilyRow {
+  id: number;
+  /** @nullable */
+  name?: string | null;
+  /** @nullable */
+  slug?: string | null;
+  /** @nullable */
+  baseProductId?: number | null;
+  members?: ProductFamilyRowMembersItem[];
+  [key: string]: unknown;
+}
+
+export interface QuoteAssetRow {
+  id: number;
+  /** @nullable */
+  partnerId?: number | null;
+  /** @nullable */
+  supplierId?: number | null;
+  /** @nullable */
+  title?: string | null;
+  /** @nullable */
+  status?: string | null;
+  [key: string]: unknown;
+}
+
+export interface QuoteIngestionStats {
+  [key: string]: unknown;
+}
+
+export interface CatalogIntelligenceOverview {
+  [key: string]: unknown;
+}
+
+export interface PackageExtractionRow {
+  id: number;
+  /** @nullable */
+  partnerId?: number | null;
+  /** @nullable */
+  status?: string | null;
+  /** @nullable */
+  sourceFileUrl?: string | null;
+  [key: string]: unknown;
+}
+
+export interface PackageExtractionDuplicateCheck {
+  [key: string]: unknown;
+}
+
+export interface WorkflowRuleRow {
+  id: number;
+  /** @nullable */
+  name?: string | null;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  triggerType?: string | null;
+  /** @nullable */
+  objectType?: string | null;
+  /** @nullable */
+  priority?: string | null;
+  /** @nullable */
+  escalationLevel?: string | null;
+  /** @nullable */
+  isActive?: boolean | null;
+  /** @nullable */
+  isSystem?: boolean | null;
+  [key: string]: unknown;
+}
+
+export interface WorkflowTaskRow {
+  id: number;
+  /** @nullable */
+  title?: string | null;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  category?: string | null;
+  /** @nullable */
+  status?: string | null;
+  /** @nullable */
+  priority?: string | null;
+  /** @nullable */
+  escalationLevel?: string | null;
+  /** @nullable */
+  deadlineHealth?: string | null;
+  /** @nullable */
+  ownerUserId?: string | null;
+  /** @nullable */
+  dueDate?: string | null;
+  /** @nullable */
+  partnerId?: number | null;
+  /** @nullable */
+  eventId?: number | null;
+  /** @nullable */
+  orderId?: number | null;
+  /** @nullable */
+  supplierId?: number | null;
+  /** @nullable */
+  assetId?: number | null;
+  [key: string]: unknown;
+}
+
+export interface WorkflowAlertRow {
+  id: number;
+  /** @nullable */
+  severity?: string | null;
+  /** @nullable */
+  title?: string | null;
+  /** @nullable */
+  message?: string | null;
+  /** @nullable */
+  status?: string | null;
+  [key: string]: unknown;
+}
+
+export interface WorkflowAuditRow {
+  id: number;
+  /** @nullable */
+  eventType?: string | null;
+  /** @nullable */
+  actorUserId?: string | null;
+  [key: string]: unknown;
+}
+
+export interface WorkflowQueue {
+  [key: string]: unknown;
+}
+
+export interface CommercialPlanRow {
+  id: number;
+  /** @nullable */
+  name?: string | null;
+  /** @nullable */
+  slug?: string | null;
+  /** @nullable */
+  tier?: string | null;
+  /** @nullable */
+  priceMonthly?: string | number | null;
+  /** @nullable */
+  priceAnnual?: string | number | null;
+  /** @nullable */
+  isActive?: boolean | null;
+  [key: string]: unknown;
+}
+
+export interface CommercialBrandingPackageRow {
+  id: number;
+  /** @nullable */
+  name?: string | null;
+  /** @nullable */
+  slug?: string | null;
+  /** @nullable */
+  price?: string | number | null;
+  /** @nullable */
+  isActive?: boolean | null;
+  [key: string]: unknown;
+}
+
+export interface CommercialAccountRow {
+  id: number;
+  /** @nullable */
+  name?: string | null;
+  /** @nullable */
+  slug?: string | null;
+  /** @nullable */
+  planId?: number | null;
+  /** @nullable */
+  status?: string | null;
+  [key: string]: unknown;
+}
+
+export interface CommercialDashboard {
+  [key: string]: unknown;
+}
+
+export interface CommercialFeatureKeys {
+  [key: string]: unknown;
+}
+
+export interface SalesDashboard {
+  [key: string]: unknown;
+}
+
+export interface SalesShowcase {
+  [key: string]: unknown;
+}
+
+export interface SalesProposalRow {
+  id: number;
+  /** @nullable */
+  accountId?: number | null;
+  /** @nullable */
+  status?: string | null;
+  [key: string]: unknown;
+}
+
+export interface SalesActivationItemRow {
+  id: number;
+  [key: string]: unknown;
+}
+
+export interface SalesConstants {
+  [key: string]: unknown;
+}
+
+export interface SurveyAssetAdminRow {
+  id: number;
+  /** @nullable */
+  partnerId?: number | null;
+  /** @nullable */
+  venueId?: number | null;
+  /** @nullable */
+  title?: string | null;
+  /** @nullable */
+  category?: string | null;
+  /** @nullable */
+  materialMode?: string | null;
+  /** @nullable */
+  approvalStatus?: string | null;
+  [key: string]: unknown;
+}
+
+export interface ApprovedMaterialRow {
+  id: number;
+  /** @nullable */
+  name?: string | null;
+  /** @nullable */
+  slug?: string | null;
+  /** @nullable */
+  category?: string | null;
+  /** @nullable */
+  isActive?: boolean | null;
+  [key: string]: unknown;
+}
+
+export interface PartnerSurveyIntegration {
+  [key: string]: unknown;
+}
+
+export interface VenueRow {
+  id: number;
+  /** @nullable */
+  partnerId?: number | null;
+  /** @nullable */
+  cityId?: number | null;
+  /** @nullable */
+  name?: string | null;
+  /** @nullable */
+  venueAddress?: string | null;
+  /** @nullable */
+  shippingAddress?: string | null;
+  /** @nullable */
+  onsiteContactName?: string | null;
+  /** @nullable */
+  onsiteContactPhone?: string | null;
+  /** @nullable */
+  onsiteContactEmail?: string | null;
+  /** @nullable */
+  country?: string | null;
+  /** @nullable */
+  unitPreference?: string | null;
+  /** @nullable */
+  isActive?: boolean | null;
+  /** @nullable */
+  sortOrder?: number | null;
+  [key: string]: unknown;
+}
+
 export type ListPartnersParams = {
   active?: boolean;
 };
@@ -2318,6 +3242,329 @@ export type SurveyAssetDelete200 = {
 export type SurveyPublicList200 = {
   assets: PublicSurveyAsset[];
 };
+
+export type DeleteCity200 = {
+  success: boolean;
+  count?: number;
+  [key: string]: unknown;
+};
+
+export type DeleteSupplier200 = {
+  success: boolean;
+  count?: number;
+  [key: string]: unknown;
+};
+
+export type DeleteUserRole200 = {
+  success: boolean;
+  count?: number;
+  [key: string]: unknown;
+};
+
+export type DeleteSavedAddress200 = {
+  success: boolean;
+  count?: number;
+  [key: string]: unknown;
+};
+
+export type DeleteSavedContact200 = {
+  success: boolean;
+  count?: number;
+  [key: string]: unknown;
+};
+
+export type DeleteEmailRecipient200 = {
+  success: boolean;
+  count?: number;
+  [key: string]: unknown;
+};
+
+export type DismissOnboarding200 = {
+  ok: boolean;
+  [key: string]: unknown;
+};
+
+export type DeleteEvent200 = {
+  success: boolean;
+  count?: number;
+  [key: string]: unknown;
+};
+
+export type GetImportFields200 = { [key: string]: unknown };
+
+export type ParseImport200 = { [key: string]: unknown };
+
+export type CommitImport200 = { [key: string]: unknown };
+
+export type ResolveBilling200 = { [key: string]: unknown };
+
+export type OverrideBilling200 = { [key: string]: unknown };
+
+export type GetBillingSummary200 = { [key: string]: unknown };
+
+export type ListBillingOrders200Item = { [key: string]: unknown };
+
+export type BillingBulk200 = {
+  success: boolean;
+  count?: number;
+  [key: string]: unknown;
+};
+
+export type GetLiveReadiness200 = { [key: string]: unknown };
+
+export type DeletePackage200 = {
+  success: boolean;
+  count?: number;
+  [key: string]: unknown;
+};
+
+export type ReorderPackages200 = {
+  ok: boolean;
+  count?: number;
+  [key: string]: unknown;
+};
+
+export type UpdatePackageItem200 = { [key: string]: unknown };
+
+export type DeletePackageItem200 = {
+  success: boolean;
+  count?: number;
+  [key: string]: unknown;
+};
+
+export type ListPartnerContacts200Item = { [key: string]: unknown };
+
+export type UpdatePartnerContact200 = { [key: string]: unknown };
+
+export type DeletePartnerContact200 = {
+  success: boolean;
+  count?: number;
+  [key: string]: unknown;
+};
+
+export type MakePrimaryPartnerContact200 = { [key: string]: unknown };
+
+export type ResolveManualFollowup200 = {
+  ok: boolean;
+  [key: string]: unknown;
+};
+
+export type ResolveSupportIssue200 = {
+  ok: boolean;
+  [key: string]: unknown;
+};
+
+export type ArchivePartner200 = { [key: string]: unknown };
+
+export type UnarchivePartner200 = { [key: string]: unknown };
+
+export type ArchiveAsset200 = { [key: string]: unknown };
+
+export type UnarchiveAsset200 = { [key: string]: unknown };
+
+export type GetInvoice200 = { [key: string]: unknown };
+
+export type GetPublicInvoice200 = { [key: string]: unknown };
+
+export type DeleteInvoicePayment200 = {
+  success: boolean;
+  count?: number;
+  [key: string]: unknown;
+};
+
+export type ScanOverdueInvoices200 = {
+  markedOverdue: number;
+  [key: string]: unknown;
+};
+
+export type DeleteInventory200 = {
+  success: boolean;
+  count?: number;
+  [key: string]: unknown;
+};
+
+export type DeleteInventoryReservation200 = {
+  success: boolean;
+  count?: number;
+  [key: string]: unknown;
+};
+
+export type DeleteAsset200 = {
+  success: boolean;
+  count?: number;
+  [key: string]: unknown;
+};
+
+export type EmitUsage200 = {
+  ok: boolean;
+  [key: string]: unknown;
+};
+
+export type DeleteFeedback200 = {
+  ok: boolean;
+  [key: string]: unknown;
+};
+
+export type DeleteObjection200 = {
+  ok: boolean;
+  [key: string]: unknown;
+};
+
+export type DeleteDemoFollowup200 = {
+  ok: boolean;
+  [key: string]: unknown;
+};
+
+export type DeleteFaq200 = {
+  ok: boolean;
+  [key: string]: unknown;
+};
+
+export type GetAccountBlockers200 = { [key: string]: unknown };
+
+export type AutoFlagReconciliation200 = { [key: string]: unknown };
+
+export type DeleteDiscrepancy200 = {
+  success: boolean;
+  count?: number;
+  [key: string]: unknown;
+};
+
+export type ListCommissionPayouts200Item = { [key: string]: unknown };
+
+export type DeleteCommissionPayout200 = {
+  success: boolean;
+  count?: number;
+  [key: string]: unknown;
+};
+
+export type BulkUpdateReconciliation200 = {
+  success: boolean;
+  count?: number;
+  [key: string]: unknown;
+};
+
+export type DeleteProductFamily200 = {
+  ok: boolean;
+  [key: string]: unknown;
+};
+
+export type UpdateProductFamilyMember200 = { [key: string]: unknown };
+
+export type DeleteProductFamilyMember200 = {
+  ok: boolean;
+  [key: string]: unknown;
+};
+
+export type GetPartnerFamilyAvailability200 = { [key: string]: unknown };
+
+export type GetProductFamilyContext200 = { [key: string]: unknown };
+
+export type SeedEasyUpFamily200 = {
+  ok?: boolean;
+  familyId?: number;
+  [key: string]: unknown;
+};
+
+export type ListPartnerRentableAssets200 = { [key: string]: unknown };
+
+export type UpdateRentalInventory200 = { [key: string]: unknown };
+
+export type ListInventoryBlackouts200 = { [key: string]: unknown };
+
+export type UpdateInventoryBlackout200 = { [key: string]: unknown };
+
+export type DeleteInventoryBlackout200 = {
+  ok: boolean;
+  [key: string]: unknown;
+};
+
+export type GetInventoryBookings200 = { [key: string]: unknown };
+
+export type GetInventoryAvailability200 = { [key: string]: unknown };
+
+export type RerunBillingSignals200 = {
+  ok: boolean;
+  [key: string]: unknown;
+};
+
+export type DeleteQuoteAsset200 = {
+  success: boolean;
+  count?: number;
+  [key: string]: unknown;
+};
+
+export type BulkUpdateQuoteAssets200 = {
+  success: boolean;
+  count?: number;
+  [key: string]: unknown;
+};
+
+export type ListQuoteAssetMappings200Item = { [key: string]: unknown };
+
+export type CreateQuoteAssetMappingExisting200 = { [key: string]: unknown };
+
+export type DeleteQuoteAssetMapping200 = {
+  success: boolean;
+  count?: number;
+  [key: string]: unknown;
+};
+
+export type ListSpecStandards200Item = { [key: string]: unknown };
+
+export type UpdateSpecStandard200 = { [key: string]: unknown };
+
+export type DeleteSpecStandard200 = {
+  success: boolean;
+  count?: number;
+  [key: string]: unknown;
+};
+
+export type SetCurrentSpecStandard200 = {
+  success: boolean;
+  count?: number;
+  [key: string]: unknown;
+};
+
+export type ListDeckExtractions200Item = { [key: string]: unknown };
+
+export type GetDeckExtraction200 = { [key: string]: unknown };
+
+export type UpdateDeckExtractionItem200 = { [key: string]: unknown };
+
+export type DeleteDeckExtractionItem200 = {
+  ok: boolean;
+  [key: string]: unknown;
+};
+
+export type CheckDeckExtractionDuplicate200 = { [key: string]: unknown };
+
+export type RerunDeckExtraction200 = {
+  ok: boolean;
+  id?: number;
+  status?: string;
+  [key: string]: unknown;
+};
+
+export type ApproveDeckExtractionItems200 = {
+  approved: number;
+  locationIds?: number[];
+  [key: string]: unknown;
+};
+
+export type DeletePackageExtraction200 = {
+  ok: boolean;
+  [key: string]: unknown;
+};
+
+export type RerunPackageExtraction200 = {
+  ok: boolean;
+  id?: number;
+  status?: string;
+  [key: string]: unknown;
+};
+
+export type CommitPackageExtraction200 = { [key: string]: unknown };
 
 export type ListAdminDocuments200 = {
   documents: DocumentRow[];
@@ -2533,5 +3780,120 @@ export type SetOrderException200 = {
 export type SetOrderArtworkNeeded200 = {
   ok: boolean;
   order: OrderRow;
+  [key: string]: unknown;
+};
+
+export type DeleteWorkflowRule200 = {
+  success: boolean;
+  count?: number;
+  [key: string]: unknown;
+};
+
+export type ApplyWorkflowOverride200 = {
+  success: boolean;
+  count?: number;
+  [key: string]: unknown;
+};
+
+export type FireWorkflowTrigger200 = { [key: string]: unknown };
+
+export type TickWorkflowDeadlines200 = {
+  success: boolean;
+  count?: number;
+  [key: string]: unknown;
+};
+
+export type SeedWorkflowDefaults200 = {
+  defaults: number;
+  [key: string]: unknown;
+};
+
+export type SeedCommercialPlans200 = {
+  created?: number;
+  [key: string]: unknown;
+};
+
+export type GetCommercialAccount200 = { [key: string]: unknown };
+
+export type RecomputeCommercialAccountUsage200 = { [key: string]: unknown };
+
+export type LinkCommercialAccountPartners200 = {
+  ok: boolean;
+  linked?: number;
+  [key: string]: unknown;
+};
+
+export type GetCommercialAccountEntitlements200 = { [key: string]: unknown };
+
+export type GetCommercialPartnerEntitlements200 = { [key: string]: unknown };
+
+export type GetSalesProposal200 = { [key: string]: unknown };
+
+export type DeleteSalesProposal200 = {
+  ok: boolean;
+  [key: string]: unknown;
+};
+
+export type BuildSalesComparisonMatrix200 = { [key: string]: unknown };
+
+export type GetSalesAccountActivation200 = { [key: string]: unknown };
+
+export type SeedSalesAccountActivation200 = { [key: string]: unknown };
+
+export type PullSurveyAssets200 = {
+  ok?: boolean;
+  [key: string]: unknown;
+};
+
+export type ListAdminSurveyAssets200 = {
+  assets: SurveyAssetAdminRow[];
+  [key: string]: unknown;
+};
+
+export type GetAdminSurveyAsset200 = {
+  asset: SurveyAssetAdminRow;
+  [key: string]: unknown;
+};
+
+export type UpdateAdminSurveyAsset200 = {
+  asset: SurveyAssetAdminRow;
+  [key: string]: unknown;
+};
+
+export type DeleteAdminSurveyAsset200 = {
+  ok: boolean;
+  [key: string]: unknown;
+};
+
+export type ListApprovedMaterials200 = {
+  materials: ApprovedMaterialRow[];
+  [key: string]: unknown;
+};
+
+export type UpdateApprovedMaterial200 = {
+  material: ApprovedMaterialRow;
+  [key: string]: unknown;
+};
+
+export type DeleteApprovedMaterial200 = {
+  ok: boolean;
+  [key: string]: unknown;
+};
+
+export type UpsertPartnerSurveyIntegration200 = {
+  ok: boolean;
+  newWebhookSecret?: string;
+  [key: string]: unknown;
+};
+
+export type DeleteVenue200 = {
+  success: boolean;
+  count?: number;
+  [key: string]: unknown;
+};
+
+export type DeleteAssetLink200 = {
+  success: boolean;
+  count?: number;
   [key: string]: unknown;
 };
