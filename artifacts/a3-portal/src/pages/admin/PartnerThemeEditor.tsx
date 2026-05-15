@@ -540,22 +540,30 @@ export default function PartnerThemeEditor() {
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="grid sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Main Logo URL</Label>
+            <div className="space-y-2">
+              <LogoUploader
+                label="Main Logo (header)"
+                value={theme.mainLogoUrl}
+                onChange={v => setTheme(prev => ({ ...prev, mainLogoUrl: v }))}
+              />
               <Input
                 value={theme.mainLogoUrl}
                 onChange={e => setTheme(prev => ({ ...prev, mainLogoUrl: e.target.value }))}
-                placeholder="https://… png/svg with transparent background"
+                placeholder="…or paste an image URL"
                 className="h-9"
               />
-              <p className="text-[11px] text-muted-foreground">Renders in the header. Falls back to the legacy logo if blank.</p>
+              <p className="text-[11px] text-muted-foreground">Renders in the header. Falls back to the legacy partner logo if blank.</p>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Secondary Logo URL</Label>
+            <div className="space-y-2">
+              <LogoUploader
+                label="Secondary Logo (footer / cart)"
+                value={theme.secondaryLogoUrl}
+                onChange={v => setTheme(prev => ({ ...prev, secondaryLogoUrl: v }))}
+              />
               <Input
                 value={theme.secondaryLogoUrl}
                 onChange={e => setTheme(prev => ({ ...prev, secondaryLogoUrl: e.target.value }))}
-                placeholder="https://… secondary mark / wordmark"
+                placeholder="…or paste an image URL"
                 className="h-9"
               />
               <p className="text-[11px] text-muted-foreground">Optional. Shown in the placement chosen below.</p>
