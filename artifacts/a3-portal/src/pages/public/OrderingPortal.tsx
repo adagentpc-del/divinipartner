@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ProductImage } from "@/components/branding/ProductImage";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ChevronRight, ChevronLeft, Calendar, MapPin, Package, Plus, Minus, Check, Upload, ShoppingCart, Sparkles, X, Ruler, AlertTriangle, ZoomIn } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -135,7 +136,7 @@ function AddonRenderer({
 
   const ProductCard = (p: Product) => (
     <button key={p.id} type="button" onClick={() => addToCart(p)} className="text-left p-3 rounded-lg border hover:border-primary/40 hover:shadow-md transition bg-card">
-      {p.imageUrl ? <img src={p.imageUrl} className="aspect-square w-full rounded object-cover mb-2 bg-muted" alt={p.name} /> : <div className="aspect-square w-full rounded bg-muted mb-2 flex items-center justify-center"><Package className="h-8 w-8 text-muted-foreground/40" /></div>}
+      <ProductImage src={p.imageUrl} alt={p.name} className="aspect-square w-full rounded object-cover mb-2 bg-muted" fallbackClassName="aspect-square w-full rounded bg-muted mb-2 overflow-hidden" />
       <div className="text-xs text-muted-foreground">{p.category}</div>
       <div className="text-sm font-medium line-clamp-2">{p.name}</div>
       <Button size="sm" variant="outline" className="w-full mt-2 h-7 text-xs gap-1"><Plus className="h-3 w-3" />Add</Button>
@@ -144,7 +145,7 @@ function AddonRenderer({
 
   const ProductRow = (p: Product) => (
     <button key={p.id} type="button" onClick={() => addToCart(p)} className="w-full flex items-center gap-3 p-2 rounded-lg border hover:border-primary/40 hover:bg-muted/30 transition bg-card text-left">
-      {p.imageUrl ? <img src={p.imageUrl} className="h-12 w-12 rounded object-cover bg-muted" alt={p.name} /> : <div className="h-12 w-12 rounded bg-muted flex items-center justify-center"><Package className="h-5 w-5 text-muted-foreground/40" /></div>}
+      <ProductImage src={p.imageUrl} alt={p.name} className="h-12 w-12 rounded object-cover bg-muted" fallbackClassName="h-12 w-12 rounded bg-muted overflow-hidden" />
       <div className="flex-1 min-w-0">
         <div className="text-sm font-medium truncate">{p.name}</div>
         <div className="text-xs text-muted-foreground truncate">{p.category}</div>
@@ -185,9 +186,7 @@ function AddonRenderer({
                 onClick={() => setOpenCat(isOpen ? null : g.category)}
                 className={`relative text-left p-0 rounded-lg border overflow-hidden transition shadow-sm hover:shadow-md ${isOpen ? "border-primary ring-2 ring-primary/30" : "hover:border-primary/40"}`}
               >
-                {cover
-                  ? <img src={cover} alt="" className="aspect-[4/3] w-full object-cover" />
-                  : <div className="aspect-[4/3] w-full bg-muted flex items-center justify-center"><Package className="h-10 w-10 text-muted-foreground/40" /></div>}
+                <ProductImage src={cover} alt={g.category} className="aspect-[4/3] w-full object-cover" fallbackClassName="aspect-[4/3] w-full bg-muted overflow-hidden" />
                 <div className="p-3">
                   <div className="text-sm font-semibold">{g.category}</div>
                   <div className="text-[11px] text-muted-foreground">{g.products.length} item{g.products.length === 1 ? "" : "s"}</div>

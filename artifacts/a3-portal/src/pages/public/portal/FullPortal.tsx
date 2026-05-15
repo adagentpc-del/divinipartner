@@ -424,11 +424,19 @@ export default function FullPortal({ slug }: { slug: string }) {
                           }}
                           onClick={() => openProductDialog(product)}
                         >
-                          {product.imageUrl && (
-                            <div className="aspect-[4/3] overflow-hidden" style={{ backgroundColor: branding.isDark ? 'rgba(255,255,255,0.03)' : '#f1f5f9' }}>
+                          <div className="aspect-[4/3] overflow-hidden" style={{ backgroundColor: branding.isDark ? 'rgba(255,255,255,0.03)' : '#f1f5f9' }}>
+                            {product.imageUrl ? (
                               <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                            </div>
-                          )}
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <img
+                                  src={`${import.meta.env.BASE_URL}brand/a3-lockup-on-light.jpeg`}
+                                  alt="A3 Visual"
+                                  className="max-w-[70%] max-h-[60%] object-contain opacity-80 group-hover:scale-105 transition-transform duration-300"
+                                />
+                              </div>
+                            )}
+                          </div>
                           <div className="p-4 space-y-2">
                             <div className="flex items-start justify-between gap-2">
                               <h5 className="font-semibold text-sm" style={{ color: branding.text }}>{product.name}</h5>
