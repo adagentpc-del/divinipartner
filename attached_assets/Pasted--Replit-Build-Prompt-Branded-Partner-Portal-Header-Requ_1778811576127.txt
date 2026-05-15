@@ -1,0 +1,199 @@
+# Replit Build Prompt: Branded Partner Portal Header + Required A3 Partnership Footer
+
+We need to update every partner portal page so the top of the page has a strong branded client header, similar to the Social Commerce Festival example.
+
+The header should feel like a branded event, venue, hotel, or partner microsite, not a plain order form.
+
+The admin backend must allow us to control whether each partner portal uses a dark header or light header. The A3 Visual logo and required partnership text must appear on every partner page header and footer.
+
+Do not add unnecessary AI calls. This should be deterministic, data driven, and low cost.
+
+---
+
+## Core Goal
+
+Create a reusable `PartnerPortalHeader` and `PartnerPortalFooter` system that appears across all partner portal pages.
+
+Every partner portal should show:
+
+1. Partner branded hero/header at the top
+2. Partner logo or partner name
+3. Partner brand colors
+4. Optional full width background image
+5. Optional headline and subheadline
+6. Navigation tabs or CTA buttons when applicable
+7. A3 Visual partnership lockup on the lower right of the header
+8. A3 Visual partnership lockup in the footer on every page
+
+The required A3 text should say:
+
+`In partnership with A3 Visual`
+
+Use the A3 Visual logo next to or beneath that text.
+
+---
+
+# Part 1: Admin Backend Fields
+
+Add a new section in the partner admin backend called:
+
+`Partner Portal Branding`
+
+## Fields to Add
+
+### Basic Branding
+
+- Partner Display Name
+- Partner Logo Upload
+- Partner Header Background Image Upload
+- Partner Header Background Video URL, optional
+- Partner Primary Brand Color
+- Partner Secondary Brand Color
+- Partner Accent Color
+- Partner Text Color
+- Partner Button Color
+- Partner Button Text Color
+
+### Header Theme Controls
+
+Add a required dropdown:
+
+`Header Theme`
+
+Options:
+
+- Dark Background
+- Light Background
+
+Default:
+
+- Dark Background
+
+### Header Content
+
+Add editable fields:
+
+- Header Eyebrow Text
+- Header Main Headline
+- Header Subheadline
+- Header CTA Button Label
+- Header CTA Button URL
+- Secondary CTA Button Label
+- Secondary CTA Button URL
+
+### Header Layout Options
+
+Add dropdown:
+
+`Header Layout Style`
+
+Options:
+
+- Full Width Hero
+- Centered Logo Hero
+- Event Microsite Style
+- Minimal Partner Header
+- Split Image Header
+
+Default:
+
+- Full Width Hero
+
+### Required A3 Partnership Settings
+
+These should be visible but not removable by normal admin users:
+
+- Show A3 Partnership Lockup in Header: Always true
+- Show A3 Partnership Lockup in Footer: Always true
+- Partnership Text: `In partnership with A3 Visual`
+- A3 Logo Asset
+- A3 Website URL: `https://www.a3visual.com`
+
+Do not allow the portal admin to disable the A3 partnership text or logo.
+
+---
+
+# Part 2: Header Design Requirements
+
+Create a reusable component:
+
+`PartnerPortalHeader`
+
+This component should render at the top of every partner portal page.
+
+## Visual Direction
+
+The header should look like a premium branded landing page.
+
+Reference style:
+
+- Full width hero image or branded background
+- Large bold headline
+- Strong partner brand colors
+- Clear event or partner navigation
+- Dark mode option for neon, nightlife, event, or entertainment brands
+- Light mode option for luxury, hotel, corporate, healthcare, or venue brands
+- A3 partnership lockup on the lower right
+- Mobile responsive
+
+## Header Structure
+
+The header should include:
+
+1. Background image, video thumbnail, gradient, or solid color
+2. Overlay for readability
+3. Partner logo or partner display name
+4. Optional eyebrow text
+5. Main headline
+6. Subheadline
+7. Optional navigation links
+8. Optional CTA buttons
+9. A3 partnership lockup on lower right
+
+## A3 Partnership Lockup Placement
+
+Place the A3 partnership lockup in the lower right side of the header.
+
+It should include:
+
+- Small text: `In partnership with`
+- A3 Visual logo
+- Optional text fallback: `A3 Visual`
+
+The lockup should link to:
+
+`https://www.a3visual.com`
+
+## Important
+
+The A3 partnership lockup must stay visible on both dark and light header backgrounds.
+
+Use either:
+
+- White version of A3 logo on dark backgrounds
+- Dark version of A3 logo on light backgrounds
+
+If only one A3 logo asset exists, place it inside a subtle white or dark translucent pill container so it remains readable.
+
+---
+
+# Part 3: Light and Dark Header Theme Logic
+
+The admin selected `Header Theme` should control default styling.
+
+## Dark Background Theme
+
+Use when the partner selects `Dark Background`.
+
+Style:
+
+- Dark overlay on background image
+- White or light text
+- Partner accent color for active nav and CTA
+- A3 lockup in white or on translucent dark/white pill
+- Strong contrast for readability
+
+Suggested CSS logic:
+
+```ts
+const isDarkHeader = partner.headerTheme === "dark";
