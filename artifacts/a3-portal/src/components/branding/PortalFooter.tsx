@@ -14,17 +14,20 @@ interface PortalFooterProps {
  * partnership badge always renders.
  */
 export function PortalFooter({ partnerName, branding }: PortalFooterProps) {
-  const [a3LightUrl, setA3LightUrl] = useState<string | null>(null);
-  const [a3DarkUrl, setA3DarkUrl] = useState<string | null>(null);
+  // Bundled A3 lockup defaults — env vars (A3_LOCKUP_LOGO_*_URL) override.
+  const defaultLight = `${import.meta.env.BASE_URL}brand/a3-lockup-on-dark.jpeg`;
+  const defaultDark = `${import.meta.env.BASE_URL}brand/a3-lockup-on-light.jpeg`;
+  const [a3LightUrl, setA3LightUrl] = useState<string | null>(defaultLight);
+  const [a3DarkUrl, setA3DarkUrl] = useState<string | null>(defaultDark);
 
   useEffect(() => {
     fetchPublicConfig()
       .then((cfg) => {
-        setA3LightUrl(cfg.a3LockupLogoLightUrl || null);
-        setA3DarkUrl(cfg.a3LockupLogoDarkUrl || null);
+        setA3LightUrl(cfg.a3LockupLogoLightUrl || defaultLight);
+        setA3DarkUrl(cfg.a3LockupLogoDarkUrl || defaultDark);
       })
-      .catch(() => { /* silent — falls back to text lockup */ });
-  }, []);
+      .catch(() => { /* silent — bundled defaults already set */ });
+  }, [defaultLight, defaultDark]);
 
   const borderColor = branding.isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
   const mutedColor = branding.muted;

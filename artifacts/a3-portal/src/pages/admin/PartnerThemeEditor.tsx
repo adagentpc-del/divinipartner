@@ -497,8 +497,8 @@ export default function PartnerThemeEditor() {
             <strong className="text-foreground">A3 Visual lockup is required.</strong>{" "}
             It always appears in the lower-right of the header (with a matching cut-out so it sits
             on the page background) and on every footer. The light and dark logo variants are
-            provided by A3 — upload them in Object Storage and set <code>A3_LOCKUP_LOGO_LIGHT_URL</code>{" "}
-            / <code>A3_LOCKUP_LOGO_DARK_URL</code>; the portal falls back to a text lockup if not set.
+            provided by A3 — bundled defaults ship with the portal. To override, set
+            <code>A3_LOCKUP_LOGO_LIGHT_URL</code> / <code>A3_LOCKUP_LOGO_DARK_URL</code> env vars.
           </div>
         </CardContent>
       </Card>
