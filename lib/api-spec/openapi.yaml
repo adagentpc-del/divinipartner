@@ -5717,6 +5717,21 @@ components:
         headerTheme: { type: ["string", "null"] }
         headerLayoutStyle: { type: ["string", "null"] }
         headerBackgroundVideoUrl: { type: ["string", "null"] }
+        mainLogoStorageKey: { type: ["string", "null"] }
+        mainLogoUrl: { type: ["string", "null"] }
+        secondaryLogoStorageKey: { type: ["string", "null"] }
+        secondaryLogoUrl: { type: ["string", "null"] }
+        mainLogoDisplayMode: { type: ["string", "null"] }
+        secondaryLogoPlacement: { type: ["string", "null"] }
+        headerLogoMaxHeight: { type: ["integer", "null"] }
+        headerLogoWidthPercent: { type: ["integer", "null"] }
+        headerAlignment: { type: ["string", "null"] }
+        headerObjectFit: { type: ["string", "null"] }
+        headerPaddingTop: { type: ["integer", "null"] }
+        headerPaddingBottom: { type: ["integer", "null"] }
+        headerBackgroundColor: { type: ["string", "null"] }
+        headerGlowEnabled: { type: ["boolean", "null"] }
+        animationLevel: { type: ["string", "null"] }
 
     PartnerInventorySummary:
       type: object

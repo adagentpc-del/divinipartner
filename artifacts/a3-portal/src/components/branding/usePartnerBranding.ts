@@ -32,10 +32,32 @@ export interface PartnerThemeShape {
   headerTheme?: string | null;
   headerLayoutStyle?: string | null;
   headerBackgroundVideoUrl?: string | null;
+  // Premium brand experience
+  mainLogoUrl?: string | null;
+  mainLogoStorageKey?: string | null;
+  secondaryLogoUrl?: string | null;
+  secondaryLogoStorageKey?: string | null;
+  mainLogoDisplayMode?: string | null;
+  secondaryLogoPlacement?: string | null;
+  headerLogoMaxHeight?: number | null;
+  headerLogoWidthPercent?: number | null;
+  headerAlignment?: string | null;
+  headerObjectFit?: string | null;
+  headerPaddingTop?: number | null;
+  headerPaddingBottom?: number | null;
+  headerBackgroundColor?: string | null;
+  headerGlowEnabled?: boolean | null;
+  animationLevel?: string | null;
   showPoweredByA3?: boolean | null;
   customWelcomeMessage?: string | null;
   isPublished?: boolean | null;
 }
+
+export type MainLogoDisplayMode = "full_header_banner" | "contained_logo" | "hero_overlay_logo";
+export type SecondaryLogoPlacement = "footer" | "under_cart" | "checkout_sidebar" | "footer_and_cart" | "hidden";
+export type HeaderAlignment = "left" | "center" | "right";
+export type HeaderObjectFit = "contain" | "cover";
+export type AnimationLevel = "none" | "subtle" | "premium";
 
 export type HeaderThemeMode = "dark" | "light";
 export type HeaderLayoutStyle =
@@ -78,6 +100,20 @@ export interface ResolvedBranding {
   headerTheme: HeaderThemeMode;
   headerLayoutStyle: HeaderLayoutStyle;
   headerBackgroundVideoUrl: string;
+  // Premium brand experience
+  mainLogoUrl: string;
+  secondaryLogoUrl: string;
+  mainLogoDisplayMode: MainLogoDisplayMode;
+  secondaryLogoPlacement: SecondaryLogoPlacement;
+  headerLogoMaxHeight: number;
+  headerLogoWidthPercent: number;
+  headerAlignment: HeaderAlignment;
+  headerObjectFit: HeaderObjectFit;
+  headerPaddingTop: number;
+  headerPaddingBottom: number;
+  headerBackgroundColor: string;
+  headerGlowEnabled: boolean;
+  animationLevel: AnimationLevel;
   showPoweredByA3: boolean;
   customWelcomeMessage: string;
   isDark: boolean;
@@ -117,6 +153,19 @@ export const FALLBACK_BRANDING: Omit<ResolvedBranding, "shellStyle"> = {
   headerTheme: "dark",
   headerLayoutStyle: "full_width_hero",
   headerBackgroundVideoUrl: "",
+  mainLogoUrl: "",
+  secondaryLogoUrl: "",
+  mainLogoDisplayMode: "contained_logo",
+  secondaryLogoPlacement: "footer_and_cart",
+  headerLogoMaxHeight: 96,
+  headerLogoWidthPercent: 80,
+  headerAlignment: "center",
+  headerObjectFit: "contain",
+  headerPaddingTop: 72,
+  headerPaddingBottom: 72,
+  headerBackgroundColor: "",
+  headerGlowEnabled: true,
+  animationLevel: "subtle",
   showPoweredByA3: true,
   customWelcomeMessage: "",
   isDark: false,
@@ -187,6 +236,24 @@ export function resolveBranding(theme?: PartnerThemeShape | null): ResolvedBrand
     headerTheme: ((theme?.headerTheme as HeaderThemeMode) || (isDarkTemplate(templateKey) ? "dark" : "light")),
     headerLayoutStyle: ((theme?.headerLayoutStyle as HeaderLayoutStyle) || "full_width_hero"),
     headerBackgroundVideoUrl: theme?.headerBackgroundVideoUrl || "",
+    mainLogoUrl: theme?.mainLogoUrl
+      || (theme?.mainLogoStorageKey ? `/api/storage/objects/${String(theme.mainLogoStorageKey).replace(/^\/objects\//, "")}` : "")
+      || theme?.logoUrl
+      || "",
+    secondaryLogoUrl: theme?.secondaryLogoUrl
+      || (theme?.secondaryLogoStorageKey ? `/api/storage/objects/${String(theme.secondaryLogoStorageKey).replace(/^\/objects\//, "")}` : "")
+      || "",
+    mainLogoDisplayMode: ((theme?.mainLogoDisplayMode as MainLogoDisplayMode) || "contained_logo"),
+    secondaryLogoPlacement: ((theme?.secondaryLogoPlacement as SecondaryLogoPlacement) || "footer_and_cart"),
+    headerLogoMaxHeight: theme?.headerLogoMaxHeight ?? 96,
+    headerLogoWidthPercent: theme?.headerLogoWidthPercent ?? 80,
+    headerAlignment: ((theme?.headerAlignment as HeaderAlignment) || "center"),
+    headerObjectFit: ((theme?.headerObjectFit as HeaderObjectFit) || "contain"),
+    headerPaddingTop: theme?.headerPaddingTop ?? 72,
+    headerPaddingBottom: theme?.headerPaddingBottom ?? 72,
+    headerBackgroundColor: theme?.headerBackgroundColor || "",
+    headerGlowEnabled: theme?.headerGlowEnabled ?? true,
+    animationLevel: ((theme?.animationLevel as AnimationLevel) || "subtle"),
     showPoweredByA3: theme?.showPoweredByA3 ?? true,
     customWelcomeMessage: theme?.customWelcomeMessage || "",
     isDark: effectiveIsDark,

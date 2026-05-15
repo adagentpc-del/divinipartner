@@ -53,6 +53,20 @@ interface ThemeData {
   headerTheme: "dark" | "light";
   headerLayoutStyle: "full_width_hero" | "centered_logo_hero" | "event_microsite" | "minimal" | "split_image";
   headerBackgroundVideoUrl: string;
+  // Premium brand experience
+  mainLogoUrl: string;
+  secondaryLogoUrl: string;
+  mainLogoDisplayMode: "contained_logo" | "full_header_banner" | "hero_overlay_logo";
+  secondaryLogoPlacement: "footer" | "under_cart" | "checkout_sidebar" | "footer_and_cart" | "hidden";
+  headerLogoMaxHeight: number;
+  headerLogoWidthPercent: number;
+  headerAlignment: "left" | "center" | "right";
+  headerObjectFit: "contain" | "cover";
+  headerPaddingTop: number;
+  headerPaddingBottom: number;
+  headerBackgroundColor: string;
+  headerGlowEnabled: boolean;
+  animationLevel: "none" | "subtle" | "premium";
   showPoweredByA3: boolean;
   customWelcomeMessage: string;
   isPublished: boolean;
@@ -119,6 +133,19 @@ export default function PartnerThemeEditor() {
     headerTheme: "dark",
     headerLayoutStyle: "full_width_hero",
     headerBackgroundVideoUrl: "",
+    mainLogoUrl: "",
+    secondaryLogoUrl: "",
+    mainLogoDisplayMode: "contained_logo",
+    secondaryLogoPlacement: "footer_and_cart",
+    headerLogoMaxHeight: 96,
+    headerLogoWidthPercent: 80,
+    headerAlignment: "center",
+    headerObjectFit: "contain",
+    headerPaddingTop: 72,
+    headerPaddingBottom: 72,
+    headerBackgroundColor: "",
+    headerGlowEnabled: true,
+    animationLevel: "subtle",
     showPoweredByA3: true,
     customWelcomeMessage: "",
     isPublished: false,
@@ -499,6 +526,163 @@ export default function PartnerThemeEditor() {
             on the page background) and on every footer. The light and dark logo variants are
             provided by A3 — bundled defaults ship with the portal. To override, set
             <code>A3_LOCKUP_LOGO_LIGHT_URL</code> / <code>A3_LOCKUP_LOGO_DARK_URL</code> env vars.
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Premium Brand Experience — main + secondary logos, header tuning, animation */}
+      <Card>
+        <CardHeader className="pb-4">
+          <CardTitle className="text-base flex items-center gap-2"><Sparkles className="h-4 w-4" /> Premium Brand Experience</CardTitle>
+          <p className="text-xs text-muted-foreground mt-1">
+            Upload main + secondary logos and tune how the header banner, motion, and brand marks render across the public portal.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Main Logo URL</Label>
+              <Input
+                value={theme.mainLogoUrl}
+                onChange={e => setTheme(prev => ({ ...prev, mainLogoUrl: e.target.value }))}
+                placeholder="https://… png/svg with transparent background"
+                className="h-9"
+              />
+              <p className="text-[11px] text-muted-foreground">Renders in the header. Falls back to the legacy logo if blank.</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Secondary Logo URL</Label>
+              <Input
+                value={theme.secondaryLogoUrl}
+                onChange={e => setTheme(prev => ({ ...prev, secondaryLogoUrl: e.target.value }))}
+                placeholder="https://… secondary mark / wordmark"
+                className="h-9"
+              />
+              <p className="text-[11px] text-muted-foreground">Optional. Shown in the placement chosen below.</p>
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Main Logo Display Mode</Label>
+              <Select value={theme.mainLogoDisplayMode} onValueChange={v => setTheme(prev => ({ ...prev, mainLogoDisplayMode: v as ThemeData["mainLogoDisplayMode"] }))}>
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="contained_logo">Contained logo — sits inside the chosen header layout</SelectItem>
+                  <SelectItem value="full_header_banner">Full header banner — large branded artwork dominates the header</SelectItem>
+                  <SelectItem value="hero_overlay_logo">Hero overlay — logo card floats over the hero background</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Secondary Logo Placement</Label>
+              <Select value={theme.secondaryLogoPlacement} onValueChange={v => setTheme(prev => ({ ...prev, secondaryLogoPlacement: v as ThemeData["secondaryLogoPlacement"] }))}>
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="footer">Footer only</SelectItem>
+                  <SelectItem value="under_cart">Under cart sidebar only</SelectItem>
+                  <SelectItem value="checkout_sidebar">Checkout sidebar only</SelectItem>
+                  <SelectItem value="footer_and_cart">Footer + cart sidebar (recommended)</SelectItem>
+                  <SelectItem value="hidden">Hidden</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Header Alignment</Label>
+              <Select value={theme.headerAlignment} onValueChange={v => setTheme(prev => ({ ...prev, headerAlignment: v as ThemeData["headerAlignment"] }))}>
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="left">Left</SelectItem>
+                  <SelectItem value="center">Center</SelectItem>
+                  <SelectItem value="right">Right</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Logo Object Fit</Label>
+              <Select value={theme.headerObjectFit} onValueChange={v => setTheme(prev => ({ ...prev, headerObjectFit: v as ThemeData["headerObjectFit"] }))}>
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="contain">Contain — preserves aspect ratio</SelectItem>
+                  <SelectItem value="cover">Cover — fills the area, may crop</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Header Logo Max Height (px)</Label>
+              <Input type="number" min={48} max={320}
+                value={theme.headerLogoMaxHeight}
+                onChange={e => setTheme(prev => ({ ...prev, headerLogoMaxHeight: parseInt(e.target.value || "96", 10) }))}
+                className="h-9"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Header Logo Width (% of column)</Label>
+              <Input type="number" min={20} max={100}
+                value={theme.headerLogoWidthPercent}
+                onChange={e => setTheme(prev => ({ ...prev, headerLogoWidthPercent: parseInt(e.target.value || "80", 10) }))}
+                className="h-9"
+              />
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-3 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Header Padding Top (px)</Label>
+              <Input type="number" min={0} max={240}
+                value={theme.headerPaddingTop}
+                onChange={e => setTheme(prev => ({ ...prev, headerPaddingTop: parseInt(e.target.value || "72", 10) }))}
+                className="h-9"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Header Padding Bottom (px)</Label>
+              <Input type="number" min={0} max={240}
+                value={theme.headerPaddingBottom}
+                onChange={e => setTheme(prev => ({ ...prev, headerPaddingBottom: parseInt(e.target.value || "72", 10) }))}
+                className="h-9"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Header Background Color (override)</Label>
+              <Input
+                value={theme.headerBackgroundColor}
+                onChange={e => setTheme(prev => ({ ...prev, headerBackgroundColor: e.target.value }))}
+                placeholder="#0c0e1a — blank uses gradient"
+                className="h-9"
+              />
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Animation Level</Label>
+              <Select value={theme.animationLevel} onValueChange={v => setTheme(prev => ({ ...prev, animationLevel: v as ThemeData["animationLevel"] }))}>
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None — fully static</SelectItem>
+                  <SelectItem value="subtle">Subtle — gentle gradient sweep + fade-up</SelectItem>
+                  <SelectItem value="premium">Premium — faster sweep, more cinematic</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">Always disabled when the visitor's OS prefers reduced motion.</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Header Glow</Label>
+              <Select value={theme.headerGlowEnabled ? "on" : "off"} onValueChange={v => setTheme(prev => ({ ...prev, headerGlowEnabled: v === "on" }))}>
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="on">On — accent-colored glow blooms behind the header</SelectItem>
+                  <SelectItem value="off">Off — flat gradient only</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardContent>
       </Card>

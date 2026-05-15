@@ -867,6 +867,15 @@ export default function OrderingPortal({ slug }: { slug: string }) {
           {/* Sticky Summary Sidebar (desktop) */}
           <aside className="hidden lg:block">
             <div className="sticky top-6 space-y-3">
+              {(branding.secondaryLogoPlacement === "under_cart" || branding.secondaryLogoPlacement === "footer_and_cart" || branding.secondaryLogoPlacement === "checkout_sidebar") && branding.secondaryLogoUrl && (
+                <div className="flex justify-center pb-1">
+                  <img
+                    src={branding.secondaryLogoUrl}
+                    alt="Brand mark"
+                    className="h-10 w-auto object-contain opacity-95"
+                  />
+                </div>
+              )}
               <Card className="p-5 shadow-md">
                 <div className="flex items-center gap-2 mb-3">
                   <ShoppingCart className="h-4 w-4 text-muted-foreground" />

@@ -37,6 +37,16 @@ export function PortalFooter({ partnerName, branding }: PortalFooterProps) {
   return (
     <footer className="py-8 mt-auto" style={{ borderTop: `1px solid ${borderColor}` }}>
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
+        {(branding.secondaryLogoPlacement === "footer" || branding.secondaryLogoPlacement === "footer_and_cart") && branding.secondaryLogoUrl && (
+          <div className="flex justify-center pb-6">
+            <img
+              src={branding.secondaryLogoUrl}
+              alt={`${partnerName} secondary mark`}
+              className="h-12 w-auto object-contain opacity-90"
+              style={{ filter: branding.isDark ? "drop-shadow(0 2px 8px rgba(0,0,0,0.4))" : "none" }}
+            />
+          </div>
+        )}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs" style={{ color: mutedColor }}>
           <span>&copy; {new Date().getFullYear()} {partnerName}</span>
           <div className="flex items-center gap-2.5" title="A3 Visual partnership">

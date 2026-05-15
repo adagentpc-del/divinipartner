@@ -70,6 +70,28 @@ export function PortalCTA({
       };
     }
 
+    if (branding.buttonStyle === "glow") {
+      return {
+        background: `linear-gradient(135deg, ${branding.button}, ${branding.accent})`,
+        color: readableOn(branding.button),
+        border: "none",
+        boxShadow: `0 0 24px ${branding.accent}66, 0 6px 20px ${branding.accent}44`,
+        borderRadius: radius,
+      };
+    }
+
+    if (branding.buttonStyle === "festival") {
+      return {
+        background: `linear-gradient(135deg, ${branding.accent} 0%, ${branding.button} 100%)`,
+        color: readableOn(branding.button),
+        border: "none",
+        boxShadow: `0 8px 24px ${branding.accent}55, inset 0 1px 0 rgba(255,255,255,0.2)`,
+        borderRadius: radius,
+        textTransform: "uppercase",
+        letterSpacing: "0.08em",
+      };
+    }
+
     return {
       backgroundColor: branding.button,
       color: branding.buttonText,

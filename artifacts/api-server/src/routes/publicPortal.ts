@@ -36,6 +36,13 @@ const PUBLIC_THEME_FIELDS = [
   "heroBackgroundMode", "heroBackgroundStorageKey", "heroOverlayIntensity",
   "ctaLabel", "ctaUrl", "secondaryCtaLabel", "secondaryCtaUrl",
   "headerTheme", "headerLayoutStyle", "headerBackgroundVideoUrl",
+  "mainLogoStorageKey", "mainLogoUrl",
+  "secondaryLogoStorageKey", "secondaryLogoUrl",
+  "mainLogoDisplayMode", "secondaryLogoPlacement",
+  "headerLogoMaxHeight", "headerLogoWidthPercent",
+  "headerAlignment", "headerObjectFit",
+  "headerPaddingTop", "headerPaddingBottom",
+  "headerBackgroundColor", "headerGlowEnabled", "animationLevel",
   "showPoweredByA3", "customWelcomeMessage", "isPublished",
 ] as const;
 

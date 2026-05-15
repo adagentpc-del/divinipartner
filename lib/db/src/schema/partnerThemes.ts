@@ -44,6 +44,26 @@ export const partnerThemesTable = pgTable("partner_themes", {
   headerTheme: text("header_theme").notNull().default("dark"),
   headerLayoutStyle: text("header_layout_style").notNull().default("full_width_hero"),
   headerBackgroundVideoUrl: text("header_background_video_url"),
+
+  // Premium brand experience — main + secondary logo, header tuning,
+  // animation level, premium card / button variants. Defaults preserve the
+  // current contained-logo experience; event/festival partners are seeded
+  // separately to use the cinematic full_header_banner treatment.
+  mainLogoStorageKey: text("main_logo_storage_key"),
+  mainLogoUrl: text("main_logo_url"),
+  secondaryLogoStorageKey: text("secondary_logo_storage_key"),
+  secondaryLogoUrl: text("secondary_logo_url"),
+  mainLogoDisplayMode: text("main_logo_display_mode").notNull().default("contained_logo"),
+  secondaryLogoPlacement: text("secondary_logo_placement").notNull().default("footer_and_cart"),
+  headerLogoMaxHeight: integer("header_logo_max_height").notNull().default(96),
+  headerLogoWidthPercent: integer("header_logo_width_percent").notNull().default(80),
+  headerAlignment: text("header_alignment").notNull().default("center"),
+  headerObjectFit: text("header_object_fit").notNull().default("contain"),
+  headerPaddingTop: integer("header_padding_top").notNull().default(72),
+  headerPaddingBottom: integer("header_padding_bottom").notNull().default(72),
+  headerBackgroundColor: text("header_background_color"),
+  headerGlowEnabled: boolean("header_glow_enabled").notNull().default(true),
+  animationLevel: text("animation_level").notNull().default("subtle"),
   showPoweredByA3: boolean("show_powered_by_a3").notNull().default(true),
   customWelcomeMessage: text("custom_welcome_message"),
   isPublished: boolean("is_published").notNull().default(false),

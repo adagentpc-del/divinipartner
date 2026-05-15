@@ -92,9 +92,9 @@ export const BORDER_RADIUS_MAP: Record<string, string> = {
 export const CARD_STYLE_MAP: Record<string, { bg: string; border: string; shadow: string; backdrop: string }> = {
   glass: {
     bg: "rgba(255,255,255,0.06)",
-    border: "1px solid rgba(255,255,255,0.1)",
-    shadow: "0 8px 32px rgba(0,0,0,0.12)",
-    backdrop: "blur(12px)",
+    border: "1px solid rgba(255,255,255,0.12)",
+    shadow: "0 8px 32px rgba(0,0,0,0.18)",
+    backdrop: "blur(16px) saturate(140%)",
   },
   solid: {
     bg: "var(--brand-secondary, #1e293b)",
@@ -113,6 +113,19 @@ export const CARD_STYLE_MAP: Record<string, { bg: string; border: string; shadow
     border: "1px solid rgba(0,0,0,0.06)",
     shadow: "0 4px 24px rgba(0,0,0,0.08)",
     backdrop: "none",
+  },
+  // Premium variants — used by the upgraded portal experience
+  editorial: {
+    bg: "#ffffff",
+    border: "1px solid rgba(0,0,0,0.08)",
+    shadow: "0 1px 0 rgba(0,0,0,0.04), 0 24px 48px -24px rgba(15,23,42,0.18)",
+    backdrop: "none",
+  },
+  luxury: {
+    bg: "linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%)",
+    border: "1px solid rgba(201,169,110,0.22)",
+    shadow: "0 12px 36px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.06)",
+    backdrop: "blur(8px)",
   },
 };
 
@@ -134,6 +147,18 @@ export const BUTTON_STYLE_MAP: Record<string, (color: string, accent?: string) =
     backgroundColor: `${color}22`,
     border: `1px solid ${color}44`,
     backdropFilter: "blur(8px)",
+  }),
+  glow: (color, accent) => ({
+    background: `linear-gradient(135deg, ${color}, ${accent || color})`,
+    border: "none",
+    boxShadow: `0 0 24px ${(accent || color)}66, 0 6px 20px ${(accent || color)}44`,
+  }),
+  festival: (color, accent) => ({
+    background: `linear-gradient(135deg, ${accent || color} 0%, ${color} 100%)`,
+    border: "none",
+    boxShadow: `0 8px 24px ${(accent || color)}55, inset 0 1px 0 rgba(255,255,255,0.18)`,
+    textTransform: "uppercase",
+    letterSpacing: "0.08em",
   }),
 };
 

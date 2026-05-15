@@ -2453,6 +2453,36 @@ export interface PartnerThemeRow {
   headerLayoutStyle?: string | null;
   /** @nullable */
   headerBackgroundVideoUrl?: string | null;
+  /** @nullable */
+  mainLogoStorageKey?: string | null;
+  /** @nullable */
+  mainLogoUrl?: string | null;
+  /** @nullable */
+  secondaryLogoStorageKey?: string | null;
+  /** @nullable */
+  secondaryLogoUrl?: string | null;
+  /** @nullable */
+  mainLogoDisplayMode?: string | null;
+  /** @nullable */
+  secondaryLogoPlacement?: string | null;
+  /** @nullable */
+  headerLogoMaxHeight?: number | null;
+  /** @nullable */
+  headerLogoWidthPercent?: number | null;
+  /** @nullable */
+  headerAlignment?: string | null;
+  /** @nullable */
+  headerObjectFit?: string | null;
+  /** @nullable */
+  headerPaddingTop?: number | null;
+  /** @nullable */
+  headerPaddingBottom?: number | null;
+  /** @nullable */
+  headerBackgroundColor?: string | null;
+  /** @nullable */
+  headerGlowEnabled?: boolean | null;
+  /** @nullable */
+  animationLevel?: string | null;
   [key: string]: unknown;
 }
 
