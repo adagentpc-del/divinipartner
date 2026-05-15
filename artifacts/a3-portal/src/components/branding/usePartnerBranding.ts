@@ -26,11 +26,24 @@ export interface PartnerThemeShape {
   logoUrl?: string | null;
   logoAltText?: string | null;
   ctaLabel?: string | null;
+  ctaUrl?: string | null;
   secondaryCtaLabel?: string | null;
+  secondaryCtaUrl?: string | null;
+  headerTheme?: string | null;
+  headerLayoutStyle?: string | null;
+  headerBackgroundVideoUrl?: string | null;
   showPoweredByA3?: boolean | null;
   customWelcomeMessage?: string | null;
   isPublished?: boolean | null;
 }
+
+export type HeaderThemeMode = "dark" | "light";
+export type HeaderLayoutStyle =
+  | "full_width_hero"
+  | "centered_logo_hero"
+  | "event_microsite"
+  | "minimal"
+  | "split_image";
 
 export interface ResolvedBranding {
   primary: string;
@@ -59,7 +72,12 @@ export interface ResolvedBranding {
   logoUrl: string;
   logoAltText: string;
   ctaLabel: string;
+  ctaUrl: string;
   secondaryCtaLabel: string;
+  secondaryCtaUrl: string;
+  headerTheme: HeaderThemeMode;
+  headerLayoutStyle: HeaderLayoutStyle;
+  headerBackgroundVideoUrl: string;
   showPoweredByA3: boolean;
   customWelcomeMessage: string;
   isDark: boolean;
@@ -93,7 +111,12 @@ export const FALLBACK_BRANDING: Omit<ResolvedBranding, "shellStyle"> = {
   logoUrl: "",
   logoAltText: "",
   ctaLabel: "",
+  ctaUrl: "",
   secondaryCtaLabel: "",
+  secondaryCtaUrl: "",
+  headerTheme: "dark",
+  headerLayoutStyle: "full_width_hero",
+  headerBackgroundVideoUrl: "",
   showPoweredByA3: true,
   customWelcomeMessage: "",
   isDark: false,
@@ -158,7 +181,12 @@ export function resolveBranding(theme?: PartnerThemeShape | null): ResolvedBrand
     logoUrl: theme?.logoUrl || "",
     logoAltText: theme?.logoAltText || "",
     ctaLabel: theme?.ctaLabel || "",
+    ctaUrl: theme?.ctaUrl || "",
     secondaryCtaLabel: theme?.secondaryCtaLabel || "",
+    secondaryCtaUrl: theme?.secondaryCtaUrl || "",
+    headerTheme: ((theme?.headerTheme as HeaderThemeMode) || (isDarkTemplate(templateKey) ? "dark" : "light")),
+    headerLayoutStyle: ((theme?.headerLayoutStyle as HeaderLayoutStyle) || "full_width_hero"),
+    headerBackgroundVideoUrl: theme?.headerBackgroundVideoUrl || "",
     showPoweredByA3: theme?.showPoweredByA3 ?? true,
     customWelcomeMessage: theme?.customWelcomeMessage || "",
     isDark: effectiveIsDark,

@@ -7,6 +7,8 @@ export interface PublicConfig {
   isCustomDomain: boolean;
   fallbackHosts: string[];
   publicAppUrlConfigured: boolean;
+  a3LockupLogoLightUrl?: string | null;
+  a3LockupLogoDarkUrl?: string | null;
 }
 
 let cached: PublicConfig | null = null;

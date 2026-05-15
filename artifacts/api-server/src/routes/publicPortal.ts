@@ -19,11 +19,34 @@ import { sendRequestNotification } from "../lib/resend";
 
 const router: IRouter = Router();
 
+// Explicit allow-list of partner theme fields safe to expose on public portal
+// pages. Anything not listed here is treated as internal — this prevents
+// future internal-only columns from accidentally leaking when added to the
+// partner_themes table.
+const PUBLIC_THEME_FIELDS = [
+  "templateKey",
+  "primaryColor", "secondaryColor", "accentColor", "backgroundColor",
+  "buttonColor", "textColor",
+  "headingFont", "bodyFont",
+  "buttonStyle", "borderRadius", "borderRadiusStyle", "cardStyle",
+  "tonePreset",
+  "logoUrl", "logoStorageKey", "logoAltText",
+  "logoPlacement", "logoBackgroundTreatment",
+  "heroEyebrow", "heroHeadline", "heroSubheadline",
+  "heroBackgroundMode", "heroBackgroundStorageKey", "heroOverlayIntensity",
+  "ctaLabel", "ctaUrl", "secondaryCtaLabel", "secondaryCtaUrl",
+  "headerTheme", "headerLayoutStyle", "headerBackgroundVideoUrl",
+  "showPoweredByA3", "customWelcomeMessage", "isPublished",
+] as const;
+
 function safePublicTheme(theme: any): any {
   if (!theme) return null;
   if (!theme.isPublished) return { templateKey: theme.templateKey };
-  const { id: _id, partnerId: _pid, themeNotes: _tn, aiSuggestedJson: _ai, isApproved: _ia, createdAt: _ca, updatedAt: _ua, ...publicFields } = theme;
-  return publicFields;
+  const out: Record<string, unknown> = {};
+  for (const k of PUBLIC_THEME_FIELDS) {
+    if (theme[k] !== undefined) out[k] = theme[k];
+  }
+  return out;
 }
 
 router.get("/public/partners/:slug", async (req, res): Promise<void> => {

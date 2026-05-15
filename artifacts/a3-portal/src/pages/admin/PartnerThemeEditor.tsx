@@ -12,7 +12,7 @@ import { Link } from "wouter";
 import { LogoUploader } from "@/components/admin/LogoUploader";
 import { TEMPLATE_DEFAULTS, TEMPLATE_KEYS, getTemplateDefaults, BORDER_RADIUS_MAP, type TemplateKey } from "@/components/branding/templateDefaults";
 import { resolveBranding } from "@/components/branding/usePartnerBranding";
-import { PortalHero } from "@/components/branding/PortalHero";
+import { PartnerPortalHeader } from "@/components/branding/PartnerPortalHeader";
 import { PortalCard } from "@/components/branding/PortalCard";
 import { PortalNavbar } from "@/components/branding/PortalNavbar";
 import { PortalFooter } from "@/components/branding/PortalFooter";
@@ -47,11 +47,24 @@ interface ThemeData {
   cardStyle: string;
   borderRadiusStyle: string;
   ctaLabel: string;
+  ctaUrl: string;
   secondaryCtaLabel: string;
+  secondaryCtaUrl: string;
+  headerTheme: "dark" | "light";
+  headerLayoutStyle: "full_width_hero" | "centered_logo_hero" | "event_microsite" | "minimal" | "split_image";
+  headerBackgroundVideoUrl: string;
   showPoweredByA3: boolean;
   customWelcomeMessage: string;
   isPublished: boolean;
 }
+
+const HEADER_LAYOUT_OPTIONS: { value: ThemeData["headerLayoutStyle"]; label: string; description: string }[] = [
+  { value: "full_width_hero", label: "Full-width hero", description: "Centered headline, subheadline, and CTAs over a full-bleed background." },
+  { value: "centered_logo_hero", label: "Centered logo hero", description: "Partner logo centered above headline, classic launch page feel." },
+  { value: "event_microsite", label: "Event microsite", description: "Left-aligned headline + CTA, designed for single-event landing pages." },
+  { value: "minimal", label: "Minimal", description: "Compact bar with logo, title, and CTAs — leaves more room for page content." },
+  { value: "split_image", label: "Split image", description: "Headline on the left, partner logo card on the right." },
+];
 
 const FONT_OPTIONS = ["Inter", "Poppins", "Playfair Display", "Montserrat", "DM Sans", "Space Grotesk", "Outfit"];
 
@@ -100,7 +113,12 @@ export default function PartnerThemeEditor() {
     cardStyle: "elevated",
     borderRadiusStyle: "soft",
     ctaLabel: "",
+    ctaUrl: "",
     secondaryCtaLabel: "",
+    secondaryCtaUrl: "",
+    headerTheme: "dark",
+    headerLayoutStyle: "full_width_hero",
+    headerBackgroundVideoUrl: "",
     showPoweredByA3: true,
     customWelcomeMessage: "",
     isPublished: false,
@@ -405,7 +423,89 @@ export default function PartnerThemeEditor() {
 
       <Card>
         <CardHeader className="pb-4">
-          <CardTitle className="text-base flex items-center gap-2"><Sparkles className="h-4 w-4" /> Hero Section</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2"><Layout className="h-4 w-4" /> Partner Portal Branding</CardTitle>
+          <p className="text-xs text-muted-foreground mt-1">
+            The branded partner portal header that appears at the top of every public partner page.
+            The required A3 Visual partnership lockup is anchored to the lower-right of the header
+            (with a matching cut-out) and to every footer.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Header Theme</Label>
+              <Select value={theme.headerTheme} onValueChange={v => setTheme(prev => ({ ...prev, headerTheme: v as ThemeData["headerTheme"] }))}>
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="dark">Dark — light text on a dark/gradient background</SelectItem>
+                  <SelectItem value="light">Light — dark text on a light/branded background</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Header Layout Style</Label>
+              <Select value={theme.headerLayoutStyle} onValueChange={v => setTheme(prev => ({ ...prev, headerLayoutStyle: v as ThemeData["headerLayoutStyle"] }))}>
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {HEADER_LAYOUT_OPTIONS.map(o => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                {HEADER_LAYOUT_OPTIONS.find(o => o.value === theme.headerLayoutStyle)?.description}
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs">Header Background Video URL (autoplay, muted, looped)</Label>
+            <Input
+              value={theme.headerBackgroundVideoUrl}
+              onChange={e => setTheme(prev => ({ ...prev, headerBackgroundVideoUrl: e.target.value }))}
+              placeholder="https://… .mp4 / .webm — leave blank to use the image or gradient background"
+              className="h-9"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              When set, the video plays as the header background and overrides the image / gradient background.
+              Use a short, light, looping clip — videos always render muted with no controls.
+            </p>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Primary CTA URL</Label>
+              <Input
+                value={theme.ctaUrl}
+                onChange={e => setTheme(prev => ({ ...prev, ctaUrl: e.target.value }))}
+                placeholder="https://… or /portal/start"
+                className="h-9"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Secondary CTA URL</Label>
+              <Input
+                value={theme.secondaryCtaUrl}
+                onChange={e => setTheme(prev => ({ ...prev, secondaryCtaUrl: e.target.value }))}
+                placeholder="https://… or anchor"
+                className="h-9"
+              />
+            </div>
+          </div>
+
+          <div className="rounded-md border border-dashed p-3 text-[11px] text-muted-foreground bg-muted/30">
+            <strong className="text-foreground">A3 Visual lockup is required.</strong>{" "}
+            It always appears in the lower-right of the header (with a matching cut-out so it sits
+            on the page background) and on every footer. The light and dark logo variants are
+            provided by A3 — upload them in Object Storage and set <code>A3_LOCKUP_LOGO_LIGHT_URL</code>{" "}
+            / <code>A3_LOCKUP_LOGO_DARK_URL</code>; the portal falls back to a text lockup if not set.
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-4">
+          <CardTitle className="text-base flex items-center gap-2"><Sparkles className="h-4 w-4" /> Header Content</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid sm:grid-cols-2 gap-4">
@@ -528,18 +628,12 @@ export default function PartnerThemeEditor() {
                 partnerLogoUrl={partnerLogo || theme.logoUrl}
                 branding={branding}
               />
-              <PortalHero
+              <PartnerPortalHeader
                 partnerName={partnerName}
                 partnerLogoUrl={partnerLogo || theme.logoUrl}
                 branding={branding}
                 defaultHeadline={`Welcome to ${partnerName}`}
                 defaultSubheadline="Your premium event production partner"
-                ctaSlot={
-                  <>
-                    <PortalCTA branding={branding} label={theme.ctaLabel || "Start a Project"} size="lg" />
-                    <PortalCTA branding={branding} label={theme.secondaryCtaLabel || "View Capabilities"} variant="outline" size="lg" />
-                  </>
-                }
               />
               <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">

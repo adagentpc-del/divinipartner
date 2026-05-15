@@ -17,6 +17,24 @@ function requireAuth(req: Request, res: Response, next: NextFunction): void {
   next();
 }
 
+// Allow http(s) absolute URLs and same-site relative paths only. Empty / null
+// is permitted (means "unset"). Blocks javascript:, data:, vbscript:, file:,
+// etc. — these would XSS / open-redirect when rendered into <video src> or
+// <a href> on the public partner portal.
+const SafeUrl = z.string()
+  .nullable()
+  .optional()
+  .refine((v) => {
+    if (v == null || v === "") return true;
+    if (v.startsWith("/") && !v.startsWith("//")) return true; // relative path
+    try {
+      const u = new URL(v);
+      return u.protocol === "http:" || u.protocol === "https:";
+    } catch {
+      return false;
+    }
+  }, { message: "URL must be http(s) or a same-site relative path" });
+
 const ThemeBody = z.object({
   primaryColor: z.string().optional(),
   secondaryColor: z.string().optional(),
@@ -47,7 +65,12 @@ const ThemeBody = z.object({
   cardStyle: z.string().optional(),
   borderRadiusStyle: z.string().optional(),
   ctaLabel: z.string().nullable().optional(),
+  ctaUrl: SafeUrl,
   secondaryCtaLabel: z.string().nullable().optional(),
+  secondaryCtaUrl: SafeUrl,
+  headerTheme: z.enum(["dark", "light"]).optional(),
+  headerLayoutStyle: z.enum(["full_width_hero", "centered_logo_hero", "event_microsite", "minimal", "split_image"]).optional(),
+  headerBackgroundVideoUrl: SafeUrl,
   showPoweredByA3: z.boolean().optional(),
   customWelcomeMessage: z.string().nullable().optional(),
   isPublished: z.boolean().optional(),

@@ -36,7 +36,14 @@ export const partnerThemesTable = pgTable("partner_themes", {
   cardStyle: text("card_style").notNull().default("elevated"),
   borderRadiusStyle: text("border_radius_style").notNull().default("soft"),
   ctaLabel: text("cta_label"),
+  ctaUrl: text("cta_url"),
   secondaryCtaLabel: text("secondary_cta_label"),
+  secondaryCtaUrl: text("secondary_cta_url"),
+  // Branded portal header (extends the 3 templates with explicit theme + layout
+  // controls and a video background option). Defaults preserve existing look.
+  headerTheme: text("header_theme").notNull().default("dark"),
+  headerLayoutStyle: text("header_layout_style").notNull().default("full_width_hero"),
+  headerBackgroundVideoUrl: text("header_background_video_url"),
   showPoweredByA3: boolean("show_powered_by_a3").notNull().default(true),
   customWelcomeMessage: text("custom_welcome_message"),
   isPublished: boolean("is_published").notNull().default(false),

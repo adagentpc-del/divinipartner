@@ -14,6 +14,8 @@ router.get("/public-config", (req, res) => {
     isCustomDomain: info.isCustomDomain,
     fallbackHosts: info.fallbackHosts,
     publicAppUrlConfigured: info.source === "PUBLIC_APP_URL",
+    a3LockupLogoLightUrl: process.env.A3_LOCKUP_LOGO_LIGHT_URL || null,
+    a3LockupLogoDarkUrl: process.env.A3_LOCKUP_LOGO_DARK_URL || null,
   };
   sendValidated(req, res, GetPublicConfigResponse, payload, "Get public config");
 });

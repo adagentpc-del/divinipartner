@@ -19,7 +19,7 @@ import FullPortal from "./portal/FullPortal";
 import OrderingPortal from "./OrderingPortal";
 import { resolveBranding } from "@/components/branding/usePartnerBranding";
 import { PortalNavbar } from "@/components/branding/PortalNavbar";
-import { PortalHero } from "@/components/branding/PortalHero";
+import { PartnerPortalHeader } from "@/components/branding/PartnerPortalHeader";
 import { PortalFooter } from "@/components/branding/PortalFooter";
 import { PortalCTA } from "@/components/branding/PortalCTA";
 
@@ -225,7 +225,7 @@ function IntakePortal({ slug, partner }: { slug: string; partner: any }) {
       />
 
       {step === 1 && (
-        <PortalHero
+        <PartnerPortalHeader
           partnerName={partner.companyName}
           partnerLogoUrl={partner.logoUrl}
           branding={branding}

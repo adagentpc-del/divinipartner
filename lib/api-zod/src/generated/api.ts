@@ -2141,7 +2141,12 @@ export const GetPartnerThemeResponse = zod.union([
     heroHeadline: zod.string().nullish(),
     heroSubheadline: zod.string().nullish(),
     ctaLabel: zod.string().nullish(),
+    ctaUrl: zod.string().nullish(),
     secondaryCtaLabel: zod.string().nullish(),
+    secondaryCtaUrl: zod.string().nullish(),
+    headerTheme: zod.string().nullish(),
+    headerLayoutStyle: zod.string().nullish(),
+    headerBackgroundVideoUrl: zod.string().nullish(),
   }),
   zod.null(),
 ]);
@@ -2174,7 +2179,12 @@ export const UpsertPartnerThemeResponse = zod.object({
   heroHeadline: zod.string().nullish(),
   heroSubheadline: zod.string().nullish(),
   ctaLabel: zod.string().nullish(),
+  ctaUrl: zod.string().nullish(),
   secondaryCtaLabel: zod.string().nullish(),
+  secondaryCtaUrl: zod.string().nullish(),
+  headerTheme: zod.string().nullish(),
+  headerLayoutStyle: zod.string().nullish(),
+  headerBackgroundVideoUrl: zod.string().nullish(),
 });
 
 export const GetPartnerInventorySummaryParams = zod.object({

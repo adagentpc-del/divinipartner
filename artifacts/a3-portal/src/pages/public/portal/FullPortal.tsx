@@ -10,7 +10,7 @@ import RequestFormDialog from "./RequestFormDialog";
 import { formatWxH, type UnitSystem } from "@/lib/units";
 import { resolveBranding } from "@/components/branding/usePartnerBranding";
 import { PortalNavbar } from "@/components/branding/PortalNavbar";
-import { PortalHero } from "@/components/branding/PortalHero";
+import { PartnerPortalHeader } from "@/components/branding/PartnerPortalHeader";
 import { PortalFooter } from "@/components/branding/PortalFooter";
 import { PortalCard } from "@/components/branding/PortalCard";
 import { PortalCTA } from "@/components/branding/PortalCTA";
@@ -327,7 +327,7 @@ export default function FullPortal({ slug }: { slug: string }) {
         branding={branding}
       />
 
-      <PortalHero
+      <PartnerPortalHeader
         partnerName={partner.companyName}
         partnerLogoUrl={partner.logoUrl}
         branding={branding}

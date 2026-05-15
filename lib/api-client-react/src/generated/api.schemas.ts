@@ -2442,7 +2442,17 @@ export interface PartnerThemeRow {
   /** @nullable */
   ctaLabel?: string | null;
   /** @nullable */
+  ctaUrl?: string | null;
+  /** @nullable */
   secondaryCtaLabel?: string | null;
+  /** @nullable */
+  secondaryCtaUrl?: string | null;
+  /** @nullable */
+  headerTheme?: string | null;
+  /** @nullable */
+  headerLayoutStyle?: string | null;
+  /** @nullable */
+  headerBackgroundVideoUrl?: string | null;
   [key: string]: unknown;
 }
 

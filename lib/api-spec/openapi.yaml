@@ -5711,7 +5711,12 @@ components:
         heroHeadline: { type: ["string", "null"] }
         heroSubheadline: { type: ["string", "null"] }
         ctaLabel: { type: ["string", "null"] }
+        ctaUrl: { type: ["string", "null"] }
         secondaryCtaLabel: { type: ["string", "null"] }
+        secondaryCtaUrl: { type: ["string", "null"] }
+        headerTheme: { type: ["string", "null"] }
+        headerLayoutStyle: { type: ["string", "null"] }
+        headerBackgroundVideoUrl: { type: ["string", "null"] }
 
     PartnerInventorySummary:
       type: object
