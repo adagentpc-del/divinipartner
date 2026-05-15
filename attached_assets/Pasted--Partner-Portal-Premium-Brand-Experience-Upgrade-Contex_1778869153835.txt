@@ -1,0 +1,193 @@
+# Partner Portal Premium Brand Experience Upgrade
+
+## Context
+
+We are upgrading the A3 Visual Partnership Portal because the current partner portal pages look too flat, bland, generic, and “vibe coded.” The current experience does not visually match premium clients, event brands, festivals, hotels, venues, or large scale experiential partners.
+
+The goal is to create a high end, branded, animated partner portal experience where each partner page feels custom designed while still using one scalable system.
+
+Example partner: Social Commerce Festival.
+
+The partner may upload:
+1. Main Logo
+2. Secondary Logo
+3. Optional hero background image or brand image
+4. Optional brand colors
+5. Optional brand fonts
+6. Optional brand description
+7. Optional dark or light theme preference
+
+The system must transform these uploads into a premium landing and order portal experience.
+
+---
+
+# Primary Problem To Solve
+
+When a partner portal opens, the first impression must feel like a high end custom event brand page, not a generic form.
+
+The current page is mostly white space, simple cards, basic buttons, and flat default styling. Replace this with a polished branded experience with movement, graphics, strong headers, premium spacing, visual hierarchy, partner branding, and A3 Visual partnership credibility.
+
+---
+
+# Critical Branding Requirements
+
+## 1. Main Logo As Full Header
+
+When an admin uploads a partner’s Main Logo, the portal must support using it as the full top header treatment.
+
+For Social Commerce Festival, the green logo should appear as a large full width branded header/banner, not a tiny logo box.
+
+Create an admin setting:
+
+`main_logo_display_mode`
+
+Options:
+- `full_header_banner`
+- `contained_logo`
+- `hero_overlay_logo`
+
+Default for event/festival partners should be:
+
+`full_header_banner`
+
+When set to `full_header_banner`:
+- The main logo should span the full width of the top branded hero/header area.
+- It should preserve aspect ratio.
+- It should not be cropped unless admin manually chooses crop mode.
+- It should sit on a dark cinematic background by default.
+- It should be visually dominant.
+- It should support max height controls.
+- It should be responsive on desktop, tablet, and mobile.
+
+Admin controls needed:
+- Header logo max height
+- Header logo width percentage
+- Header background color
+- Header background image
+- Header overlay opacity
+- Header alignment: left, center, right
+- Header padding top/bottom
+- Object fit: contain, cover
+- Optional glow/accent effect toggle
+
+---
+
+## 2. Secondary Logo Placement
+
+When an admin uploads a Secondary Logo, the system must support placing it:
+
+- At the bottom of the page
+- In the footer
+- Under the shopping cart/order summary
+- In the checkout/review area
+- In a “Presented by” or “Powered by” section
+
+Create admin setting:
+
+`secondary_logo_placement`
+
+Options:
+- `footer`
+- `under_cart`
+- `checkout_sidebar`
+- `footer_and_cart`
+- `hidden`
+
+Default:
+
+`footer_and_cart`
+
+For Social Commerce Festival:
+- Main logo goes in the full header.
+- Secondary logo goes near the bottom of the page and/or under the shopping cart.
+- A3 Visual branding must remain visible in footer as “In partnership with A3 Visual.”
+
+---
+
+## 3. A3 Visual Branding Requirement
+
+Every partner portal must include:
+
+- “In partnership with A3 Visual”
+- A3 Visual logo
+- Link to https://www.a3visual.com
+- Footer attribution
+- Optional small “Powered by A3 Visual” badge
+
+A3 Visual branding should never overpower the partner, but it must look premium and intentional.
+
+Footer layout:
+- Partner secondary logo or small partner mark
+- “In partnership with A3 Visual”
+- A3 Visual logo
+- Contact/support CTA
+- Optional copyright
+
+---
+
+# Premium Visual Direction
+
+The portal should feel closer to a custom event/festival website than a standard order form.
+
+Use this visual direction:
+
+- Dark cinematic hero areas
+- Large bold branded typography
+- Premium event style movement
+- Subtle animated gradients
+- Moving background textures
+- Parallax or floating visual layers
+- Glow accents based on partner brand colors
+- Smooth page transitions
+- Modern glassmorphism cards where appropriate
+- Rich hover states
+- Better spacing
+- High contrast CTA buttons
+- Branded step navigation
+- Visual progress indicators
+- Animated product/package cards
+- Sticky order summary that looks designed
+- Better mobile experience
+
+Do not create a childish, overly animated, cheap looking site. Movement should feel premium, controlled, and intentional.
+
+---
+
+# Design System Upgrade
+
+Create a reusable partner theme system.
+
+Each partner should have a generated theme object:
+
+```ts
+type PartnerTheme = {
+  partnerId: string;
+  themeMode: "dark" | "light" | "auto";
+  primaryColor: string;
+  secondaryColor: string;
+  accentColor: string;
+  backgroundColor: string;
+  surfaceColor: string;
+  textColor: string;
+  mutedTextColor: string;
+  borderColor: string;
+
+  mainLogoUrl?: string;
+  secondaryLogoUrl?: string;
+  heroImageUrl?: string;
+  backgroundImageUrl?: string;
+
+  mainLogoDisplayMode: "full_header_banner" | "contained_logo" | "hero_overlay_logo";
+  secondaryLogoPlacement: "footer" | "under_cart" | "checkout_sidebar" | "footer_and_cart" | "hidden";
+
+  headerLogoMaxHeight?: number;
+  headerLogoWidthPercent?: number;
+  headerAlignment?: "left" | "center" | "right";
+  headerObjectFit?: "contain" | "cover";
+  headerOverlayOpacity?: number;
+
+  animationLevel: "none" | "subtle" | "premium";
+  cornerRadius: "sharp" | "soft" | "rounded";
+  cardStyle: "solid" | "glass" | "editorial" | "luxury";
+  buttonStyle: "solid" | "outline" | "glow" | "festival";
+};
