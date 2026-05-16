@@ -17,6 +17,7 @@ import { BrandedShell } from "@/components/branding/BrandedShell";
 import { resolveBranding } from "@/components/branding/usePartnerBranding";
 import { PartnerLogo } from "@/components/branding/PartnerLogo";
 import { PartnerPortalHeader } from "@/components/branding/PartnerPortalHeader";
+import { PartnerEventSelector } from "@/components/branding/PartnerEventSelector";
 import { PortalFooter } from "@/components/branding/PortalFooter";
 import { PortalCTA } from "@/components/branding/PortalCTA";
 
@@ -564,31 +565,35 @@ export default function OrderingPortal({ slug }: { slug: string }) {
           ))}
         </div>
 
-        <Card className="p-6 md:p-8 shadow-lg">
+        <div
+          className="p-6 md:p-8"
+          style={{
+            backgroundColor: branding.isDark ? "rgba(255,255,255,0.04)" : "#ffffff",
+            border: branding.isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(15,23,42,0.06)",
+            borderRadius: branding.radius,
+            boxShadow: branding.isDark ? "0 20px 60px -30px rgba(0,0,0,0.6)" : "0 10px 30px -15px rgba(15,23,42,0.15)",
+            backdropFilter: branding.isDark ? "blur(12px)" : undefined,
+            color: branding.text,
+          }}
+        >
           {step === 0 && (
             <div className="space-y-6">
               <h2 className="text-xl font-bold">Where is this for?</h2>
-              {upcomingEvents.length > 0 && (
-                <div>
-                  <Label className="text-sm font-semibold mb-3 block">Upcoming events</Label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {upcomingEvents.map(e => {
-                      const v = data.venues.find(x => x.id === e.venueId);
-                      const c = data.cities.find(x => x.id === e.cityId);
-                      const sel = eventId === e.id;
-                      return (
-                        <button key={e.id} type="button" onClick={() => { setEventId(e.id); setCityId(e.cityId); setVenueId(e.venueId); }} className={`text-left p-4 rounded-xl border-2 transition ${sel ? "border-primary bg-primary/5" : "border-border hover:border-primary/40 bg-card"}`}>
-                          <div className="flex items-center justify-between mb-2"><Badge variant={sel ? "default" : "outline"}>{e.status}</Badge>{sel && <Check className="h-4 w-4 text-primary" />}</div>
-                          <div className="font-semibold">{e.name}</div>
-                          <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1"><MapPin className="h-3 w-3" />{c?.name} · {v?.name}</div>
-                          <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1"><Calendar className="h-3 w-3" />{e.eventStartDate}{e.eventEndDate && e.eventEndDate !== e.eventStartDate && ` → ${e.eventEndDate}`}</div>
-                          {e.shippingDeadline && <div className="text-xs text-amber-600 mt-2">Ship by {e.shippingDeadline}</div>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+              <div>
+                <Label className="text-sm font-semibold mb-3 block">Upcoming events</Label>
+                <PartnerEventSelector
+                  branding={branding}
+                  events={upcomingEvents}
+                  cities={data.cities}
+                  venues={data.venues}
+                  selectedEventId={eventId}
+                  onSelectEvent={(e) => {
+                    setEventId(e.id);
+                    setCityId(e.cityId ?? null);
+                    setVenueId(e.venueId ?? null);
+                  }}
+                />
+              </div>
               <div className="border-t pt-6">
                 <Label className="text-sm font-semibold mb-3 block">Or pick a city + venue manually</Label>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -857,7 +862,7 @@ export default function OrderingPortal({ slug }: { slug: string }) {
               <Button onClick={handleSubmit} disabled={submit.isPending || !contact.contactName || !contact.contactEmail} className="gap-2" style={{ background: branding.button, color: branding.buttonText }}>{submit.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}Submit Order</Button>
             )}
           </div>
-        </Card>
+        </div>
           </div>
 
           {/* Sticky Summary Sidebar (desktop) */}

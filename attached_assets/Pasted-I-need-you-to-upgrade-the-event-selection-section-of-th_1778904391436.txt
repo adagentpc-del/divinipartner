@@ -1,0 +1,215 @@
+I need you to upgrade the event selection section of the partner portal.
+
+This applies to the live customer-facing partner portal and the admin preview if the preview includes the event selection step.
+
+Current need:
+Upcoming events should not appear as a small plain list or one basic card. I need all available upcoming events to display as premium clickable event blocks that match the selected partner theme.
+
+Where this applies:
+1. Partner portal order flow
+2. Step 1: Event selection
+3. Live partner portal pages such as /SCF or the active customer-facing partner route
+4. Admin preview if it renders the customer portal flow
+
+Goal:
+All available upcoming events should show as branded clickable blocks in chronological calendar order.
+
+Layout requirements:
+
+On desktop:
+1. Show upcoming events as blocks/cards.
+2. Display them in two rows when there are enough events.
+3. Use a responsive grid that can show multiple cards per row.
+4. The layout should feel premium and intentional.
+5. Cards should be visually balanced and not tiny.
+
+Suggested desktop layout:
+Use CSS grid:
+grid-template-columns: repeat(auto-fit, minmax(260px, 1fr))
+
+If there are many events:
+1. Show them in chronological order.
+2. Allow the grid to naturally wrap into two rows or more.
+3. Do not hide events unless pagination is already part of the system.
+4. If there are too many events, use a clean “View more events” expansion rather than making the page messy.
+
+On mobile:
+1. Show events in a vertical list.
+2. Each event should be a full-width clickable block.
+3. Keep spacing comfortable.
+4. Do not use tiny chips or cramped cards.
+
+Chronological order:
+Sort upcoming events by event start date ascending.
+
+Example:
+Miami event in May should appear before London event in June.
+London event should appear before New York event in August.
+
+Only show events that are available for this partner portal and available for ordering.
+
+Each event block should include:
+1. Event name
+2. City
+3. Venue if available
+4. Event start date
+5. Event end date if available
+6. Ship by date or production deadline if available
+7. Status label such as Upcoming, Open, Closing Soon, or Closed
+8. Optional small location icon
+9. Optional calendar icon
+10. Clear selected state when clicked
+
+Click behavior:
+1. User clicks an event block.
+2. The selected event becomes active.
+3. The selected event card gets a clear premium selected state.
+4. The order summary/cart updates with the selected event.
+5. The Next button becomes active if event selection is required.
+6. Existing order flow logic must not break.
+
+Typography and theme requirements:
+The event cards must match the partner theme colors selected in the admin.
+
+Use dynamic CSS variables from the partner theme:
+--partner-primary
+--partner-secondary
+--partner-accent
+--partner-bg
+--partner-surface
+--partner-text
+--partner-muted
+--partner-border
+
+Typography must match the partner theme styling:
+1. Event title should use partner text color.
+2. City/date metadata should use muted text color.
+3. Selected card border should use partner primary or accent color.
+4. Status badge should use partner accent color.
+5. CTA or selected indicator should use partner primary color.
+6. Hover states should use partner accent/primary glow subtly.
+7. Do not use generic gray/blue Tailwind defaults when theme colors exist.
+
+For Social Commerce Festival:
+Use the selected festival theme colors. The event blocks should feel consistent with the dark cinematic portal design, not like default white admin cards.
+
+Visual style:
+Create premium event cards:
+1. Glass or themed card background based on current partner card_style.
+2. Soft border using partner border/accent color.
+3. Hover lift.
+4. Subtle glow on hover.
+5. Selected state with stronger border and background highlight.
+6. Clear checkmark or “Selected” label.
+7. Consistent rounded corners.
+8. Smooth transition.
+9. Strong spacing and visual hierarchy.
+
+Do not make it cartoonish. Keep it high-end and clean.
+
+Vertical chronological list requirement:
+Below or alongside the grid, add a compact chronological calendar list view if it improves usability.
+
+Preferred behavior:
+Use one event selection component that can display:
+1. Grid card view on desktop
+2. Vertical chronological list on mobile
+
+If adding a separate list view is simple, include a toggle:
+Card View | Calendar List
+
+But do not overbuild this. The priority is that the event selection looks premium and is easy to click.
+
+Data requirements:
+Use the existing events data source.
+Do not hardcode Social Commerce Festival events.
+Do not create fake events if real events exist.
+Do not break existing event assignment logic.
+
+Make sure the event selection only shows events tied to the partner/vendor package/order flow as currently intended.
+
+Sorting logic:
+Before rendering events, sort by start date:
+
+events.sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
+
+Use the actual field names from the codebase.
+
+Filtering logic:
+Only include upcoming or currently active events unless the current app already has another availability rule.
+
+Suggested rules:
+1. If event has status closed, archived, disabled, or unavailable, do not show it as selectable.
+2. If event has an ordering close date in the past, mark it closed or disable selection.
+3. If ship by date is urgent, show a “Closing Soon” or “Ship by soon” badge.
+4. Keep current business logic if it already exists.
+
+Accessibility:
+1. Event cards should be buttons or clickable elements with keyboard support.
+2. Add aria-selected for selected cards.
+3. Use readable contrast.
+4. Do not rely on color alone for selected state.
+5. Respect reduced motion settings.
+
+Component request:
+Create or upgrade a reusable component called:
+
+PartnerEventSelector
+
+It should accept:
+partner
+theme
+events
+selectedEventId
+onSelectEvent
+
+The component should:
+1. Sort events chronologically.
+2. Render themed event cards.
+3. Render mobile vertical list.
+4. Use theme CSS variables.
+5. Show empty state if no events are available.
+6. Preserve current order flow behavior.
+
+Empty state:
+If no upcoming events are available, show a premium themed message:
+
+“No upcoming events are currently available for this portal.”
+
+Include optional contact A3 CTA if already supported:
+“Contact A3 Visual for support.”
+
+Implementation instructions:
+1. Inspect the existing event selection step.
+2. Find where upcoming events are loaded.
+3. Replace the plain event display with PartnerEventSelector.
+4. Keep existing event selection state logic.
+5. Keep existing Next button logic.
+6. Make sure selected event updates the cart/order summary.
+7. Apply partner theme typography and colors.
+8. Test desktop layout.
+9. Test mobile layout.
+10. Test chronological sorting.
+11. Test Social Commerce Festival.
+12. Update REPLIT_PROGRESS.md.
+
+Acceptance criteria:
+1. All available upcoming events show as clickable event blocks.
+2. Events are sorted in chronological calendar order.
+3. Desktop view uses a premium responsive card grid that can naturally display in two rows.
+4. Mobile view uses a clean vertical list.
+5. Typography matches the selected partner theme colors.
+6. Event selected state is obvious and premium.
+7. The event selection updates the order summary/cart.
+8. Existing order flow still works.
+9. Social Commerce Festival event selection matches the premium dark festival design.
+10. No hardcoded event data was added.
+11. REPLIT_PROGRESS.md is updated.
+
+Cost control:
+Do not add AI calls.
+Do not add unnecessary animation libraries.
+Use CSS and existing components where possible.
+Do not rebuild the whole app.
+Do not use Replit Database.
+Use the existing database and current event source.
