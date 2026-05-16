@@ -9,7 +9,6 @@ import {
 import RequestFormDialog from "./RequestFormDialog";
 import { formatWxH, type UnitSystem } from "@/lib/units";
 import { resolveBranding } from "@/components/branding/usePartnerBranding";
-import { PortalNavbar } from "@/components/branding/PortalNavbar";
 import { PartnerPortalHeader } from "@/components/branding/PartnerPortalHeader";
 import { PortalFooter } from "@/components/branding/PortalFooter";
 import { PortalCard } from "@/components/branding/PortalCard";
@@ -321,12 +320,6 @@ export default function FullPortal({ slug }: { slug: string }) {
           Preview mode — this portal is visible for review only. Submissions are disabled until it goes live.
         </div>
       )}
-      <PortalNavbar
-        partnerName={partner.companyName}
-        partnerLogoUrl={partner.logoUrl}
-        branding={branding}
-      />
-
       <PartnerPortalHeader
         partnerName={partner.companyName}
         partnerLogoUrl={partner.logoUrl}

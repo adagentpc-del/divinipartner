@@ -129,6 +129,8 @@ function HeaderBackground({ branding }: { branding: ResolvedBranding }) {
 function HeaderA3Lockup({ branding, lightUrl, darkUrl }: { branding: ResolvedBranding; lightUrl: string | null; darkUrl: string | null }) {
   const useLight = branding.headerTheme === "dark";
   const logoSrc = useLight ? lightUrl : darkUrl;
+  const [imgFailed, setImgFailed] = useState(false);
+  const showImage = !!logoSrc && !imgFailed;
   const pageBg = branding.background;
   return (
     <div className="absolute bottom-0 right-0 z-20 pointer-events-none" aria-label="In partnership with A3 Visual">
@@ -149,8 +151,13 @@ function HeaderA3Lockup({ branding, lightUrl, darkUrl }: { branding: ResolvedBra
           <span className="text-[9px] uppercase tracking-[0.18em] font-semibold opacity-70" style={{ color: branding.text }}>
             In partnership with
           </span>
-          {logoSrc ? (
-            <img src={logoSrc} alt="A3 Visual" className="h-6 w-auto object-contain" />
+          {showImage ? (
+            <img
+              src={logoSrc!}
+              alt="A3 Visual"
+              className="h-6 w-auto object-contain"
+              onError={() => setImgFailed(true)}
+            />
           ) : (
             <span className="font-bold text-sm" style={{ color: branding.primary }}>A3 Visual</span>
           )}

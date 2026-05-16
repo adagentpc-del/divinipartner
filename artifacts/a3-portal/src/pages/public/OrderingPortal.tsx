@@ -16,7 +16,7 @@ import { formatWxHDual, formatPrimarySecondary, computePrice, convert, PRICING_U
 import { BrandedShell } from "@/components/branding/BrandedShell";
 import { resolveBranding } from "@/components/branding/usePartnerBranding";
 import { PartnerLogo } from "@/components/branding/PartnerLogo";
-import { PortalNavbar } from "@/components/branding/PortalNavbar";
+import { PartnerPortalHeader } from "@/components/branding/PartnerPortalHeader";
 import { PortalFooter } from "@/components/branding/PortalFooter";
 import { PortalCTA } from "@/components/branding/PortalCTA";
 
@@ -532,18 +532,14 @@ export default function OrderingPortal({ slug }: { slug: string }) {
           Preview mode — this portal is visible for review only. Submissions are disabled until it goes live.
         </div>
       )}
-      <PortalNavbar
+      <PartnerPortalHeader
         partnerName={data.partner.companyName}
         partnerLogoUrl={data.partner.logoUrl}
         branding={branding}
+        defaultHeadline={data.partner.introHeadline || `Order with ${data.partner.companyName}`}
+        defaultSubheadline={data.partner.introText || undefined}
       />
       <div className="max-w-7xl mx-auto px-4 py-8 md:py-12">
-        <div className="text-center mb-8">
-          <Badge className="mb-3" style={{ background: `${branding.accent}26`, color: branding.text, border: "none" }}><Sparkles className="h-3 w-3 mr-1" />Order Portal</Badge>
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight" style={{ color: branding.text, fontFamily: branding.headingFont }}>{data.partner.introHeadline || `Order with ${data.partner.companyName}`}</h1>
-          {data.partner.introText && <p className="mt-2 max-w-2xl mx-auto" style={{ color: branding.muted }}>{data.partner.introText}</p>}
-        </div>
-
         <div className="grid lg:grid-cols-[1fr_320px] gap-6">
           <div>
 

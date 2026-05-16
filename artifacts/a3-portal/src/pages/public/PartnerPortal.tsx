@@ -18,7 +18,6 @@ import {
 import FullPortal from "./portal/FullPortal";
 import OrderingPortal from "./OrderingPortal";
 import { resolveBranding } from "@/components/branding/usePartnerBranding";
-import { PortalNavbar } from "@/components/branding/PortalNavbar";
 import { PartnerPortalHeader } from "@/components/branding/PartnerPortalHeader";
 import { PortalFooter } from "@/components/branding/PortalFooter";
 import { PortalCTA } from "@/components/branding/PortalCTA";
@@ -218,21 +217,13 @@ function IntakePortal({ slug, partner }: { slug: string; partner: any }) {
           Preview mode — this portal is visible for review only. Submissions are disabled until it goes live.
         </div>
       )}
-      <PortalNavbar
+      <PartnerPortalHeader
         partnerName={partner.companyName}
         partnerLogoUrl={partner.logoUrl}
         branding={branding}
+        defaultHeadline={partner.introHeadline || `Start your project with ${partner.companyName}`}
+        defaultSubheadline={partner.introText || "Fill out the details below to request a quote and kick off your event production."}
       />
-
-      {step === 1 && (
-        <PartnerPortalHeader
-          partnerName={partner.companyName}
-          partnerLogoUrl={partner.logoUrl}
-          branding={branding}
-          defaultHeadline={partner.introHeadline || `Start your project with ${partner.companyName}`}
-          defaultSubheadline={partner.introText || "Fill out the details below to request a quote and kick off your event production."}
-        />
-      )}
 
       {step === 1 && (partner.globalSizzleReelUrl || partner.partnerVideoUrl) && (
         <div className="max-w-3xl mx-auto px-4 sm:px-6 -mt-6 relative z-10 mb-4">

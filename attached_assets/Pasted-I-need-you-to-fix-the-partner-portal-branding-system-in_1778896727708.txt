@@ -1,0 +1,364 @@
+I need you to fix the partner portal branding system in this Replit app.
+
+This is for the A3 Visual Partnership Portal. The admin theme preview now looks much better, but the actual live partner portal page does not match the preview. The live page still looks incomplete, generic, or disconnected from the premium theme.
+
+I need you to solve this fully and carefully.
+
+Where this applies:
+1. Admin partner theme page, such as /admin/partners/2/theme
+2. Live customer facing partner portal page, such as /SCF, /social-commerce-festival, /partners/social-commerce-festival, /portal/SCF, or whatever route is currently used for Social Commerce Festival
+3. Partner branding settings
+4. Partner logo upload and display
+5. Partner portal layout, header, footer, cart, and order flow
+
+The main goal:
+The admin theme preview and the live partner portal must match. What I see in the admin theme preview should be what the customer sees on the actual live portal URL.
+
+Right now, the preview looks more beautiful than the live portal. That means the preview and live page are probably using different components, different data, different CSS, or different fallback logic. Fix the architecture so preview and live are the same design system, not two separate UIs.
+
+Important:
+Do not rebuild the entire app.
+Do not remove current order functionality.
+Do not break event selection, package selection, add ons, artwork upload, contact, review, or cart/order summary.
+Do not use Replit Database.
+Do not add AI calls.
+Use the existing database and storage setup, preferably Supabase if that is what the app already uses.
+
+Problem 1: The live portal does not match the admin theme preview.
+
+Inspect the current codebase and find:
+1. The admin partner theme page/component
+2. The admin theme preview component
+3. The live customer facing partner portal route
+4. The current partner portal layout
+5. The current logo/theme data fields
+6. The current file upload or storage utilities
+7. The current database model or Supabase tables for partners and branding
+
+Then make sure both the admin preview and the live portal use the same shared components and the same saved partner theme data.
+
+Use or create shared components such as:
+PartnerThemeProvider
+PartnerPortalLayout
+PartnerBrandedHeader
+PartnerHero
+PartnerOrderStepper
+PartnerPackageCard
+PartnerCartSummary
+PartnerFooter
+BrandedPlaceholderImage
+PartnerBrandAssetUploader
+PartnerThemeEditor
+PartnerPortalPreview
+
+The admin preview can wrap these components in preview mode, but it should not have a separate design that the live portal does not use.
+
+Problem 2: The client logo is not showing correctly.
+
+For Social Commerce Festival, the page should not show only “SC” initials if a real uploaded logo exists.
+
+Logo fallback order must be:
+1. main_logo_url
+2. partner.main_logo_url
+3. secondary_logo_url
+4. partner.secondary_logo_url
+5. initials only as the final fallback
+
+If a main logo exists, render it in the hero/header.
+
+If main_logo_display_mode is full_header_banner, display the uploaded main logo as a large full width branded header logo.
+
+For Social Commerce Festival, the uploaded Social Commerce Festival logo should visually dominate the top hero/header. It should preserve aspect ratio and should not be cropped by default. Use object-fit: contain.
+
+The live portal must not replace the logo with “Welcome to Social Commerce Festival” or “SC” initials. A welcome line can exist below the logo, but the uploaded client logo must be the main visual brand element.
+
+Problem 3: The logo input is currently link only. I need an actual upload button.
+
+In the admin partner theme page, add actual upload buttons for branding assets.
+
+Each of these fields should support both an upload button and a manual URL input:
+1. Main Logo
+2. Secondary Logo
+3. Hero Background Image
+4. Portal Background Image
+
+The upload button should be the primary workflow. The URL input can remain as a backup/manual option.
+
+For each upload field, include:
+1. Upload button
+2. Paste image URL input
+3. Current image preview
+4. Replace image option
+5. Remove image option
+6. Save behavior
+7. Clear success and error states
+
+Allowed file types:
+PNG, JPG, JPEG, SVG, WebP
+
+Suggested max file sizes:
+Logos: 5 MB
+Hero/background images: 10 MB
+
+Do not store base64 images in the database. Upload files to existing app storage, preferably Supabase Storage if available, and save only the image URL in the database.
+
+If using Supabase Storage, create or reuse a bucket such as:
+partner-branding
+
+Suggested storage paths:
+partners/{partnerId}/branding/main-logo-{timestamp}.{ext}
+partners/{partnerId}/branding/secondary-logo-{timestamp}.{ext}
+partners/{partnerId}/branding/hero-image-{timestamp}.{ext}
+partners/{partnerId}/branding/background-image-{timestamp}.{ext}
+
+After upload:
+1. Upload the file.
+2. Get the public URL or signed URL based on the existing app pattern.
+3. Save the URL to the partner theme or partner branding record.
+4. Show the uploaded image preview immediately.
+5. Make sure it persists after refresh.
+6. Make sure the live portal can access and render it.
+
+Create or upgrade a reusable component called PartnerBrandAssetUploader.
+
+It should support this kind of behavior:
+partnerId
+label
+helperText
+assetType: main_logo, secondary_logo, hero_image, or background_image
+currentUrl
+onUploadComplete
+onRemove
+allowUrlInput
+
+The component should show upload progress, success, errors, and current preview.
+
+Problem 4: Save the full partner theme correctly.
+
+Make sure the partner theme data includes and persists fields like:
+main_logo_url
+secondary_logo_url
+hero_image_url
+background_image_url
+portal_template
+theme_mode
+primary_color
+secondary_color
+accent_color
+background_color
+surface_color
+text_color
+muted_text_color
+main_logo_display_mode
+secondary_logo_placement
+header_logo_max_height
+header_logo_width_percent
+header_alignment
+header_object_fit
+header_overlay_opacity
+animation_level
+card_style
+button_style
+
+If these database fields already exist, reuse them.
+If they do not exist, add a safe migration or use the existing partner branding table.
+Do not duplicate fields if an equivalent already exists.
+
+Problem 5: The live portal must use the saved partner theme.
+
+Find the live route that renders Social Commerce Festival. It may be something like:
+/SCF
+/social-commerce-festival
+/partners/social-commerce-festival
+/portal/SCF
+/order/SCF
+
+Make sure that route:
+1. Fetches the correct partner by slug or ID
+2. Fetches the full saved theme and branding data
+3. Passes that data into PartnerThemeProvider
+4. Renders the shared PartnerPortalLayout
+5. Renders the shared PartnerBrandedHeader
+6. Renders the order flow inside the branded layout
+7. Renders PartnerFooter
+8. Does not use old hardcoded header, old cards, old CSS, or initials-only fallback when a logo exists
+
+Problem 6: The live portal must use the selected premium template.
+
+If the partner has portal_template = festival_event, the live portal must render the Festival/Event design.
+
+For Social Commerce Festival, the live page should use:
+1. Dark cinematic background
+2. Large uploaded logo hero/header
+3. Neon green/yellow accent if configured
+4. Pink/purple secondary accent if configured
+5. Premium gradient or background texture
+6. Glass style cards
+7. Branded stepper
+8. Branded cart summary
+9. A3 Visual partnership footer
+10. Secondary logo under cart and/or in footer if configured
+
+Do not let the live portal use the old plain white order form design when a premium template is selected.
+
+Problem 7: Apply CSS variables to the live portal.
+
+The live portal root should receive dynamic CSS variables from the partner theme, similar to:
+
+--partner-primary
+--partner-secondary
+--partner-accent
+--partner-bg
+--partner-surface
+--partner-text
+--partner-muted
+
+The live customer page should use these variables everywhere.
+
+Do not hardcode the old gray, white, or generic card styling if partner theme values exist.
+
+Problem 8: Fix the branded header.
+
+The live portal header should use this logic:
+
+const logoUrl =
+  theme.main_logo_url ||
+  partner.main_logo_url ||
+  theme.secondary_logo_url ||
+  partner.secondary_logo_url;
+
+If logoUrl exists, show the logo.
+If no logoUrl exists, show initials as fallback.
+
+When showing the logo:
+1. Use the uploaded logo.
+2. Use alt text with the partner name.
+3. Preserve aspect ratio.
+4. Use object-fit: contain.
+5. Respect header_logo_max_height.
+6. Respect header_logo_width_percent.
+7. Respect header_alignment.
+8. Respect header_object_fit.
+9. Show over the premium hero background.
+10. Do not crop the logo unless admin chooses cover/crop mode.
+
+Problem 9: Fix secondary logo placement.
+
+If secondary_logo_placement is under_cart, checkout_sidebar, or footer_and_cart, show the secondary logo under the cart or in the checkout/sidebar area.
+
+If secondary_logo_placement is footer or footer_and_cart, show the secondary logo in the footer.
+
+If no secondary logo exists, use the main logo as fallback.
+
+Problem 10: A3 Visual branding must always remain.
+
+Every live partner portal footer must include:
+In partnership with A3 Visual
+A3 Visual logo if available
+Link to https://www.a3visual.com
+
+The A3 branding should look premium and intentional, but it should not overpower the partner brand.
+
+Problem 11: Fix save and refresh behavior.
+
+After admin uploads a logo or saves theme changes:
+1. The values must persist to the database.
+2. Uploaded asset URLs must persist.
+3. The admin preview should update.
+4. The live portal should update.
+5. Cache should be invalidated if needed.
+6. Refreshing the browser should not remove the logo or revert the design.
+7. No redeploy should be required just to see new branding.
+
+If using React Query, invalidate the partner/theme queries after save.
+If using server side loading, make sure the route is not serving stale theme data.
+
+Problem 12: Remove or bypass old live portal header logic.
+
+Search for old live portal UI that renders things like:
+Welcome to [Partner Name]
+SC initials
+plain white order portal
+generic portal hero
+basic cards
+old stepper
+
+Replace or bypass this with the shared premium branded layout.
+
+Social Commerce Festival acceptance criteria:
+
+The work is complete only when:
+1. Admin can upload the Social Commerce Festival main logo using an upload button.
+2. Admin can still paste a logo URL manually if needed.
+3. Uploaded logo preview appears immediately in the admin theme editor.
+4. Uploaded logo URL is saved to the database.
+5. The uploaded Social Commerce Festival logo appears on the live portal.
+6. The live portal visually matches the admin theme preview.
+7. The hero/header is premium, dark, branded, and large.
+8. The page does not show only “SC” unless no logo exists.
+9. The Festival/Event template is active on the live page.
+10. The order flow still works.
+11. Event selection still works.
+12. Package selection still works.
+13. Add ons, artwork, contact, and review steps still work.
+14. The cart/order summary is styled like the preview.
+15. The secondary logo appears under the cart and/or footer based on admin settings.
+16. A3 Visual partnership branding appears in the footer.
+17. Mobile and desktop both match the premium design.
+18. Refreshing the live page does not revert to the old design.
+19. Saving changes in admin updates the live portal.
+20. No image is stored as base64 in the database.
+
+Debugging instructions:
+
+Temporarily log these during development:
+LIVE PARTNER
+LIVE THEME
+LIVE MAIN LOGO
+LIVE TEMPLATE
+UPLOADED MAIN LOGO URL
+
+Check specifically:
+1. Is the logo URL saved correctly?
+2. Is the logo URL public or signed correctly?
+3. Is the image blocked by storage permissions?
+4. Is the live route loading a different partner record?
+5. Is the live route using slug SCF while admin is editing partner ID 2?
+6. Is the preview using local unsaved state only?
+7. Is the save endpoint writing to the correct table?
+8. Is the live page stale cached?
+9. Is the live page using old components?
+10. Is the upload button saving to the same fields the live portal reads?
+
+Implementation order:
+
+1. Inspect admin preview component.
+2. Inspect live partner portal route.
+3. Inspect current logo URL fields and upload/storage utilities.
+4. Identify why preview and live page use different components or different data.
+5. Create or upgrade PartnerBrandAssetUploader.
+6. Add upload button and URL input for main logo, secondary logo, hero image, and background image.
+7. Save uploaded asset URLs to the partner theme or partner branding record.
+8. Create or upgrade one shared PartnerPortalLayout.
+9. Wire admin preview to the shared layout in preview mode.
+10. Wire live portal to the same shared layout in live mode.
+11. Fix logo data mapping.
+12. Fix save persistence if needed.
+13. Fix cache invalidation if needed.
+14. Test Social Commerce Festival admin preview.
+15. Test Social Commerce Festival live portal.
+16. Confirm both match.
+17. Update REPLIT_PROGRESS.md with what changed.
+
+Final output required from you when finished:
+1. Explain why the preview and live portal were mismatched.
+2. List files changed.
+3. Explain how image upload was added.
+4. Explain where uploaded files are stored.
+5. Explain what database fields store the uploaded asset URLs.
+6. Explain how the live route now receives partner theme data.
+7. Explain how logo rendering was fixed.
+8. Confirm that Social Commerce Festival shows the uploaded logo.
+9. Confirm that the live portal matches the preview.
+10. Confirm that order flow functionality still works.
+11. Confirm that REPLIT_PROGRESS.md was updated.
