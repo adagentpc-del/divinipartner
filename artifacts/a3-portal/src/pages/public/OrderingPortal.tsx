@@ -20,6 +20,7 @@ import { PartnerPortalHeader } from "@/components/branding/PartnerPortalHeader";
 import { PartnerEventSelector } from "@/components/branding/PartnerEventSelector";
 import { PortalFooter } from "@/components/branding/PortalFooter";
 import { PortalCTA } from "@/components/branding/PortalCTA";
+import { WalkthroughLauncher } from "@/components/branding/WalkthroughLauncher";
 import { PartnerTrustSection } from "@/components/branding/PartnerTrustSection";
 import { BrandedPlaceholderImage } from "@/components/branding/BrandedPlaceholderImage";
 import { cardSurface, mutedPanel, accentPanel, titleColor, hairline, shellGlowLayers } from "@/components/branding/portalSurfaces";
@@ -549,6 +550,17 @@ export default function OrderingPortal({ slug }: { slug: string }) {
         defaultHeadline={data.partner.introHeadline || `Order with ${data.partner.companyName}`}
         defaultSubheadline={data.partner.introText || undefined}
       />
+      <div className="max-w-7xl mx-auto px-4 -mt-2 mb-2 flex justify-center">
+        <WalkthroughLauncher
+          partner={data.partner as any}
+          branding={branding}
+          portalMode="ordering"
+          productCategories={Array.from(new Set((data.products ?? []).map(p => p.category).filter(Boolean) as string[]))}
+          productCount={(data.products ?? []).length}
+          packageNames={(data.packages ?? []).map(p => p.name).filter(Boolean) as string[]}
+          cityNames={(data.cities ?? []).map(c => c.name).filter(Boolean) as string[]}
+        />
+      </div>
       <div className="relative max-w-7xl mx-auto px-4 py-8 md:py-12">
         <div
           aria-hidden="true"

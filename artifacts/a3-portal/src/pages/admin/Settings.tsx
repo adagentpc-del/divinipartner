@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { fetchPublicConfig, type PublicConfig } from "@/lib/publicUrl";
 import { Globe, ShieldCheck, AlertTriangle, Copy, ExternalLink, Loader2 } from "lucide-react";
+import { DemoVideoSettings } from "@/components/admin/DemoVideoSettings";
 
 export default function Settings() {
   const { toast } = useToast();
@@ -109,6 +110,8 @@ export default function Settings() {
           </div>
         </CardContent>
       </Card>
+
+      <DemoVideoSettings />
     </div>
   );
 }

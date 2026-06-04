@@ -34,6 +34,13 @@ export interface PublicPartner {
   globalSizzleReelUrl?: string | null;
   /** @nullable */
   partnerVideoUrl?: string | null;
+  walkthroughEnabled?: boolean;
+  /** @nullable */
+  walkthroughVideoUrl?: string | null;
+  /** @nullable */
+  walkthroughVideoPosterUrl?: string | null;
+  /** @nullable */
+  walkthroughVideoStatus?: string | null;
   pricingDisplayEnabled?: boolean;
   isActive: boolean;
   pricingRules?: PublicPricingItem[];

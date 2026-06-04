@@ -84,6 +84,12 @@ export const ListPartnersResponseItem = zod.object({
   salespersonEmail: zod.string().nullish(),
   salespersonPhone: zod.string().nullish(),
   internalReplyToEmail: zod.string().nullish(),
+  walkthroughEnabled: zod.boolean().optional(),
+  walkthroughVideoUrl: zod.string().nullish(),
+  walkthroughVideoPosterUrl: zod.string().nullish(),
+  walkthroughVideoStatus: zod.string().nullish(),
+  walkthroughScript: zod.record(zod.string(), zod.unknown()).nullish(),
+  walkthroughGeneratedAt: zod.string().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -226,6 +232,12 @@ export const GetPartnerResponse = zod.object({
   salespersonEmail: zod.string().nullish(),
   salespersonPhone: zod.string().nullish(),
   internalReplyToEmail: zod.string().nullish(),
+  walkthroughEnabled: zod.boolean().optional(),
+  walkthroughVideoUrl: zod.string().nullish(),
+  walkthroughVideoPosterUrl: zod.string().nullish(),
+  walkthroughVideoStatus: zod.string().nullish(),
+  walkthroughScript: zod.record(zod.string(), zod.unknown()).nullish(),
+  walkthroughGeneratedAt: zod.string().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -364,6 +376,12 @@ export const UpdatePartnerResponse = zod.object({
   salespersonEmail: zod.string().nullish(),
   salespersonPhone: zod.string().nullish(),
   internalReplyToEmail: zod.string().nullish(),
+  walkthroughEnabled: zod.boolean().optional(),
+  walkthroughVideoUrl: zod.string().nullish(),
+  walkthroughVideoPosterUrl: zod.string().nullish(),
+  walkthroughVideoStatus: zod.string().nullish(),
+  walkthroughScript: zod.record(zod.string(), zod.unknown()).nullish(),
+  walkthroughGeneratedAt: zod.string().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -418,6 +436,135 @@ export const DeletePartnerAssetParams = zod.object({
 });
 
 /**
+ * @summary Update a partner's walkthrough settings (enable, override video, regenerate)
+ */
+export const UpdatePartnerWalkthroughParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdatePartnerWalkthroughBody = zod.object({
+  walkthroughEnabled: zod.boolean().optional(),
+  walkthroughVideoUrl: zod.string().nullish(),
+  walkthroughVideoPosterUrl: zod.string().nullish(),
+  walkthroughScript: zod.record(zod.string(), zod.unknown()).nullish(),
+  regenerate: zod.boolean().optional(),
+});
+
+export const UpdatePartnerWalkthroughResponse = zod.object({
+  id: zod.number(),
+  companyName: zod.string(),
+  slug: zod.string(),
+  logoUrl: zod.string().nullish(),
+  secondaryLogoUrl: zod.string().nullish(),
+  websiteUrl: zod.string().nullish(),
+  smallA3BadgeEnabled: zod.boolean().optional(),
+  introHeadline: zod.string().nullish(),
+  introText: zod.string().nullish(),
+  thankYouText: zod.string().nullish(),
+  capabilitiesLink: zod.string().nullish(),
+  contactName: zod.string().nullish(),
+  contactEmail: zod.string().nullish(),
+  contactPhone: zod.string().nullish(),
+  routingEmail: zod.string().nullish(),
+  venueAddress: zod.string().nullish(),
+  industryFocus: zod.string().nullish(),
+  useCaseOptionsJson: zod.array(zod.string()).nullish(),
+  globalSizzleReelUrl: zod.string().nullish(),
+  partnerVideoUrl: zod.string().nullish(),
+  partnerDeckFileUrl: zod.string().nullish(),
+  siteSurveyDeckFileUrl: zod.string().nullish(),
+  portalMode: zod.string().nullish(),
+  partnerType: zod.string().nullish(),
+  unitPreference: zod.string().nullish(),
+  pricingDisplayEnabled: zod.boolean().optional(),
+  isActive: zod.boolean(),
+  defaultBillingExecModel: zod.string().nullish(),
+  billingEntityName: zod.string().nullish(),
+  paymentTerms: zod.string().nullish(),
+  depositRequired: zod.boolean().optional(),
+  depositPct: zod.string().nullish(),
+  allowPartialPayment: zod.boolean().optional(),
+  allowOrderOverride: zod.boolean().optional(),
+  defaultBillingNotes: zod.string().nullish(),
+  billingContactName: zod.string().nullish(),
+  billingContactEmail: zod.string().nullish(),
+  billingContactPhone: zod.string().nullish(),
+  billingActive: zod.boolean().optional(),
+  emailFromName: zod.string().nullish(),
+  replyToEmail: zod.string().nullish(),
+  emailSenderLabel: zod.string().nullish(),
+  internalForwardEmail: zod.string().nullish(),
+  ccEmail: zod.string().nullish(),
+  emailEnabled: zod.boolean().optional(),
+  attachPdfCustomer: zod.boolean().optional(),
+  attachPdfOps: zod.boolean().optional(),
+  attachPdfFinance: zod.boolean().optional(),
+  attachPdfPartnerContact: zod.boolean().optional(),
+  defaultCurrency: zod.string().nullish(),
+  defaultTaxMode: zod.string().nullish(),
+  defaultTaxLabel: zod.string().nullish(),
+  defaultTaxRate: zod.string().nullish(),
+  taxInclusive: zod.boolean().optional(),
+  billingCountry: zod.string().nullish(),
+  invoiceDisplayNotes: zod.string().nullish(),
+  addonDisplayFormat: zod.string().nullish(),
+  addonCategoryGroupingEnabled: zod.boolean().optional(),
+  salespersonName: zod.string().nullish(),
+  salespersonEmail: zod.string().nullish(),
+  salespersonPhone: zod.string().nullish(),
+  internalReplyToEmail: zod.string().nullish(),
+  walkthroughEnabled: zod.boolean().optional(),
+  walkthroughVideoUrl: zod.string().nullish(),
+  walkthroughVideoPosterUrl: zod.string().nullish(),
+  walkthroughVideoStatus: zod.string().nullish(),
+  walkthroughScript: zod.record(zod.string(), zod.unknown()).nullish(),
+  walkthroughGeneratedAt: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Get global site settings (admin)
+ */
+export const GetSiteSettingsResponse = zod.object({
+  mainDemoVideoUrl: zod.string().nullish(),
+  mainDemoVideoPosterUrl: zod.string().nullish(),
+  mainDemoVideoTitle: zod.string().nullish(),
+  mainDemoVideoDescription: zod.string().nullish(),
+  mainDemoVideoEnabled: zod.boolean(),
+});
+
+/**
+ * @summary Update global site settings (admin)
+ */
+export const UpdateSiteSettingsBody = zod.object({
+  mainDemoVideoUrl: zod.string().nullish(),
+  mainDemoVideoPosterUrl: zod.string().nullish(),
+  mainDemoVideoTitle: zod.string().nullish(),
+  mainDemoVideoDescription: zod.string().nullish(),
+  mainDemoVideoEnabled: zod.boolean().optional(),
+});
+
+export const UpdateSiteSettingsResponse = zod.object({
+  mainDemoVideoUrl: zod.string().nullish(),
+  mainDemoVideoPosterUrl: zod.string().nullish(),
+  mainDemoVideoTitle: zod.string().nullish(),
+  mainDemoVideoDescription: zod.string().nullish(),
+  mainDemoVideoEnabled: zod.boolean(),
+});
+
+/**
+ * @summary Get public-facing site settings (demo video)
+ */
+export const GetPublicSiteSettingsResponse = zod.object({
+  mainDemoVideoUrl: zod.string().nullish(),
+  mainDemoVideoPosterUrl: zod.string().nullish(),
+  mainDemoVideoTitle: zod.string().nullish(),
+  mainDemoVideoDescription: zod.string().nullish(),
+  mainDemoVideoEnabled: zod.boolean(),
+});
+
+/**
  * @summary Get public partner page data
  */
 export const GetPublicPartnerParams = zod.object({
@@ -440,6 +587,10 @@ export const GetPublicPartnerResponse = zod.object({
   useCaseOptionsJson: zod.array(zod.string()).nullish(),
   globalSizzleReelUrl: zod.string().nullish(),
   partnerVideoUrl: zod.string().nullish(),
+  walkthroughEnabled: zod.boolean().optional(),
+  walkthroughVideoUrl: zod.string().nullish(),
+  walkthroughVideoPosterUrl: zod.string().nullish(),
+  walkthroughVideoStatus: zod.string().nullish(),
   pricingDisplayEnabled: zod.boolean().optional(),
   isActive: zod.boolean(),
   pricingRules: zod
@@ -981,6 +1132,12 @@ export const GetDashboardSummaryResponse = zod.object({
         salespersonEmail: zod.string().nullish(),
         salespersonPhone: zod.string().nullish(),
         internalReplyToEmail: zod.string().nullish(),
+        walkthroughEnabled: zod.boolean().optional(),
+        walkthroughVideoUrl: zod.string().nullish(),
+        walkthroughVideoPosterUrl: zod.string().nullish(),
+        walkthroughVideoStatus: zod.string().nullish(),
+        walkthroughScript: zod.record(zod.string(), zod.unknown()).nullish(),
+        walkthroughGeneratedAt: zod.string().nullish(),
         createdAt: zod.coerce.date(),
         updatedAt: zod.coerce.date(),
       }),

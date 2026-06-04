@@ -111,6 +111,10 @@ router.get("/public/partners/:slug", async (req, res): Promise<void> => {
     partnerDeckFileUrl: partner.partnerDeckFileUrl,
     globalSizzleReelUrl: partner.globalSizzleReelUrl,
     partnerVideoUrl: partner.partnerVideoUrl,
+    walkthroughEnabled: partner.walkthroughEnabled,
+    walkthroughVideoUrl: partner.walkthroughVideoUrl,
+    walkthroughVideoPosterUrl: partner.walkthroughVideoPosterUrl,
+    walkthroughVideoStatus: partner.walkthroughVideoStatus,
   };
 
   res.json({ ...safePartner, pricingRules, theme: safePublicTheme(theme), previewMode: partner.launchStatus === "preview" });
@@ -196,6 +200,10 @@ router.get("/public/partners/:slug/portal", async (req, res): Promise<void> => {
       partnerDeckFileUrl: partner.partnerDeckFileUrl,
       globalSizzleReelUrl: partner.globalSizzleReelUrl,
       partnerVideoUrl: partner.partnerVideoUrl,
+      walkthroughEnabled: partner.walkthroughEnabled,
+      walkthroughVideoUrl: partner.walkthroughVideoUrl,
+      walkthroughVideoPosterUrl: partner.walkthroughVideoPosterUrl,
+      walkthroughVideoStatus: partner.walkthroughVideoStatus,
       portalMode: partner.portalMode,
     },
     theme: safePublicTheme(theme),
@@ -499,6 +507,10 @@ router.get("/public/partners/:slug/ordering", async (req, res): Promise<void> =>
     portalMode: partner.portalMode,
     partnerType: partner.partnerType,
     pricingDisplayEnabled: partner.pricingDisplayEnabled,
+    walkthroughEnabled: partner.walkthroughEnabled,
+    walkthroughVideoUrl: partner.walkthroughVideoUrl,
+    walkthroughVideoPosterUrl: partner.walkthroughVideoPosterUrl,
+    walkthroughVideoStatus: partner.walkthroughVideoStatus,
   };
 
   res.json({ partner: safeOrderingPartner, theme: safePublicTheme(theme), cities, venues, events, packages: packagesWithItems, products, eventAddons });

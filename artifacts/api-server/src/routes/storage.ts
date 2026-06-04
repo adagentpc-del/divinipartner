@@ -56,6 +56,54 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
 });
 
 /**
+ * POST /storage/public-uploads/request-url
+ *
+ * Request a presigned URL for uploading PUBLIC-facing media (demo video,
+ * walkthrough video, posters) directly to the public bucket. Returns a
+ * `/api/storage/public-objects/...` URL that anonymous portal visitors can
+ * play without a Clerk session. Guarded by an inline Clerk check because the
+ * global auth boundary lets all /storage/* paths through.
+ */
+router.post("/storage/public-uploads/request-url", async (req: Request, res: Response) => {
+  // The global auth boundary treats all /storage/* paths as public, so guard
+  // this write endpoint inline — only an authenticated admin may mint presigned
+  // upload URLs into the public bucket.
+  const { getAuth } = await import("@clerk/express");
+  const { userId } = getAuth(req);
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const parsed = RequestUploadUrlBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Missing or invalid required fields" });
+    return;
+  }
+
+  const MAX_UPLOAD_BYTES = 200 * 1024 * 1024;
+  const ALLOWED_PREFIXES = ["image/", "video/"];
+  const sizeNum = Number(parsed.data.size);
+  if (!Number.isFinite(sizeNum) || sizeNum <= 0 || sizeNum > MAX_UPLOAD_BYTES) {
+    res.status(413).json({ error: `File too large. Max ${MAX_UPLOAD_BYTES} bytes.` });
+    return;
+  }
+  const ct = String(parsed.data.contentType || "").toLowerCase();
+  if (!ALLOWED_PREFIXES.some((p) => ct.startsWith(p))) {
+    res.status(415).json({ error: `Unsupported content type: ${ct}` });
+    return;
+  }
+
+  try {
+    const subtype = ct.split("/")[1]?.split(";")[0] || "";
+    const extFromName = String(parsed.data.name || "").split(".").pop() || "";
+    const extension = subtype === "quicktime" ? "mov" : (subtype || extFromName);
+    const { uploadURL, publicUrl } = await objectStorageService.getPublicObjectUploadURL(extension);
+    res.json({ uploadURL, publicUrl, metadata: { ...parsed.data } });
+  } catch (error) {
+    req.log.error({ err: error }, "Error generating public upload URL");
+    res.status(500).json({ error: "Failed to generate public upload URL" });
+  }
+});
+
+/**
  * GET /storage/public-objects/*
  *
  * Serve public assets from PUBLIC_OBJECT_SEARCH_PATHS.

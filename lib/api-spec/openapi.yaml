@@ -224,6 +224,80 @@ paths:
         "204":
           description: Deleted
 
+  /partners/{id}/walkthrough:
+    patch:
+      operationId: updatePartnerWalkthrough
+      tags: [partners]
+      summary: Update a partner's walkthrough settings (enable, override video, regenerate)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PartnerWalkthroughUpdate"
+      responses:
+        "200":
+          description: Updated partner
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Partner"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /site-settings:
+    get:
+      operationId: getSiteSettings
+      tags: [admin]
+      summary: Get global site settings (admin)
+      responses:
+        "200":
+          description: Site settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SiteSettings"
+    put:
+      operationId: updateSiteSettings
+      tags: [admin]
+      summary: Update global site settings (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SiteSettingsUpdate"
+      responses:
+        "200":
+          description: Updated site settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SiteSettings"
+
+  /public/site-settings:
+    get:
+      operationId: getPublicSiteSettings
+      tags: [public]
+      summary: Get public-facing site settings (demo video)
+      responses:
+        "200":
+          description: Public site settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SiteSettings"
+
   /public/partners/{slug}:
     get:
       operationId: getPublicPartner
@@ -4276,6 +4350,19 @@ components:
           type: ["string", "null"]
         internalReplyToEmail:
           type: ["string", "null"]
+        walkthroughEnabled:
+          type: boolean
+        walkthroughVideoUrl:
+          type: ["string", "null"]
+        walkthroughVideoPosterUrl:
+          type: ["string", "null"]
+        walkthroughVideoStatus:
+          type: ["string", "null"]
+        walkthroughScript:
+          type: ["object", "null"]
+          additionalProperties: true
+        walkthroughGeneratedAt:
+          type: ["string", "null"]
         createdAt:
           type: string
           format: date-time
@@ -4611,6 +4698,14 @@ components:
           type: ["string", "null"]
         partnerVideoUrl:
           type: ["string", "null"]
+        walkthroughEnabled:
+          type: boolean
+        walkthroughVideoUrl:
+          type: ["string", "null"]
+        walkthroughVideoPosterUrl:
+          type: ["string", "null"]
+        walkthroughVideoStatus:
+          type: ["string", "null"]
         pricingDisplayEnabled:
           type: boolean
         isActive:
@@ -4619,6 +4714,50 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PublicPricingItem"
+
+    SiteSettings:
+      type: object
+      required: [mainDemoVideoEnabled]
+      properties:
+        mainDemoVideoUrl:
+          type: ["string", "null"]
+        mainDemoVideoPosterUrl:
+          type: ["string", "null"]
+        mainDemoVideoTitle:
+          type: ["string", "null"]
+        mainDemoVideoDescription:
+          type: ["string", "null"]
+        mainDemoVideoEnabled:
+          type: boolean
+
+    SiteSettingsUpdate:
+      type: object
+      properties:
+        mainDemoVideoUrl:
+          type: ["string", "null"]
+        mainDemoVideoPosterUrl:
+          type: ["string", "null"]
+        mainDemoVideoTitle:
+          type: ["string", "null"]
+        mainDemoVideoDescription:
+          type: ["string", "null"]
+        mainDemoVideoEnabled:
+          type: boolean
+
+    PartnerWalkthroughUpdate:
+      type: object
+      properties:
+        walkthroughEnabled:
+          type: boolean
+        walkthroughVideoUrl:
+          type: ["string", "null"]
+        walkthroughVideoPosterUrl:
+          type: ["string", "null"]
+        walkthroughScript:
+          type: ["object", "null"]
+          additionalProperties: true
+        regenerate:
+          type: boolean
 
     SubmitRequestBody:
       type: object

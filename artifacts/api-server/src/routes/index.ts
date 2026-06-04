@@ -53,6 +53,7 @@ import billingRouter from "./billing";
 import publicConfigRouter from "./publicConfig";
 import publicHomepageRouter from "./publicHomepage";
 import securityReadinessRouter from "./securityReadiness";
+import siteSettingsRouter from "./siteSettings";
 import addonsRouter from "./addons";
 import {
   uploadLimiter,
@@ -132,6 +133,10 @@ router.use((req: Request, res: Response, next: NextFunction) => {
 // ── Authenticated admin routers ────────────────────────────────────────
 router.use(launchRouter);
 router.use(securityReadinessRouter);
+// siteSettings has both an admin (/site-settings) and a public (/public/site-settings)
+// path. Mounted after the auth boundary so the admin paths stay protected; the
+// boundary already lets /public/* through to this router.
+router.use(siteSettingsRouter);
 router.use(addonsRouter);
 router.use(partnersRouter);
 router.use(partnerEmailRecipientsRouter);

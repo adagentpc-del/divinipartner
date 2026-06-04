@@ -234,6 +234,75 @@ router.patch("/partners/:id", async (req, res): Promise<void> => {
   sendValidated(req, res, UpdatePartnerResponse, partner, "Update partner");
 });
 
+// Walkthrough settings: enable/disable, custom video override, and regenerate.
+// The interactive walkthrough is always generated live on the portal from
+// current portal data; this endpoint persists admin choices and an optional
+// snapshot of the deterministic script (sent by the client preview) so the
+// admin model stays in parity. When a custom video URL is present the status
+// reflects "video_ready" (the override takes priority on the live portal).
+const WalkthroughBody = z.object({
+  walkthroughEnabled: z.boolean().optional(),
+  walkthroughVideoUrl: z.string().optional().nullable(),
+  walkthroughVideoPosterUrl: z.string().optional().nullable(),
+  walkthroughScript: z.record(z.string(), z.unknown()).optional().nullable(),
+  regenerate: z.boolean().optional(),
+});
+
+router.patch("/partners/:id/walkthrough", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [existing] = await db.select().from(partnersTable).where(eq(partnersTable.id, id));
+  if (!existing) {
+    res.status(404).json({ error: "Partner not found" });
+    return;
+  }
+
+  const parsed = WalkthroughBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const norm = (v: string | null | undefined): string | null =>
+    typeof v === "string" && v.trim() === "" ? null : (v ?? null);
+
+  const updateData: Record<string, unknown> = {};
+
+  if (parsed.data.walkthroughEnabled !== undefined) {
+    updateData.walkthroughEnabled = parsed.data.walkthroughEnabled;
+  }
+
+  const nextVideoUrl =
+    parsed.data.walkthroughVideoUrl !== undefined
+      ? norm(parsed.data.walkthroughVideoUrl)
+      : existing.walkthroughVideoUrl;
+  if (parsed.data.walkthroughVideoUrl !== undefined) {
+    updateData.walkthroughVideoUrl = nextVideoUrl;
+  }
+  if (parsed.data.walkthroughVideoPosterUrl !== undefined) {
+    updateData.walkthroughVideoPosterUrl = norm(parsed.data.walkthroughVideoPosterUrl);
+  }
+
+  // Persist a regenerated script snapshot + timestamp when requested.
+  if (parsed.data.regenerate || parsed.data.walkthroughScript !== undefined) {
+    updateData.walkthroughScript = parsed.data.walkthroughScript ?? null;
+    updateData.walkthroughGeneratedAt = new Date();
+  }
+
+  // Derive status: a custom video wins; otherwise the interactive walkthrough
+  // is always available.
+  updateData.walkthroughVideoStatus = nextVideoUrl ? "video_ready" : "interactive_ready";
+
+  const [partner] = await db
+    .update(partnersTable)
+    .set(updateData as any)
+    .where(eq(partnersTable.id, id))
+    .returning();
+
+  sendValidated(req, res, UpdatePartnerResponse, partner, "Update partner walkthrough");
+});
+
 // Test the customer-confirmation email template using a sample order shape.
 // Uses the most recent order for the partner if available, otherwise renders a
 // stub. Sends to the address provided in the body (admin-supplied).

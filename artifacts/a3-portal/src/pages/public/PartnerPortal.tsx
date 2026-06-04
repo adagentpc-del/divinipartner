@@ -21,6 +21,7 @@ import { resolveBranding } from "@/components/branding/usePartnerBranding";
 import { PartnerPortalHeader } from "@/components/branding/PartnerPortalHeader";
 import { PortalFooter } from "@/components/branding/PortalFooter";
 import { PortalCTA } from "@/components/branding/PortalCTA";
+import { WalkthroughLauncher } from "@/components/branding/WalkthroughLauncher";
 
 const step1Schema = z.object({
   contactName: z.string().min(1, "Name is required"),
@@ -225,8 +226,18 @@ function IntakePortal({ slug, partner }: { slug: string; partner: any }) {
         defaultSubheadline={partner.introText || "Fill out the details below to request a quote and kick off your event production."}
       />
 
+      {step === 1 && (
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 -mt-4 relative z-10 mb-2 flex justify-center">
+          <WalkthroughLauncher
+            partner={partner as any}
+            branding={branding}
+            portalMode="intake"
+          />
+        </div>
+      )}
+
       {step === 1 && (partner.globalSizzleReelUrl || partner.partnerVideoUrl) && (
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 -mt-6 relative z-10 mb-4">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 -mt-2 relative z-10 mb-4">
           <div className="aspect-video rounded-xl overflow-hidden shadow-2xl border" style={{ borderColor: branding.isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }}>
             <iframe
               src={partner.partnerVideoUrl || partner.globalSizzleReelUrl || ""}

@@ -129,6 +129,19 @@ export const partnersTable = pgTable("partners", {
   // When true, flat/grid views show category subheadings; when false they're
   // a single ungrouped list. category_tiles always groups.
   addonCategoryGroupingEnabled: boolean("addon_category_grouping_enabled").notNull().default(false),
+  // Auto-generated branded portal walkthrough (demo video + walkthrough feature).
+  // walkthroughEnabled: master toggle for the live "Watch Walkthrough" CTA.
+  // walkthroughVideoUrl/PosterUrl: optional admin override — when a real video
+  // is uploaded/pasted it takes priority over the interactive experience.
+  // walkthroughVideoStatus: not_generated | interactive_ready | video_ready.
+  // walkthroughScript: persisted deterministic script (slides) for admin parity;
+  // the live portal regenerates fresh from current portal data on each view.
+  walkthroughEnabled: boolean("walkthrough_enabled").notNull().default(true),
+  walkthroughVideoUrl: text("walkthrough_video_url"),
+  walkthroughVideoPosterUrl: text("walkthrough_video_poster_url"),
+  walkthroughVideoStatus: text("walkthrough_video_status").notNull().default("interactive_ready"),
+  walkthroughScript: jsonb("walkthrough_script"),
+  walkthroughGeneratedAt: timestamp("walkthrough_generated_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

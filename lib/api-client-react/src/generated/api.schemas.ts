@@ -1238,6 +1238,11 @@ export interface ErrorEnvelope {
   error: string;
 }
 
+/**
+ * @nullable
+ */
+export type PartnerWalkthroughScript = { [key: string]: unknown } | null;
+
 export interface Partner {
   id: number;
   companyName: string;
@@ -1346,6 +1351,17 @@ export interface Partner {
   salespersonPhone?: string | null;
   /** @nullable */
   internalReplyToEmail?: string | null;
+  walkthroughEnabled?: boolean;
+  /** @nullable */
+  walkthroughVideoUrl?: string | null;
+  /** @nullable */
+  walkthroughVideoPosterUrl?: string | null;
+  /** @nullable */
+  walkthroughVideoStatus?: string | null;
+  /** @nullable */
+  walkthroughScript?: PartnerWalkthroughScript;
+  /** @nullable */
+  walkthroughGeneratedAt?: string | null;
   createdAt: string;
   updatedAt: string;
   [key: string]: unknown;
@@ -1618,9 +1634,58 @@ export interface PublicPartner {
   globalSizzleReelUrl?: string | null;
   /** @nullable */
   partnerVideoUrl?: string | null;
+  walkthroughEnabled?: boolean;
+  /** @nullable */
+  walkthroughVideoUrl?: string | null;
+  /** @nullable */
+  walkthroughVideoPosterUrl?: string | null;
+  /** @nullable */
+  walkthroughVideoStatus?: string | null;
   pricingDisplayEnabled?: boolean;
   isActive: boolean;
   pricingRules?: PublicPricingItem[];
+}
+
+export interface SiteSettings {
+  /** @nullable */
+  mainDemoVideoUrl?: string | null;
+  /** @nullable */
+  mainDemoVideoPosterUrl?: string | null;
+  /** @nullable */
+  mainDemoVideoTitle?: string | null;
+  /** @nullable */
+  mainDemoVideoDescription?: string | null;
+  mainDemoVideoEnabled: boolean;
+}
+
+export interface SiteSettingsUpdate {
+  /** @nullable */
+  mainDemoVideoUrl?: string | null;
+  /** @nullable */
+  mainDemoVideoPosterUrl?: string | null;
+  /** @nullable */
+  mainDemoVideoTitle?: string | null;
+  /** @nullable */
+  mainDemoVideoDescription?: string | null;
+  mainDemoVideoEnabled?: boolean;
+}
+
+/**
+ * @nullable
+ */
+export type PartnerWalkthroughUpdateWalkthroughScript = {
+  [key: string]: unknown;
+} | null;
+
+export interface PartnerWalkthroughUpdate {
+  walkthroughEnabled?: boolean;
+  /** @nullable */
+  walkthroughVideoUrl?: string | null;
+  /** @nullable */
+  walkthroughVideoPosterUrl?: string | null;
+  /** @nullable */
+  walkthroughScript?: PartnerWalkthroughUpdateWalkthroughScript;
+  regenerate?: boolean;
 }
 
 export type RequestItemInputSizeUnit =

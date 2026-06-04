@@ -5,10 +5,50 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Loader2, Users, ExternalLink, Copy, Eye, Boxes, Rocket } from "lucide-react";
+import { Plus, Loader2, Users, ExternalLink, Copy, Eye, Boxes, Rocket, PlayCircle } from "lucide-react";
 import { EmptyStateCard } from "@/components/admin/EmptyStateCard";
 import PartnerStatusBadges from "@/components/admin/PartnerStatusBadges";
 import { fetchPublicConfig, publicLinkFrom, type PublicConfig } from "@/lib/publicUrl";
+import { resolveBranding } from "@/components/branding/usePartnerBranding";
+import { PartnerWalkthrough } from "@/components/branding/PartnerWalkthrough";
+import { generatePortalWalkthroughScript } from "@/lib/walkthrough";
+
+function WalkthroughPreviewButton({ partner }: { partner: any }) {
+  const [open, setOpen] = useState(false);
+  const branding = resolveBranding(partner?.theme || null);
+  const script = generatePortalWalkthroughScript({
+    companyName: partner.companyName,
+    introHeadline: partner.introHeadline,
+    introText: partner.introText,
+    thankYouText: partner.thankYouText,
+    portalMode: partner.portalMode,
+    partnerType: partner.partnerType,
+    pricingDisplayEnabled: partner.pricingDisplayEnabled,
+  });
+  return (
+    <>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-8 w-8 p-0 text-muted-foreground hover:text-primary"
+        title="Preview walkthrough"
+        onClick={() => setOpen(true)}
+        data-testid={`button-preview-walkthrough-${partner.id}`}
+      >
+        <PlayCircle className="h-3.5 w-3.5" />
+      </Button>
+      <PartnerWalkthrough
+        open={open}
+        onClose={() => setOpen(false)}
+        script={script}
+        branding={branding}
+        videoUrl={partner.walkthroughVideoUrl || null}
+        videoPosterUrl={partner.walkthroughVideoPosterUrl || null}
+        videoStatus={partner.walkthroughVideoStatus || null}
+      />
+    </>
+  );
+}
 
 function PartnerShareLink({ slug }: { slug: string }) {
   const [cfg, setCfg] = useState<PublicConfig | null>(null);
@@ -143,6 +183,7 @@ export default function PartnersList() {
                           <Eye className="h-3.5 w-3.5" />
                         </Button>
                       </a>
+                      <WalkthroughPreviewButton partner={partner} />
                       <Button
                         variant="ghost"
                         size="sm"

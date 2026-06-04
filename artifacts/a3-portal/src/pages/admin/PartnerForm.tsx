@@ -27,6 +27,7 @@ import { LogoUploader } from "@/components/admin/LogoUploader";
 import PartnerStatusBadges from "@/components/admin/PartnerStatusBadges";
 import { FamilyStatusGrid, type FamilyAvailability } from "@/components/admin/FamilyStatusCard";
 import { RentableAssetsCard } from "@/components/admin/RentableAssetsCard";
+import { PartnerWalkthroughPanel } from "@/components/admin/PartnerWalkthroughPanel";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { fetchPublicConfig, publicLinkFrom, type PublicConfig } from "@/lib/publicUrl";
@@ -582,6 +583,10 @@ export default function PartnerForm() {
               </div>
             </CardContent>
           </Card>
+
+          {isEditing && partner && (
+            <PartnerWalkthroughPanel partner={partner as any} />
+          )}
 
           <Card id="sec-decks" className="scroll-mt-20">
             <CardHeader className="pb-4">

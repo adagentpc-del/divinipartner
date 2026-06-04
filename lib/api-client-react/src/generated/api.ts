@@ -195,6 +195,7 @@ import type {
   PartnerSectionRow,
   PartnerSurveyIntegration,
   PartnerThemeRow,
+  PartnerWalkthroughUpdate,
   PartnershipRequestRow,
   PdfResponse,
   PortalRequestRow,
@@ -243,6 +244,8 @@ import type {
   SetOrderArtworkNeeded200,
   SetOrderException200,
   SetOrderItemProductionBlockBody,
+  SiteSettings,
+  SiteSettingsUpdate,
   StabilizationDashboard,
   StatusCount,
   SubmitRequestBody,
@@ -1077,6 +1080,330 @@ export const useDeletePartnerAsset = <
 > => {
   return useMutation(getDeletePartnerAssetMutationOptions(options));
 };
+
+/**
+ * @summary Update a partner's walkthrough settings (enable, override video, regenerate)
+ */
+export const getUpdatePartnerWalkthroughUrl = (id: number) => {
+  return `/api/partners/${id}/walkthrough`;
+};
+
+export const updatePartnerWalkthrough = async (
+  id: number,
+  partnerWalkthroughUpdate: PartnerWalkthroughUpdate,
+  options?: RequestInit,
+): Promise<Partner> => {
+  return customFetch<Partner>(getUpdatePartnerWalkthroughUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(partnerWalkthroughUpdate),
+  });
+};
+
+export const getUpdatePartnerWalkthroughMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updatePartnerWalkthrough>>,
+    TError,
+    { id: number; data: BodyType<PartnerWalkthroughUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updatePartnerWalkthrough>>,
+  TError,
+  { id: number; data: BodyType<PartnerWalkthroughUpdate> },
+  TContext
+> => {
+  const mutationKey = ["updatePartnerWalkthrough"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updatePartnerWalkthrough>>,
+    { id: number; data: BodyType<PartnerWalkthroughUpdate> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updatePartnerWalkthrough(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdatePartnerWalkthroughMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updatePartnerWalkthrough>>
+>;
+export type UpdatePartnerWalkthroughMutationBody =
+  BodyType<PartnerWalkthroughUpdate>;
+export type UpdatePartnerWalkthroughMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Update a partner's walkthrough settings (enable, override video, regenerate)
+ */
+export const useUpdatePartnerWalkthrough = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updatePartnerWalkthrough>>,
+    TError,
+    { id: number; data: BodyType<PartnerWalkthroughUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updatePartnerWalkthrough>>,
+  TError,
+  { id: number; data: BodyType<PartnerWalkthroughUpdate> },
+  TContext
+> => {
+  return useMutation(getUpdatePartnerWalkthroughMutationOptions(options));
+};
+
+/**
+ * @summary Get global site settings (admin)
+ */
+export const getGetSiteSettingsUrl = () => {
+  return `/api/site-settings`;
+};
+
+export const getSiteSettings = async (
+  options?: RequestInit,
+): Promise<SiteSettings> => {
+  return customFetch<SiteSettings>(getGetSiteSettingsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetSiteSettingsQueryKey = () => {
+  return [`/api/site-settings`] as const;
+};
+
+export const getGetSiteSettingsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getSiteSettings>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSiteSettings>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetSiteSettingsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getSiteSettings>>> = ({
+    signal,
+  }) => getSiteSettings({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getSiteSettings>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetSiteSettingsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getSiteSettings>>
+>;
+export type GetSiteSettingsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get global site settings (admin)
+ */
+
+export function useGetSiteSettings<
+  TData = Awaited<ReturnType<typeof getSiteSettings>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSiteSettings>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetSiteSettingsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update global site settings (admin)
+ */
+export const getUpdateSiteSettingsUrl = () => {
+  return `/api/site-settings`;
+};
+
+export const updateSiteSettings = async (
+  siteSettingsUpdate: SiteSettingsUpdate,
+  options?: RequestInit,
+): Promise<SiteSettings> => {
+  return customFetch<SiteSettings>(getUpdateSiteSettingsUrl(), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(siteSettingsUpdate),
+  });
+};
+
+export const getUpdateSiteSettingsMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateSiteSettings>>,
+    TError,
+    { data: BodyType<SiteSettingsUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateSiteSettings>>,
+  TError,
+  { data: BodyType<SiteSettingsUpdate> },
+  TContext
+> => {
+  const mutationKey = ["updateSiteSettings"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateSiteSettings>>,
+    { data: BodyType<SiteSettingsUpdate> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return updateSiteSettings(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateSiteSettingsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateSiteSettings>>
+>;
+export type UpdateSiteSettingsMutationBody = BodyType<SiteSettingsUpdate>;
+export type UpdateSiteSettingsMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update global site settings (admin)
+ */
+export const useUpdateSiteSettings = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateSiteSettings>>,
+    TError,
+    { data: BodyType<SiteSettingsUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateSiteSettings>>,
+  TError,
+  { data: BodyType<SiteSettingsUpdate> },
+  TContext
+> => {
+  return useMutation(getUpdateSiteSettingsMutationOptions(options));
+};
+
+/**
+ * @summary Get public-facing site settings (demo video)
+ */
+export const getGetPublicSiteSettingsUrl = () => {
+  return `/api/public/site-settings`;
+};
+
+export const getPublicSiteSettings = async (
+  options?: RequestInit,
+): Promise<SiteSettings> => {
+  return customFetch<SiteSettings>(getGetPublicSiteSettingsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPublicSiteSettingsQueryKey = () => {
+  return [`/api/public/site-settings`] as const;
+};
+
+export const getGetPublicSiteSettingsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPublicSiteSettings>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getPublicSiteSettings>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetPublicSiteSettingsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPublicSiteSettings>>
+  > = ({ signal }) => getPublicSiteSettings({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPublicSiteSettings>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPublicSiteSettingsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPublicSiteSettings>>
+>;
+export type GetPublicSiteSettingsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get public-facing site settings (demo video)
+ */
+
+export function useGetPublicSiteSettings<
+  TData = Awaited<ReturnType<typeof getPublicSiteSettings>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getPublicSiteSettings>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPublicSiteSettingsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Get public partner page data

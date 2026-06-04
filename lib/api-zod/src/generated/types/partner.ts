@@ -5,6 +5,7 @@
  * A3 Partner Portal API
  * OpenAPI spec version: 0.1.0
  */
+import type { PartnerWalkthroughScript } from "./partnerWalkthroughScript";
 
 export interface Partner {
   id: number;
@@ -114,6 +115,17 @@ export interface Partner {
   salespersonPhone?: string | null;
   /** @nullable */
   internalReplyToEmail?: string | null;
+  walkthroughEnabled?: boolean;
+  /** @nullable */
+  walkthroughVideoUrl?: string | null;
+  /** @nullable */
+  walkthroughVideoPosterUrl?: string | null;
+  /** @nullable */
+  walkthroughVideoStatus?: string | null;
+  /** @nullable */
+  walkthroughScript?: PartnerWalkthroughScript;
+  /** @nullable */
+  walkthroughGeneratedAt?: string | null;
   createdAt: Date;
   updatedAt: Date;
   [key: string]: unknown;

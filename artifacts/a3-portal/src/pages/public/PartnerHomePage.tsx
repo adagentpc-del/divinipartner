@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
+import { useGetPublicSiteSettings } from "@workspace/api-client-react";
 import { SiteHeader } from "@/components/home/SiteHeader";
 import { SiteFooter } from "@/components/home/SiteFooter";
-import { VideoEmbed } from "@/components/home/VideoEmbed";
+import { PortalVideoPlayer } from "@/components/branding/PortalVideoPlayer";
 import {
   FeatureCard,
   ServiceCard,
@@ -13,13 +14,13 @@ import { PartnershipRequestForm } from "@/components/home/PartnershipRequestForm
 import isometricImg from "@assets/A3_Visual_Isometric_Capabilities_V2_1778516950842.png";
 
 /**
- * VIDEO SOURCE
- * To swap the Vimeo sizzle reel for a locally uploaded video later, change
- * SIZZLE_VIDEO_SRC below to the public URL of the uploaded file
- * (e.g. "/videos/sizzle-reel.mp4"). The VideoEmbed component auto-detects
- * Vimeo / YouTube / direct video files and renders accordingly.
+ * Front-page demo video. The source, poster, title, description, and enabled
+ * flag are all admin-controlled via Settings → Demo Video (stored in
+ * site_settings). When no URL is configured an A3-branded placeholder shows;
+ * when disabled the section is hidden entirely. We fall back to the A3 sizzle
+ * reel only when settings have not loaded yet, so the page is never empty.
  */
-const SIZZLE_VIDEO_SRC = "https://vimeo.com/1091974311";
+const DEFAULT_DEMO_VIDEO_SRC = "https://vimeo.com/1091974311";
 
 const FEATURE_CARDS = [
   {
@@ -154,6 +155,14 @@ const SECTION_TITLE =
 
 export default function PartnerHomePage() {
   const { partners: PARTNERS, loading: partnersLoading } = usePartnerPortals();
+  const { data: siteSettings } = useGetPublicSiteSettings();
+  const demoEnabled = siteSettings ? siteSettings.mainDemoVideoEnabled : true;
+  const demoSrc = siteSettings ? siteSettings.mainDemoVideoUrl : DEFAULT_DEMO_VIDEO_SRC;
+  const demoPoster = siteSettings?.mainDemoVideoPosterUrl ?? null;
+  const demoTitle = siteSettings?.mainDemoVideoTitle?.trim() || "See What A3 Visual Can Activate";
+  const demoDescription =
+    siteSettings?.mainDemoVideoDescription?.trim() ||
+    "From branded environments and large-format print to immersive installations, fabrication, projection mapping, and nationwide event support, A3 Visual brings brands, spaces, and experiences to life.";
   useEffect(() => {
     document.title =
       "A3 Visual Partnership Portal | Integrated Visual Solutions & Event Resource Management";
@@ -252,31 +261,31 @@ export default function PartnerHomePage() {
           </div>
         </section>
 
-        {/* ─── SECTION 2: SIZZLE REEL ────────────────────────────────────── */}
-        <section className="relative bg-[#0a1430] text-white py-16 sm:py-20 lg:py-24 border-t border-white/5">
-          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#E9B947]/40 to-transparent" />
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-10 sm:mb-12">
-              <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#E9B947] mb-3">
-                Sizzle Reel
+        {/* ─── SECTION 2: DEMO VIDEO ─────────────────────────────────────── */}
+        {demoEnabled && (
+          <section className="relative bg-[#0a1430] text-white py-16 sm:py-20 lg:py-24 border-t border-white/5">
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#E9B947]/40 to-transparent" />
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="text-center mb-10 sm:mb-12">
+                <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#E9B947] mb-3">
+                  Demo
+                </div>
+                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold uppercase tracking-tight leading-tight mb-5">
+                  {demoTitle}
+                </h2>
+                <p className="text-base sm:text-lg text-slate-300 max-w-3xl mx-auto leading-relaxed">
+                  {demoDescription}
+                </p>
               </div>
-              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold uppercase tracking-tight leading-tight mb-5">
-                See What A3 Visual Can Activate
-              </h2>
-              <p className="text-base sm:text-lg text-slate-300 max-w-3xl mx-auto leading-relaxed">
-                From branded environments and large-format print to immersive installations,
-                fabrication, projection mapping, and nationwide event support, A3 Visual brings
-                brands, spaces, and experiences to life.
-              </p>
-            </div>
-            <div className="relative">
-              <div className="absolute -inset-2 bg-gradient-to-tr from-[#E9B947]/10 to-transparent rounded-xl blur-2xl" />
-              <div className="relative rounded-xl overflow-hidden border border-white/10 shadow-2xl">
-                <VideoEmbed src={SIZZLE_VIDEO_SRC} title="A3 Visual Sizzle Reel" />
+              <div className="relative">
+                <div className="absolute -inset-2 bg-gradient-to-tr from-[#E9B947]/10 to-transparent rounded-xl blur-2xl" />
+                <div className="relative rounded-xl overflow-hidden border border-white/10 shadow-2xl">
+                  <PortalVideoPlayer src={demoSrc} poster={demoPoster} title={demoTitle} />
+                </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* ─── SECTION 3: WHAT THIS PORTAL IS ───────────────────────────── */}
         <section id="what" className="bg-white py-20 sm:py-24 lg:py-28">
