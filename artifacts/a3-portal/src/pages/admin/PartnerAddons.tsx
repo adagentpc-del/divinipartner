@@ -21,6 +21,7 @@ import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
+import { ProductImage } from "@/components/branding/ProductImage";
 import {
   ArrowLeft, Loader2, Plus, Trash2, Star, ChevronUp, ChevronDown, PackagePlus, Save, Check, Search,
 } from "lucide-react";
@@ -225,9 +226,7 @@ export default function PartnerAddons() {
                               disabled={added}
                               className="flex items-center gap-3"
                             >
-                              {p.imageUrl
-                                ? <img src={p.imageUrl} alt="" className="w-9 h-9 rounded object-cover bg-muted shrink-0" />
-                                : <div className="w-9 h-9 rounded bg-muted shrink-0" />}
+                              <ProductImage src={p.imageUrl} alt={p.name} className="w-9 h-9 rounded object-cover shrink-0" fallbackClassName="w-9 h-9 rounded overflow-hidden shrink-0" />
                               <div className="flex-1 min-w-0">
                                 <div className="text-sm font-medium truncate">{p.displayName || p.name}</div>
                                 <div className="text-xs text-muted-foreground truncate flex items-center gap-2">
@@ -301,9 +300,7 @@ export default function PartnerAddons() {
                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => move(idx, -1)} disabled={idx === 0}><ChevronUp className="w-3.5 h-3.5" /></Button>
                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => move(idx, 1)} disabled={idx === rows.length - 1}><ChevronDown className="w-3.5 h-3.5" /></Button>
                   </div>
-                  {r.productImageUrl
-                    ? <img src={r.productImageUrl} alt="" className="w-10 h-10 rounded object-cover bg-muted" />
-                    : <div className="w-10 h-10 rounded bg-muted" />}
+                  <ProductImage src={r.productImageUrl} alt={r.productName || ""} className="w-10 h-10 rounded object-cover" fallbackClassName="w-10 h-10 rounded overflow-hidden" />
                   <div className="flex-1 min-w-0">
                     <div className="font-medium truncate">{r.productName || `Product #${r.productId}`}</div>
                     <div className="text-[11px] text-muted-foreground truncate">

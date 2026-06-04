@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus, Pencil, Trash2, Package, Search, FileText, CheckCircle2, AlertCircle, Star, Upload, Download, X } from "lucide-react";
+import { ProductImage } from "@/components/branding/ProductImage";
 import { ImportDialog } from "@/components/imports/ImportDialog";
 import { DimensionInput } from "@/components/units/DimensionInput";
 import { PackingDetailsInput, type PackingDetailsValue, type PackingMode } from "@/components/units/PackingDetailsInput";
@@ -193,9 +194,7 @@ export default function ProductCatalog() {
                 <Card key={p.id} className={!p.isActive ? "opacity-60" : ""}>
                   <CardContent className="py-3">
                     <div className="flex items-start gap-3">
-                      <div className="h-12 w-12 bg-muted rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
-                        {p.imageUrl ? <img src={p.imageUrl} className="h-full w-full object-cover" /> : <Package className="h-4 w-4 text-muted-foreground" />}
-                      </div>
+                      <ProductImage src={p.imageUrl} alt={p.name} className="h-12 w-12 rounded-lg object-cover shrink-0" fallbackClassName="h-12 w-12 rounded-lg overflow-hidden shrink-0" />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="font-medium text-sm">{p.displayName || p.name}</h3>

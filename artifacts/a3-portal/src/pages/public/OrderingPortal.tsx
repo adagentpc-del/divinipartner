@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ProductImage } from "@/components/branding/ProductImage";
+import { ProductImage, A3_FALLBACK_SRC } from "@/components/branding/ProductImage";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ChevronRight, ChevronLeft, Calendar, MapPin, Package, Plus, Minus, Check, Upload, ShoppingCart, Sparkles, X, Ruler, AlertTriangle, ZoomIn } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -379,7 +379,10 @@ export default function OrderingPortal({ slug }: { slug: string }) {
         .map(a => products.find(p => p.id === a.productId))
         .filter((p): p is Product => !!p && !inPackage(p.id));
     }
-    return products.filter(p => !inPackage(p.id));
+    // No curated add-on library for this portal → show NOTHING. We never fall
+    // back to the full product catalog; an empty list drives the premium
+    // empty state below instead of leaking every global product.
+    return [];
   }, [data, selectedPkg, eventAddonRow, partnerHasAddonLibrary]);
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
@@ -732,7 +735,7 @@ export default function OrderingPortal({ slug }: { slug: string }) {
                     return (
                       <div key={c.key} className="p-2 space-y-2" style={cardSurface(branding)}>
                         <div className="flex items-center gap-2">
-                          {c.productImageUrl && <img src={c.productImageUrl} className="h-10 w-10 rounded object-cover" alt="" />}
+                          <ProductImage src={c.productImageUrl} alt={c.name} className="h-10 w-10 rounded object-cover shrink-0" fallbackClassName="h-10 w-10 rounded overflow-hidden shrink-0" style={mutedPanel(branding)} />
                           <div className="flex-1 text-sm" style={{ color: titleColor(branding) }}>
                             <div>{c.name}</div>
                             {fam?.inFamily && fam.role !== "hardware" && fam.requiresHardwareDefault && (
@@ -803,9 +806,9 @@ export default function OrderingPortal({ slug }: { slug: string }) {
               <div className="p-4" style={addonProducts.length === 0 ? accentPanel(branding) : mutedPanel(branding)}>
                 {addonProducts.length === 0 ? (
                   <>
-                    <div className="text-sm font-semibold mb-1" style={{ color: titleColor(branding) }}>Don't see what you need?</div>
+                    <div className="text-sm font-semibold mb-1" style={{ color: titleColor(branding) }}>No add-on products are available for this portal.</div>
                     <p className="text-xs mb-2" style={{ color: branding.muted }}>
-                      There aren't any specific add-ons listed for this package. Tell us what else you'd like and we'll put together a custom quote.
+                      Contact A3 Visual if you need help with a custom request — describe anything you'd like added below and we'll put together a quote.
                     </p>
                   </>
                 ) : (
@@ -1152,7 +1155,7 @@ function PackageGallery({ pkg, branding }: { pkg: Pkg; branding?: ResolvedBrandi
   return (
     <div className="mb-3" onClick={(e) => e.stopPropagation()}>
       <button type="button" onClick={(e) => open(active, e)} aria-label={`View ${pkg.displayName || pkg.name} larger`} className="relative block w-full group">
-        <img src={resolveAssetUrl(current)} alt={`${pkg.displayName || pkg.name} — image ${active + 1} of ${gallery.length}`} className="aspect-video w-full rounded-lg object-cover" style={branding ? mutedPanel(branding) : undefined} />
+        <img key={resolveAssetUrl(current)} src={resolveAssetUrl(current)} alt={`${pkg.displayName || pkg.name} — image ${active + 1} of ${gallery.length}`} className="aspect-video w-full rounded-lg object-cover" style={branding ? mutedPanel(branding) : undefined} onError={(e) => { const t = e.currentTarget; if (t.dataset.fb) return; t.dataset.fb = "1"; t.src = A3_FALLBACK_SRC; }} />
         <span className="absolute top-2 right-2 rounded-full bg-black/60 text-white p-1.5 opacity-0 group-hover:opacity-100 transition" aria-hidden="true"><ZoomIn className="h-3.5 w-3.5" /></span>
         {gallery.length > 1 && (
           <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-black/70 text-white text-[11px] font-semibold">{active + 1} / {gallery.length}</span>
@@ -1170,7 +1173,7 @@ function PackageGallery({ pkg, branding }: { pkg: Pkg; branding?: ResolvedBrandi
               style={{ borderColor: i === active ? (branding?.accent ?? "transparent") : "transparent" }}
               aria-label={`View image ${i + 1}`}
             >
-              <img src={resolveAssetUrl(u)} alt="" className="h-10 w-14 rounded object-cover" style={branding ? mutedPanel(branding) : undefined} />
+              <img src={resolveAssetUrl(u)} alt="" className="h-10 w-14 rounded object-cover" style={branding ? mutedPanel(branding) : undefined} onError={(e) => { const t = e.currentTarget; if (t.dataset.fb) return; t.dataset.fb = "1"; t.src = A3_FALLBACK_SRC; }} />
             </button>
           ))}
         </div>
@@ -1179,7 +1182,7 @@ function PackageGallery({ pkg, branding }: { pkg: Pkg; branding?: ResolvedBrandi
         <DialogContent className="max-w-5xl p-0 bg-black/95 border-0">
           <DialogTitle className="sr-only">{pkg.displayName || pkg.name} — image {active + 1} of {gallery.length}</DialogTitle>
           <div className="relative">
-            <img src={resolveAssetUrl(gallery[active])} alt={`${pkg.displayName || pkg.name} — image ${active + 1} of ${gallery.length}`} className="w-full max-h-[85vh] object-contain" />
+            <img key={resolveAssetUrl(gallery[active])} src={resolveAssetUrl(gallery[active])} alt={`${pkg.displayName || pkg.name} — image ${active + 1} of ${gallery.length}`} className="w-full max-h-[85vh] object-contain" onError={(e) => { const t = e.currentTarget; if (t.dataset.fb) return; t.dataset.fb = "1"; t.src = A3_FALLBACK_SRC; }} />
             {gallery.length > 1 && (
               <>
                 <button type="button" aria-label="Previous image" onClick={() => setActive((active - 1 + gallery.length) % gallery.length)} className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/10 hover:bg-white/20 text-white p-2"><ChevronLeft className="h-6 w-6" /></button>

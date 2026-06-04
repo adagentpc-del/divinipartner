@@ -26,3 +26,12 @@
 - Empty state: themed message + optional `Contact A3 Visual` CTA when `emptyContactHref` is provided. Selector always renders so empty state can show.
 - Outer step-0 wrapper switched from shadcn white `<Card>` to a themed `div` so dark partner themes (e.g. Social Commerce Festival festival template) render the cards on a true dark surface, matching admin preview parity.
 - No new DB tables, no AI calls, no hardcoded events — uses existing `data.events`, `data.cities`, `data.venues`.
+
+## Add-on Products Logic Fix + Universal A3 Image Placeholder
+
+- Root cause of "too many products" on the live add-ons step: `addonProducts` useMemo in `OrderingPortal.tsx` fell back to `products.filter(...)` (the ENTIRE catalog) whenever a partner had no curated add-on library (`partnerHasAddonLibrary === false`). Social Commerce Festival (partner 4) has 0 rows in `partner_addons`, so it leaked ~30 global products.
+- Fix: that fallback now returns `[]`. The live add-ons step shows ONLY the admin-curated `partner_addons` for the partner (resolved per-event via `events.addon_override_json` inherit/override). When empty, the existing premium empty-state panel shows ("No add-on products are available for this portal." + custom-request textarea) instead of any products.
+- No new DB table created. Reused existing `partner_addons` (partner library: product_id, sort_order, is_featured, is_active, category_override) + `events.addon_override_json`. Admin search/select UI already existed at `PartnerAddons.tsx` (routed `/admin/partners/:id/addons`, linked from `PartnerForm`).
+- Image placeholders: `ProductImage` extended to also fall back to the A3 lockup on image LOAD ERROR (`onError`), not just missing `src`; exports `A3_FALLBACK_SRC`. Rolled out to: live add-on cards/rows/tiles (already), cart thumbnail, admin add-on search + selected rows (`PartnerAddons.tsx`), admin product catalog rows (`ProductCatalog.tsx`). Package-gallery `<img>` tags got a one-shot loop-safe `onError` fallback to the A3 lockup.
+- IMPORTANT: the bundled brand lockups `public/brand/a3-lockup-on-{light,dark}.jpeg` were committed as 0-byte files, so EVERY A3 fallback (header, footer, FullPortal, ProductImage) was silently broken. Regenerated both as real on-brand wordmarks (gold "A3" + navy/white "VISUAL") via ImageMagick. Asset now serves `200 image/jpeg`.
+- Constraints honored: no Replit DB, no AI calls, order flow unchanged, typecheck passes.
