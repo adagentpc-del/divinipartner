@@ -105,7 +105,7 @@ export function PortalCTA({
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={`font-semibold transition-all duration-200 hover:opacity-90 hover:shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${sizeClasses[size]} ${className}`}
+      className={`font-semibold transition-all duration-200 hover:opacity-90 hover:shadow-lg motion-safe:active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${sizeClasses[size]} ${className}`}
       style={getStyle()}
     >
       {children || label}

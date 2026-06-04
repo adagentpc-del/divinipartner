@@ -10,17 +10,18 @@ interface ProductImageProps {
   alt?: string;
   className?: string;
   fallbackClassName?: string;
+  style?: React.CSSProperties;
 }
 
-export function ProductImage({ src, alt = "", className, fallbackClassName }: ProductImageProps) {
+export function ProductImage({ src, alt = "", className, fallbackClassName, style }: ProductImageProps) {
   if (src) {
-    return <img src={src} alt={alt} className={className} />;
+    return <img src={src} alt={alt} className={className} style={style} />;
   }
   const a3Src = `${import.meta.env.BASE_URL}brand/a3-lockup-on-light.jpeg`;
   return (
     <div
       className={fallbackClassName ?? className}
-      style={{ display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "#f1f5f9" }}
+      style={{ display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "#f1f5f9", ...style }}
     >
       <img
         src={a3Src}

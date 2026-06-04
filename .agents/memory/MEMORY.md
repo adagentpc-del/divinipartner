@@ -1,0 +1,1 @@
+- [Public partner portal theming](portal-theming.md) — customer order flow must be fully ResolvedBranding-driven via portalSurfaces helpers; no neutral shadcn tokens; routingEmail is stripped from public projection.

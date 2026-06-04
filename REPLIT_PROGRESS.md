@@ -1,5 +1,16 @@
 # A3 Portal Progress
 
+## Premium Portal Theming — full order-flow pass (customer-facing OrderingPortal)
+
+- Goal: make the live customer portal (e.g. Social Commerce Festival, dark festival template) look like a premium per-partner microsite, fully theme-controlled end-to-end, not just the hero.
+- New shared helpers in `components/branding/portalSurfaces.ts` (`cardSurface`, `mutedPanel`, `accentPanel`, `titleColor`, `hairline`, `softHairline`, `shellGlowLayers`), plus `BrandedPlaceholderImage.tsx` and `PartnerTrustSection.tsx` — all driven by `ResolvedBranding`.
+- `OrderingPortal.tsx` themed end-to-end: order-flow eyebrow/headline, premium stepper, package cards + `PackageGallery` (image fallback + active thumbnail border tied to `branding.accent`), sticky Order Summary, review cards, background glows, `PartnerTrustSection`.
+- Steps 2–4 themed: `AddonRenderer` now accepts `branding` (cards/rows/category tiles/labels), step-2 custom-size + "not listed" panels, step-3 artwork dropzone/divider/file-list + `ArtworkGuidancePanel` (now takes `branding`), step-4 contact labels.
+- `SurveyAssetsSection` themed (cards/placeholder/labels/buttons); `SurveyBranding` widened to `ResolvedBranding`. `ProductImage` gained an optional `style` prop for themed fallback surfaces.
+- Reduced motion: CTA scale transforms in `PartnerPortalHeader` and `PortalCTA` guarded with `motion-safe:`.
+- Intentionally NOT themed: pre-data loading/error fallbacks (no branding yet), semantic amber/blue status banners on confirmation screen, white-on-image lightbox arrows.
+- Constraints honored: no new DB, no AI calls, no base64, order flow unchanged. Architect review: PASS.
+
 ## Premium Event Selector (PartnerEventSelector)
 
 - New reusable component `artifacts/a3-portal/src/components/branding/PartnerEventSelector.tsx`.

@@ -1,0 +1,519 @@
+I need you to upgrade the live customer-facing partner portal so it looks like a premium $50K custom microsite/order portal, not a rudimentary form with theme colors.
+
+This is for the A3 Visual Partnership Portal.
+
+The current issue:
+Even though the admin theme preview and upload system are improving, the actual customer portal still feels basic, flat, and “app generated.” It does not yet feel like a high-end branded client website that A3 Visual would proudly deliver to a premium event, hotel, venue, or partner.
+
+The live customer portal must feel like a custom-designed client microsite with an embedded ordering flow, not a plain order form.
+
+Where this applies:
+1. Live customer-facing partner portal pages
+2. Social Commerce Festival portal
+3. Any generated customer portal after a partner is created
+4. Admin preview if it previews the live customer experience
+
+Core requirement:
+The customer portal must look like a premium branded microsite before the order flow begins.
+
+Do not only adjust colors.
+Do not only make cards darker.
+Do not only add the logo.
+Rebuild the visual presentation layer of the customer portal using the existing order logic.
+
+Do not rebuild the whole app.
+Do not break the order flow.
+Do not remove event selection, package selection, add ons, artwork upload, contact, review, or cart.
+Do not use Replit Database.
+Do not add AI calls.
+Use the existing database, storage, theme fields, and current order functionality.
+
+The live portal should have this structure:
+
+1. Premium Hero Section
+2. Partner Brand Story / Event Context Section
+3. Portal Action Cards / Quick Actions
+4. Guided Vendor Package Order Flow
+5. Premium Sticky Order Summary
+6. Trust / Deadline / Support Section
+7. Partner + A3 Visual Footer
+
+The page should feel like a designed website from the first screen.
+
+PART 1: PREMIUM HERO SECTION
+
+The hero must be the strongest visual part of the page.
+
+For event/festival partners like Social Commerce Festival, the hero should include:
+1. Full-width cinematic background
+2. Uploaded main logo displayed large and clean
+3. Optional hero background image if uploaded
+4. Animated gradient or subtle motion texture
+5. Partner theme colors applied
+6. Strong CTA buttons
+7. Event/city/date chips if available
+8. A3 partnership badge
+9. Smooth scroll to order flow
+
+The hero should not look like:
+“Welcome to Social Commerce Festival” with a small SC icon.
+
+Correct approach:
+If the partner has a main_logo_url, the uploaded logo is the hero headline.
+
+Use text only as supporting copy below the logo.
+
+Example hero content:
+Main visual:
+[Uploaded Social Commerce Festival logo]
+
+Supporting copy:
+“Premium vendor packages, production assets, artwork uploads, and event-ready ordering in one place.”
+
+CTA buttons:
+“Start Your Order”
+“View Available Events”
+
+Badge:
+“In partnership with A3 Visual”
+
+The logo should be large, centered, and visually dominant.
+
+Hero requirements:
+1. Minimum desktop hero height: 70vh or visually substantial.
+2. Mobile hero height: 60vh or optimized for screen.
+3. Dark gradient overlay if using image background.
+4. Logo object-fit: contain.
+5. Logo must not crop.
+6. Use theme primary/accent color for glows and CTA.
+7. Add subtle animated background, but respect reduced motion.
+8. Add premium spacing and alignment.
+
+PART 2: PREMIUM PAGE BACKGROUND
+
+The live portal should not sit on a plain white or generic dark background.
+
+Create a premium page shell using:
+1. Theme background color
+2. Gradient overlays
+3. Subtle decorative radial glows
+4. Optional background image
+5. Optional noise/texture layer if simple CSS
+6. Section dividers
+7. Large spacing between sections
+
+For Festival/Event template:
+Use:
+1. Dark cinematic background
+2. Neon accent glow
+3. Glassmorphism sections
+4. High contrast typography
+5. Bold visual hierarchy
+
+For Luxury Venue/Hotel template:
+Use:
+1. Elegant image-led background
+2. Soft gradients
+3. Refined section spacing
+4. Premium serif/sans typography pairing if already available
+5. Subtle gold/neutral accents if configured
+
+For Corporate/Institutional template:
+Use:
+1. Clean premium background
+2. More restrained motion
+3. Strong trust and clarity
+4. Executive-level layout
+
+PART 3: TYPOGRAPHY UPGRADE
+
+The typography needs to stop looking like default app text.
+
+Create premium type hierarchy:
+1. Hero logo or hero headline
+2. Section eyebrow labels
+3. Large section headlines
+4. Clear body copy
+5. Premium button text
+6. Card titles
+7. Metadata labels
+8. Deadlines/status labels
+
+Use theme colors:
+1. Main headings: --partner-text
+2. Eyebrows/status: --partner-primary or --partner-accent
+3. Supporting copy: --partner-muted
+4. Active/selected states: --partner-primary
+5. Deadlines/warnings: theme-aware warning color
+
+Do not use generic gray/blue defaults.
+
+Create reusable CSS classes:
+.portal-eyebrow
+.portal-hero-title
+.portal-section-title
+.portal-section-copy
+.portal-meta-label
+.portal-premium-button
+.portal-secondary-button
+
+PART 4: PREMIUM EVENT SELECTION
+
+The event selection should look like a premium event calendar, not a small form list.
+
+Upcoming events should display as:
+1. Premium clickable cards
+2. Chronological order
+3. Responsive grid on desktop
+4. Vertical list on mobile
+5. Strong selected state
+6. Theme-matched typography
+7. Date, city, venue, deadline, and status clearly shown
+
+On desktop:
+Use a premium grid layout.
+
+On mobile:
+Use full-width stacked cards.
+
+Each card should include:
+1. Event name
+2. City
+3. Venue if available
+4. Date range
+5. Ship-by deadline
+6. Status badge
+7. Selected state
+8. CTA microcopy like “Select event”
+
+The event section should have a section header:
+“Choose Your Event”
+“Select the event you are ordering for. Deadlines and package availability may vary by city.”
+
+PART 5: PREMIUM ORDER FLOW CONTAINER
+
+The order flow should feel embedded into a custom website.
+
+Wrap the steps in a premium section:
+1. Section eyebrow: “Vendor Package Portal”
+2. Headline: “Build Your Event Order”
+3. Supporting copy
+4. Stepper
+5. Main content card
+6. Sticky summary on desktop
+
+Stepper should be upgraded:
+1. Theme-colored active state
+2. Completed state
+3. Better icons
+4. Better spacing
+5. Mobile horizontal scroll or compact version
+6. No generic default pill styling
+
+Step labels:
+1. Event
+2. Package
+3. Add-ons
+4. Artwork
+5. Contact
+6. Review
+
+PART 6: PREMIUM PACKAGE CARDS
+
+Package selection must look like productized premium packages.
+
+Package cards should include:
+1. Package name
+2. Package image or branded placeholder
+3. Description
+4. Included items
+5. Timeline or deadline
+6. Price if available
+7. “Select Package” button
+8. Premium hover state
+9. Selected state
+
+If no image exists:
+Use a branded placeholder with:
+1. Partner logo
+2. Theme gradient
+3. A3 partnership marker
+4. Text: “Package visual pending” or “Vendor package”
+
+No broken icons.
+No empty gray boxes.
+
+PART 7: PREMIUM CART / ORDER SUMMARY
+
+The sticky cart/order summary currently needs to feel designed.
+
+Upgrade it into a premium “Order Summary” panel:
+1. Glass or luxury card style
+2. Partner secondary logo if configured
+3. Selected event
+4. Selected package
+5. Add-ons count
+6. Artwork status
+7. Contact status
+8. Deadline/ship-by reminder
+9. CTA button
+10. A3 support note
+
+It should remain sticky on desktop.
+On mobile, it can collapse into a sticky bottom summary or appear between steps.
+
+It should not look like a default white card.
+
+PART 8: TRUST / SUPPORT SECTION
+
+Add a designed section below or near the order flow:
+Headline:
+“Built for faster production, cleaner handoff, and fewer missed details.”
+
+Cards:
+1. Upload artwork and production files
+2. Confirm event package details
+3. Reduce back-and-forth with A3 Visual
+4. Keep deadlines visible
+
+Also include:
+Need help?
+“Contact your A3 Visual support team.”
+
+Do not overcomplicate. This section exists to make the portal feel intentional and premium.
+
+PART 9: FOOTER UPGRADE
+
+The footer should feel like the close of a custom microsite.
+
+Footer should include:
+1. Partner secondary logo or main logo fallback
+2. “In partnership with A3 Visual”
+3. A3 Visual logo if available
+4. Link to https://www.a3visual.com
+5. Support/contact link if available
+6. Premium background and spacing
+
+Footer must use theme colors and not default gray.
+
+PART 10: PORTAL TEMPLATE SYSTEM
+
+Make sure generated customer portals use the selected template.
+
+Templates:
+1. festival_event
+2. luxury_venue_hotel
+3. corporate_institutional
+
+Each template should control:
+1. Hero style
+2. Background treatment
+3. Card style
+4. Button style
+5. Motion level
+6. Section spacing
+7. Typography emphasis
+
+Social Commerce Festival should use festival_event.
+
+When a new partner portal is created, it should not default to a rudimentary layout. It should default to a premium template based on selected partner type, or to a strong default premium layout.
+
+PART 11: THEME MUST CONTROL THE WHOLE PAGE
+
+The partner theme should affect:
+1. Hero
+2. Buttons
+3. Event cards
+4. Package cards
+5. Stepper
+6. Cart
+7. Background
+8. Footer
+9. Typography
+10. Badges
+11. Dividers
+12. Hover states
+13. Selected states
+
+Use CSS variables:
+--partner-primary
+--partner-secondary
+--partner-accent
+--partner-bg
+--partner-surface
+--partner-text
+--partner-muted
+--partner-border
+
+Add any missing variables if needed:
+--partner-glow
+--partner-card-bg
+--partner-card-border
+--partner-button-text
+
+Do not leave default Tailwind colors in the customer portal when theme values exist.
+
+PART 12: CUSTOMER PORTAL GENERATION FIX
+
+When I create a customer portal, it should automatically use the premium layout.
+
+Find the customer portal creation flow.
+
+Make sure new portals get:
+1. portal_template value
+2. theme_mode
+3. default background color
+4. default surface color
+5. primary/accent colors
+6. main_logo_display_mode
+7. secondary_logo_placement
+8. animation_level
+9. card_style
+10. button_style
+
+Do not make me manually fix every portal after creation.
+
+If partner type is event/festival:
+Default to:
+portal_template = festival_event
+theme_mode = dark
+main_logo_display_mode = full_header_banner
+secondary_logo_placement = footer_and_cart
+animation_level = premium
+card_style = glass
+button_style = festival
+
+PART 13: COMPONENTS TO CREATE OR UPGRADE
+
+Create or upgrade these components as needed:
+
+PremiumPartnerPortalPage
+PartnerPortalShell
+PartnerHeroSection
+PartnerEventSelector
+PartnerOrderFlowSection
+PartnerPackageGrid
+PartnerPackageCard
+PartnerOrderSummaryPanel
+PartnerTrustSection
+PartnerFooter
+PartnerThemeProvider
+BrandedPlaceholderImage
+
+Use shared components for admin preview and live portal.
+
+PART 14: VISUAL QUALITY BAR
+
+The final live Social Commerce Festival portal should look like:
+1. A premium event microsite
+2. A custom brand portal
+3. A high-end A3 Visual client deliverable
+4. Something that could plausibly be sold as a $50K custom portal
+
+It should not look like:
+1. A generic SaaS dashboard
+2. A default Replit app
+3. A basic form wizard
+4. A plain white card layout
+5. A logo slapped onto a form
+
+PART 15: DO NOT BREAK FUNCTIONALITY
+
+Preserve:
+1. Partner routing
+2. Event selection
+3. Package selection
+4. Add-ons
+5. Artwork upload
+6. Contact form
+7. Review step
+8. Cart/order summary
+9. Admin theme editing
+10. Logo upload
+11. Existing database relationships
+12. Existing storage
+
+PART 16: RESPONSIVE REQUIREMENTS
+
+Desktop:
+1. Hero should feel cinematic and substantial.
+2. Order flow can use two-column layout with sticky cart.
+3. Event cards can use grid.
+4. Package cards can use grid.
+
+Tablet:
+1. Maintain premium spacing.
+2. Avoid cramped cards.
+
+Mobile:
+1. Hero logo should scale cleanly.
+2. CTA buttons should stack.
+3. Event cards should become vertical list.
+4. Cart summary should not block progress.
+5. Stepper should be compact or horizontally scrollable.
+6. Text should remain readable.
+
+PART 17: ACCESSIBILITY
+
+1. Respect prefers-reduced-motion.
+2. Maintain readable contrast.
+3. Make event/package cards keyboard selectable.
+4. Use aria-selected where applicable.
+5. Do not rely on color alone for selection.
+6. Buttons must have accessible labels.
+
+PART 18: IMPLEMENTATION ORDER
+
+Do this in controlled steps:
+
+1. Inspect the live customer portal route and creation flow.
+2. Identify why the live generated portal is still rudimentary.
+3. Inspect current theme provider and CSS variables.
+4. Build or upgrade PartnerPortalShell.
+5. Build or upgrade PartnerHeroSection.
+6. Build or upgrade premium page background and section structure.
+7. Upgrade event selection UI.
+8. Upgrade order flow container and stepper.
+9. Upgrade package cards.
+10. Upgrade sticky order summary.
+11. Upgrade trust/support section.
+12. Upgrade footer.
+13. Make the customer portal creation flow assign premium defaults.
+14. Wire admin preview and live portal to the same premium shell.
+15. Test Social Commerce Festival.
+16. Test a newly created customer portal.
+17. Test desktop and mobile.
+18. Update REPLIT_PROGRESS.md.
+
+PART 19: ACCEPTANCE CRITERIA
+
+This is complete only when:
+1. The live customer-facing portal looks like a premium microsite, not a basic order form.
+2. Social Commerce Festival shows its uploaded logo as the main hero brand element.
+3. The hero section is large, cinematic, and custom-branded.
+4. The whole page uses the selected partner theme colors and typography.
+5. Event selection uses premium chronological event cards.
+6. Package selection uses premium cards.
+7. The order summary looks designed and branded.
+8. The footer looks premium and includes A3 Visual partnership branding.
+9. New customer portals default to premium templates instead of rudimentary layouts.
+10. Admin preview and live portal use the same design system.
+11. Existing ordering functionality still works.
+12. Mobile looks intentional and premium.
+13. No AI calls were added.
+14. No Replit Database was used.
+15. REPLIT_PROGRESS.md was updated.
+
+PART 20: FINAL OUTPUT REQUIRED
+
+When complete, tell me:
+1. Why the generated customer portal looked rudimentary.
+2. What files were changed.
+3. What components were created or upgraded.
+4. How the premium portal shell works.
+5. How new customer portals now get premium defaults.
+6. How Social Commerce Festival was tested.
+7. Confirmation that order flow still works.
+8. Confirmation that admin preview and live portal match.
+9. Confirmation that mobile was checked.
+10. Confirmation that REPLIT_PROGRESS.md was updated.

@@ -240,7 +240,7 @@ function HeaderCtas({ branding, ctaSlot }: { branding: ResolvedBranding; ctaSlot
       {ctaLabel && (
         <a
           href={safeUrl(ctaUrl) || "#"}
-          className="inline-flex items-center justify-center px-6 py-3 rounded-lg font-semibold text-sm shadow-md transition-transform hover:scale-[1.03] active:scale-[0.98]"
+          className="inline-flex items-center justify-center px-6 py-3 rounded-lg font-semibold text-sm shadow-md transition-transform motion-safe:hover:scale-[1.03] motion-safe:active:scale-[0.98]"
           style={primaryStyle}
         >
           {ctaLabel}

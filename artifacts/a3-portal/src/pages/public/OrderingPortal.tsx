@@ -14,12 +14,15 @@ import { Loader2, ChevronRight, ChevronLeft, Calendar, MapPin, Package, Plus, Mi
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { formatWxHDual, formatPrimarySecondary, computePrice, convert, PRICING_UNIT_LABELS, type UnitSystem, type LengthUnit, type PricingModel, type PricingUnit } from "@/lib/units";
 import { BrandedShell } from "@/components/branding/BrandedShell";
-import { resolveBranding } from "@/components/branding/usePartnerBranding";
+import { resolveBranding, type ResolvedBranding } from "@/components/branding/usePartnerBranding";
 import { PartnerLogo } from "@/components/branding/PartnerLogo";
 import { PartnerPortalHeader } from "@/components/branding/PartnerPortalHeader";
 import { PartnerEventSelector } from "@/components/branding/PartnerEventSelector";
 import { PortalFooter } from "@/components/branding/PortalFooter";
 import { PortalCTA } from "@/components/branding/PortalCTA";
+import { PartnerTrustSection } from "@/components/branding/PartnerTrustSection";
+import { BrandedPlaceholderImage } from "@/components/branding/BrandedPlaceholderImage";
+import { cardSurface, mutedPanel, accentPanel, titleColor, hairline, shellGlowLayers } from "@/components/branding/portalSurfaces";
 
 type City = { id: number; name: string; state: string | null };
 type Venue = { id: number; cityId: number | null; name: string; venueAddress: string | null; shippingAddress: string | null };
@@ -82,11 +85,13 @@ function AddonRenderer({
   eventAddonRow,
   partnerHasAddonLibrary,
   addToCart,
+  branding,
 }: {
   addonProducts: Product[];
   eventAddonRow: EventAddons | null;
   partnerHasAddonLibrary: boolean;
   addToCart: (p: Product) => void;
+  branding: ResolvedBranding;
 }) {
   const format: "flat" | "grid" | "category_tiles" =
     (eventAddonRow?.displayFormat as any) || "grid";
@@ -136,22 +141,22 @@ function AddonRenderer({
   }, [format, groups]);
 
   const ProductCard = (p: Product) => (
-    <button key={p.id} type="button" onClick={() => addToCart(p)} className="text-left p-3 rounded-lg border hover:border-primary/40 hover:shadow-md transition bg-card">
-      <ProductImage src={p.imageUrl} alt={p.name} className="aspect-square w-full rounded object-cover mb-2 bg-muted" fallbackClassName="aspect-square w-full rounded bg-muted mb-2 overflow-hidden" />
-      <div className="text-xs text-muted-foreground">{p.category}</div>
-      <div className="text-sm font-medium line-clamp-2">{p.name}</div>
-      <Button size="sm" variant="outline" className="w-full mt-2 h-7 text-xs gap-1"><Plus className="h-3 w-3" />Add</Button>
+    <button key={p.id} type="button" onClick={() => addToCart(p)} className="text-left p-3 transition hover:shadow-md motion-safe:hover:-translate-y-0.5" style={cardSurface(branding)}>
+      <ProductImage src={p.imageUrl} alt={p.name} className="aspect-square w-full rounded object-cover mb-2" fallbackClassName="aspect-square w-full rounded mb-2 overflow-hidden" style={mutedPanel(branding)} />
+      <div className="text-xs" style={{ color: branding.muted }}>{p.category}</div>
+      <div className="text-sm font-medium line-clamp-2" style={{ color: titleColor(branding) }}>{p.name}</div>
+      <div className="w-full mt-2 h-7 text-xs gap-1 inline-flex items-center justify-center rounded-md font-medium" style={{ background: branding.button, color: branding.buttonText, borderRadius: branding.radius }}><Plus className="h-3 w-3" />Add</div>
     </button>
   );
 
   const ProductRow = (p: Product) => (
-    <button key={p.id} type="button" onClick={() => addToCart(p)} className="w-full flex items-center gap-3 p-2 rounded-lg border hover:border-primary/40 hover:bg-muted/30 transition bg-card text-left">
-      <ProductImage src={p.imageUrl} alt={p.name} className="h-12 w-12 rounded object-cover bg-muted" fallbackClassName="h-12 w-12 rounded bg-muted overflow-hidden" />
+    <button key={p.id} type="button" onClick={() => addToCart(p)} className="w-full flex items-center gap-3 p-2 transition text-left hover:shadow-md" style={cardSurface(branding)}>
+      <ProductImage src={p.imageUrl} alt={p.name} className="h-12 w-12 rounded object-cover" fallbackClassName="h-12 w-12 rounded overflow-hidden" style={mutedPanel(branding)} />
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium truncate">{p.name}</div>
-        <div className="text-xs text-muted-foreground truncate">{p.category}</div>
+        <div className="text-sm font-medium truncate" style={{ color: titleColor(branding) }}>{p.name}</div>
+        <div className="text-xs truncate" style={{ color: branding.muted }}>{p.category}</div>
       </div>
-      <Button size="sm" variant="outline" className="h-7 text-xs gap-1"><Plus className="h-3 w-3" />Add</Button>
+      <div className="h-7 px-2 text-xs gap-1 inline-flex items-center justify-center rounded-md font-medium" style={{ background: branding.button, color: branding.buttonText, borderRadius: branding.radius }}><Plus className="h-3 w-3" />Add</div>
     </button>
   );
 
@@ -163,7 +168,7 @@ function AddonRenderer({
         <div className="space-y-4">
           {groups.map(g => (
             <div key={g.category}>
-              <div className="text-xs uppercase tracking-wide text-muted-foreground font-semibold mb-2">{g.category}</div>
+              <div className="text-xs uppercase tracking-wide font-semibold mb-2" style={{ color: branding.muted }}>{g.category}</div>
               <div className="space-y-2">{g.products.map(ProductRow)}</div>
             </div>
           ))}
@@ -185,12 +190,13 @@ function AddonRenderer({
                 key={g.category}
                 type="button"
                 onClick={() => setOpenCat(isOpen ? null : g.category)}
-                className={`relative text-left p-0 rounded-lg border overflow-hidden transition shadow-sm hover:shadow-md ${isOpen ? "border-primary ring-2 ring-primary/30" : "hover:border-primary/40"}`}
+                className="relative text-left p-0 overflow-hidden transition shadow-sm hover:shadow-md"
+                style={{ ...cardSurface(branding), ...(isOpen ? { borderColor: branding.accent, boxShadow: `0 0 0 2px ${branding.accent}44` } : {}) }}
               >
-                <ProductImage src={cover} alt={g.category} className="aspect-[4/3] w-full object-cover" fallbackClassName="aspect-[4/3] w-full bg-muted overflow-hidden" />
+                <ProductImage src={cover} alt={g.category} className="aspect-[4/3] w-full object-cover" fallbackClassName="aspect-[4/3] w-full overflow-hidden" style={mutedPanel(branding)} />
                 <div className="p-3">
-                  <div className="text-sm font-semibold">{g.category}</div>
-                  <div className="text-[11px] text-muted-foreground">{g.products.length} item{g.products.length === 1 ? "" : "s"}</div>
+                  <div className="text-sm font-semibold" style={{ color: titleColor(branding) }}>{g.category}</div>
+                  <div className="text-[11px]" style={{ color: branding.muted }}>{g.products.length} item{g.products.length === 1 ? "" : "s"}</div>
                 </div>
               </button>
             );
@@ -200,10 +206,10 @@ function AddonRenderer({
           const g = groups.find(x => x.category === openCat);
           if (!g) return null;
           return (
-            <div className="rounded-lg border bg-muted/20 p-4">
+            <div className="p-4" style={mutedPanel(branding)}>
               <div className="flex items-center justify-between mb-3">
-                <div className="text-sm font-semibold">{g.category}</div>
-                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setOpenCat(null)}>
+                <div className="text-sm font-semibold" style={{ color: titleColor(branding) }}>{g.category}</div>
+                <Button variant="ghost" size="sm" className="h-7 text-xs" style={{ color: branding.muted }} onClick={() => setOpenCat(null)}>
                   <X className="h-3.5 w-3.5 mr-1" />Close
                 </Button>
               </div>
@@ -223,7 +229,7 @@ function AddonRenderer({
       <div className="space-y-5">
         {groups.map(g => (
           <div key={g.category}>
-            <div className="text-xs uppercase tracking-wide text-muted-foreground font-semibold mb-2">{g.category}</div>
+            <div className="text-xs uppercase tracking-wide font-semibold mb-2" style={{ color: branding.muted }}>{g.category}</div>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">{g.products.map(ProductCard)}</div>
           </div>
         ))}
@@ -540,29 +546,79 @@ export default function OrderingPortal({ slug }: { slug: string }) {
         defaultHeadline={data.partner.introHeadline || `Order with ${data.partner.companyName}`}
         defaultSubheadline={data.partner.introText || undefined}
       />
-      <div className="max-w-7xl mx-auto px-4 py-8 md:py-12">
-        <div className="grid lg:grid-cols-[1fr_320px] gap-6">
+      <div className="relative max-w-7xl mx-auto px-4 py-8 md:py-12">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 -z-10"
+          style={shellGlowLayers(branding)}
+        />
+        <div className="text-center max-w-2xl mx-auto mb-8 md:mb-10">
+          <div
+            className="text-[11px] font-semibold uppercase tracking-[0.22em] mb-3"
+            style={{ color: branding.accent }}
+          >
+            Vendor Package Portal
+          </div>
+          <h2
+            className="text-3xl md:text-4xl font-bold"
+            style={{ color: titleColor(branding), fontFamily: branding.headingFont }}
+          >
+            Build Your Event Order
+          </h2>
+          <p className="mt-3 text-sm md:text-base" style={{ color: branding.muted }}>
+            Choose your event, select a package, add extras, and send artwork — your A3 Visual team takes it from there.
+          </p>
+        </div>
+        <div className="grid lg:grid-cols-[1fr_340px] gap-6">
           <div>
 
         {/* Stepper */}
-        <div className="flex items-center justify-center gap-1 mb-8 flex-wrap">
-          {STEPS.map((s, i) => (
-            <div key={s} className="flex items-center">
-              <div
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium"
-                style={
-                  i === step
-                    ? { background: branding.button, color: branding.buttonText }
-                    : i < step
-                      ? { background: `${branding.accent}26`, color: branding.text }
-                      : { background: `${branding.primary}10`, color: branding.muted }
-                }
-              >
-                <span className="h-5 w-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">{i < step ? <Check className="h-3 w-3" /> : i + 1}</span>{s}
-              </div>
-              {i < STEPS.length - 1 && <ChevronRight className="h-3 w-3 text-muted-foreground mx-1" />}
-            </div>
-          ))}
+        <div className="mb-8 -mx-1 overflow-x-auto">
+          <div className="flex items-center justify-start md:justify-center gap-1.5 px-1 min-w-max">
+            {STEPS.map((s, i) => {
+              const active = i === step;
+              const done = i < step;
+              return (
+                <div key={s} className="flex items-center">
+                  <button
+                    type="button"
+                    onClick={() => { if (i <= step) setStep(i); }}
+                    disabled={i > step}
+                    aria-current={active ? "step" : undefined}
+                    className="flex items-center gap-2 px-3 py-2 text-xs font-semibold transition disabled:cursor-default"
+                    style={{
+                      borderRadius: branding.radius,
+                      background: active
+                        ? branding.button
+                        : done
+                          ? `${branding.accent}1f`
+                          : branding.isDark ? "rgba(255,255,255,0.04)" : "rgba(15,23,42,0.04)",
+                      color: active ? branding.buttonText : done ? branding.text : branding.muted,
+                      border: `1px solid ${active ? "transparent" : done ? `${branding.accent}55` : hairline(branding)}`,
+                      boxShadow: active ? `0 8px 22px -10px ${branding.accent}99` : undefined,
+                    }}
+                  >
+                    <span
+                      className="h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold"
+                      style={{
+                        background: active ? "rgba(255,255,255,0.25)" : done ? branding.accent : branding.isDark ? "rgba(255,255,255,0.10)" : "rgba(15,23,42,0.08)",
+                        color: active ? branding.buttonText : done ? branding.buttonText : branding.muted,
+                      }}
+                    >
+                      {done ? <Check className="h-3 w-3" /> : i + 1}
+                    </span>
+                    <span className="whitespace-nowrap">{s}</span>
+                  </button>
+                  {i < STEPS.length - 1 && (
+                    <div
+                      className="h-px w-4 mx-0.5 shrink-0"
+                      style={{ background: i < step ? branding.accent : hairline(branding) }}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         <div
@@ -610,7 +666,7 @@ export default function OrderingPortal({ slug }: { slug: string }) {
 
           {step === 1 && (
             <div className="space-y-6">
-              <h2 className="text-xl font-bold">Choose a package</h2>
+              <h2 className="text-xl font-bold" style={{ color: titleColor(branding) }}>Choose a package</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {availablePkgs.map(p => {
                   const sel = selectedPkgId === p.id;
@@ -623,44 +679,61 @@ export default function OrderingPortal({ slug }: { slug: string }) {
                       aria-label={`Select package ${p.displayName || p.name}`}
                       onClick={() => setSelectedPkgId(p.id)}
                       onKeyDown={(e) => { if (e.currentTarget !== e.target) return; if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedPkgId(p.id); } }}
-                      className={`text-left p-5 rounded-xl border-2 transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${sel ? "border-primary bg-primary/5 shadow-md" : "border-border hover:border-primary/40 bg-card"}`}
+                      className="group text-left p-5 cursor-pointer flex flex-col focus:outline-none focus-visible:ring-2 motion-safe:hover:-translate-y-1"
+                      style={{ ...cardSurface(branding, { selected: sel }), color: branding.text }}
                     >
-                      <PackageGallery pkg={p} />
+                      <PackageGallery pkg={p} branding={branding} />
 
-                      <div className="flex items-center justify-between mb-2"><Badge variant={sel ? "default" : "secondary"}>Tier {p.tier}</Badge>{sel && <Check className="h-4 w-4 text-primary" />}</div>
-                      <div className="font-bold text-lg">{p.displayName || p.name}</div>
-                      <p className="text-xs text-muted-foreground mt-1 line-clamp-3">{p.description}</p>
-                      {p.price && data.partner.pricingDisplayEnabled && <div className="text-2xl font-bold mt-3">${p.price}</div>}
-                      <div className="border-t mt-3 pt-3 space-y-1">
-                        {p.items.slice(0, 5).map(it => <div key={it.id} className="text-xs text-muted-foreground flex justify-between"><span className="truncate">{it.productName}</span><span className="font-semibold">{it.quantity}x</span></div>)}
-                        {p.items.length > 5 && <div className="text-xs text-muted-foreground">+{p.items.length - 5} more</div>}
+                      <div className="flex items-center justify-between mb-2">
+                        <span
+                          className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full"
+                          style={{ background: `${branding.accent}1f`, color: branding.accent }}
+                        >Tier {p.tier}</span>
+                        {sel && <span className="inline-flex items-center gap-1 text-[11px] font-semibold" style={{ color: branding.accent }}><Check className="h-3.5 w-3.5" />Selected</span>}
+                      </div>
+                      <div className="font-bold text-lg" style={{ color: titleColor(branding) }}>{p.displayName || p.name}</div>
+                      <p className="text-xs mt-1 line-clamp-3" style={{ color: branding.muted }}>{p.description}</p>
+                      {p.price && data.partner.pricingDisplayEnabled && <div className="text-2xl font-bold mt-3" style={{ color: titleColor(branding) }}>${p.price}</div>}
+                      <div className="mt-3 pt-3 space-y-1" style={{ borderTop: `1px solid ${hairline(branding)}` }}>
+                        {p.items.slice(0, 5).map(it => <div key={it.id} className="text-xs flex justify-between" style={{ color: branding.muted }}><span className="truncate">{it.productName}</span><span className="font-semibold">{it.quantity}x</span></div>)}
+                        {p.items.length > 5 && <div className="text-xs" style={{ color: branding.muted }}>+{p.items.length - 5} more</div>}
+                      </div>
+                      <div className="mt-4 pt-0">
+                        <span
+                          className="inline-flex w-full items-center justify-center rounded-lg px-3 py-2 text-sm font-semibold transition"
+                          style={sel
+                            ? { background: branding.button, color: branding.buttonText, borderRadius: branding.radius }
+                            : { background: "transparent", color: branding.accent, border: `1px solid ${branding.accent}66`, borderRadius: branding.radius }}
+                        >
+                          {sel ? "Package selected" : "Select package"}
+                        </span>
                       </div>
                     </div>
                   );
                 })}
               </div>
-              {availablePkgs.length === 0 && <div className="text-center py-12 text-muted-foreground"><Package className="h-10 w-10 mx-auto mb-2 opacity-40" />No packages available for this event yet.</div>}
+              {availablePkgs.length === 0 && <div className="text-center py-12" style={{ color: branding.muted }}><Package className="h-10 w-10 mx-auto mb-2 opacity-40" />No packages available for this event yet.</div>}
             </div>
           )}
 
           {step === 2 && (
             <div className="space-y-6">
-              <h2 className="text-xl font-bold">Add anything else?</h2>
-              <p className="text-sm text-muted-foreground">Browse extras to add on top of your package.</p>
+              <h2 className="text-xl font-bold" style={{ color: titleColor(branding) }}>Add anything else?</h2>
+              <p className="text-sm" style={{ color: branding.muted }}>Browse extras to add on top of your package.</p>
 
               {cart.length > 0 && (
-                <div className="bg-muted/40 rounded-lg p-4 space-y-2">
-                  <div className="text-sm font-semibold">In your add-ons ({cart.length})</div>
+                <div className="p-4 space-y-2" style={mutedPanel(branding)}>
+                  <div className="text-sm font-semibold" style={{ color: titleColor(branding) }}>In your add-ons ({cart.length})</div>
                   {cart.map(c => {
                     const p = data.products.find(pp => pp.id === c.productId);
                     const isCustom = !!p?.allowsCustomSize && p.pricingModel !== "fixed" && p.pricingModel !== "quantity";
                     const isQuote = p?.pricingModel === "custom_quote";
                     const fam = c.productId ? familyContextQueries.data?.[c.productId] : null;
                     return (
-                      <div key={c.key} className="bg-card p-2 rounded space-y-2">
+                      <div key={c.key} className="p-2 space-y-2" style={cardSurface(branding)}>
                         <div className="flex items-center gap-2">
                           {c.productImageUrl && <img src={c.productImageUrl} className="h-10 w-10 rounded object-cover" alt="" />}
-                          <div className="flex-1 text-sm">
+                          <div className="flex-1 text-sm" style={{ color: titleColor(branding) }}>
                             <div>{c.name}</div>
                             {fam?.inFamily && fam.role !== "hardware" && fam.requiresHardwareDefault && (
                               <div className={`mt-0.5 text-[11px] ${fam.availability && fam.availability.available >= (c.quantity * (fam.requiresHardwareUnits || 1)) ? "text-emerald-700" : "text-amber-700"}`}>
@@ -670,7 +743,7 @@ export default function OrderingPortal({ slug }: { slug: string }) {
                               </div>
                             )}
                             {p?.pricingModel && p.pricingModel !== "fixed" && p.pricingModel !== "quantity" && (
-                              <div className="text-[11px] text-muted-foreground">
+                              <div className="text-[11px]" style={{ color: branding.muted }}>
                                 {p.pricingModel === "custom_quote"
                                   ? "Custom quote — sales will follow up"
                                   : `${p.unitRate ?? "?"} ${p.pricingUnit ? PRICING_UNIT_LABELS[p.pricingUnit as PricingUnit] : ""}`}
@@ -683,8 +756,8 @@ export default function OrderingPortal({ slug }: { slug: string }) {
                           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeFromCart(c.key)}><X className="h-3.5 w-3.5" /></Button>
                         </div>
                         {(isCustom || isQuote) && (
-                          <div className="border-t pt-2 space-y-2">
-                            <div className="flex items-center gap-2 text-[11px] text-muted-foreground"><Ruler className="h-3 w-3" />Enter your custom size</div>
+                          <div className="pt-2 space-y-2" style={{ borderTop: `1px solid ${hairline(branding)}` }}>
+                            <div className="flex items-center gap-2 text-[11px]" style={{ color: branding.muted }}><Ruler className="h-3 w-3" />Enter your custom size</div>
                             <div className="grid grid-cols-3 gap-2">
                               <Input type="number" step="0.01" placeholder="Width" value={c.customWidth ?? ""}
                                 onChange={e => updateCustomSize(c.key, { customWidth: e.target.value === "" ? null : Number(e.target.value) })} />
@@ -699,7 +772,7 @@ export default function OrderingPortal({ slug }: { slug: string }) {
                               </Select>
                             </div>
                             {c.pricingBasis && (
-                              <div className="text-[11px] font-mono bg-muted/50 rounded p-1.5">
+                              <div className="text-[11px] font-mono rounded p-1.5" style={{ ...mutedPanel(branding), color: branding.muted }}>
                                 {c.pricingBasis}{c.unitPrice && data.partner.pricingDisplayEnabled ? ` → $${c.unitPrice}` : ""}
                               </div>
                             )}
@@ -716,6 +789,7 @@ export default function OrderingPortal({ slug }: { slug: string }) {
                 eventAddonRow={eventAddonRow}
                 partnerHasAddonLibrary={partnerHasAddonLibrary}
                 addToCart={addToCart}
+                branding={branding}
               />
 
               <SurveyAssetsSection
@@ -726,18 +800,18 @@ export default function OrderingPortal({ slug }: { slug: string }) {
                 branding={branding}
               />
 
-              <div className={`rounded-lg border p-4 ${addonProducts.length === 0 ? "bg-amber-50 border-amber-200" : "bg-muted/30"}`}>
+              <div className="p-4" style={addonProducts.length === 0 ? accentPanel(branding) : mutedPanel(branding)}>
                 {addonProducts.length === 0 ? (
                   <>
-                    <div className="text-sm font-semibold mb-1">Don't see what you need?</div>
-                    <p className="text-xs text-muted-foreground mb-2">
+                    <div className="text-sm font-semibold mb-1" style={{ color: titleColor(branding) }}>Don't see what you need?</div>
+                    <p className="text-xs mb-2" style={{ color: branding.muted }}>
                       There aren't any specific add-ons listed for this package. Tell us what else you'd like and we'll put together a custom quote.
                     </p>
                   </>
                 ) : (
                   <>
-                    <div className="text-sm font-semibold mb-1">Need something not listed?</div>
-                    <p className="text-xs text-muted-foreground mb-2">
+                    <div className="text-sm font-semibold mb-1" style={{ color: titleColor(branding) }}>Need something not listed?</div>
+                    <p className="text-xs mb-2" style={{ color: branding.muted }}>
                       Describe anything else you'd like added to your order and we'll quote it for you.
                     </p>
                   </>
@@ -754,20 +828,21 @@ export default function OrderingPortal({ slug }: { slug: string }) {
 
           {step === 3 && (
             <div className="space-y-4">
-              <h2 className="text-xl font-bold">Upload artwork</h2>
+              <h2 className="text-xl font-bold" style={{ color: titleColor(branding) }}>Upload artwork</h2>
               <ArtworkGuidancePanel
+                branding={branding}
                 partnerId={data.partner?.id}
                 productIds={[
                   ...(selectedPkg?.items || []).map((i: any) => i.productId).filter(Boolean),
                   ...cart.map(c => c.productId).filter(Boolean),
                 ]}
               />
-              <p className="text-sm text-muted-foreground">Upload your artwork files directly, or paste a link if they live in Drive, Dropbox, Figma, etc. You can also send them later by replying to your order confirmation.</p>
+              <p className="text-sm" style={{ color: branding.muted }}>Upload your artwork files directly, or paste a link if they live in Drive, Dropbox, Figma, etc. You can also send them later by replying to your order confirmation.</p>
 
-              <div className="rounded-lg border-2 border-dashed p-6 text-center bg-muted/20">
-                <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                <div className="text-sm font-medium mb-1">Upload artwork files</div>
-                <div className="text-xs text-muted-foreground mb-3">PNG, JPG, PDF, AI, PSD, EPS, SVG, ZIP — up to 50MB each</div>
+              <div className="border-2 border-dashed p-6 text-center" style={{ ...mutedPanel(branding), borderStyle: "dashed", borderColor: `${branding.accent}55` }}>
+                <Upload className="h-8 w-8 mx-auto mb-2" style={{ color: branding.accent }} />
+                <div className="text-sm font-medium mb-1" style={{ color: titleColor(branding) }}>Upload artwork files</div>
+                <div className="text-xs mb-3" style={{ color: branding.muted }}>PNG, JPG, PDF, AI, PSD, EPS, SVG, ZIP — up to 50MB each</div>
                 <label className="inline-flex">
                   <input
                     type="file"
@@ -777,7 +852,7 @@ export default function OrderingPortal({ slug }: { slug: string }) {
                     onChange={e => { uploadArtwork(e.target.files); e.target.value = ""; }}
                     disabled={uploading}
                   />
-                  <span className="cursor-pointer inline-flex items-center gap-1.5 rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-sm font-medium hover:opacity-90">
+                  <span className="cursor-pointer inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium hover:opacity-90" style={{ background: branding.button, color: branding.buttonText, borderRadius: branding.radius }}>
                     {uploading ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Uploading…</> : <><Upload className="h-3.5 w-3.5" />Choose files</>}
                   </span>
                 </label>
@@ -785,9 +860,9 @@ export default function OrderingPortal({ slug }: { slug: string }) {
               </div>
 
               <div className="flex items-center gap-2">
-                <div className="flex-1 h-px bg-border" />
-                <span className="text-xs text-muted-foreground uppercase tracking-wide">or paste a link</span>
-                <div className="flex-1 h-px bg-border" />
+                <div className="flex-1 h-px" style={{ background: hairline(branding) }} />
+                <span className="text-xs uppercase tracking-wide" style={{ color: branding.muted }}>or paste a link</span>
+                <div className="flex-1 h-px" style={{ background: hairline(branding) }} />
               </div>
               <div className="flex gap-2">
                 <Input placeholder="https://drive.google.com/..." value={artworkUrlInput} onChange={e => setArtworkUrlInput(e.target.value)} />
@@ -795,61 +870,61 @@ export default function OrderingPortal({ slug }: { slug: string }) {
               </div>
               <div className="space-y-2">
                 {artworkFiles.map((f, i) => (
-                  <div key={i} className="flex items-center gap-2 p-2 bg-muted/40 rounded">
-                    <Upload className="h-4 w-4 text-muted-foreground" />
-                    <a href={f.url} target="_blank" rel="noreferrer" className="text-sm flex-1 truncate text-primary hover:underline">{f.name}</a>
+                  <div key={i} className="flex items-center gap-2 p-2" style={mutedPanel(branding)}>
+                    <Upload className="h-4 w-4" style={{ color: branding.muted }} />
+                    <a href={f.url} target="_blank" rel="noreferrer" className="text-sm flex-1 truncate hover:underline" style={{ color: branding.accent }}>{f.name}</a>
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setArtworkFiles(artworkFiles.filter((_, j) => j !== i))}><X className="h-3.5 w-3.5" /></Button>
                   </div>
                 ))}
-                {artworkFiles.length === 0 && <div className="text-sm text-muted-foreground italic">No files yet — that's fine, you can send them later.</div>}
+                {artworkFiles.length === 0 && <div className="text-sm italic" style={{ color: branding.muted }}>No files yet — that's fine, you can send them later.</div>}
               </div>
             </div>
           )}
 
           {step === 4 && (
             <div className="space-y-4">
-              <h2 className="text-xl font-bold">Your contact info</h2>
+              <h2 className="text-xl font-bold" style={{ color: titleColor(branding) }}>Your contact info</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div><Label>Full Name *</Label><Input value={contact.contactName} onChange={e => setContact({ ...contact, contactName: e.target.value })} /></div>
-                <div><Label>Email *</Label><Input type="email" value={contact.contactEmail} onChange={e => setContact({ ...contact, contactEmail: e.target.value })} /></div>
-                <div><Label>Phone</Label><Input value={contact.contactPhone} onChange={e => setContact({ ...contact, contactPhone: e.target.value })} /></div>
-                <div><Label>Company</Label><Input value={contact.companyName} onChange={e => setContact({ ...contact, companyName: e.target.value })} /></div>
+                <div><Label style={{ color: branding.muted }}>Full Name *</Label><Input value={contact.contactName} onChange={e => setContact({ ...contact, contactName: e.target.value })} /></div>
+                <div><Label style={{ color: branding.muted }}>Email *</Label><Input type="email" value={contact.contactEmail} onChange={e => setContact({ ...contact, contactEmail: e.target.value })} /></div>
+                <div><Label style={{ color: branding.muted }}>Phone</Label><Input value={contact.contactPhone} onChange={e => setContact({ ...contact, contactPhone: e.target.value })} /></div>
+                <div><Label style={{ color: branding.muted }}>Company</Label><Input value={contact.companyName} onChange={e => setContact({ ...contact, companyName: e.target.value })} /></div>
               </div>
-              <div><Label>Notes for our team</Label><Textarea value={contact.notes} onChange={e => setContact({ ...contact, notes: e.target.value })} rows={3} placeholder="Anything we should know?" /></div>
+              <div><Label style={{ color: branding.muted }}>Notes for our team</Label><Textarea value={contact.notes} onChange={e => setContact({ ...contact, notes: e.target.value })} rows={3} placeholder="Anything we should know?" /></div>
             </div>
           )}
 
           {step === 5 && (
             <div className="space-y-6">
-              <h2 className="text-xl font-bold">Review & submit</h2>
+              <h2 className="text-xl font-bold" style={{ color: titleColor(branding) }}>Review & submit</h2>
               <div className="space-y-4">
-                <Card className="p-4">
-                  <div className="text-xs uppercase text-muted-foreground font-semibold">Event</div>
-                  <div className="font-semibold mt-1">{selectedEvent?.name || "Custom"}</div>
-                  <div className="text-sm text-muted-foreground">{data.cities.find(c => c.id === cityId)?.name} · {selectedVenue?.name}</div>
-                  {selectedEvent?.shippingDeadline && <div className="text-xs text-amber-600 mt-1">Ship by {selectedEvent.shippingDeadline}</div>}
-                </Card>
-                {selectedPkg && <Card className="p-4">
-                  <div className="text-xs uppercase text-muted-foreground font-semibold">Package</div>
+                <div className="p-4" style={cardSurface(branding)}>
+                  <div className="text-xs uppercase font-semibold" style={{ color: branding.accent }}>Event</div>
+                  <div className="font-semibold mt-1" style={{ color: titleColor(branding) }}>{selectedEvent?.name || "Custom"}</div>
+                  <div className="text-sm" style={{ color: branding.muted }}>{data.cities.find(c => c.id === cityId)?.name} · {selectedVenue?.name}</div>
+                  {selectedEvent?.shippingDeadline && <div className="text-xs mt-1 font-medium" style={{ color: branding.accent }}>Ship by {selectedEvent.shippingDeadline}</div>}
+                </div>
+                {selectedPkg && <div className="p-4" style={cardSurface(branding)}>
+                  <div className="text-xs uppercase font-semibold" style={{ color: branding.accent }}>Package</div>
                   <div className="flex items-center justify-between mt-1">
-                    <div className="font-semibold">{selectedPkg.displayName || selectedPkg.name}</div>
-                    {selectedPkg.price && data.partner.pricingDisplayEnabled && <div className="font-bold">${selectedPkg.price}</div>}
+                    <div className="font-semibold" style={{ color: titleColor(branding) }}>{selectedPkg.displayName || selectedPkg.name}</div>
+                    {selectedPkg.price && data.partner.pricingDisplayEnabled && <div className="font-bold" style={{ color: titleColor(branding) }}>${selectedPkg.price}</div>}
                   </div>
-                  <div className="text-xs text-muted-foreground mt-1">{selectedPkg.items.length} item{selectedPkg.items.length !== 1 ? "s" : ""}</div>
-                </Card>}
-                {cart.length > 0 && <Card className="p-4">
-                  <div className="text-xs uppercase text-muted-foreground font-semibold mb-2">Add-ons ({cart.length})</div>
-                  <div className="space-y-1">{cart.map(c => <div key={c.key} className="flex justify-between text-sm"><span>{c.name}</span><span className="font-semibold">{c.quantity}x</span></div>)}</div>
-                </Card>}
-                <Card className="p-4">
-                  <div className="text-xs uppercase text-muted-foreground font-semibold">Contact</div>
-                  <div className="text-sm mt-1">{contact.contactName} · {contact.contactEmail}</div>
-                  {contact.companyName && <div className="text-sm text-muted-foreground">{contact.companyName}</div>}
-                </Card>
-                {totalEstimate > 0 && data.partner.pricingDisplayEnabled && <Card className="p-4 bg-primary/5 border-primary/20">
-                  <div className="flex items-center justify-between"><div className="font-semibold">Estimated Total</div><div className="text-2xl font-bold">${totalEstimate.toFixed(2)}</div></div>
-                  <div className="text-xs text-muted-foreground mt-1">Final pricing confirmed by our team</div>
-                </Card>}
+                  <div className="text-xs mt-1" style={{ color: branding.muted }}>{selectedPkg.items.length} item{selectedPkg.items.length !== 1 ? "s" : ""}</div>
+                </div>}
+                {cart.length > 0 && <div className="p-4" style={cardSurface(branding)}>
+                  <div className="text-xs uppercase font-semibold mb-2" style={{ color: branding.accent }}>Add-ons ({cart.length})</div>
+                  <div className="space-y-1">{cart.map(c => <div key={c.key} className="flex justify-between text-sm" style={{ color: branding.text }}><span>{c.name}</span><span className="font-semibold">{c.quantity}x</span></div>)}</div>
+                </div>}
+                <div className="p-4" style={cardSurface(branding)}>
+                  <div className="text-xs uppercase font-semibold" style={{ color: branding.accent }}>Contact</div>
+                  <div className="text-sm mt-1" style={{ color: titleColor(branding) }}>{contact.contactName} · {contact.contactEmail}</div>
+                  {contact.companyName && <div className="text-sm" style={{ color: branding.muted }}>{contact.companyName}</div>}
+                </div>
+                {totalEstimate > 0 && data.partner.pricingDisplayEnabled && <div className="p-4" style={accentPanel(branding)}>
+                  <div className="flex items-center justify-between"><div className="font-semibold" style={{ color: titleColor(branding) }}>Estimated Total</div><div className="text-2xl font-bold" style={{ color: titleColor(branding) }}>${totalEstimate.toFixed(2)}</div></div>
+                  <div className="text-xs mt-1" style={{ color: branding.muted }}>Final pricing confirmed by our team</div>
+                </div>}
               </div>
             </div>
           )}
@@ -877,64 +952,77 @@ export default function OrderingPortal({ slug }: { slug: string }) {
                   />
                 </div>
               )}
-              <Card className="p-5 shadow-md">
+              <div className="p-5" style={{ ...cardSurface(branding), color: branding.text }}>
                 <div className="flex items-center gap-2 mb-3">
-                  <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-                  <h3 className="font-semibold text-sm">Your Order</h3>
-                  {summaryItemCount > 0 && <Badge variant="secondary" className="ml-auto text-[10px]">{summaryItemCount} item{summaryItemCount !== 1 ? "s" : ""}</Badge>}
+                  <ShoppingCart className="h-4 w-4" style={{ color: branding.accent }} />
+                  <h3 className="font-semibold text-sm" style={{ color: titleColor(branding) }}>Order Summary</h3>
+                  {summaryItemCount > 0 && (
+                    <span className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: `${branding.accent}1f`, color: branding.accent }}>
+                      {summaryItemCount} item{summaryItemCount !== 1 ? "s" : ""}
+                    </span>
+                  )}
                 </div>
 
                 {selectedEvent ? (
-                  <div className="text-xs space-y-0.5 pb-3 border-b">
-                    <div className="text-muted-foreground uppercase tracking-wide text-[10px] font-semibold">Event</div>
-                    <div className="font-medium">{selectedEvent.name}</div>
-                    <div className="text-muted-foreground">{data.cities.find(c => c.id === cityId)?.name} · {selectedVenue?.name}</div>
-                    {selectedEvent.shippingDeadline && <div className="text-amber-600">Ship by {selectedEvent.shippingDeadline}</div>}
+                  <div className="text-xs space-y-0.5 pb-3" style={{ borderBottom: `1px solid ${hairline(branding)}` }}>
+                    <div className="uppercase tracking-wide text-[10px] font-semibold" style={{ color: branding.accent }}>Event</div>
+                    <div className="font-medium" style={{ color: titleColor(branding) }}>{selectedEvent.name}</div>
+                    <div style={{ color: branding.muted }}>{data.cities.find(c => c.id === cityId)?.name} · {selectedVenue?.name}</div>
+                    {selectedEvent.shippingDeadline && <div className="font-medium" style={{ color: branding.accent }}>Ship by {selectedEvent.shippingDeadline}</div>}
                   </div>
                 ) : (
-                  <div className="text-xs text-muted-foreground italic pb-3 border-b">Select an event to begin</div>
+                  <div className="text-xs italic pb-3" style={{ color: branding.muted, borderBottom: `1px solid ${hairline(branding)}` }}>Select an event to begin</div>
                 )}
 
                 {selectedPkg && (
-                  <div className="text-xs space-y-1 py-3 border-b">
-                    <div className="text-muted-foreground uppercase tracking-wide text-[10px] font-semibold">Package</div>
-                    <div className="flex justify-between"><span className="font-medium">{selectedPkg.displayName || selectedPkg.name}</span>{selectedPkg.price && data.partner.pricingDisplayEnabled && <span className="font-semibold">${selectedPkg.price}</span>}</div>
-                    <div className="text-muted-foreground">{selectedPkg.items.length} included item{selectedPkg.items.length !== 1 ? "s" : ""}</div>
+                  <div className="text-xs space-y-1 py-3" style={{ borderBottom: `1px solid ${hairline(branding)}` }}>
+                    <div className="uppercase tracking-wide text-[10px] font-semibold" style={{ color: branding.accent }}>Package</div>
+                    <div className="flex justify-between"><span className="font-medium" style={{ color: titleColor(branding) }}>{selectedPkg.displayName || selectedPkg.name}</span>{selectedPkg.price && data.partner.pricingDisplayEnabled && <span className="font-semibold" style={{ color: titleColor(branding) }}>${selectedPkg.price}</span>}</div>
+                    <div style={{ color: branding.muted }}>{selectedPkg.items.length} included item{selectedPkg.items.length !== 1 ? "s" : ""}</div>
                   </div>
                 )}
 
                 {cart.length > 0 && (
-                  <div className="text-xs space-y-1 py-3 border-b">
-                    <div className="text-muted-foreground uppercase tracking-wide text-[10px] font-semibold">Add-ons</div>
+                  <div className="text-xs space-y-1 py-3" style={{ borderBottom: `1px solid ${hairline(branding)}` }}>
+                    <div className="uppercase tracking-wide text-[10px] font-semibold" style={{ color: branding.accent }}>Add-ons</div>
                     {cart.map(c => (
-                      <div key={c.key} className="flex justify-between gap-2"><span className="truncate">{c.name}</span><span className="font-semibold shrink-0">{c.quantity}x</span></div>
+                      <div key={c.key} className="flex justify-between gap-2" style={{ color: branding.muted }}><span className="truncate">{c.name}</span><span className="font-semibold shrink-0">{c.quantity}x</span></div>
                     ))}
                   </div>
                 )}
 
                 {artworkFiles.length > 0 && (
-                  <div className="text-xs py-3 border-b">
-                    <div className="text-muted-foreground uppercase tracking-wide text-[10px] font-semibold mb-1">Artwork</div>
-                    <div>{artworkFiles.length} file{artworkFiles.length !== 1 ? "s" : ""} attached</div>
+                  <div className="text-xs py-3" style={{ borderBottom: `1px solid ${hairline(branding)}` }}>
+                    <div className="uppercase tracking-wide text-[10px] font-semibold mb-1" style={{ color: branding.accent }}>Artwork</div>
+                    <div style={{ color: titleColor(branding) }}>{artworkFiles.length} file{artworkFiles.length !== 1 ? "s" : ""} attached</div>
                   </div>
                 )}
 
                 {totalEstimate > 0 && data.partner.pricingDisplayEnabled && (
                   <div className="pt-3 flex items-center justify-between">
-                    <span className="text-sm font-semibold">Estimated</span>
-                    <span className="text-xl font-bold">${totalEstimate.toFixed(2)}</span>
+                    <span className="text-sm font-semibold" style={{ color: titleColor(branding) }}>Estimated</span>
+                    <span className="text-xl font-bold" style={{ color: titleColor(branding) }}>${totalEstimate.toFixed(2)}</span>
                   </div>
                 )}
-              </Card>
 
-              <Card className="p-4 bg-muted/30 border-dashed">
-                <p className="text-xs text-muted-foreground"><span className="font-semibold text-foreground">Step {step + 1} of {STEPS.length}:</span> {STEPS[step]}</p>
-                <p className="text-[11px] text-muted-foreground mt-1">Your selections are kept as you navigate.</p>
-              </Card>
+                <p className="mt-4 pt-3 text-[11px]" style={{ color: branding.muted, borderTop: `1px solid ${hairline(branding)}` }}>
+                  Final pricing & production timeline confirmed by your A3 Visual team.
+                </p>
+              </div>
+
+              <div className="p-4" style={mutedPanel(branding)}>
+                <p className="text-xs" style={{ color: branding.muted }}><span className="font-semibold" style={{ color: titleColor(branding) }}>Step {step + 1} of {STEPS.length}:</span> {STEPS[step]}</p>
+                <p className="text-[11px] mt-1" style={{ color: branding.muted }}>Your selections are kept as you navigate.</p>
+              </div>
             </div>
           </aside>
         </div>
       </div>
+      <PartnerTrustSection
+        branding={branding}
+        partnerName={data.partner.companyName}
+        supportHref={(data.partner.contactEmail || data.partner.replyToEmail) ? `mailto:${data.partner.contactEmail || data.partner.replyToEmail}` : undefined}
+      />
       <PortalFooter partnerName={data.partner.companyName} branding={branding} />
     </BrandedShell>
   );
@@ -960,7 +1048,7 @@ type PublicSurveyAsset = {
   materialOverrideMode: string;
 };
 
-type SurveyBranding = { text: string; headingFont: string; button: string; buttonText: string };
+type SurveyBranding = ResolvedBranding;
 
 function SurveyAssetsSection({ slug, cart, addToCart, removeFromCart, branding }: {
   slug: string;
@@ -983,8 +1071,8 @@ function SurveyAssetsSection({ slug, cart, addToCart, removeFromCart, branding }
   return (
     <div className="space-y-3">
       <div>
-        <h3 className="text-base font-semibold" style={{ color: branding.text, fontFamily: branding.headingFont }}>Brand our space for your event</h3>
-        <p className="text-xs text-muted-foreground mt-0.5">Pre-surveyed venue locations ready to brand. Pick a material if you have a preference.</p>
+        <h3 className="text-base font-semibold" style={{ color: titleColor(branding), fontFamily: branding.headingFont }}>Brand our space for your event</h3>
+        <p className="text-xs mt-0.5" style={{ color: branding.muted }}>Pre-surveyed venue locations ready to brand. Pick a material if you have a preference.</p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {assets.map(a => {
@@ -994,18 +1082,18 @@ function SurveyAssetsSection({ slug, cart, addToCart, removeFromCart, branding }
           const showMaterial = materials.length > 0;
           const chosen = materialChoice[a.id] ?? materials[0] ?? "";
           return (
-            <div key={a.id} className="border rounded-lg overflow-hidden bg-white flex flex-col">
+            <div key={a.id} className="overflow-hidden flex flex-col" style={cardSurface(branding)}>
               {photo
                 ? <img src={resolveAssetUrl(photo)} alt={a.name} className="w-full h-32 object-cover" />
-                : <div className="w-full h-32 bg-muted flex items-center justify-center text-xs text-muted-foreground"><MapPin className="h-5 w-5" /></div>}
+                : <div className="w-full h-32 flex items-center justify-center text-xs" style={{ ...mutedPanel(branding), color: branding.muted }}><MapPin className="h-5 w-5" /></div>}
               <div className="p-3 flex-1 flex flex-col gap-2">
                 <div>
-                  <div className="text-sm font-semibold leading-tight">{a.name}</div>
+                  <div className="text-sm font-semibold leading-tight" style={{ color: titleColor(branding) }}>{a.name}</div>
                   {(a.venueName || a.cityName) && (
-                    <div className="text-[11px] text-muted-foreground mt-0.5">{[a.venueName, a.cityName].filter(Boolean).join(" · ")}</div>
+                    <div className="text-[11px] mt-0.5" style={{ color: branding.muted }}>{[a.venueName, a.cityName].filter(Boolean).join(" · ")}</div>
                   )}
                 </div>
-                {a.description && <div className="text-xs text-muted-foreground line-clamp-2">{a.description}</div>}
+                {a.description && <div className="text-xs line-clamp-2" style={{ color: branding.muted }}>{a.description}</div>}
                 {showMaterial && (
                   <Select value={chosen} onValueChange={(v) => setMaterialChoice(prev => ({ ...prev, [a.id]: v }))}>
                     <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Choose material" /></SelectTrigger>
@@ -1016,7 +1104,7 @@ function SurveyAssetsSection({ slug, cart, addToCart, removeFromCart, branding }
                 )}
                 <div className="mt-auto pt-1">
                   {inCart ? (
-                    <Button size="sm" variant="outline" className="w-full" onClick={() => removeFromCart(inCart.key)}>
+                    <Button size="sm" variant="outline" className="w-full" style={{ background: "transparent", borderColor: branding.accent, color: branding.accent }} onClick={() => removeFromCart(inCart.key)}>
                       <Check className="h-3.5 w-3.5 mr-1" /> Added — remove
                     </Button>
                   ) : (
@@ -1049,11 +1137,14 @@ function SurveyAssetsSection({ slug, cart, addToCart, removeFromCart, branding }
   );
 }
 
-function PackageGallery({ pkg }: { pkg: Pkg }) {
+function PackageGallery({ pkg, branding }: { pkg: Pkg; branding?: ResolvedBranding }) {
   const gallery = (pkg.imageUrls && pkg.imageUrls.length > 0) ? pkg.imageUrls : (pkg.imageUrl ? [pkg.imageUrl] : []);
   const [active, setActive] = useState(0);
   const [lightbox, setLightbox] = useState(false);
   if (gallery.length === 0) {
+    if (branding) {
+      return <div className="mb-3"><BrandedPlaceholderImage branding={branding} /></div>;
+    }
     return <div className="aspect-video w-full rounded-lg bg-muted/50 mb-3 flex items-center justify-center"><Package className="h-10 w-10 text-muted-foreground/40" /></div>;
   }
   const current = gallery[Math.min(active, gallery.length - 1)];
@@ -1061,7 +1152,7 @@ function PackageGallery({ pkg }: { pkg: Pkg }) {
   return (
     <div className="mb-3" onClick={(e) => e.stopPropagation()}>
       <button type="button" onClick={(e) => open(active, e)} aria-label={`View ${pkg.displayName || pkg.name} larger`} className="relative block w-full group">
-        <img src={resolveAssetUrl(current)} alt={`${pkg.displayName || pkg.name} — image ${active + 1} of ${gallery.length}`} className="aspect-video w-full rounded-lg object-cover bg-muted" />
+        <img src={resolveAssetUrl(current)} alt={`${pkg.displayName || pkg.name} — image ${active + 1} of ${gallery.length}`} className="aspect-video w-full rounded-lg object-cover" style={branding ? mutedPanel(branding) : undefined} />
         <span className="absolute top-2 right-2 rounded-full bg-black/60 text-white p-1.5 opacity-0 group-hover:opacity-100 transition" aria-hidden="true"><ZoomIn className="h-3.5 w-3.5" /></span>
         {gallery.length > 1 && (
           <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-black/70 text-white text-[11px] font-semibold">{active + 1} / {gallery.length}</span>
@@ -1075,10 +1166,11 @@ function PackageGallery({ pkg }: { pkg: Pkg }) {
               type="button"
               onClick={(e) => { e.stopPropagation(); e.preventDefault(); setActive(i); }}
               onDoubleClick={(e) => open(i, e)}
-              className={`shrink-0 rounded border-2 transition ${i === active ? "border-primary" : "border-transparent hover:border-primary/40"}`}
+              className="shrink-0 rounded border-2 transition"
+              style={{ borderColor: i === active ? (branding?.accent ?? "transparent") : "transparent" }}
               aria-label={`View image ${i + 1}`}
             >
-              <img src={resolveAssetUrl(u)} alt="" className="h-10 w-14 rounded object-cover bg-muted" />
+              <img src={resolveAssetUrl(u)} alt="" className="h-10 w-14 rounded object-cover" style={branding ? mutedPanel(branding) : undefined} />
             </button>
           ))}
         </div>
@@ -1102,7 +1194,7 @@ function PackageGallery({ pkg }: { pkg: Pkg }) {
   );
 }
 
-function ArtworkGuidancePanel({ partnerId, productIds }: { partnerId?: number; productIds: number[] }) {
+function ArtworkGuidancePanel({ partnerId, productIds, branding }: { partnerId?: number; productIds: number[]; branding: ResolvedBranding }) {
   const ids = Array.from(new Set(productIds.filter(Boolean)));
   const { data: products = [] } = useQuery<any[]>({
     queryKey: ["/api/products", "for-guidance"],
@@ -1121,9 +1213,9 @@ function ArtworkGuidancePanel({ partnerId, productIds }: { partnerId?: number; p
   if (!relevant.length) return null;
 
   return (
-    <Card className="p-3 bg-blue-50 border-blue-200">
-      <div className="flex items-center gap-2 text-sm font-semibold text-blue-900 mb-2">
-        <Ruler className="h-4 w-4" />File guidance{preferredSystem ? ` (${preferredSystem})` : ""}
+    <div className="p-3" style={accentPanel(branding)}>
+      <div className="flex items-center gap-2 text-sm font-semibold mb-2" style={{ color: titleColor(branding) }}>
+        <Ruler className="h-4 w-4" style={{ color: branding.accent }} />File guidance{preferredSystem ? ` (${preferredSystem})` : ""}
       </div>
       <div className="space-y-2">
         {relevant.map((p: any) => {
@@ -1133,18 +1225,18 @@ function ArtworkGuidancePanel({ partnerId, productIds }: { partnerId?: number; p
           const bleed    = formatPrimarySecondary(p.bleed, aUnit, preferredSystem);
           const safe     = formatPrimarySecondary(p.safeArea, aUnit, preferredSystem);
           return (
-            <div key={p.id} className="text-xs text-blue-900/90">
-              <div className="font-medium">{p.displayName || p.name}</div>
+            <div key={p.id} className="text-xs" style={{ color: branding.muted }}>
+              <div className="font-medium" style={{ color: titleColor(branding) }}>{p.displayName || p.name}</div>
               <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
-                {finished.primary && <span>Finished: <span className="font-medium">{finished.primary}</span>{finished.secondary && <span className="opacity-70"> (≈ {finished.secondary})</span>}</span>}
-                {artwork.primary  && <span>Artwork: <span className="font-medium">{artwork.primary}</span>{artwork.secondary && <span className="opacity-70"> (≈ {artwork.secondary})</span>}</span>}
-                {bleed.primary    && <span>Bleed: <span className="font-medium">{bleed.primary}</span>{bleed.secondary && <span className="opacity-70"> (≈ {bleed.secondary})</span>}</span>}
-                {safe.primary     && <span>Safe: <span className="font-medium">{safe.primary}</span>{safe.secondary && <span className="opacity-70"> (≈ {safe.secondary})</span>}</span>}
+                {finished.primary && <span>Finished: <span className="font-medium" style={{ color: titleColor(branding) }}>{finished.primary}</span>{finished.secondary && <span className="opacity-70"> (≈ {finished.secondary})</span>}</span>}
+                {artwork.primary  && <span>Artwork: <span className="font-medium" style={{ color: titleColor(branding) }}>{artwork.primary}</span>{artwork.secondary && <span className="opacity-70"> (≈ {artwork.secondary})</span>}</span>}
+                {bleed.primary    && <span>Bleed: <span className="font-medium" style={{ color: titleColor(branding) }}>{bleed.primary}</span>{bleed.secondary && <span className="opacity-70"> (≈ {bleed.secondary})</span>}</span>}
+                {safe.primary     && <span>Safe: <span className="font-medium" style={{ color: titleColor(branding) }}>{safe.primary}</span>{safe.secondary && <span className="opacity-70"> (≈ {safe.secondary})</span>}</span>}
               </div>
             </div>
           );
         })}
       </div>
-    </Card>
+    </div>
   );
 }

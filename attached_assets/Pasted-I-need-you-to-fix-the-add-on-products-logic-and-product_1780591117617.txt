@@ -1,0 +1,382 @@
+I need you to fix the add-on products logic and product image placeholder behavior in the A3 Partnership Portal.
+
+Current problem:
+On the live customer-facing partner portal, the add-on products page is showing too many products or generic product options. It should only show the add-on products that were specifically selected from the admin/customer partner portal creation page.
+
+Example:
+If the admin only selects “Pull Up Banner” for a specific customer partner portal, then the live portal add-on page should only show the Pull Up Banner product card/image/option. No other add-ons should appear.
+
+I also need the admin partner portal creation page to allow search and selection of add-on products when creating or editing a customer partner portal.
+
+Additionally, any product or add-on that has a blank/missing image should show the A3 Visual logo as the placeholder image instead of showing a blank image, broken image, empty gray box, or question mark.
+
+Do not rebuild the whole app.
+Do not break the order flow.
+Do not use Replit Database.
+Do not add AI calls.
+Use the existing database, current product/add-on structure, current partner portal structure, and existing storage setup.
+
+WHERE THIS APPLIES
+
+1. Admin customer partner portal creation page
+2. Admin customer partner portal edit page
+3. Product/add-on selection inside admin
+4. Live customer-facing partner portal
+5. Add-on products step/page inside the live portal
+6. Product cards across the portal
+7. Any package, add-on, product, or visual card with a missing image
+
+CORE REQUIREMENT
+
+The live add-on products page must only display the products/add-ons selected in admin for that specific customer partner portal.
+
+The live add-on page must not show all global add-ons.
+The live add-on page must not show unrelated products.
+The live add-on page must not show products from other partners.
+The live add-on page must not show products that were not assigned during portal creation or editing.
+
+ADMIN REQUIREMENT: SEARCH AND SELECT ADD-ON PRODUCTS
+
+On the admin customer partner portal creation/edit page, add a product/add-on assignment section.
+
+Section title:
+“Available Add-On Products”
+
+Helper text:
+“Select the add-on products this partner portal should offer to customers.”
+
+The admin should be able to:
+1. Search products by name.
+2. Search products by SKU if SKU exists.
+3. Search products by category if category exists.
+4. Search products by description if description exists.
+5. Filter by product category if categories exist.
+6. Select one or more add-on products.
+7. Remove selected add-on products.
+8. See selected products before saving.
+9. Save the portal with selected add-ons.
+10. Edit the selected add-ons later.
+
+The admin selection UI should show:
+1. Product name
+2. Product image or A3 placeholder
+3. Category
+4. SKU if available
+5. Price if available
+6. Short description if available
+7. Checkbox or “Add” button
+8. Selected state
+
+There should be a clear selected-products area:
+“Selected Add-On Products”
+
+This area should show only the add-ons that will appear on the live customer portal.
+
+DATABASE / DATA MODEL REQUIREMENT
+
+Inspect the current database and determine whether there is already a relationship table connecting customer partner portals to products/add-ons.
+
+If a relationship table already exists, use it.
+
+If not, create a safe relationship table.
+
+Suggested table name:
+customer_portal_add_on_products
+
+Alternative acceptable names:
+partner_portal_add_on_products
+portal_add_on_products
+customer_partner_portal_products
+
+Suggested fields:
+id
+portal_id
+partner_id if needed
+product_id
+sort_order
+is_required boolean default false
+is_visible boolean default true
+created_at
+updated_at
+
+The important relationship is:
+One customer partner portal can have many selected add-on products.
+One add-on product can be assigned to many portals.
+
+Do not duplicate full product data into the portal if the product already exists in a products table.
+Store the relationship between portal and product.
+
+If the app currently uses packages/add-ons/products with different table names, adapt to the existing schema and do not create duplicate systems.
+
+LIVE PORTAL REQUIREMENT: ONLY SHOW ASSIGNED ADD-ONS
+
+On the live customer-facing portal add-ons step/page:
+
+Fetch only the add-on products assigned to the current portal.
+
+The query should be based on the current portal ID or partner portal ID, not just the partner ID unless the app’s architecture only supports partner-level assignment.
+
+Preferred logic:
+1. Identify current customer partner portal.
+2. Fetch selected add-on product IDs assigned to this portal.
+3. Fetch product details for only those IDs.
+4. Render only those products.
+
+Bad logic to remove or bypass:
+1. Fetching all add-ons globally.
+2. Fetching all products.
+3. Fetching all products for A3.
+4. Fetching all products by category without portal assignment.
+5. Showing fallback demo products when none were selected.
+
+If no add-on products were selected for the portal:
+Show a premium empty state:
+“No add-on products are available for this portal.”
+
+Do not show all products as a fallback.
+
+ADD-ON PRODUCT CARD REQUIREMENTS
+
+Each live add-on product card should include:
+1. Product image or A3 logo placeholder
+2. Product name
+3. Short description
+4. Category if available
+5. Price if available
+6. Quantity selector if the current order flow supports quantity
+7. Add/remove button
+8. Selected state
+9. Theme-matched styling
+
+The cards should use the partner theme:
+--partner-primary
+--partner-secondary
+--partner-accent
+--partner-bg
+--partner-surface
+--partner-text
+--partner-muted
+--partner-border
+
+PLACEHOLDER IMAGE REQUIREMENT
+
+Any product, package, add-on, or card image that is blank, null, missing, broken, or invalid must show the A3 Visual logo as the placeholder.
+
+This applies globally across:
+1. Add-on product cards
+2. Package cards
+3. Event package cards
+4. Product search results in admin
+5. Selected products in admin
+6. Cart/order summary product thumbnails
+7. Any product visual in the portal
+
+Do not show:
+1. Empty gray boxes
+2. Question marks
+3. Broken image icons
+4. Blank white space
+5. Generic browser broken image symbol
+
+Use A3 Visual logo as the default placeholder.
+
+If the app already has an A3 logo asset, reuse it.
+
+If not, add a configurable A3 logo placeholder path.
+
+Preferred placeholder logic:
+const imageUrl = product.image_url || product.thumbnail_url || product.asset_url || A3_LOGO_PLACEHOLDER;
+
+Also handle image load errors:
+If the image URL exists but fails to load, replace it with the A3 logo placeholder.
+
+Create or upgrade a reusable component:
+ProductImageWithFallback
+
+It should:
+1. Accept src
+2. Accept alt
+3. Accept className
+4. Use A3 logo placeholder if src is missing
+5. Use A3 logo placeholder if image load fails
+6. Preserve clean styling
+7. Work in admin and live portal
+
+Example behavior:
+If Pull Up Banner has no image, show A3 Visual logo in the image area.
+If a product image URL is broken, show A3 Visual logo.
+If the image field is null, show A3 Visual logo.
+
+ADMIN SEARCH UX REQUIREMENT
+
+The admin product search should be fast and easy.
+
+Use:
+1. Search input
+2. Category filter if categories exist
+3. Product grid/list results
+4. Selected product panel
+5. Save button
+
+Search behavior:
+1. Typing “banner” should show Pull Up Banner.
+2. Typing “pull” should show Pull Up Banner.
+3. Typing SKU should show matching product if SKU exists.
+4. Selected products should remain selected even if search text changes.
+5. Removing a selected product should remove it from the live portal after save.
+
+Do not make admin manually paste product IDs.
+Do not make admin create products from scratch every time if products already exist.
+
+If a product does not exist yet:
+Add a simple admin option if already aligned with the existing system:
+“Create New Add-On Product”
+
+But do not overbuild this unless the product creation system already exists.
+
+SAVE BEHAVIOR
+
+When admin creates or edits a customer partner portal:
+1. Save the selected add-on products.
+2. Persist the product assignments.
+3. Update the live portal after save.
+4. Invalidate cache if needed.
+5. Refreshing the admin page should still show selected products.
+6. Refreshing the live portal should still only show selected products.
+
+If using React Query:
+Invalidate:
+1. portal queries
+2. partner portal products/add-ons queries
+3. product assignment queries
+
+If server-loaded:
+Make sure the route refetches assignment data.
+
+SECURITY / SCOPING REQUIREMENT
+
+Make sure selected products are scoped correctly.
+
+If the app supports multiple businesses/workspaces:
+1. Do not let one workspace see another workspace’s private products.
+2. Product search should only show products available to the current workspace/business unless products are global A3 products.
+3. Live portal should only show products assigned to that portal.
+
+If products are global A3 products, that is acceptable, but the live portal must still only show the selected assigned products.
+
+SORTING REQUIREMENT
+
+Admin should be able to control display order if simple.
+
+Add sort_order support if practical.
+
+At minimum:
+1. Show selected add-ons in the order they were selected, or
+2. Show selected add-ons alphabetically, or
+3. Use existing sort_order field if available.
+
+Preferred:
+Allow drag/drop later, but do not overbuild right now.
+
+For now:
+Add up/down controls or sort_order field only if easy.
+
+LIVE ADD-ON PAGE EMPTY STATES
+
+If add-ons were selected:
+Show only selected add-ons.
+
+If no add-ons were selected:
+Show:
+“No add-on products are available for this portal.”
+
+Optional support copy:
+“Contact A3 Visual if you need help with a custom request.”
+
+Do not show random fallback products.
+
+TESTING REQUIREMENTS
+
+Test with Social Commerce Festival or a test partner portal.
+
+Test case 1:
+Admin selects only Pull Up Banner.
+Live add-on page should show only Pull Up Banner.
+
+Test case 2:
+Admin selects Pull Up Banner and Table Throw.
+Live add-on page should show only Pull Up Banner and Table Throw.
+
+Test case 3:
+Admin removes Table Throw and saves.
+Live add-on page should only show Pull Up Banner.
+
+Test case 4:
+Admin selects no add-ons.
+Live add-on page should show the premium empty state and no product options.
+
+Test case 5:
+Product has no image.
+Product card should show A3 Visual logo placeholder.
+
+Test case 6:
+Product has a broken image URL.
+Product card should show A3 Visual logo placeholder.
+
+Test case 7:
+Refresh admin page.
+Selected products should persist.
+
+Test case 8:
+Refresh live portal.
+Only selected products should persist.
+
+IMPLEMENTATION ORDER
+
+1. Inspect current product/add-on data model.
+2. Inspect customer partner portal creation page.
+3. Inspect live portal add-ons step/page.
+4. Identify whether selected add-ons are already supported.
+5. Add or reuse product assignment relationship table.
+6. Add admin product search and selection UI.
+7. Save selected add-on assignments with portal creation/editing.
+8. Update live portal add-ons query to fetch only assigned products.
+9. Remove fallback behavior that shows all global products.
+10. Add ProductImageWithFallback component.
+11. Replace product image rendering across add-ons, packages, admin search, selected products, and cart thumbnails.
+12. Add A3 logo placeholder fallback.
+13. Test assignment behavior.
+14. Test placeholder behavior.
+15. Update REPLIT_PROGRESS.md.
+
+ACCEPTANCE CRITERIA
+
+This work is complete only when:
+1. Admin can search available add-on products during customer partner portal creation/editing.
+2. Admin can select which add-ons are available for that portal.
+3. Selected add-ons persist after save.
+4. Live customer portal add-on page only shows selected admin-assigned add-ons.
+5. If only Pull Up Banner is selected, only Pull Up Banner appears.
+6. If no add-ons are selected, no random/default/global add-ons appear.
+7. Missing product images show A3 Visual logo placeholder.
+8. Broken product images show A3 Visual logo placeholder.
+9. The add-on product cards still match the partner portal theme.
+10. The order flow still works.
+11. Cart/order summary still updates properly.
+12. No Replit Database was used.
+13. No AI calls were added.
+14. REPLIT_PROGRESS.md was updated.
+
+FINAL OUTPUT REQUIRED FROM REPLIT
+
+When finished, tell me:
+1. Why the add-on page was showing the wrong products.
+2. What files were changed.
+3. What database table or relationship is used for portal add-on assignments.
+4. How admin can now search and select add-on products.
+5. How the live portal filters add-ons.
+6. How the A3 logo placeholder works.
+7. Confirmation that only selected add-ons show on the live portal.
+8. Confirmation that missing/broken images show the A3 placeholder.
+9. Confirmation that order flow still works.
+10. Confirmation that REPLIT_PROGRESS.md was updated.
