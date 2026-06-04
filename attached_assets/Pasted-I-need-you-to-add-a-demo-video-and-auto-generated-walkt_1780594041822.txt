@@ -1,0 +1,545 @@
+I need you to add a demo video and auto-generated walkthrough video system to the A3 Visual Partnership Portal.
+
+This is for the A3 Visual Partner Portal / Customer Portal system.
+
+There are two requirements:
+
+1. Add a main demo walkthrough video that lives on the front page.
+2. When each partner/customer portal is created, automatically generate a branded walkthrough video tailored to that partner portal.
+
+Do not rebuild the whole app.
+Do not break the current portal builder.
+Do not break customer portal creation.
+Do not break order flow.
+Do not use Replit Database.
+Do not add expensive AI video calls by default.
+Use the existing database, storage, partner portal data, branding system, and portal routes.
+
+MAIN GOAL
+
+The portal should feel more premium and easier to understand.
+
+The front page should have a polished demo video section.
+
+Each customer partner portal should also have its own branded walkthrough video that explains:
+1. What this portal is
+2. How to select an event
+3. How to select a package
+4. How to choose add-ons
+5. How to upload artwork
+6. How to submit contact/order information
+7. How A3 Visual supports production
+
+PART 1: FRONT PAGE DEMO VIDEO
+
+Add a demo video section to the main front page / landing page / dashboard entry point.
+
+Find the correct front-facing route. It may be:
+/
+/home
+/dashboard
+/admin
+/partner-portals
+or another current landing page.
+
+Add a premium section called:
+
+“See How the A3 Partner Portal Works”
+
+Supporting copy:
+“Watch a quick walkthrough of how partners, vendors, and event teams use the portal to select packages, upload artwork, and keep production details organized.”
+
+CTA buttons:
+1. Watch Demo
+2. Create Partner Portal
+3. View Portals
+
+Video behavior:
+1. Show a large premium video card.
+2. Allow embedded video playback.
+3. If no video has been uploaded yet, show a premium placeholder.
+4. Allow admin to upload or paste a demo video URL.
+5. Store the video URL in database/settings.
+6. Use responsive video display.
+7. Support MP4 URL first.
+8. Also support YouTube/Vimeo embed URL if simple.
+
+Design requirements:
+1. Use premium A3 Visual styling.
+2. Dark cinematic video card if the dashboard theme supports it.
+3. Smooth hover state.
+4. Poster/thumbnail image support if available.
+5. A3 logo placeholder if no thumbnail exists.
+6. Mobile responsive.
+
+PART 2: ADMIN DEMO VIDEO SETTINGS
+
+Add a simple admin setting area for the main demo video.
+
+Admin should be able to:
+1. Upload demo video file if storage supports it.
+2. Paste video URL.
+3. Upload poster/thumbnail image.
+4. Preview the video.
+5. Save video settings.
+6. Remove/replace the video.
+
+Suggested settings fields:
+main_demo_video_url
+main_demo_video_provider
+main_demo_video_poster_url
+main_demo_video_title
+main_demo_video_description
+main_demo_video_enabled
+
+If app already has a settings table, use it.
+If not, create a safe app_settings or portal_settings table.
+
+Do not store video as base64.
+Use existing storage, preferably Supabase Storage if available.
+
+Suggested storage bucket:
+portal-videos
+
+Suggested paths:
+demo/main-demo-{timestamp}.mp4
+demo/main-demo-poster-{timestamp}.{ext}
+
+PART 3: AUTO-GENERATED PARTNER WALKTHROUGH VIDEO
+
+When a customer partner portal is created or published, automatically generate a partner-specific walkthrough video.
+
+Important:
+This does not need expensive AI video generation by default.
+
+Use a deterministic branded video template system.
+
+The system should generate a short branded walkthrough video from partner portal data:
+1. Partner logo
+2. Partner name
+3. Partner theme colors
+4. Portal URL
+5. Assigned events
+6. Assigned packages
+7. Assigned add-ons
+8. Artwork upload requirements
+9. A3 Visual partnership branding
+
+Video should be approximately 45 to 90 seconds.
+
+Video output:
+MP4 if feasible.
+If MP4 generation is too heavy for the current app, generate a branded walkthrough HTML/slide experience first and store it as a “walkthrough” page, then add MP4 rendering as phase 2.
+
+Preferred approach:
+Use a lightweight video generation/rendering method such as:
+1. Remotion, if compatible with the app stack
+2. Server-side HTML-to-video if existing infrastructure supports it
+3. Template-based slide deck rendered to video if already supported
+4. As fallback, create an auto-generated interactive walkthrough page that behaves like a video/story carousel
+
+Do not add large or fragile dependencies unless compatible with the app.
+
+PART 4: PRACTICAL PHASED IMPLEMENTATION
+
+Implement this in phases so the feature works reliably.
+
+PHASE 1 — Front Page Demo Video
+Add the front page demo video section and admin upload/URL setting.
+
+PHASE 2 — Partner Walkthrough Data Model
+Add fields to customer partner portal records:
+walkthrough_video_url
+walkthrough_video_status
+walkthrough_video_poster_url
+walkthrough_video_generated_at
+walkthrough_script
+walkthrough_enabled
+
+Suggested statuses:
+not_generated
+queued
+generating
+ready
+failed
+
+PHASE 3 — Auto-Generated Walkthrough Script
+When a portal is created or published, generate a deterministic walkthrough script from saved portal data.
+
+Do not call AI by default.
+
+Example script template:
+
+“Welcome to the {Partner Name} vendor portal, created in partnership with A3 Visual.
+
+Start by selecting the event you are ordering for. Available events are shown in chronological order.
+
+Next, choose your approved vendor package. Only packages assigned to this portal will appear.
+
+If available, select add-on products such as pull-up banners, table throws, or additional signage.
+
+Upload artwork files, logos, brand guidelines, or reference files based on the portal requirements.
+
+Finally, confirm your contact details and submit your order for A3 Visual review.”
+
+Store this script in walkthrough_script.
+
+PHASE 4 — Auto-Generated Interactive Walkthrough
+Create a partner-specific walkthrough module that uses the script and partner data to show a premium guided walkthrough.
+
+This can be a modal, page, or video-style carousel.
+
+Route example:
+/portal/{slug}/walkthrough
+or
+/customer-portals/{slug}/walkthrough
+
+The walkthrough should include branded slides:
+1. Welcome / Partner Logo
+2. Choose Your Event
+3. Select Your Package
+4. Add Optional Products
+5. Upload Artwork
+6. Submit for A3 Review
+7. Need Help / Contact A3
+
+Each slide should use:
+1. Partner logo
+2. Partner colors
+3. A3 Visual branding
+4. Theme-matched typography
+5. Smooth transitions
+6. Progress indicator
+7. Next/back controls
+8. Auto-play option if simple
+
+This gives us an immediate “video-like” experience without expensive video rendering.
+
+PHASE 5 — Optional MP4 Rendering
+If the stack can support video rendering safely, add MP4 generation.
+
+If MP4 rendering is not practical in Replit, do not force it. Instead, keep the interactive walkthrough as the immediate working version and expose a future-ready field for walkthrough_video_url.
+
+PART 5: PARTNER PORTAL WALKTHROUGH PLACEMENT
+
+Each live customer portal should show a walkthrough entry point.
+
+Placement:
+1. In hero section: “Watch Portal Walkthrough”
+2. In order flow section: small “Need help? Watch walkthrough”
+3. In admin portal list: “Preview Walkthrough”
+
+Behavior:
+Clicking the button opens:
+1. The generated walkthrough modal, or
+2. The generated walkthrough page, or
+3. The MP4 video if walkthrough_video_url is ready.
+
+Priority:
+If walkthrough_video_url exists and status is ready, play video.
+Else show interactive walkthrough.
+Else show default walkthrough.
+
+PART 6: WALKTHROUGH CONTENT SHOULD BE TAILORED
+
+The partner walkthrough must use actual portal data.
+
+If partner has logo:
+Show uploaded logo.
+
+If events are assigned:
+Mention:
+“Select from the available events for {Partner Name}.”
+
+If packages are assigned:
+Mention:
+“Choose from the approved packages available for this portal.”
+
+If add-ons are assigned:
+Mention:
+“Add optional products available for this portal.”
+
+If no add-ons:
+Skip or shorten the add-on slide.
+
+If artwork upload is required:
+Include clear upload instructions.
+
+If support email exists:
+Show support email.
+
+If portal URL exists:
+Show portal link or QR code if QR support is easy.
+
+Do not hardcode Social Commerce Festival.
+This must work for every partner portal.
+
+PART 7: ADMIN CONTROLS FOR PARTNER WALKTHROUGH
+
+Inside the customer portal builder/edit page, add a section:
+
+“Walkthrough Video”
+
+Admin should see:
+1. Walkthrough status
+2. Generated script
+3. Preview walkthrough
+4. Regenerate walkthrough
+5. Upload custom walkthrough video
+6. Paste custom video URL
+7. Upload poster/thumbnail
+8. Enable/disable walkthrough on live portal
+
+Admin should be able to override the auto-generated walkthrough with a custom video URL.
+
+Fields:
+walkthrough_enabled
+walkthrough_video_url
+walkthrough_video_poster_url
+walkthrough_script
+walkthrough_video_status
+walkthrough_generated_at
+
+PART 8: VIDEO PLAYER COMPONENT
+
+Create or upgrade a reusable component:
+
+PortalVideoPlayer
+
+Props:
+videoUrl
+posterUrl
+title
+description
+provider
+className
+
+It should support:
+1. MP4
+2. YouTube URL if simple
+3. Vimeo URL if simple
+4. Poster image
+5. A3 logo placeholder
+6. Responsive aspect ratio
+7. Play overlay
+8. Accessible controls
+
+Create or upgrade another component:
+
+PartnerWalkthrough
+
+Props:
+portal
+partner
+theme
+events
+packages
+addOns
+uploadRequirements
+contactSettings
+
+It should render:
+1. Interactive walkthrough slides
+2. Partner-branded visuals
+3. Auto-generated script text
+4. Optional autoplay
+5. CTA to start order
+
+PART 9: FRONT PAGE VIDEO UX
+
+Front page section should look premium.
+
+Suggested layout:
+Left side:
+Headline, supporting copy, CTAs
+
+Right side:
+Large video card
+
+Section content:
+Eyebrow:
+“A3 Visual Partner Portal”
+
+Headline:
+“See how partners move from package selection to production-ready submission.”
+
+Copy:
+“Give vendors and partners a guided portal for event selection, package ordering, artwork uploads, and A3 Visual production review.”
+
+CTA:
+“Watch Demo”
+“Create Portal”
+
+PART 10: GENERATED WALKTHROUGH SCRIPT LOGIC
+
+Create a utility function:
+
+generatePortalWalkthroughScript(portalData)
+
+It should return:
+1. title
+2. description
+3. slide list
+4. narration text
+5. CTA text
+
+Example slide structure:
+[
+  {
+    title: "Welcome to {Partner Name}",
+    body: "This portal was created in partnership with A3 Visual to keep your event package order organized.",
+    visualType: "logo"
+  },
+  {
+    title: "Choose Your Event",
+    body: "Select the event you are ordering for. Events are displayed in chronological order.",
+    visualType: "events"
+  },
+  {
+    title: "Select Your Package",
+    body: "Choose from the approved packages available for this portal.",
+    visualType: "packages"
+  },
+  {
+    title: "Add Optional Products",
+    body: "Select any available add-ons assigned to this portal.",
+    visualType: "addons"
+  },
+  {
+    title: "Upload Artwork",
+    body: "Upload print-ready files, logos, brand guidelines, or reference materials as requested.",
+    visualType: "upload"
+  },
+  {
+    title: "Submit for Review",
+    body: "Confirm your contact details and submit your order for A3 Visual review.",
+    visualType: "review"
+  }
+]
+
+Skip slides that do not apply.
+For example, if no add-ons are assigned, skip the add-on slide.
+
+PART 11: WHEN TO GENERATE
+
+Generate or refresh the walkthrough:
+1. When a portal is first created
+2. When a portal is published
+3. When admin clicks “Regenerate walkthrough”
+4. When key portal data changes, such as logo, theme, events, packages, add-ons, or upload requirements
+
+Do not regenerate every page load.
+
+PART 12: STORAGE REQUIREMENTS
+
+If custom videos are uploaded:
+Use existing storage, preferably Supabase Storage.
+
+Suggested bucket:
+portal-videos
+
+Suggested paths:
+partner-portals/{portalId}/walkthrough-{timestamp}.mp4
+partner-portals/{portalId}/poster-{timestamp}.{ext}
+
+Store only URLs in the database.
+
+Do not store base64.
+
+PART 13: FRONT PAGE AND PORTAL FALLBACKS
+
+If no main demo video exists:
+Show a premium placeholder card:
+“Demo video coming soon”
+with A3 logo.
+
+If no partner walkthrough video exists:
+Show interactive walkthrough.
+
+If walkthrough script is missing:
+Generate from current portal data.
+
+If partner logo missing:
+Use A3 logo placeholder.
+
+If product/package images missing:
+Use A3 logo placeholder.
+
+PART 14: DESIGN REQUIREMENTS
+
+The demo video and walkthrough experience must look premium.
+
+Use:
+1. Large video card
+2. Glass or cinematic card styling
+3. Partner theme colors
+4. Smooth transitions
+5. Premium typography
+6. A3 Visual branding
+7. Partner logo
+8. Responsive layout
+9. Clean play button overlay
+
+Avoid:
+1. Generic iframe slapped onto page
+2. Plain gray video box
+3. Unstyled carousel
+4. Broken thumbnails
+5. Rudimentary admin-looking UI
+
+PART 15: ACCEPTANCE CRITERIA
+
+This is complete only when:
+
+1. The front page has a premium demo video section.
+2. Admin can upload or paste a main demo video URL.
+3. Admin can upload or paste a main demo video poster image.
+4. The front page video displays correctly on desktop and mobile.
+5. Each partner portal has walkthrough fields/status.
+6. Each created/published partner portal gets an auto-generated walkthrough script.
+7. Each partner portal has an interactive branded walkthrough available immediately.
+8. The walkthrough uses that partner’s logo, theme, assigned events, assigned packages, assigned add-ons, and upload requirements.
+9. The live portal shows a “Watch Walkthrough” CTA.
+10. Admin can preview, regenerate, enable/disable, or override the walkthrough.
+11. If MP4 generation is not feasible, the interactive walkthrough still works as the immediate fallback.
+12. No expensive AI video calls are added by default.
+13. No Replit Database is used.
+14. Existing order flow still works.
+15. REPLIT_PROGRESS.md is updated.
+
+PART 16: IMPLEMENTATION ORDER
+
+1. Inspect the front page/dashboard route.
+2. Inspect current settings table or app config storage.
+3. Add main demo video settings fields.
+4. Build PortalVideoPlayer.
+5. Add front page demo video section.
+6. Add admin controls for main demo video.
+7. Add walkthrough fields to partner/customer portal data model.
+8. Build generatePortalWalkthroughScript utility.
+9. Build PartnerWalkthrough interactive component.
+10. Add walkthrough section to customer portal builder/edit page.
+11. Add “Watch Walkthrough” CTA to live portal hero/order area.
+12. Auto-generate walkthrough script on create/publish.
+13. Add regenerate walkthrough action.
+14. Add custom walkthrough video override.
+15. Test main demo video.
+16. Test newly created partner portal walkthrough.
+17. Test Social Commerce Festival walkthrough.
+18. Test mobile.
+19. Update REPLIT_PROGRESS.md.
+
+PART 17: FINAL OUTPUT REQUIRED FROM REPLIT
+
+When finished, tell me:
+1. What front page route was updated.
+2. What demo video settings were added.
+3. Where demo videos and posters are stored.
+4. What walkthrough fields were added to customer portals.
+5. How partner walkthrough scripts are generated.
+6. How the interactive walkthrough works.
+7. How admin can preview/regenerate/override walkthroughs.
+8. How live portals display the walkthrough CTA.
+9. Whether MP4 rendering was implemented or left as future phase.
+10. Confirmation that existing order flow still works.
+11. Confirmation that REPLIT_PROGRESS.md was updated.
