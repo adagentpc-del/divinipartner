@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, CheckCircle2, Building2, CalendarClock, Package, Wrench, Sparkles, ChevronRight, ChevronLeft, DollarSign } from "lucide-react";
 import { apiUrl } from "@/lib/api";
-import { type AssetFile, uploadIntakeFile, normalizeSource, Field, Recap, PillGroup, ChipMulti, UploadBucket } from "@/components/intake/intakeControls";
+import { type AssetFile, uploadIntakeFile, normalizeSource, Field, Recap, PillGroup, ChipMulti, UploadBucket, TemplateDownloads } from "@/components/intake/intakeControls";
 
 const PRODUCT_OPTIONS = [
   "Vinyl Banner", "Fabric Banner", "Mesh Banner", "Pole Banner", "Fence Banner",
@@ -157,6 +157,8 @@ export default function SalesIntake({ source }: { source?: string }) {
             </div>
           ))}
         </div>
+
+        <div className="mb-4"><TemplateDownloads /></div>
 
         <Card className="shadow-md">
           <CardHeader>

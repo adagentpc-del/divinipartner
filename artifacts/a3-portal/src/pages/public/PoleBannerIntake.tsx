@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, CheckCircle2, Building2, Megaphone, MapPin, FileBadge, Wrench, Sparkles, ChevronRight, ChevronLeft } from "lucide-react";
 import { apiUrl } from "@/lib/api";
-import { type AssetFile, uploadIntakeFile, normalizeSource, Field, Recap, PillGroup, UploadBucket } from "@/components/intake/intakeControls";
+import { type AssetFile, uploadIntakeFile, normalizeSource, Field, Recap, PillGroup, UploadBucket, TemplateDownloads } from "@/components/intake/intakeControls";
 
 const ORG_TYPES = ["City / Municipality", "Business District / BID", "University / Campus", "Nonprofit", "Corporate", "Event / Festival", "Other"];
 const POLE_TYPES = ["City Pole", "Decorative Pole", "Utility Pole", "Campus Pole", "Private Property Pole", "Unsure"];
@@ -138,6 +138,8 @@ export default function PoleBannerIntake({ source }: { source?: string }) {
             </div>
           ))}
         </div>
+
+        <div className="mb-4"><TemplateDownloads title="Pole banner templates & specs" /></div>
 
         <Card className="shadow-md">
           <CardHeader>

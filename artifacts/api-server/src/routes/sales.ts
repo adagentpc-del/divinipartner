@@ -8,14 +8,17 @@ import {
   salesIntakeSubmissionsTable,
   salesOpportunitiesTable,
   salesOpportunityNotesTable,
+  salesTemplatesTable,
   OPPORTUNITY_STAGES,
   OPPORTUNITY_LOST_REASONS,
   SALES_REP_ROLES,
   SALES_REP_STATUSES,
   SALES_ACCOUNT_STATUSES,
+  SALES_TEMPLATE_CATEGORIES,
   INTAKE_FORM_TYPES,
   INTAKE_LINK_SOURCES,
   type SalesRep,
+  type SalesOpportunity,
 } from "@workspace/db";
 import {
   requireSalesUser,
@@ -338,6 +341,32 @@ function isSafeFileUrl(url: string): boolean {
   if (!u) return false;
   if (u.startsWith("/")) return true; // same-origin relative (object storage paths)
   return /^https:\/\//i.test(u);
+}
+
+/**
+ * Stricter than isSafeFileUrl: a client-facing template must be anonymously
+ * downloadable, so it must live in the PUBLIC object bucket (or be an absolute
+ * https URL). Private `/objects/...` paths require a Clerk session and would
+ * 401 for public intake visitors, so they are rejected here.
+ */
+function isPublicFileUrl(url: string): boolean {
+  const u = url.trim();
+  if (!u) return false;
+  // Relative same-origin paths must point at the PUBLIC object route.
+  if (u.startsWith("/")) {
+    return u.startsWith("/api/storage/public-objects/") || u.startsWith("/storage/public-objects/");
+  }
+  // Absolute URLs must be https and must NOT point at the private object route
+  // (which 401s for anonymous visitors), regardless of host. External CDN/https
+  // links are allowed.
+  if (!/^https:\/\//i.test(u)) return false;
+  try {
+    const path = new URL(u).pathname;
+    if (path.startsWith("/api/storage/objects/") || path.startsWith("/storage/objects/")) return false;
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** Pull any uploaded files out of the payload into a flat list for the opp. */
@@ -673,6 +702,290 @@ router.patch("/sales/opportunities/:id/files", requireSalesUser(), async (req: R
     .where(eq(salesOpportunitiesTable.id, id))
     .returning();
   res.json(updated);
+});
+
+// ───────────────────────────────────────────────────────────────────────
+// Templates & Specs library
+// ───────────────────────────────────────────────────────────────────────
+
+const templateBodySchema = z.object({
+  fileName: z.string().trim().min(1, "File name is required").max(400),
+  category: z.enum(SALES_TEMPLATE_CATEGORIES),
+  productType: z.string().trim().max(200).nullable().optional(),
+  description: z.string().trim().max(2000).nullable().optional(),
+  fileUrl: z.string().trim().min(1, "A file is required").max(2000).refine(isSafeFileUrl, "Unsafe file URL"),
+  isActive: z.boolean().optional(),
+  clientFacing: z.boolean().optional(),
+});
+
+const templatePatchSchema = templateBodySchema.partial();
+
+// Library is viewable by any sales user; only Super Admin can manage entries.
+router.get("/sales/templates", requireSalesUser(), async (_req, res) => {
+  const rows = await db.select().from(salesTemplatesTable).orderBy(desc(salesTemplatesTable.createdAt));
+  res.json(rows);
+});
+
+router.post("/sales/templates", requireSuperAdmin(), async (req: Request, res: Response) => {
+  const parsed = templateBodySchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0]?.message || "Invalid template" });
+    return;
+  }
+  const d = parsed.data;
+  if ((d.clientFacing ?? false) && !isPublicFileUrl(d.fileUrl)) {
+    res.status(400).json({ error: "Client-facing templates must use a publicly accessible file. Please re-upload the file." });
+    return;
+  }
+  const user = getSalesUser(res);
+  const uploadedByName = [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || user.email || null;
+  const [created] = await db
+    .insert(salesTemplatesTable)
+    .values({
+      fileName: d.fileName,
+      category: d.category,
+      productType: d.productType ?? null,
+      description: d.description ?? null,
+      fileUrl: d.fileUrl,
+      isActive: d.isActive ?? true,
+      clientFacing: d.clientFacing ?? false,
+      uploadedByRepId: user.repId ?? null,
+      uploadedByName,
+    })
+    .returning();
+  res.status(201).json(created);
+});
+
+router.patch("/sales/templates/:id", requireSuperAdmin(), async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+  const parsed = templatePatchSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0]?.message || "Invalid update" });
+    return;
+  }
+  const d = parsed.data;
+  const update: Record<string, unknown> = {};
+  for (const key of ["fileName", "category", "productType", "description", "fileUrl", "isActive", "clientFacing"] as const) {
+    if (d[key] !== undefined) update[key] = d[key];
+  }
+  if (Object.keys(update).length === 0) {
+    res.status(400).json({ error: "Nothing to update" });
+    return;
+  }
+  const [existing] = await db.select().from(salesTemplatesTable).where(eq(salesTemplatesTable.id, id));
+  if (!existing) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  // Validate against the merged result so toggling clientFacing on (without
+  // re-sending fileUrl) still enforces the public-URL requirement.
+  const effClientFacing = d.clientFacing ?? existing.clientFacing;
+  const effFileUrl = d.fileUrl ?? existing.fileUrl;
+  if (effClientFacing && !isPublicFileUrl(effFileUrl)) {
+    res.status(400).json({ error: "Client-facing templates must use a publicly accessible file. Please re-upload the file." });
+    return;
+  }
+  const [updated] = await db
+    .update(salesTemplatesTable)
+    .set(update)
+    .where(eq(salesTemplatesTable.id, id))
+    .returning();
+  if (!updated) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  res.json(updated);
+});
+
+// Public: client-facing templates surfaced on the intake pages. Safe projection
+// — never expose uploader identity or internal flags.
+router.get("/public/intake/templates", async (_req: Request, res: Response) => {
+  const rows = await db
+    .select()
+    .from(salesTemplatesTable)
+    .where(and(eq(salesTemplatesTable.isActive, true), eq(salesTemplatesTable.clientFacing, true)))
+    .orderBy(desc(salesTemplatesTable.createdAt));
+  res.json(
+    rows
+      .filter((t) => isPublicFileUrl(t.fileUrl))
+      .map((t) => ({
+        id: t.id,
+        fileName: t.fileName,
+        category: t.category,
+        productType: t.productType,
+        description: t.description,
+        fileUrl: t.fileUrl,
+      })),
+  );
+});
+
+// ───────────────────────────────────────────────────────────────────────
+// Dashboards — role-scoped metrics
+// ───────────────────────────────────────────────────────────────────────
+
+const OPEN_PIPELINE_STAGES: readonly string[] = [
+  "new_intake",
+  "discovery",
+  "estimating",
+  "quote_sent",
+  "follow_up",
+  "negotiation",
+  "production",
+  "install_scheduled",
+];
+
+function num(v: string | null): number {
+  if (!v) return 0;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
+router.get("/sales/dashboard", requireSalesUser(), async (_req, res) => {
+  const user = getSalesUser(res);
+  const where = scopedOppWhere(user);
+  const opps = where
+    ? await db.select().from(salesOpportunitiesTable).where(where)
+    : await db.select().from(salesOpportunitiesTable);
+
+  const reps = await db
+    .select({ id: salesRepsTable.id, firstName: salesRepsTable.firstName, lastName: salesRepsTable.lastName })
+    .from(salesRepsTable);
+  const repName = new Map(reps.map((r) => [r.id, `${r.firstName} ${r.lastName}`.trim()]));
+
+  const won = opps.filter((o) => o.stage === "won");
+  const lost = opps.filter((o) => o.stage === "lost");
+  const open = opps.filter((o) => OPEN_PIPELINE_STAGES.includes(o.stage));
+  const today = new Date().toISOString().slice(0, 10);
+
+  const upcomingInstalls = opps
+    .filter((o) => o.installDate && o.installDate >= today && o.stage !== "lost")
+    .sort((a, b) => (a.installDate! < b.installDate! ? -1 : 1))
+    .slice(0, 25)
+    .map((o) => ({ id: o.id, companyName: o.companyName, installDate: o.installDate, stage: o.stage }));
+
+  const quoteDeadlines = opps
+    .filter((o) => o.quoteNeededBy && o.quoteNeededBy >= today && OPEN_PIPELINE_STAGES.includes(o.stage))
+    .sort((a, b) => (a.quoteNeededBy! < b.quoteNeededBy! ? -1 : 1))
+    .slice(0, 25)
+    .map((o) => ({ id: o.id, companyName: o.companyName, quoteNeededBy: o.quoteNeededBy, stage: o.stage }));
+
+  const lostReasons: Record<string, number> = {};
+  for (const o of lost) {
+    const key = o.lostReason || "unspecified";
+    lostReasons[key] = (lostReasons[key] || 0) + 1;
+  }
+
+  // Per-rep breakdown is Super Admin only.
+  let byRep: {
+    repId: number;
+    repName: string;
+    total: number;
+    won: number;
+    lost: number;
+    open: number;
+    revenue: number;
+  }[] | null = null;
+  if (user.role === "super_admin") {
+    const map = new Map<number, { total: number; won: number; lost: number; open: number; revenue: number }>();
+    for (const o of opps) {
+      if (!o.assignedRepId) continue;
+      const cur = map.get(o.assignedRepId) || { total: 0, won: 0, lost: 0, open: 0, revenue: 0 };
+      cur.total += 1;
+      if (o.stage === "won") {
+        cur.won += 1;
+        cur.revenue += num(o.estimatedValue);
+      } else if (o.stage === "lost") cur.lost += 1;
+      else if (OPEN_PIPELINE_STAGES.includes(o.stage)) cur.open += 1;
+      map.set(o.assignedRepId, cur);
+    }
+    byRep = [...map.entries()]
+      .map(([repId, v]) => ({ repId, repName: repName.get(repId) ?? `Rep #${repId}`, ...v }))
+      .sort((a, b) => b.total - a.total);
+  }
+
+  res.json({
+    role: user.role,
+    totals: {
+      total: opps.length,
+      won: won.length,
+      lost: lost.length,
+      open: open.length,
+      unassigned: opps.filter((o) => !o.assignedRepId).length,
+      revenueWon: won.reduce((s, o) => s + num(o.estimatedValue), 0),
+      openPipelineValue: open.reduce((s, o) => s + num(o.estimatedValue), 0),
+    },
+    byRep,
+    lostReasons,
+    upcomingInstalls,
+    quoteDeadlines,
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────
+// CSV export — role-scoped opportunities
+// ───────────────────────────────────────────────────────────────────────
+
+function csvCell(v: unknown): string {
+  const s = v === null || v === undefined ? "" : String(v);
+  // Guard against CSV formula injection in spreadsheet apps.
+  const needsGuard = /^[=+\-@\t\r]/.test(s);
+  const safe = needsGuard ? `'${s}` : s;
+  if (/[",\n\r]/.test(safe)) return `"${safe.replace(/"/g, '""')}"`;
+  return safe;
+}
+
+router.get("/sales/opportunities/export.csv", requireSalesUser(), async (_req, res) => {
+  const user = getSalesUser(res);
+  const where = scopedOppWhere(user);
+  const opps: SalesOpportunity[] = where
+    ? await db.select().from(salesOpportunitiesTable).where(where).orderBy(desc(salesOpportunitiesTable.createdAt))
+    : await db.select().from(salesOpportunitiesTable).orderBy(desc(salesOpportunitiesTable.createdAt));
+
+  const reps = await db
+    .select({ id: salesRepsTable.id, firstName: salesRepsTable.firstName, lastName: salesRepsTable.lastName })
+    .from(salesRepsTable);
+  const repName = new Map(reps.map((r) => [r.id, `${r.firstName} ${r.lastName}`.trim()]));
+
+  const headers = [
+    "ID", "Company", "Contact", "Assigned Rep", "Project Type", "Stage", "Estimated Value",
+    "Quote Needed By", "Event Date", "Install Date", "Removal Date", "Source", "Routing Method",
+    "Lost Reason", "Competitor", "Competitor Price", "A3 Price", "Created",
+  ];
+  const lines = [headers.map(csvCell).join(",")];
+  for (const o of opps) {
+    lines.push(
+      [
+        o.id,
+        o.companyName,
+        o.contactName,
+        o.assignedRepId ? repName.get(o.assignedRepId) ?? `Rep #${o.assignedRepId}` : "Unassigned",
+        o.projectType,
+        o.stage,
+        o.estimatedValue,
+        o.quoteNeededBy,
+        o.eventDate,
+        o.installDate,
+        o.removalDate,
+        o.source,
+        o.routingMethod,
+        o.lostReason,
+        o.competitorName,
+        o.competitorPrice,
+        o.a3Price,
+        o.createdAt instanceof Date ? o.createdAt.toISOString() : o.createdAt,
+      ]
+        .map(csvCell)
+        .join(","),
+    );
+  }
+  const csv = lines.join("\r\n");
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="opportunities-${new Date().toISOString().slice(0, 10)}.csv"`);
+  res.send(csv);
 });
 
 export default router;

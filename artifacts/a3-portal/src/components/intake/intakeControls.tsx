@@ -1,8 +1,66 @@
+import { useEffect, useState } from "react";
 import { Label } from "@/components/ui/label";
-import { Loader2, Upload, X, Image as ImageIcon } from "lucide-react";
+import { Loader2, Upload, X, Image as ImageIcon, FileDown } from "lucide-react";
 import { apiUrl } from "@/lib/api";
 
 export type AssetFile = { name: string; url: string };
+
+type ClientTemplate = {
+  id: number;
+  fileName: string;
+  category: string;
+  productType: string | null;
+  description: string | null;
+  fileUrl: string;
+};
+
+const catLabel = (c: string) => c.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+
+/**
+ * Surfaces the active, client-facing templates from the library on a public
+ * intake page. Renders nothing while loading or when there are none, so it can
+ * be dropped onto any intake form without layout side effects.
+ */
+export function TemplateDownloads({ title = "Helpful templates & specs" }: { title?: string }) {
+  const [templates, setTemplates] = useState<ClientTemplate[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(apiUrl("/api/public/intake/templates"))
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => { if (!cancelled && Array.isArray(data)) setTemplates(data); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  if (templates.length === 0) return null;
+
+  return (
+    <div className="rounded-lg border bg-muted/20 p-4">
+      <div className="flex items-center gap-1.5 text-sm font-semibold mb-3">
+        <FileDown className="h-4 w-4" />{title}
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {templates.map((t) => (
+          <a
+            key={t.id}
+            href={t.fileUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-start gap-2 rounded-md border bg-background px-3 py-2 text-sm hover:border-primary transition"
+          >
+            <FileDown className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
+            <span className="min-w-0">
+              <span className="block font-medium truncate">{t.fileName}</span>
+              <span className="block text-xs text-muted-foreground truncate">
+                {t.productType || catLabel(t.category)}
+              </span>
+            </span>
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export const INTAKE_LINK_SOURCES = ["alyssa", "drew", "retta", "general"] as const;
 
@@ -22,6 +80,27 @@ export async function uploadIntakeFile(file: File): Promise<AssetFile> {
   const putRes = await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
   if (!putRes.ok) throw new Error("Upload failed");
   return { name: file.name, url: objectPath };
+}
+
+/**
+ * Upload a file to the PUBLIC bucket and return a `/api/storage/public-objects/...`
+ * URL that anonymous visitors can download without a session. Use this for
+ * client-facing assets such as intake templates and spec sheets.
+ */
+export async function uploadPublicFile(file: File): Promise<AssetFile> {
+  const res = await fetch(apiUrl("/api/storage/public-uploads/request-url"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+  });
+  if (!res.ok) {
+    const msg = await res.json().catch(() => null);
+    throw new Error(msg?.error || "Failed to prepare upload");
+  }
+  const { uploadURL, publicUrl } = await res.json();
+  const putRes = await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+  if (!putRes.ok) throw new Error("Upload failed");
+  return { name: file.name, url: publicUrl };
 }
 
 export function Field({ label, children }: { label: string; children: React.ReactNode }) {

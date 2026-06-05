@@ -79,22 +79,41 @@ router.post("/storage/public-uploads/request-url", async (req: Request, res: Res
   }
 
   const MAX_UPLOAD_BYTES = 200 * 1024 * 1024;
+  // Public-facing media (videos, posters) plus client-facing documents
+  // (template PDFs, spec sheets, zipped artwork) that anonymous intake
+  // visitors download without a session.
   const ALLOWED_PREFIXES = ["image/", "video/"];
+  const ALLOWED_EXACT = new Set([
+    "application/pdf",
+    "application/zip",
+    "application/x-zip-compressed",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-powerpoint",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  ]);
   const sizeNum = Number(parsed.data.size);
   if (!Number.isFinite(sizeNum) || sizeNum <= 0 || sizeNum > MAX_UPLOAD_BYTES) {
     res.status(413).json({ error: `File too large. Max ${MAX_UPLOAD_BYTES} bytes.` });
     return;
   }
   const ct = String(parsed.data.contentType || "").toLowerCase();
-  if (!ALLOWED_PREFIXES.some((p) => ct.startsWith(p))) {
+  if (!ALLOWED_PREFIXES.some((p) => ct.startsWith(p)) && !ALLOWED_EXACT.has(ct)) {
     res.status(415).json({ error: `Unsupported content type: ${ct}` });
     return;
   }
 
   try {
     const subtype = ct.split("/")[1]?.split(";")[0] || "";
-    const extFromName = String(parsed.data.name || "").split(".").pop() || "";
-    const extension = subtype === "quicktime" ? "mov" : (subtype || extFromName);
+    const extFromName = String(parsed.data.name || "").split(".").pop()?.toLowerCase() || "";
+    // Media subtypes map cleanly to extensions; document subtypes (e.g. the long
+    // OOXML strings) do not, so fall back to the uploaded file name's extension.
+    let extension = subtype === "quicktime" ? "mov" : subtype;
+    if (!/^[a-z0-9]{1,8}$/.test(extension) && /^[a-z0-9]{1,8}$/.test(extFromName)) {
+      extension = extFromName;
+    }
     const { uploadURL, publicUrl } = await objectStorageService.getPublicObjectUploadURL(extension);
     res.json({ uploadURL, publicUrl, metadata: { ...parsed.data } });
   } catch (error) {
