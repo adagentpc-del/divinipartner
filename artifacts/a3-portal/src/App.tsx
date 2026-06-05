@@ -74,6 +74,7 @@ import WorkflowRules from "@/pages/admin/WorkflowRules";
 import SalesTeam from "@/pages/admin/SalesTeam";
 import SalesAccounts from "@/pages/admin/SalesAccounts";
 import SalesIntakeInbox from "@/pages/admin/SalesIntakeInbox";
+import SalesOpportunities from "@/pages/admin/SalesOpportunities";
 import SalesIntake from "@/pages/public/SalesIntake";
 import PoleBannerIntake from "@/pages/public/PoleBannerIntake";
 
@@ -371,6 +372,9 @@ function ClerkProviderWithRoutes() {
             </Route>
             <Route path="/admin/sales-intake">
               {() => <AdminRoute component={SalesIntakeInbox} />}
+            </Route>
+            <Route path="/admin/sales-opportunities">
+              {() => <AdminRoute component={SalesOpportunities} />}
             </Route>
 
             <Route path="/onboard">

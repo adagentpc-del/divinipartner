@@ -14,6 +14,7 @@ import {
   Boxes,
   UserCog,
   Inbox,
+  Target,
   Sparkles,
   Calculator,
   Banknote,
@@ -88,9 +89,10 @@ const NAV_GROUPS: NavGroup[] = [
     { name: "Feedback",       href: "/admin/feedback",        icon: MessageSquare },
   ] },
   { name: "Sales", icon: Briefcase, items: [
-    { name: "Intake Inbox",   href: "/admin/sales-intake",   icon: Inbox },
-    { name: "Accounts",       href: "/admin/sales-accounts", icon: Users },
-    { name: "Sales Team",     href: "/admin/sales-team",     icon: UserCog },
+    { name: "Intake Inbox",   href: "/admin/sales-intake",        icon: Inbox },
+    { name: "Opportunities",  href: "/admin/sales-opportunities", icon: Target },
+    { name: "Accounts",       href: "/admin/sales-accounts",      icon: Users },
+    { name: "Sales Team",     href: "/admin/sales-team",          icon: UserCog },
   ] },
   { name: "Commerce", icon: Banknote, items: [
     { name: "Commercial",     href: "/admin/commercial",     icon: Crown },

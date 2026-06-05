@@ -1,2 +1,3 @@
 - [Sales module auth & roles](sales-module-auth.md) — Sales Intake module reuses Clerk (NOT Supabase); email→sales_reps row for role + repId scoping; ADMIN_ALLOWED_EMAILS bootstraps super_admin.
 - [Sales intake routing & frontend](sales-intake-routing.md) — public /intake routes must precede /partner/:slug & /:slug catch-alls; no rep field (linkSource from URL); account→link→queue precedence.
+- [Sales intake file-URL safety](sales-intake-url-safety.md) — public intake file links are attacker-controlled; scheme-validate (https/same-origin only) before rendering as admin anchors.
