@@ -71,6 +71,12 @@ import PartnerSurveyIntegration from "@/pages/admin/PartnerSurveyIntegration";
 import { DemoModeProvider } from "@/contexts/DemoModeContext";
 import WorkflowRules from "@/pages/admin/WorkflowRules";
 
+import SalesTeam from "@/pages/admin/SalesTeam";
+import SalesAccounts from "@/pages/admin/SalesAccounts";
+import SalesIntakeInbox from "@/pages/admin/SalesIntakeInbox";
+import SalesIntake from "@/pages/public/SalesIntake";
+import PoleBannerIntake from "@/pages/public/PoleBannerIntake";
+
 import PublicLayout from "@/components/layout/PublicLayout";
 import PartnerPortal from "@/pages/public/PartnerPortal";
 import PartnerHomePage from "@/pages/public/PartnerHomePage";
@@ -357,6 +363,15 @@ function ClerkProviderWithRoutes() {
             <Route path="/admin/onboarding">
               {() => <AdminRoute component={OnboardingSubmissions} />}
             </Route>
+            <Route path="/admin/sales-team">
+              {() => <AdminRoute component={SalesTeam} />}
+            </Route>
+            <Route path="/admin/sales-accounts">
+              {() => <AdminRoute component={SalesAccounts} />}
+            </Route>
+            <Route path="/admin/sales-intake">
+              {() => <AdminRoute component={SalesIntakeInbox} />}
+            </Route>
 
             <Route path="/onboard">
               {() => (
@@ -368,6 +383,16 @@ function ClerkProviderWithRoutes() {
 
             <Route path="/documents">
               {() => <DocumentAccess />}
+            </Route>
+
+            <Route path="/intake/pole-banner/:source?">
+              {(params) => <PoleBannerIntake source={params.source} />}
+            </Route>
+            <Route path="/intake/:source">
+              {(params) => <SalesIntake source={params.source} />}
+            </Route>
+            <Route path="/intake">
+              {() => <SalesIntake source="general" />}
             </Route>
 
             <Route path="/partner/:slug">

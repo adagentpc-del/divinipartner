@@ -87,9 +87,14 @@ const NAV_GROUPS: NavGroup[] = [
     { name: "Vendor View",    href: "/admin/vendor",          icon: Truck },
     { name: "Feedback",       href: "/admin/feedback",        icon: MessageSquare },
   ] },
+  { name: "Sales", icon: Briefcase, items: [
+    { name: "Intake Inbox",   href: "/admin/sales-intake",   icon: Inbox },
+    { name: "Accounts",       href: "/admin/sales-accounts", icon: Users },
+    { name: "Sales Team",     href: "/admin/sales-team",     icon: UserCog },
+  ] },
   { name: "Commerce", icon: Banknote, items: [
     { name: "Commercial",     href: "/admin/commercial",     icon: Crown },
-    { name: "Sales",          href: "/admin/sales",          icon: Briefcase },
+    { name: "Sales Hub",      href: "/admin/sales",          icon: Briefcase },
     { name: "Billing",        href: "/admin/billing",        icon: Banknote },
     { name: "Reconciliation", href: "/admin/reconciliation", icon: Calculator },
   ] },

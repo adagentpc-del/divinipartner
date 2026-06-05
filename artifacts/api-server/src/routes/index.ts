@@ -75,6 +75,7 @@ router.use(/^\/public\/partners\/[^/]+\/orders$/, orderSubmitLimiter);
 router.use(/^\/public\/partners\/[^/]+\/(requests|orders)$/, publicWriteLimiter);
 router.use("/onboarding/submit", publicWriteLimiter);
 router.use("/public/partnership-requests", publicWriteLimiter);
+router.use("/public/intake/submit", publicWriteLimiter);
 
 // Public READ traffic — partner portal pages, pricing, ordering, addons, etc.
 // Loose 120/min/ip lets normal portal browsing through but stops scrapers.
