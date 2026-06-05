@@ -1,0 +1,518 @@
+Build an A3 Visual Sales Intake + Opportunity Routing system inside the existing Partner Portal.
+
+This system needs to support:
+1. Super Admin access
+2. Sales Rep access
+3. Account ownership routing
+4. General sales intake
+5. Pole banner intake
+6. Template/spec uploads
+7. Email routing
+8. Opportunity tracking
+
+Brand: A3 Visual
+Users: Alyssa, Drew, Retta
+Do NOT include David as a sales rep.
+
+---
+
+# USER ROLES
+
+Create role-based access:
+
+## Super Admin
+Alyssa is Super Admin.
+
+Super Admin can:
+- Register new sales reps
+- Edit sales rep profiles
+- Deactivate sales reps
+- View all accounts
+- View all opportunities
+- Assign/reassign accounts
+- Assign/reassign opportunities
+- Upload and manage templates/spec files
+- View all submitted intake forms
+- View dashboards by rep
+- View won/lost reports
+- Export data as CSV
+
+## Sales Rep
+Sales reps:
+- Alyssa
+- Drew
+- Retta
+
+Sales reps can:
+- Log in
+- View only their assigned accounts
+- View their assigned opportunities
+- Receive routed intake submissions
+- Update opportunity status
+- Add notes
+- Upload files
+- Mark opportunity as won/lost
+- Add lost reason
+
+---
+
+# SALES REP REGISTRATION
+
+Create a Super Admin page called “Sales Team”.
+
+Fields:
+- First Name
+- Last Name
+- Email
+- Phone
+- Role: Sales Rep / Super Admin
+- Status: Active / Inactive
+- Notification Email
+- Assigned Accounts
+- Notes
+
+When a sales rep is created, allow login access.
+
+---
+
+# ACCOUNT OWNERSHIP DATABASE
+
+Create an “Accounts” section.
+
+Each account should include:
+- Company Name
+- Parent Company
+- Contact Name
+- Contact Email
+- Contact Phone
+- Website
+- Industry
+- Account Owner: Alyssa / Drew / Retta
+- Account Status: Active / Prospect / Past Client / Lost / Dormant
+- Notes
+- Uploads
+- Last Contact Date
+- Next Follow-Up Date
+
+Important:
+When a client submits an intake form, the system should check if the company already exists in the Accounts database.
+
+If company name matches an existing account:
+- Automatically route the submission to the assigned account owner
+- Do not ask the client to choose the sales rep
+- Show internal note: “Matched existing account owner”
+
+If company does not exist:
+- Use the intake form link source to assign ownership
+- Example:
+  - /intake/alyssa assigns Alyssa
+  - /intake/drew assigns Drew
+  - /intake/retta assigns Retta
+
+If no rep source exists:
+- Route to Super Admin review queue
+
+---
+
+# INTAKE LINKS
+
+Create separate public intake links:
+
+- /intake/alyssa
+- /intake/drew
+- /intake/retta
+- /intake/general
+
+The client should NOT see the sales rep field.
+
+Sales rep assignment should happen automatically through:
+1. Existing account match first
+2. Intake link source second
+3. Super Admin review queue third
+
+---
+
+# GENERAL SALES INTAKE FORM
+
+Create a public form called “Project Intake”.
+
+Fields:
+
+## Client Information
+- Company Name
+- Contact Name
+- Title
+- Email
+- Phone
+- Company Website
+- Billing Address
+
+## Project Information
+- Project Name
+- Event Name
+- Event Date
+- Event Start Time
+- Event End Time
+- Venue Name
+- Venue Address
+- Venue Contact Name
+- Venue Contact Email
+- Venue Contact Phone
+
+## Timeline
+- Quote Needed By
+- Artwork Due Date
+- Production Due Date
+- Pickup Date
+- Delivery Date
+- Install Date
+- Install Time
+- Removal Date
+- Removal Time
+- Hard Deadline
+
+## Products Needed
+Multi-select:
+- Vinyl Banner
+- Fabric Banner
+- Mesh Banner
+- Pole Banner
+- Fence Banner
+- Wall Graphic
+- Floor Graphic
+- Window Graphic
+- Retractable Banner
+- Table Throw
+- Tent
+- Flags
+- Step & Repeat
+- Foamcore
+- PVC
+- Acrylic
+- Aluminum Signage
+- Custom Fabrication
+- Branded Structure
+- Backdrop Wall
+- Scenic Element
+- LED / Screen Partner
+- Projection Mapping
+- Other
+
+## Production Specs
+- Quantity
+- Dimensions
+- Material
+- Single-Sided / Double-Sided
+- Indoor / Outdoor
+- Finishing:
+  - Grommets
+  - Pole Pocket
+  - Hemmed
+  - Sewn
+  - Velcro
+  - Keder
+  - Wind Slits
+  - Other
+
+## Artwork
+- Artwork Ready? Yes / No
+- Design Needed? Yes / No
+- Upload Artwork
+- Upload Brand Guidelines
+- Upload Reference Images
+- Notes
+
+## Install
+- Install Required? Yes / No
+If yes:
+- Install Location Details
+- Install Height
+- Lift Required? Yes / No / Unsure
+- Rigging Required? Yes / No / Unsure
+- Union Venue? Yes / No / Unsure
+- Overnight Install? Yes / No / Unsure
+- Site Restrictions
+- Loading Dock Available? Yes / No / Unsure
+- Parking Instructions
+- Security / COI Requirements
+
+## Removal
+- Removal Required? Yes / No
+If yes:
+- Removal Date
+- Removal Time
+- Remove and Dispose
+- Remove and Return
+- Remove and Store
+
+## Budget
+- Budget Range:
+  - Under $5,000
+  - $5,000-$10,000
+  - $10,000-$25,000
+  - $25,000-$50,000
+  - $50,000-$100,000
+  - $100,000+
+- Budget Approved? Yes / No / Unsure
+- Bid Deadline
+- Competing Quotes? Yes / No / Unsure
+
+---
+
+# POLE BANNER INTAKE FORM
+
+Create a separate page called “Pole Banner Program Intake”.
+
+Fields:
+
+## Client Info
+- Company Name
+- Contact Name
+- Email
+- Phone
+- Organization Type
+
+## Campaign Info
+- Campaign Name
+- Campaign Start Date
+- Campaign End Date
+- Installation Deadline
+- Removal Deadline
+- City / Jurisdiction
+- Program Purpose
+
+## Pole Locations
+- Number of Poles Needed
+- Locations Known? Yes / No / Unsure
+- Upload Pole List
+- Upload Map
+- Upload Photos
+- Desired Streets / Areas
+- Existing Hardware? Yes / No / Unsure
+- Pole Type:
+  - City Pole
+  - Decorative Pole
+  - Utility Pole
+  - Campus Pole
+  - Private Property Pole
+  - Unsure
+
+## Banner Specs
+- Banner Size
+- Quantity
+- Single Banner / Double Banner
+- Single-Sided / Double-Sided
+- Material
+- Hardware Needed? Yes / No / Unsure
+- Artwork Ready? Yes / No
+- Upload Artwork
+- Upload Brand Guidelines
+
+## Permits
+- Permit Required? Yes / No / Unsure
+- Need A3 To Handle Permit? Yes / No
+- Existing Approval? Yes / No
+- Upload Permit Docs
+
+## Install / Removal
+- Install Required? Yes / No
+- Lift Required? Yes / No / Unsure
+- Traffic Control Required? Yes / No / Unsure
+- Night Install? Yes / No / Unsure
+- Removal Required? Yes / No
+- Store Banners After Removal? Yes / No
+- Dispose After Removal? Yes / No
+- Reinstall Later? Yes / No
+
+---
+
+# TEMPLATE / SPECS LIBRARY
+
+Create a Super Admin section called “Templates & Specs”.
+
+Allow uploads for:
+- Pole banner templates
+- Pole banner specs
+- Material specs
+- Print templates
+- Install instructions
+- Permit documents
+- COI templates
+- Artwork guidelines
+- Production standards
+
+Each file should have:
+- File Name
+- Category
+- Product Type
+- Description
+- Upload Date
+- Uploaded By
+- Active / Archived
+
+On relevant intake pages, show downloadable client-facing templates when marked Active.
+
+---
+
+# OPPORTUNITY CREATION
+
+Every intake submission should automatically create an Opportunity.
+
+Opportunity fields:
+- Opportunity ID
+- Company Name
+- Contact Name
+- Assigned Sales Rep
+- Matched Account Owner
+- Project Type
+- Estimated Value
+- Stage:
+  - New Intake
+  - Discovery
+  - Estimating
+  - Quote Sent
+  - Follow-Up
+  - Negotiation
+  - Won
+  - Lost
+  - Production
+  - Install Scheduled
+  - Completed
+- Quote Needed By
+- Event Date
+- Install Date
+- Removal Date
+- Files
+- Notes
+- Created Date
+- Last Updated
+
+---
+
+# EMAIL ROUTING
+
+When form is submitted:
+
+If assigned to Alyssa:
+- Send email notification to Alyssa
+
+If assigned to Drew:
+- Send email notification to Drew
+
+If assigned to Retta:
+- Send email notification to Retta
+
+If no owner found:
+- Send to Super Admin review queue
+
+Email should include:
+- Company Name
+- Contact Name
+- Project Name
+- Event Date
+- Quote Needed By
+- Product Type
+- Budget Range
+- Install Required
+- Link to opportunity record
+
+---
+
+# LOST OPPORTUNITY TRACKING
+
+If opportunity is marked Lost, require:
+
+- Lost Reason:
+  - Price
+  - Install Cost
+  - Lead Time
+  - Existing Vendor
+  - Competitor
+  - Budget
+  - No Decision
+  - Relationship
+  - Scope Changed
+  - Other
+- Competitor Name
+- Competitor Price
+- A3 Price
+- Notes
+
+Add lost opportunity reporting to dashboard.
+
+---
+
+# DASHBOARDS
+
+Create dashboards for:
+
+## Super Admin
+- Total Opportunities
+- Opportunities by Rep
+- Revenue by Rep
+- Won Deals
+- Lost Deals
+- Open Pipeline
+- Upcoming Install Dates
+- Quote Deadlines
+- Lost Reasons
+- Account Ownership List
+
+## Sales Rep
+- My Accounts
+- My Opportunities
+- My Quote Deadlines
+- My Install Dates
+- My Follow-Ups
+- My Won Deals
+- My Lost Deals
+
+---
+
+# DESIGN REQUIREMENTS
+
+Use A3 Visual branding.
+
+Interface should be clean, professional, and premium.
+
+Use:
+- Card-based dashboards
+- Clear status badges
+- Search and filters
+- Tables with sorting
+- Upload areas
+- Mobile responsive layout
+
+Avoid a basic form-builder look.
+
+This should feel like a professional internal sales operations portal.
+
+---
+
+# IMPORTANT BUILD RULES
+
+Do not remove existing Partner Portal features.
+
+Add this as a new module inside the portal.
+
+Use Supabase auth and database tables.
+
+Create proper role-based access control.
+
+Protect sales rep data so reps only see their own records.
+
+Super Admin can see everything.
+
+Make sure form submissions create both:
+1. Intake submission record
+2. Opportunity record
+
+Make account matching case-insensitive and tolerant of punctuation differences.
+
+Example:
+“Home Depot”
+“The Home Depot”
+“Home Depot Inc.”
+should be recognized as likely matches or flagged for review.
+
+Start by building the database schema, auth roles, pages, routing logic, and forms.
