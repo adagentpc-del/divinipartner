@@ -1,4 +1,1 @@
-- [Public partner portal theming](portal-theming.md) — customer order flow must be fully ResolvedBranding-driven via portalSurfaces helpers; no neutral shadcn tokens; routingEmail is stripped from public projection.
-- [A3 brand lockup assets](a3-brand-lockup-assets.md) — universal logo fallback files once shipped 0-byte; verify they serve real bytes.
-- [Add-on products scoping](add-on-products-scoping.md) — live add-ons step shows ONLY curated partner add-ons; never fall back to the full catalog.
-- [Object storage public vs private serving](storage-public-vs-private.md) — public-portal media must use the PUBLIC bucket endpoint; all /storage/* paths bypass the auth boundary so guard write endpoints inline.
+- [Sales module auth & roles](sales-module-auth.md) — Sales Intake module reuses Clerk (NOT Supabase); email→sales_reps row for role + repId scoping; ADMIN_ALLOWED_EMAILS bootstraps super_admin.

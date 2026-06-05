@@ -55,6 +55,7 @@ import publicHomepageRouter from "./publicHomepage";
 import securityReadinessRouter from "./securityReadiness";
 import siteSettingsRouter from "./siteSettings";
 import addonsRouter from "./addons";
+import salesRouter from "./sales";
 import {
   uploadLimiter,
   orderSubmitLimiter,
@@ -183,5 +184,6 @@ router.use(salesEnablementRouter);
 router.use(stabilizationRouter);
 router.use(deploymentRouter);
 router.use(unitsRouter);
+router.use(salesRouter);
 
 export default router;
