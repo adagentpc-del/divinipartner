@@ -1,0 +1,45 @@
+# Render Blueprint for DiviniPartner (A3 Partner Commerce Portal)
+# Single Node web service: builds the Vite SPA (a3-portal) + the Express API
+# (api-server) and serves both from one process. Database is external (Neon).
+#
+# NOTE on NODE_ENV: it is intentionally set only in startCommand (runtime), not
+# as a service env var, so `pnpm install` during build still installs
+# devDependencies (vite, esbuild, typescript). The SPA build needs BASE_PATH +
+# PORT set or vite.config throws.
+services:
+  - type: web
+    name: divinipartner
+    runtime: node
+    plan: free
+    region: oregon
+    branch: main
+    autoDeploy: true
+    buildCommand: |
+      corepack enable
+      pnpm install --frozen-lockfile --prod=false
+      BASE_PATH=/ PORT=8080 pnpm --filter @workspace/a3-portal run build
+      pnpm --filter @workspace/api-server run build
+      rm -rf artifacts/api-server/dist/public
+      cp -r artifacts/a3-portal/dist/public artifacts/api-server/dist/public
+    startCommand: NODE_ENV=production node artifacts/api-server/dist/index.mjs
+    healthCheckPath: /api/healthz
+    envVars:
+      - key: NODE_VERSION
+        value: "22.22.0"
+      # ---- Set these in the Render dashboard (sync:false = not in git) ----
+      - key: DATABASE_URL            # Neon pooled connection string
+        sync: false
+      - key: VITE_CLERK_PUBLISHABLE_KEY   # build-time (Vite inlines it)
+        sync: false
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        sync: false
+      - key: ADMIN_ALLOWED_EMAILS
+        sync: false
+      - key: PUBLIC_APP_URL          # set to the Render URL once known
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false

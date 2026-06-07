@@ -65,9 +65,13 @@ const SPECS: SecretSpec[] = [
   { key: "INTERNAL_ORDER_EMAILS", requirement: "recommended", purpose: "Comma-separated ops mailbox(es) cc'd on every order confirmation." },
 
   // ---- Object storage -----------------------------------------------------
-  { key: "DEFAULT_OBJECT_STORAGE_BUCKET_ID", requirement: "required", purpose: "Replit object-storage bucket ID for uploads." },
-  { key: "PRIVATE_OBJECT_DIR", requirement: "required", purpose: "Bucket path prefix used for private (ACL-checked) objects." },
-  { key: "PUBLIC_OBJECT_SEARCH_PATHS", requirement: "required", purpose: "Bucket path(s) served unauthenticated via /api/storage/public-objects." },
+  // Downgraded required -> recommended for the off-Replit (Render) deploy.
+  // These point at Replit Object Storage, which is unavailable outside Replit.
+  // The app boots without them; file-upload features are degraded until storage
+  // is repointed to GCS/Supabase Storage. See objectStorage.ts.
+  { key: "DEFAULT_OBJECT_STORAGE_BUCKET_ID", requirement: "recommended", purpose: "Object-storage bucket ID for uploads.", notes: "Replit-specific; off-Replit deploys must repoint storage. Uploads degraded while missing." },
+  { key: "PRIVATE_OBJECT_DIR", requirement: "recommended", purpose: "Bucket path prefix used for private (ACL-checked) objects.", notes: "Replit-specific; see above." },
+  { key: "PUBLIC_OBJECT_SEARCH_PATHS", requirement: "recommended", purpose: "Bucket path(s) served unauthenticated via /api/storage/public-objects.", notes: "Replit-specific; see above." },
 
   // ---- Payments (not currently integrated) -------------------------------
   { key: "PAYPAL_CLIENT_ID", requirement: "unused", purpose: "PayPal REST client id.", notes: "PayPal is not integrated in this build. Set both this and PAYPAL_CLIENT_SECRET only when adding the integration." },

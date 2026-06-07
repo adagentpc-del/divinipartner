@@ -9,6 +9,8 @@ import { safeErrorHandler } from "./middlewares/errorHandler";
 import { getAllowedOrigins, assertRequiredSecrets } from "./lib/securityConfig";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 // Boot-time: hard-fail in production if any required secret is missing.
 const secretCheck = assertRequiredSecrets();
@@ -124,6 +126,30 @@ app.use(
 );
 
 app.use("/api", router);
+
+// ---------------------------------------------------------------------------
+// Serve the built SPA (a3-portal) from this same Node service.
+// On Replit the platform router served the frontend; off-Replit the API and
+// the static client run as one service. The build step copies the Vite output
+// (artifacts/a3-portal/dist/public) into this server's dist as `public/`.
+// Override the location with CLIENT_DIST_DIR if needed.
+// ---------------------------------------------------------------------------
+const serverDir = path.dirname(fileURLToPath(import.meta.url));
+const clientDistDir = process.env.CLIENT_DIST_DIR
+  ? path.resolve(process.env.CLIENT_DIST_DIR)
+  : path.join(serverDir, "public");
+
+// Static assets (hashed JS/CSS/images) with long-lived caching.
+app.use(express.static(clientDistDir, { index: false }));
+
+// SPA history fallback: any non-API GET that didn't match a static file
+// returns index.html so client-side routing (wouter) works on deep links.
+app.use((req, res, next) => {
+  if (req.method !== "GET" || req.path.startsWith("/api/")) return next();
+  res.sendFile(path.join(clientDistDir, "index.html"), (err) => {
+    if (err) next();
+  });
+});
 
 // Final error handler — must be the LAST app.use(). Sanitizes leaks.
 app.use(safeErrorHandler());
