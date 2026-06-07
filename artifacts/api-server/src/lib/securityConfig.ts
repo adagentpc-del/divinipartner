@@ -58,8 +58,11 @@ const SPECS: SecretSpec[] = [
   { key: "CANONICAL_DOMAIN", requirement: "optional", purpose: "Legacy alias for PUBLIC_APP_URL used by some templates.", notes: "Today PUBLIC_APP_URL is the source of truth; CANONICAL_DOMAIN is read only as a fallback." },
 
   // ---- Email --------------------------------------------------------------
-  { key: "RESEND_API_KEY", requirement: "required", purpose: "Resend API key for outbound email (order confirmations, invoices, ops forwards)." },
-  { key: "RESEND_FROM_EMAIL", requirement: "required", purpose: "Verified Resend sender (e.g. order@partnershipportal.co)." },
+  // Downgraded required -> recommended for the initial off-Replit deploy so the
+  // app boots before email is configured. Add these in the host env to enable
+  // outbound email (order confirmations, invoices, ops forwards).
+  { key: "RESEND_API_KEY", requirement: "recommended", purpose: "Resend API key for outbound email (order confirmations, invoices, ops forwards).", notes: "Email is degraded until this is set in the host env." },
+  { key: "RESEND_FROM_EMAIL", requirement: "recommended", purpose: "Verified Resend sender (e.g. order@partnershipportal.co).", notes: "Required alongside RESEND_API_KEY to send email." },
   { key: "EMAIL_FROM", requirement: "optional", purpose: "Alias for RESEND_FROM_EMAIL.", notes: "If both are set, RESEND_FROM_EMAIL wins; EMAIL_FROM is a compatibility alias." },
   { key: "EMAIL_REPLY_TO", requirement: "recommended", purpose: "Default Reply-To header on transactional mail. Falls back to RESEND_FROM_EMAIL." },
   { key: "INTERNAL_ORDER_EMAILS", requirement: "recommended", purpose: "Comma-separated ops mailbox(es) cc'd on every order confirmation." },
