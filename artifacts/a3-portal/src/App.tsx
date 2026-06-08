@@ -83,6 +83,7 @@ import PoleBannerIntake from "@/pages/public/PoleBannerIntake";
 import PublicLayout from "@/components/layout/PublicLayout";
 import PartnerPortal from "@/pages/public/PartnerPortal";
 import PartnerHomePage from "@/pages/public/PartnerHomePage";
+import DiviniPartnerHome from "@/pages/public/DiviniPartnerHome";
 import { PartnerPortalErrorBoundary } from "@/components/PartnerPortalErrorBoundary";
 import PartnerOnboarding from "@/pages/public/PartnerOnboarding";
 import DocumentAccess from "@/pages/public/DocumentAccess";
@@ -169,7 +170,8 @@ function ClerkProviderWithRoutes() {
         <DemoModeProvider>
         <TooltipProvider>
           <Switch>
-            <Route path="/" component={HomeRedirect} />
+            <Route path="/" component={DiviniPartnerHome} />
+            <Route path="/a3partnerportal" component={HomeRedirect} />
             <Route path="/login/*?" component={SignInPage} />
             <Route path="/invoice/:token" component={PublicInvoice} />
             <Route path="/admin/billing">
