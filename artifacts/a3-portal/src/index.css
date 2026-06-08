@@ -288,3 +288,30 @@
   .reveal-3 { animation-delay: 220ms; }
   .reveal-4 { animation-delay: 300ms; }
 }
+
+/* === Living "aurora" hero — slow drifting champagne/green light blooms === */
+@keyframes aura-a {
+  0%, 100% { transform: translate3d(-8%, -6%, 0) scale(1); }
+  50%      { transform: translate3d(8%, 6%, 0) scale(1.18); }
+}
+@keyframes aura-b {
+  0%, 100% { transform: translate3d(6%, 8%, 0) scale(1.1); }
+  50%      { transform: translate3d(-6%, -8%, 0) scale(0.92); }
+}
+@keyframes aura-c {
+  0%, 100% { transform: translate3d(0, 4%, 0) scale(1.05); opacity: 0.5; }
+  50%      { transform: translate3d(4%, -4%, 0) scale(1.2); opacity: 0.8; }
+}
+.aura {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(64px);
+  pointer-events: none;
+  will-change: transform;
+}
+.aura-a { animation: aura-a 17s ease-in-out infinite; }
+.aura-b { animation: aura-b 21s ease-in-out infinite; }
+.aura-c { animation: aura-c 14s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .aura-a, .aura-b, .aura-c { animation: none !important; }
+}

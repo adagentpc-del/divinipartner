@@ -26,6 +26,11 @@ export const logos = {
   whiteOnGreen: "/brand/divini-group-white-on-green.png",
   blackOnCream: "/brand/divini-group-black-on-cream.png",
   whiteOnBlack: "/brand/divini-group-white-on-black.png",
+  /** High-res transparent lockups (DG monogram + DIVINI GROUP wordmark). */
+  lockupGreen: "/brand/divini-lockup-green.png",          // on light / cream
+  lockupChampagne: "/brand/divini-lockup-champagne.png",  // on green / dark (reads cream-gold)
+  /** Tight transparent monogram (DG only) for compact marks. */
+  monogramGreen: "/brand/divini-monogram-green.png",
 } as const;
 
 export type BrandColor = keyof typeof brand;
