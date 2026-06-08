@@ -7,6 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, CheckCircle2, Building2, Megaphone, MapPin, FileBadge, Wrench, Sparkles, ChevronRight, ChevronLeft } from "lucide-react";
 import { apiUrl } from "@/lib/api";
 import { type AssetFile, uploadIntakeFile, normalizeSource, Field, Recap, PillGroup, UploadBucket, TemplateDownloads } from "@/components/intake/intakeControls";
+import { logos } from "@/lib/brand";
+import { Reveal } from "@/components/public/motion";
+
+const GREEN = "#1E5340";
 
 const ORG_TYPES = ["City / Municipality", "Business District / BID", "University / Campus", "Nonprofit", "Corporate", "Event / Festival", "Other"];
 const POLE_TYPES = ["City Pole", "Decorative Pole", "Utility Pole", "Campus Pole", "Private Property Pole", "Unsure"];
@@ -103,14 +107,14 @@ export default function PoleBannerIntake({ source }: { source?: string }) {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50 flex items-center justify-center p-6">
-        <Card className="max-w-lg w-full shadow-xl">
+      <div className="flex min-h-screen items-center justify-center bg-divini-cream p-6">
+        <Card className="surface-luxe w-full max-w-lg border-divini-green/15">
           <CardContent className="py-12 text-center">
-            <div className="h-16 w-16 mx-auto rounded-full bg-emerald-100 flex items-center justify-center mb-4">
-              <CheckCircle2 className="h-8 w-8 text-emerald-600" />
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-divini-green/10">
+              <CheckCircle2 className="h-8 w-8 text-divini-green" />
             </div>
-            <h1 className="text-2xl font-bold mb-2">Thank you!</h1>
-            <p className="text-muted-foreground mb-6">Your pole banner program details have been received. The A3 Visual team will review and reach out shortly.</p>
+            <h1 className="font-display mb-2 text-3xl text-divini-green">Thank you</h1>
+            <p className="mb-6 text-divini-muted">Your pole banner program details have been received. The A3 Visual team will review and reach out shortly.</p>
             {form.contactEmail && <Badge variant="secondary" className="text-xs">Confirmation will go to {form.contactEmail}</Badge>}
           </CardContent>
         </Card>
@@ -119,32 +123,36 @@ export default function PoleBannerIntake({ source }: { source?: string }) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
-      <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
-        <div className="text-center mb-8">
-          <Badge className="mb-3" variant="secondary"><Sparkles className="h-3 w-3 mr-1" />A3 Visual</Badge>
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Pole Banner Program Intake</h1>
-          <p className="text-muted-foreground mt-2">Tell us about your pole banner campaign and we'll handle the rest.</p>
+    <div className="relative min-h-screen overflow-hidden bg-divini-cream text-divini-ink">
+      <div className="aura aura-a" style={{ width: 440, height: 440, top: -180, left: -140, background: "radial-gradient(circle, hsl(var(--divini-green) / 0.10), transparent 70%)" }} />
+      <div className="aura aura-c" style={{ width: 320, height: 320, top: -90, right: -70, background: "radial-gradient(circle, rgba(195,163,104,0.14), transparent 70%)" }} />
+      <div className="relative mx-auto max-w-3xl px-4 py-10 md:py-14">
+        <div className="mb-8 text-center">
+          <img src={logos.monogramGreen} alt="Divini Group" className="mx-auto h-12 w-12 object-contain" />
+          <p className="eyebrow mt-5">A3 Visual</p>
+          <h1 className="font-display mt-2 text-4xl tracking-tight text-divini-ink md:text-5xl">Pole Banner Program Intake</h1>
+          <p className="mt-3 text-divini-muted">Tell us about your pole banner campaign and we'll handle the rest.</p>
         </div>
 
         <div className="flex items-center justify-center gap-1 mb-6 flex-wrap">
           {STEPS.map((s, i) => (
             <div key={s.label} className="flex items-center">
-              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${i === step ? "bg-primary text-primary-foreground" : i < step ? "bg-emerald-100 text-emerald-700" : "bg-muted text-muted-foreground"}`}>
+              <div className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${i === step ? "bg-divini-green text-divini-green-foreground" : i < step ? "bg-divini-green/12 text-divini-green" : "bg-divini-sand/70 text-divini-muted"}`}>
                 <s.icon className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">{s.label}</span>
               </div>
-              {i < STEPS.length - 1 && <ChevronRight className="h-3.5 w-3.5 text-muted-foreground mx-0.5" />}
+              {i < STEPS.length - 1 && <ChevronRight className="mx-0.5 h-3.5 w-3.5 text-divini-champagne" />}
             </div>
           ))}
         </div>
 
         <div className="mb-4"><TemplateDownloads title="Pole banner templates & specs" /></div>
 
-        <Card className="shadow-md">
+        <Reveal>
+        <Card className="surface-luxe border-divini-green/15">
           <CardHeader>
-            <CardTitle className="text-xl">{STEPS[step].label}</CardTitle>
-            <CardDescription>Step {step + 1} of {STEPS.length}</CardDescription>
+            <CardTitle className="font-display text-2xl text-divini-green">{STEPS[step].label}</CardTitle>
+            <CardDescription className="text-divini-muted">Step {step + 1} of {STEPS.length}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
             {step === 0 && (
@@ -257,9 +265,9 @@ export default function PoleBannerIntake({ source }: { source?: string }) {
             <div className="flex items-center justify-between pt-6 mt-2 border-t">
               <Button variant="ghost" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0} className="gap-1"><ChevronLeft className="h-4 w-4" />Back</Button>
               {step < STEPS.length - 1 ? (
-                <Button onClick={() => setStep((s) => s + 1)} disabled={!canAdvance()} className="gap-1">Next<ChevronRight className="h-4 w-4" /></Button>
+                <Button onClick={() => setStep((s) => s + 1)} disabled={!canAdvance()} className="gap-1 text-white" style={{ backgroundColor: GREEN }}>Next<ChevronRight className="h-4 w-4" /></Button>
               ) : (
-                <Button onClick={handleSubmit} disabled={submitting} className="gap-2">
+                <Button onClick={handleSubmit} disabled={submitting} className="gap-2 text-white" style={{ backgroundColor: GREEN }}>
                   {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                   Submit
                 </Button>
@@ -267,7 +275,8 @@ export default function PoleBannerIntake({ source }: { source?: string }) {
             </div>
           </CardContent>
         </Card>
-        <p className="text-center text-xs text-muted-foreground mt-6">Your information is sent securely to the A3 Visual team.</p>
+        </Reveal>
+        <p className="mt-6 text-center text-xs text-divini-muted">Your information is sent securely to the A3 Visual team.</p>
       </div>
     </div>
   );

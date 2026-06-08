@@ -6,12 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import {
   FileText, Download, Send, Search, Loader2, Shield, CheckCircle2, ArrowRight,
 } from "lucide-react";
+import PublicFormShell from "@/components/public/PublicFormShell";
+import { Stagger, Item } from "@/components/public/motion";
+
+const GREEN = "#1E5340";
 
 const REQUESTABLE_DOC_TYPES = [
   { value: "w9", label: "W-9" },
@@ -37,54 +40,60 @@ export default function DocumentAccess() {
   const [mode, setMode] = useState<"landing" | "access" | "request">("landing");
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-      <div className="max-w-2xl mx-auto px-4 py-12">
-        <div className="text-center mb-8">
-          <div className="text-2xl font-bold text-slate-900">A3 Visual</div>
-          <div className="text-sm text-slate-500 mt-1">Document Center</div>
-        </div>
-
-        {mode === "landing" && (
-          <div className="space-y-4">
-            <Card className="cursor-pointer hover:border-blue-300 transition-colors" onClick={() => setMode("access")}>
+    <PublicFormShell
+      eyebrow="A3 Visual"
+      title="Document Center"
+      subtitle="Securely access or request vendor documents shared by A3 Visual."
+      footnote={
+        <>
+          All document links are time-limited and encrypted for security.<br />
+          Need help? Contact your A3 Visual representative.
+        </>
+      }
+    >
+      {mode === "landing" && (
+        <Stagger className="space-y-4">
+          <Item>
+            <Card
+              className="surface-luxe lift cursor-pointer border-divini-green/15"
+              onClick={() => setMode("access")}
+            >
               <CardContent className="flex items-center gap-4 py-6">
-                <div className="h-12 w-12 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
-                  <Download className="h-6 w-6 text-blue-600" />
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-divini-green/10">
+                  <Download className="h-6 w-6 text-divini-green" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-slate-900">Access Your Documents</h3>
-                  <p className="text-sm text-slate-500 mt-0.5">Download documents that have been shared with you by A3 Visual.</p>
+                  <h3 className="font-display text-xl text-divini-green">Access your documents</h3>
+                  <p className="mt-0.5 text-sm text-divini-muted">Download documents that have been shared with you by A3 Visual.</p>
                 </div>
-                <ArrowRight className="h-5 w-5 text-slate-400" />
+                <ArrowRight className="h-5 w-5 text-divini-champagne" />
               </CardContent>
             </Card>
+          </Item>
 
-            <Card className="cursor-pointer hover:border-blue-300 transition-colors" onClick={() => setMode("request")}>
+          <Item>
+            <Card
+              className="surface-luxe lift cursor-pointer border-divini-green/15"
+              onClick={() => setMode("request")}
+            >
               <CardContent className="flex items-center gap-4 py-6">
-                <div className="h-12 w-12 rounded-full bg-emerald-50 flex items-center justify-center flex-shrink-0">
-                  <Send className="h-6 w-6 text-emerald-600" />
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-divini-champagne/20">
+                  <Send className="h-6 w-6" style={{ color: "#9a7b34" }} />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-slate-900">Request Documents</h3>
-                  <p className="text-sm text-slate-500 mt-0.5">Request vendor documents like W-9, COI, capability sheets, and more.</p>
+                  <h3 className="font-display text-xl text-divini-green">Request documents</h3>
+                  <p className="mt-0.5 text-sm text-divini-muted">Request vendor documents like W-9, COI, capability sheets, and more.</p>
                 </div>
-                <ArrowRight className="h-5 w-5 text-slate-400" />
+                <ArrowRight className="h-5 w-5 text-divini-champagne" />
               </CardContent>
             </Card>
-          </div>
-        )}
+          </Item>
+        </Stagger>
+      )}
 
-        {mode === "access" && <AccessSection onBack={() => setMode("landing")} />}
-        {mode === "request" && <RequestSection onBack={() => setMode("landing")} />}
-
-        <div className="text-center mt-12">
-          <p className="text-xs text-slate-400">
-            All document links are time-limited and encrypted for security.<br />
-            Need help? Contact your A3 Visual representative.
-          </p>
-        </div>
-      </div>
-    </div>
+      {mode === "access" && <AccessSection onBack={() => setMode("landing")} />}
+      {mode === "request" && <RequestSection onBack={() => setMode("landing")} />}
+    </PublicFormShell>
   );
 }
 
@@ -118,48 +127,48 @@ function AccessSection({ onBack }: { onBack: () => void }) {
   }
 
   return (
-    <Card>
+    <Card className="surface-luxe border-divini-green/15">
       <CardHeader>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={onBack} className="h-7 px-2 text-xs">&larr; Back</Button>
+          <Button variant="ghost" size="sm" onClick={onBack} className="h-7 px-2 text-xs text-divini-muted">&larr; Back</Button>
         </div>
-        <CardTitle className="text-lg">Access Your Documents</CardTitle>
-        <CardDescription>Enter your email to view documents shared with you.</CardDescription>
+        <CardTitle className="font-display text-2xl text-divini-green">Access your documents</CardTitle>
+        <CardDescription className="text-divini-muted">Enter your email to view documents shared with you.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <form onSubmit={handleSearch} className="flex gap-2">
           <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Enter your email address" required className="flex-1" />
-          <Button type="submit" disabled={isLoading || !email}>
+          <Button type="submit" disabled={isLoading || !email} className="text-white" style={{ backgroundColor: GREEN }}>
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
           </Button>
         </form>
 
         {submitted && !isLoading && docs.length === 0 && (
-          <div className="text-center py-8 text-slate-500">
-            <FileText className="h-10 w-10 mx-auto mb-3 opacity-40" />
+          <div className="py-8 text-center text-divini-muted">
+            <FileText className="mx-auto mb-3 h-10 w-10 opacity-40" />
             <p className="text-sm">No documents found for this email.</p>
-            <p className="text-xs mt-1">Documents may have expired or not yet been assigned. You can request documents below.</p>
-            <Button variant="outline" size="sm" className="mt-3" onClick={onBack}>Request Documents</Button>
+            <p className="mt-1 text-xs">Documents may have expired or not yet been assigned. You can request documents below.</p>
+            <Button variant="outline" size="sm" className="mt-3 border-divini-green/30 text-divini-green" onClick={onBack}>Request Documents</Button>
           </div>
         )}
 
         {docs.length > 0 && (
           <div className="space-y-2">
-            <div className="text-xs text-slate-500 font-medium uppercase tracking-wide">{docs.length} document{docs.length !== 1 ? "s" : ""} available</div>
+            <div className="text-xs font-medium uppercase tracking-wide text-divini-muted">{docs.length} document{docs.length !== 1 ? "s" : ""} available</div>
             {docs.map(doc => (
-              <div key={doc.assignmentId} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-slate-50">
-                <div className="h-9 w-9 rounded bg-blue-50 flex items-center justify-center flex-shrink-0">
-                  <FileText className="h-4.5 w-4.5 text-blue-600" />
+              <div key={doc.assignmentId} className="flex items-center gap-3 rounded-lg border border-divini-green/12 p-3 transition-colors hover:bg-divini-green/5">
+                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded bg-divini-green/10">
+                  <FileText className="h-4 w-4 text-divini-green" />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-slate-900 truncate">{doc.title}</div>
-                  <div className="text-xs text-slate-500">
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium text-divini-ink">{doc.title}</div>
+                  <div className="text-xs text-divini-muted">
                     {doc.versionLabel && <span>{doc.versionLabel} · </span>}
                     Shared {new Date(doc.assignedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </div>
                 </div>
-                <Button size="sm" onClick={() => handleDownload(doc.assignmentId, doc.downloadToken)} className="flex-shrink-0">
-                  <Download className="h-3.5 w-3.5 mr-1.5" />Download
+                <Button size="sm" onClick={() => handleDownload(doc.assignmentId, doc.downloadToken)} className="flex-shrink-0 text-white" style={{ backgroundColor: GREEN }}>
+                  <Download className="mr-1.5 h-3.5 w-3.5" />Download
                 </Button>
               </div>
             ))}
@@ -213,31 +222,31 @@ function RequestSection({ onBack }: { onBack: () => void }) {
 
   if (done) {
     return (
-      <Card>
-        <CardContent className="text-center py-12">
-          <CheckCircle2 className="h-12 w-12 text-emerald-500 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-slate-900">Request Submitted</h3>
-          <p className="text-sm text-slate-500 mt-2 max-w-sm mx-auto">
+      <Card className="surface-luxe border-divini-green/15">
+        <CardContent className="py-12 text-center">
+          <CheckCircle2 className="mx-auto mb-4 h-12 w-12 text-divini-green" />
+          <h3 className="font-display text-2xl text-divini-green">Request submitted</h3>
+          <p className="mx-auto mt-2 max-w-sm text-sm text-divini-muted">
             Your document request has been received. If any documents are available for auto-delivery, they've been sent to your email. Otherwise, an A3 Visual team member will review your request shortly.
           </p>
-          <Button variant="outline" className="mt-6" onClick={onBack}>Back to Document Center</Button>
+          <Button variant="outline" className="mt-6 border-divini-green/30 text-divini-green" onClick={onBack}>Back to Document Center</Button>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card>
+    <Card className="surface-luxe border-divini-green/15">
       <CardHeader>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={onBack} className="h-7 px-2 text-xs">&larr; Back</Button>
+          <Button variant="ghost" size="sm" onClick={onBack} className="h-7 px-2 text-xs text-divini-muted">&larr; Back</Button>
         </div>
-        <CardTitle className="text-lg">Request Documents</CardTitle>
-        <CardDescription>Select the documents you need and we'll send them to your email.</CardDescription>
+        <CardTitle className="font-display text-2xl text-divini-green">Request documents</CardTitle>
+        <CardDescription className="text-divini-muted">Select the documents you need and we'll send them to your email.</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid sm:grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label>Your Name *</Label>
               <Input value={name} onChange={e => setName(e.target.value)} placeholder="Jane Smith" required />
@@ -254,9 +263,9 @@ function RequestSection({ onBack }: { onBack: () => void }) {
 
           <div>
             <Label className="text-sm font-medium">Select Documents *</Label>
-            <div className="mt-2 grid sm:grid-cols-2 gap-1.5">
+            <div className="mt-2 grid gap-1.5 sm:grid-cols-2">
               {REQUESTABLE_DOC_TYPES.map(dt => (
-                <label key={dt.value} className="flex items-center gap-2 p-2.5 border rounded-md hover:bg-slate-50 cursor-pointer">
+                <label key={dt.value} className="flex cursor-pointer items-center gap-2 rounded-md border border-divini-green/12 p-2.5 transition-colors hover:bg-divini-green/5">
                   <Checkbox checked={selectedTypes.includes(dt.value)} onCheckedChange={() => toggleType(dt.value)} />
                   <span className="text-sm">{dt.label}</span>
                 </label>
@@ -269,13 +278,13 @@ function RequestSection({ onBack }: { onBack: () => void }) {
             <Textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="Any additional context or special requirements" rows={3} />
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-slate-400">
+          <div className="flex items-center gap-2 text-xs text-divini-muted">
             <Shield className="h-3.5 w-3.5" />
             Your information is kept secure and only used for document delivery.
           </div>
 
-          <Button type="submit" className="w-full" disabled={busy || selectedTypes.length === 0}>
-            {busy ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Submitting…</> : <><Send className="h-4 w-4 mr-2" />Submit Request</>}
+          <Button type="submit" className="w-full text-white" style={{ backgroundColor: GREEN }} disabled={busy || selectedTypes.length === 0}>
+            {busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Submitting…</> : <><Send className="mr-2 h-4 w-4" />Submit Request</>}
           </Button>
         </form>
       </CardContent>
