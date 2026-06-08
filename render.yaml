@@ -15,8 +15,9 @@ services:
     branch: main
     autoDeploy: true
     buildCommand: |
+      set -e
       corepack enable
-      pnpm install --frozen-lockfile --prod=false
+      pnpm install --no-frozen-lockfile --prod=false
       BASE_PATH=/ PORT=8080 pnpm --filter @workspace/a3-portal run build
       pnpm --filter @workspace/api-server run build
       rm -rf artifacts/api-server/dist/public
