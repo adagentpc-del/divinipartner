@@ -64,6 +64,21 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
+  /* === Divini Partner luxury brand palette ===
+   * Forest green / champagne / cream / ink — promoted from the landing page
+   * into shared tokens so every public & partner surface speaks one language. */
+  --color-divini-green: hsl(var(--divini-green));
+  --color-divini-green-deep: hsl(var(--divini-green-deep));
+  --color-divini-green-foreground: hsl(var(--divini-green-foreground));
+  --color-divini-champagne: hsl(var(--divini-champagne));
+  --color-divini-champagne-soft: hsl(var(--divini-champagne-soft));
+  --color-divini-cream: hsl(var(--divini-cream));
+  --color-divini-sand: hsl(var(--divini-sand));
+  --color-divini-ink: hsl(var(--divini-ink));
+  --color-divini-muted: hsl(var(--divini-muted));
+
+  --font-display: var(--app-font-display);
 }
 
 :root {
@@ -108,6 +123,18 @@
   --app-font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
   --app-font-serif: 'Georgia', serif;
   --app-font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --app-font-display: 'Cormorant Garamond', 'Georgia', serif;
+
+  /* Divini Partner luxury palette (HSL channels) */
+  --divini-green: 156 47% 22%;       /* #1E5340 */
+  --divini-green-deep: 158 47% 16%;  /* #163D2F */
+  --divini-green-foreground: 48 33% 98%;
+  --divini-champagne: 42 33% 71%;    /* #CDBE9C */
+  --divini-champagne-soft: 42 38% 83%;
+  --divini-cream: 48 33% 98%;        /* #FBFAF6 */
+  --divini-sand: 45 14% 88%;         /* #E4E2DD */
+  --divini-ink: 60 14% 8%;           /* #14140F */
+  --divini-muted: 150 8% 42%;
 }
 
 .dark {
@@ -182,4 +209,82 @@
 @media (prefers-reduced-motion: reduce) {
   .portal-anim-sweep, .portal-anim-sweep-fast { animation: none !important; }
   .portal-anim-fade-up { animation: none !important; opacity: 1 !important; transform: none !important; }
+}
+
+/* ============================================================
+ * Divini Partner — premium UX/UI utility layer
+ * Shared luxury primitives consumed across public & partner pages.
+ * ============================================================ */
+@layer components {
+  /* Display headings — refined serif with optical letter-spacing */
+  .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+    font-feature-settings: "liga" 1, "calt" 1;
+  }
+
+  /* Eyebrow / kicker label above section titles */
+  .eyebrow {
+    font-size: 0.72rem;
+    line-height: 1;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3em;
+    color: hsl(var(--divini-green));
+  }
+
+  /* Luxury card surface — warm paper, hairline border, layered depth */
+  .surface-luxe {
+    background-color: hsl(var(--divini-cream));
+    border: 1px solid hsl(var(--divini-green) / 0.14);
+    border-radius: 1rem;
+    box-shadow:
+      0 1px 2px hsl(var(--divini-ink) / 0.04),
+      0 12px 32px -16px hsl(var(--divini-ink) / 0.18);
+  }
+
+  /* Hairline divider/border in brand green */
+  .hairline-green { border-color: hsl(var(--divini-green) / 0.14); }
+
+  /* Subtle hover lift for interactive cards */
+  .lift {
+    transition: transform 360ms cubic-bezier(0.2, 0.8, 0.2, 1),
+                box-shadow 360ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    will-change: transform;
+  }
+  .lift:hover {
+    transform: translateY(-4px);
+    box-shadow:
+      0 2px 4px hsl(var(--divini-ink) / 0.05),
+      0 28px 50px -24px hsl(var(--divini-ink) / 0.28);
+  }
+
+  /* Champagne underline accent for links/labels */
+  .accent-rule {
+    background-image: linear-gradient(90deg, hsl(var(--divini-champagne)), transparent);
+    height: 2px;
+    width: 3rem;
+    border-radius: 2px;
+  }
+}
+
+@layer utilities {
+  /* Warm radial glow used behind hero sections */
+  .bg-divini-radial {
+    background-image: radial-gradient(
+      120% 80% at 50% -10%,
+      hsl(var(--divini-green-deep)) 0%,
+      hsl(var(--divini-green)) 55%,
+      hsl(var(--divini-green-deep)) 100%
+    );
+  }
+  /* Champagne shimmer hairline (top accent bar) */
+  .border-champagne-top {
+    border-top: 1px solid hsl(var(--divini-champagne) / 0.5);
+  }
+  /* Staggered reveal helper — pair with .portal-anim-fade-up */
+  .reveal-1 { animation-delay: 60ms; }
+  .reveal-2 { animation-delay: 140ms; }
+  .reveal-3 { animation-delay: 220ms; }
+  .reveal-4 { animation-delay: 300ms; }
 }
