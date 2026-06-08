@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { Reveal } from "@/components/public/motion";
 import { apiFetch, resolveAssetUrl } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -567,7 +568,7 @@ export default function OrderingPortal({ slug }: { slug: string }) {
           className="pointer-events-none absolute inset-0 -z-10"
           style={shellGlowLayers(branding)}
         />
-        <div className="text-center max-w-2xl mx-auto mb-8 md:mb-10">
+        <Reveal className="text-center max-w-2xl mx-auto mb-8 md:mb-10">
           <div
             className="text-[11px] font-semibold uppercase tracking-[0.22em] mb-3"
             style={{ color: branding.accent }}
@@ -583,7 +584,7 @@ export default function OrderingPortal({ slug }: { slug: string }) {
           <p className="mt-3 text-sm md:text-base" style={{ color: branding.muted }}>
             Choose your event, select a package, add extras, and send artwork — your A3 Visual team takes it from there.
           </p>
-        </div>
+        </Reveal>
         <div className="grid lg:grid-cols-[1fr_340px] gap-6">
           <div>
 
