@@ -7,6 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, CheckCircle2, Building2, Palette, User, Receipt, Image as ImageIcon, Upload, X, Sparkles, ChevronRight, ChevronLeft } from "lucide-react";
+import { logos } from "@/lib/brand";
+import { Reveal } from "@/components/public/motion";
+
+const GREEN = "#1E5340";
 
 type AssetFile = { name: string; url: string };
 
@@ -121,14 +125,14 @@ export default function PartnerOnboarding() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50 flex items-center justify-center p-6">
-        <Card className="max-w-lg w-full shadow-xl">
+      <div className="flex min-h-screen items-center justify-center bg-divini-cream p-6">
+        <Card className="surface-luxe w-full max-w-lg border-divini-green/15">
           <CardContent className="py-12 text-center">
-            <div className="h-16 w-16 mx-auto rounded-full bg-emerald-100 flex items-center justify-center mb-4">
-              <CheckCircle2 className="h-8 w-8 text-emerald-600" />
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-divini-green/10">
+              <CheckCircle2 className="h-8 w-8 text-divini-green" />
             </div>
-            <h1 className="text-2xl font-bold mb-2">Thank you!</h1>
-            <p className="text-muted-foreground mb-6">Your onboarding info has been received. The A3 team will review your submission and get back to you shortly to confirm next steps and activate your portal.</p>
+            <h1 className="font-display mb-2 text-3xl text-divini-green">Thank you</h1>
+            <p className="mb-6 text-divini-muted">Your onboarding info has been received. The A3 team will review your submission and get back to you shortly to confirm next steps and activate your portal.</p>
             <Badge variant="secondary" className="text-xs">Confirmation sent to {form.contactEmail}</Badge>
           </CardContent>
         </Card>
@@ -137,31 +141,35 @@ export default function PartnerOnboarding() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
-      <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
-        <div className="text-center mb-8">
-          <Badge className="mb-3" variant="secondary"><Sparkles className="h-3 w-3 mr-1" />Partner Onboarding</Badge>
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Let's get your portal set up</h1>
-          <p className="text-muted-foreground mt-2">Tell us about your company and how you'd like to use A3. Takes about 5 minutes.</p>
+    <div className="relative min-h-screen overflow-hidden bg-divini-cream text-divini-ink">
+      <div className="aura aura-a" style={{ width: 440, height: 440, top: -180, left: -140, background: "radial-gradient(circle, hsl(var(--divini-green) / 0.10), transparent 70%)" }} />
+      <div className="aura aura-c" style={{ width: 320, height: 320, top: -90, right: -70, background: "radial-gradient(circle, rgba(195,163,104,0.14), transparent 70%)" }} />
+      <div className="relative mx-auto max-w-3xl px-4 py-10 md:py-14">
+        <div className="mb-8 text-center">
+          <img src={logos.monogramGreen} alt="Divini Group" className="mx-auto h-12 w-12 object-contain" />
+          <p className="eyebrow mt-5">Partner Onboarding</p>
+          <h1 className="font-display mt-2 text-4xl tracking-tight text-divini-ink md:text-5xl">Let's get your portal set up</h1>
+          <p className="mt-3 text-divini-muted">Tell us about your company and how you'd like to use A3. Takes about 5 minutes.</p>
         </div>
 
         {/* Stepper */}
         <div className="flex items-center justify-center gap-1 mb-6 flex-wrap">
           {STEPS.map((s, i) => (
             <div key={s.label} className="flex items-center">
-              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${i === step ? "bg-primary text-primary-foreground" : i < step ? "bg-emerald-100 text-emerald-700" : "bg-muted text-muted-foreground"}`}>
+              <div className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${i === step ? "bg-divini-green text-divini-green-foreground" : i < step ? "bg-divini-green/12 text-divini-green" : "bg-divini-sand/70 text-divini-muted"}`}>
                 <s.icon className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">{s.label}</span>
               </div>
-              {i < STEPS.length - 1 && <ChevronRight className="h-3.5 w-3.5 text-muted-foreground mx-0.5" />}
+              {i < STEPS.length - 1 && <ChevronRight className="mx-0.5 h-3.5 w-3.5 text-divini-champagne" />}
             </div>
           ))}
         </div>
 
-        <Card className="shadow-md">
+        <Reveal>
+        <Card className="surface-luxe border-divini-green/15">
           <CardHeader>
-            <CardTitle className="text-xl">{STEPS[step].label}</CardTitle>
-            <CardDescription>Step {step + 1} of {STEPS.length}</CardDescription>
+            <CardTitle className="font-display text-2xl text-divini-green">{STEPS[step].label}</CardTitle>
+            <CardDescription className="text-divini-muted">Step {step + 1} of {STEPS.length}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
             {step === 0 && (
@@ -188,14 +196,14 @@ export default function PartnerOnboarding() {
                 <div>
                   <Label className="text-sm mb-2 block">What kind of partner are you? *</Label>
                   <RadioGroup value={form.partnerType} onValueChange={(v: any) => update("partnerType", v)}>
-                    <label className={`flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition ${form.partnerType === "branding" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground"}`}>
+                    <label className={`flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition ${form.partnerType === "branding" ? "border-divini-green bg-divini-green/5" : "border-border hover:border-muted-foreground"}`}>
                       <RadioGroupItem value="branding" className="mt-0.5" />
                       <div className="flex-1">
                         <div className="font-medium">Branding Partner</div>
                         <div className="text-xs text-muted-foreground mt-0.5">Venue zones, signage, branded environments (e.g. hotels, conference spaces, retail).</div>
                       </div>
                     </label>
-                    <label className={`flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition ${form.partnerType === "ordering" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground"}`}>
+                    <label className={`flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition ${form.partnerType === "ordering" ? "border-divini-green bg-divini-green/5" : "border-border hover:border-muted-foreground"}`}>
                       <RadioGroupItem value="ordering" className="mt-0.5" />
                       <div className="flex-1">
                         <div className="font-medium">Ordering Partner</div>
@@ -208,15 +216,15 @@ export default function PartnerOnboarding() {
                 <div>
                   <Label className="text-sm mb-2 block">Client portal style</Label>
                   <RadioGroup value={form.portalMode} onValueChange={(v: any) => update("portalMode", v)}>
-                    <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition ${form.portalMode === "intake" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground"}`}>
+                    <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition ${form.portalMode === "intake" ? "border-divini-green bg-divini-green/5" : "border-border hover:border-muted-foreground"}`}>
                       <RadioGroupItem value="intake" className="mt-0.5" />
                       <div className="flex-1"><div className="font-medium text-sm">Simple Intake Form</div><div className="text-xs text-muted-foreground">5-step request form for quick lead capture</div></div>
                     </label>
-                    <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition ${form.portalMode === "full" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground"}`}>
+                    <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition ${form.portalMode === "full" ? "border-divini-green bg-divini-green/5" : "border-border hover:border-muted-foreground"}`}>
                       <RadioGroupItem value="full" className="mt-0.5" />
                       <div className="flex-1"><div className="font-medium text-sm">Full Portal (catalog + venue)</div><div className="text-xs text-muted-foreground">Multi-section catalog with branding zones</div></div>
                     </label>
-                    <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition ${form.portalMode === "ordering" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground"}`}>
+                    <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition ${form.portalMode === "ordering" ? "border-divini-green bg-divini-green/5" : "border-border hover:border-muted-foreground"}`}>
                       <RadioGroupItem value="ordering" className="mt-0.5" />
                       <div className="flex-1"><div className="font-medium text-sm">Ordering Portal (event/package/cart)</div><div className="text-xs text-muted-foreground">For multi-stop events and package-based orders</div></div>
                     </label>
@@ -226,10 +234,10 @@ export default function PartnerOnboarding() {
                 <div>
                   <Label className="text-sm mb-2 block">Will this be used for events with tours / multiple stops?</Label>
                   <RadioGroup value={form.hasTours} onValueChange={(v: any) => update("hasTours", v)} className="flex gap-3">
-                    <label className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer ${form.hasTours === "yes" ? "border-primary bg-primary/5" : "border-border"}`}>
+                    <label className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer ${form.hasTours === "yes" ? "border-divini-green bg-divini-green/5" : "border-border"}`}>
                       <RadioGroupItem value="yes" /> Yes — tours
                     </label>
-                    <label className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer ${form.hasTours === "no" ? "border-primary bg-primary/5" : "border-border"}`}>
+                    <label className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer ${form.hasTours === "no" ? "border-divini-green bg-divini-green/5" : "border-border"}`}>
                       <RadioGroupItem value="no" /> No — single venue
                     </label>
                   </RadioGroup>
@@ -270,7 +278,7 @@ export default function PartnerOnboarding() {
                     ))}
                     <label className="cursor-pointer">
                       <input type="file" className="hidden" onChange={e => e.target.files?.[0] && handleFileUpload(e.target.files[0], "asset")} />
-                      <span className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border-2 border-dashed border-muted-foreground/30 hover:border-primary hover:text-primary transition">
+                      <span className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border-2 border-dashed border-muted-foreground/30 hover:border-divini-green hover:text-divini-green transition">
                         {uploading === "asset" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
                         Add file
                       </span>
@@ -387,9 +395,9 @@ export default function PartnerOnboarding() {
             <div className="flex items-center justify-between pt-6 mt-2 border-t">
               <Button variant="ghost" onClick={() => setStep(s => Math.max(0, s - 1))} disabled={step === 0} className="gap-1"><ChevronLeft className="h-4 w-4" />Back</Button>
               {step < STEPS.length - 1 ? (
-                <Button onClick={() => setStep(s => s + 1)} disabled={!canAdvance()} className="gap-1">Next<ChevronRight className="h-4 w-4" /></Button>
+                <Button onClick={() => setStep(s => s + 1)} disabled={!canAdvance()} className="gap-1 text-white" style={{ backgroundColor: GREEN }}>Next<ChevronRight className="h-4 w-4" /></Button>
               ) : (
-                <Button onClick={handleSubmit} disabled={submitting} className="gap-2">
+                <Button onClick={handleSubmit} disabled={submitting} className="gap-2 text-white" style={{ backgroundColor: GREEN }}>
                   {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                   Submit
                 </Button>
@@ -397,8 +405,9 @@ export default function PartnerOnboarding() {
             </div>
           </CardContent>
         </Card>
+        </Reveal>
 
-        <p className="text-center text-xs text-muted-foreground mt-6">Your information is sent securely to the A3 team. We'll review and reach out within 1–2 business days.</p>
+        <p className="mt-6 text-center text-xs text-divini-muted">Your information is sent securely to the A3 team. We'll review and reach out within 1–2 business days.</p>
       </div>
     </div>
   );
@@ -420,7 +429,7 @@ function FileSlot({ label, file, onUpload, onClear, uploading }: { label: string
           <button onClick={onClear} className="hover:bg-destructive/20 rounded p-0.5"><X className="h-3.5 w-3.5" /></button>
         </div>
       ) : (
-        <label className="mt-1 cursor-pointer flex items-center justify-center gap-2 px-3 py-3 rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-primary hover:text-primary transition text-sm">
+        <label className="mt-1 cursor-pointer flex items-center justify-center gap-2 px-3 py-3 rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-divini-green hover:text-divini-green transition text-sm">
           <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && onUpload(e.target.files[0])} />
           {uploading ? <><Loader2 className="h-4 w-4 animate-spin" />Uploading…</> : <><Upload className="h-4 w-4" />Upload {label}</>}
         </label>

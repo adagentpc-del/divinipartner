@@ -12,6 +12,7 @@ import {
 } from "@/components/home/HomeCards";
 import { PartnershipRequestForm } from "@/components/home/PartnershipRequestForm";
 import isometricImg from "@assets/A3_Visual_Isometric_Capabilities_V2_1778516950842.png";
+import { Stagger, Item } from "@/components/public/motion";
 
 /**
  * Front-page demo video. The source, poster, title, description, and enabled
@@ -301,11 +302,11 @@ export default function PartnerHomePage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+            <Stagger className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
               {FEATURE_CARDS.map((c) => (
-                <FeatureCard key={c.title} title={c.title} body={c.body} />
+                <Item key={c.title}><FeatureCard title={c.title} body={c.body} /></Item>
               ))}
-            </div>
+            </Stagger>
           </div>
         </section>
 
@@ -322,11 +323,11 @@ export default function PartnerHomePage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+            <Stagger className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
               {SERVICE_CARDS.map((c) => (
-                <ServiceCard key={c.label} label={c.label} body={c.body} />
+                <Item key={c.label}><ServiceCard label={c.label} body={c.body} /></Item>
               ))}
-            </div>
+            </Stagger>
           </div>
         </section>
 
@@ -342,11 +343,11 @@ export default function PartnerHomePage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-5">
+            <Stagger className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-5">
               {AUDIENCE_TILES.map((t) => (
-                <AudienceTile key={t.title} title={t.title} gradient={t.gradient} />
+                <Item key={t.title}><AudienceTile title={t.title} gradient={t.gradient} /></Item>
               ))}
-            </div>
+            </Stagger>
           </div>
         </section>
 
@@ -457,11 +458,11 @@ export default function PartnerHomePage() {
                 .
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-7">
+              <Stagger className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-7">
                 {PARTNERS.map((p) => (
-                  <PartnerTile key={p.route} partner={p} />
+                  <Item key={p.route}><PartnerTile partner={p} /></Item>
                 ))}
-              </div>
+              </Stagger>
             )}
           </div>
         </section>
