@@ -1,0 +1,252 @@
+[
+  {
+    "business_name": "Vizcaya Museum & Gardens",
+    "website_url": "https://vizcaya.org/visit-2/wedding-events/",
+    "city": "Miami (Coconut Grove)",
+    "category": "Estates and Mansions",
+    "public_email": "facility.rentals@vizcaya.org",
+    "public_phone": "305-250-9133",
+    "source_url": "https://www.miamiandbeaches.com/l/attractions/vizcaya-museum-and-gardens/2025",
+    "one_line_description": "National Historic Landmark estate on Biscayne Bay offering its courtyard, terraces and Italianate gardens for evening weddings and private events on a site-only rental basis."
+  },
+  {
+    "business_name": "Deering Estate",
+    "website_url": "https://deeringestate.org/venue-rentals/",
+    "city": "Miami (Palmetto Bay)",
+    "category": "Estates and Mansions",
+    "public_email": null,
+    "public_phone": "305-235-1668",
+    "source_url": "https://www.partyslate.com/venues/deering-estate",
+    "one_line_description": "Historic 460-acre bayfront estate with the Stone House, Grand Lawn and Royal Palm Grove available for weddings, corporate events and private celebrations."
+  },
+  {
+    "business_name": "Fairchild Tropical Botanic Garden",
+    "website_url": "https://fairchildgarden.org/miami-botanical-garden/event-venue-miami/",
+    "city": "Coral Gables",
+    "category": "Gardens",
+    "public_email": null,
+    "public_phone": null,
+    "source_url": "https://thevendry.com/venue/148995/fairchild-tropical-botanic-garden-miami-fl",
+    "one_line_description": "An 83-acre tropical botanic garden offering multiple indoor and outdoor event spaces, including the Garden House, lakeside lawns and palm glades, for weddings and gatherings."
+  },
+  {
+    "business_name": "Pinecrest Gardens",
+    "website_url": "https://www.pinecrestgardens.org/Venue-Rental",
+    "city": "Pinecrest",
+    "category": "Gardens",
+    "public_email": "info@pinecrestgardens.org",
+    "public_phone": "305-669-6990",
+    "source_url": "https://www.theknot.com/marketplace/pinecrest-gardens-pinecrest-fl-603680",
+    "one_line_description": "Historic botanical garden with indoor and outdoor venues, including Cypress Hall and the Banyan Bowl amphitheater, available for weddings, meetings and special occasions."
+  },
+  {
+    "business_name": "Rusty Pelican Miami",
+    "website_url": "https://www.therustypelican.com/posts/event-space-in-miami",
+    "city": "Key Biscayne",
+    "category": "Waterfront",
+    "public_email": null,
+    "public_phone": "305-361-3818",
+    "source_url": "https://www.partyslate.com/venues/rusty-pelican-miami",
+    "one_line_description": "Waterfront restaurant and events venue on the Rickenbacker Causeway with multiple ballrooms and terraces overlooking the Miami skyline and Biscayne Bay."
+  },
+  {
+    "business_name": "The Cooper Estate",
+    "website_url": "https://thecooperestate.com/",
+    "city": "Miami (Redland)",
+    "category": "Estates and Mansions",
+    "public_email": "info@thecooperestate.com",
+    "public_phone": "305-904-9032",
+    "source_url": "https://www.theknot.com/marketplace/the-cooper-estate-redland-fl-486684",
+    "one_line_description": "Historic oolite-limestone estate and working native-plant nursery in the Redland with manicured gardens, ponds and a stone barn used for weddings and intimate events."
+  },
+  {
+    "business_name": "Thalatta Estate",
+    "website_url": "https://thalattaestate.com/",
+    "city": "Palmetto Bay",
+    "category": "Waterfront",
+    "public_email": null,
+    "public_phone": "305-259-1255",
+    "source_url": "https://www.partyslate.com/venues/thalatta-estate-at-the-village-of-palmetto-bay",
+    "one_line_description": "A 1925 Mediterranean-Revival estate on Biscayne Bay operated as a public park and venue for outdoor weddings, receptions and special events."
+  },
+  {
+    "business_name": "Curtiss Mansion",
+    "website_url": "https://curtissmansion.com/weddings/",
+    "city": "Miami Springs",
+    "category": "Estates and Mansions",
+    "public_email": "events@curtissmansion.org",
+    "public_phone": "305-869-5180",
+    "source_url": "https://www.partyslate.com/venues/curtiss-mansion",
+    "one_line_description": "Restored 1925 historic estate of aviation pioneer Glenn Curtiss offering eight indoor and outdoor event spaces for weddings, corporate events and productions."
+  },
+  {
+    "business_name": "Miami Beach Botanical Garden",
+    "website_url": "https://www.mbgarden.org/rentthegarden",
+    "city": "Miami Beach",
+    "category": "Gardens",
+    "public_email": "events@mbgarden.org",
+    "public_phone": "305-673-7256",
+    "source_url": "https://www.wedding-spot.com/venue/3230/miami-beach-botanical-garden/",
+    "one_line_description": "A tropical garden in the heart of Miami Beach offering the Banyan Room, terrace, Great Lawn, courtyard and Japanese Garden for ceremonies and receptions."
+  },
+  {
+    "business_name": "Rosa Sky Rooftop",
+    "website_url": "https://rosaskyrooftop.com/private-events/",
+    "city": "Miami (Brickell)",
+    "category": "Rooftops",
+    "public_email": null,
+    "public_phone": "786-628-1515",
+    "source_url": "https://www.partyslate.com/venues/rosa-sky-rooftop",
+    "one_line_description": "A 22nd-floor rooftop lounge above Brickell at the AC & Element Miami Brickell offering skyline views and indoor-outdoor spaces for private events and celebrations."
+  },
+  {
+    "business_name": "Moxy's Upside Rooftop",
+    "website_url": "https://www.upsidemiami.com/private-events",
+    "city": "Miami Beach",
+    "category": "Rooftops",
+    "public_email": "restaurants@moxysouthbeach.com",
+    "public_phone": "305-600-4292",
+    "source_url": "https://www.partyslate.com/event-spaces/9171",
+    "one_line_description": "An 8th-floor open-air rooftop venue at Moxy South Beach with 360-degree beach and city views, a pool and lounge spaces for receptions and private events."
+  },
+  {
+    "business_name": "Kimpton EPIC Hotel",
+    "website_url": "https://www.epichotel.com/event-space-miami/",
+    "city": "Miami (Downtown)",
+    "category": "Rooftops",
+    "public_email": "sales@epichotel.com",
+    "public_phone": "305-967-7337",
+    "source_url": "https://www.cvent.com/venues/miami/boutique-hotel/kimpton-epic-hotel/venue-4670da45-271a-4d4b-840c-26b6b134bcc8",
+    "one_line_description": "Downtown waterfront hotel offering flexible event space including a 16th-floor pool terrace and ballrooms overlooking Biscayne Bay for receptions and meetings."
+  },
+  {
+    "business_name": "The Cruz Building",
+    "website_url": "https://cruzbuildings.com/",
+    "city": "Miami (Coconut Grove)",
+    "category": "Estates and Mansions",
+    "public_email": "GrandEvents@CruzBuildings.com",
+    "public_phone": "305-508-9500",
+    "source_url": "https://www.theknot.com/marketplace/the-cruz-building-coconut-grove-miami-miami-fl-819943",
+    "one_line_description": "A glamorous three-level mansion-style venue in Coconut Grove with atrium ceilings, stained-glass windows, marble staircases and outdoor terraces for weddings and events."
+  },
+  {
+    "business_name": "The Biltmore Hotel",
+    "website_url": "https://biltmorehotel.com/coral-gables-event-venues/wedding/",
+    "city": "Coral Gables",
+    "category": "Estates and Mansions",
+    "public_email": "weddings@biltmorehotel.com",
+    "public_phone": "305-445-1926",
+    "source_url": "https://www.theknot.com/marketplace/biltmore-hotel-coral-gables-fl-819834",
+    "one_line_description": "A 1926 National Historic Landmark resort in Coral Gables offering ballrooms, gardens, lawns and fountain settings for weddings and large celebrations."
+  },
+  {
+    "business_name": "Hialeah Park Casino",
+    "website_url": "https://hialeahparkcasino.com/events",
+    "city": "Hialeah",
+    "category": "Estates and Mansions",
+    "public_email": null,
+    "public_phone": "786-483-7460",
+    "source_url": "https://www.zola.com/wedding-vendors/wedding-venues/hialeah-park-casino",
+    "one_line_description": "Historic 200-acre racing landmark with a ballroom, Turf Club, clubhouse and Fountain Terrace event spaces set among flamingos and lush grounds."
+  },
+  {
+    "business_name": "The Villa Casa Casuarina",
+    "website_url": "https://vmmiamibeach.com/events/special-events/",
+    "city": "Miami Beach",
+    "category": "Estates and Mansions",
+    "public_email": null,
+    "public_phone": "786-485-2200",
+    "source_url": "https://www.partyslate.com/venues/the-villa-casa-casuarina",
+    "one_line_description": "The former Versace Mansion on Ocean Drive operating as a boutique hotel and venue with the Thousand Mosaic Pool and private lounges for special events."
+  },
+  {
+    "business_name": "Kiki on the River",
+    "website_url": "https://www.kikiontheriver.com/private-events/",
+    "city": "Miami (Downtown / Miami River)",
+    "category": "Waterfront",
+    "public_email": "events@kikimiami.com",
+    "public_phone": null,
+    "source_url": "https://www.partyslate.com/venues/kiki-on-the-river",
+    "one_line_description": "A Greek-inspired riverfront restaurant on the Miami River with indoor and outdoor signature spaces and dock space for private and corporate events."
+  },
+  {
+    "business_name": "The Ancient Spanish Monastery",
+    "website_url": "https://www.spanishmonastery.com/services",
+    "city": "North Miami Beach",
+    "category": "Gardens",
+    "public_email": "Info@SpanishMonastery.com",
+    "public_phone": "305-945-1461",
+    "source_url": "https://www.wedding-spot.com/venue/3037/the-ancient-spanish-monastery/",
+    "one_line_description": "A 12th-century Romanesque and Gothic monastery with more than 20 acres of formal gardens, chapels and cloisters used for weddings and receptions."
+  },
+  {
+    "business_name": "Secret Gardens Miami",
+    "website_url": "https://www.secretgardensmiami.com/weddings-events",
+    "city": "Miami (Homestead / Redland)",
+    "category": "Gardens",
+    "public_email": null,
+    "public_phone": "305-507-7405",
+    "source_url": "https://www.theknot.com/marketplace/secret-gardens-miami-homestead-fl-1071860",
+    "one_line_description": "A six-acre tropical property in the Redland with lagoons, waterfalls and lush foliage available by appointment for outdoor weddings, special events and photoshoots."
+  },
+  {
+    "business_name": "Baia Beach Club",
+    "website_url": "https://www.baiabeachclubmiami.com/private-events",
+    "city": "Miami Beach",
+    "category": "Waterfront",
+    "public_email": "membership@baiabeachclubmiami.com",
+    "public_phone": "305-514-1949",
+    "source_url": "https://www.partyslate.com/venues/the-villa-casa-casuarina",
+    "one_line_description": "A waterfront social dining and event venue at the Mondrian South Beach with indoor and outdoor spaces including a deck, terraces and bayfront greenhouse."
+  },
+  {
+    "business_name": "Glass & Vine",
+    "website_url": "https://www.glassandvine.com/private-events",
+    "city": "Miami (Coconut Grove)",
+    "category": "Waterfront",
+    "public_email": "events@grovebaygroup.com",
+    "public_phone": "305-200-5268",
+    "source_url": "https://www.zola.com/wedding-vendors/wedding-venues/glass-and-vine",
+    "one_line_description": "A restaurant set in Coconut Grove's historic Peacock Park with garden ceremony space and a patio offering Biscayne Bay views for weddings and private events."
+  },
+  {
+    "business_name": "The Woman's Club of Coconut Grove",
+    "website_url": "https://www.womansclubofcoconutgrove.com/",
+    "city": "Miami (Coconut Grove)",
+    "category": "Estates and Mansions",
+    "public_email": "leslie@coconutgroveevents.com",
+    "public_phone": "305-446-2909",
+    "source_url": "https://www.weddingwire.com/biz/womans-club-of-coconut-grove-miami/f1bf0a7fb862cc4a.html",
+    "one_line_description": "A renovated 1891 historic clubhouse in Coconut Grove offering all-inclusive wedding, corporate and private-event services with a garden ceremony setting."
+  },
+  {
+    "business_name": "Serena Rooftop",
+    "website_url": "https://www.serenamiami.com/private-events/",
+    "city": "Miami Beach",
+    "category": "Rooftops",
+    "public_email": null,
+    "public_phone": "305-306-0776",
+    "source_url": "https://www.partyslate.com/event-spaces/9171",
+    "one_line_description": "A lush rooftop restaurant and bar atop Moxy Miami South Beach with a terrace and the Mezcalista lounge for private dinners, celebrations and buyouts."
+  },
+  {
+    "business_name": "Bayshore Club Bar & Grill",
+    "website_url": "https://www.bayshoreclubmiami.com/private-events",
+    "city": "Miami (Coconut Grove / Dinner Key)",
+    "category": "Waterfront",
+    "public_email": "events@grovebaygroup.com",
+    "public_phone": "786-713-9594",
+    "source_url": "https://www.opentable.com/r/bayshore-club-miami",
+    "one_line_description": "A waterfront restaurant on historic Dinner Key in Coconut Grove with indoor and outdoor spaces overlooking Biscayne Bay for private events and celebrations."
+  },
+  {
+    "business_name": "Redland Koi Gardens",
+    "website_url": "https://www.redlandkoigardens.com/event-venue-redland.php",
+    "city": "Miami (Homestead / Redland)",
+    "category": "Gardens",
+    "public_email": null,
+    "public_phone": "754-600-4845",
+    "source_url": "https://www.theknot.com/marketplace/redland-koi-gardens-homestead-fl-478237",
+    "one_line_description": "A 2.5-acre Redland garden with curved walkways, koi ponds and waterfalls serving as an outdoor venue for weddings, receptions and private gatherings."
+  }
+]

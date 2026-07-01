@@ -1,0 +1,173 @@
+/**
+ * Payment-leakage detection + policy (blueprint section 21.4).
+ *
+ * "Leakage" is any attempt to move a transaction off-platform so the Divini
+ * platform fee is avoided. We do two things here:
+ *   1. detectLeakageLanguage(text) - scan free text (messages, invoice notes,
+ *      quote terms) for phrases that signal an off-platform payment intent and
+ *      return the matched terms.
+ *   2. evaluateExternalPayment(...) - the policy decision for "mark as external":
+ *      require a reason + proof, compute the platform fee still owed, and produce
+ *      the audit-log + admin-notify payload + account-flag instruction.
+ *
+ * NO real payment processor is integrated. Everything is record/track only.
+ */
+
+/** Phrases / patterns that indicate an off-platform payment attempt. */
+export const LEAKAGE_TERMS: { term: string; pattern: RegExp; category: string }[] = [
+  { term: "venmo", pattern: /\bvenmo\b/i, category: "p2p_app" },
+  { term: "zelle", pattern: /\bzelle\b/i, category: "p2p_app" },
+  { term: "cash app", pattern: /\bcash[\s-]?app\b/i, category: "p2p_app" },
+  { term: "paypal", pattern: /\bpay[\s-]?pal\b/i, category: "p2p_app" },
+  { term: "wire transfer", pattern: /\bwire(\s+transfer)?\b/i, category: "bank" },
+  { term: "ach", pattern: /\bach\b/i, category: "bank" },
+  { term: "cash", pattern: /\bcash\b(?!\s*app)/i, category: "cash" },
+  { term: "check", pattern: /\b(che(ck|que)s?|by\s+check)\b/i, category: "cash" },
+  { term: "pay outside", pattern: /\bpay(ing)?\s+(outside|off[\s-]?platform|directly)\b/i, category: "intent" },
+  { term: "off platform", pattern: /\boff[\s-]?platform\b/i, category: "intent" },
+  { term: "off the platform", pattern: /\boff\s+the\s+platform\b/i, category: "intent" },
+  { term: "invoice separately", pattern: /\binvoice\s+(you\s+)?separately\b/i, category: "intent" },
+  { term: "bill separately", pattern: /\bbill\s+(you\s+)?separately\b/i, category: "intent" },
+  { term: "skip the fee", pattern: /\b(skip|avoid|save\s+on)\s+(the\s+)?(platform\s+)?fee\b/i, category: "intent" },
+  { term: "direct deposit", pattern: /\bdirect\s+deposit\b/i, category: "bank" },
+  { term: "send to my account", pattern: /\bsend\s+(it\s+)?to\s+my\s+(bank\s+)?account\b/i, category: "intent" },
+  { term: "handle it ourselves", pattern: /\bhandle\s+(it|payment)\s+(ourselves|between us)\b/i, category: "intent" },
+];
+
+export interface LeakageDetection {
+  flagged: boolean;
+  terms: string[];
+  categories: string[];
+  snippet: string | null;
+}
+
+/** Scan free text for off-platform payment language. */
+export function detectLeakageLanguage(text: string | null | undefined): LeakageDetection {
+  if (!text || typeof text !== "string") {
+    return { flagged: false, terms: [], categories: [], snippet: null };
+  }
+  const terms: string[] = [];
+  const categories = new Set<string>();
+  let firstIndex = -1;
+  for (const { term, pattern, category } of LEAKAGE_TERMS) {
+    const m = pattern.exec(text);
+    if (m) {
+      terms.push(term);
+      categories.add(category);
+      if (firstIndex < 0 || m.index < firstIndex) firstIndex = m.index;
+    }
+  }
+  const flagged = terms.length > 0;
+  let snippet: string | null = null;
+  if (flagged && firstIndex >= 0) {
+    const start = Math.max(0, firstIndex - 40);
+    const end = Math.min(text.length, firstIndex + 80);
+    snippet = (start > 0 ? "..." : "") + text.slice(start, end).trim() + (end < text.length ? "..." : "");
+  }
+  return { flagged, terms, categories: Array.from(categories), snippet };
+}
+
+/** Compute the platform fee still owed on a payment recorded off-platform. */
+export function computeFeeOwed(amount: number, feeRate: number): number {
+  if (!Number.isFinite(amount) || amount <= 0) return 0;
+  if (!Number.isFinite(feeRate) || feeRate <= 0) return 0;
+  return Math.round(amount * feeRate * 100) / 100;
+}
+
+export interface ExternalPaymentInput {
+  amount: number;
+  feeRate: number;          // org tier fee rate (db.TIERS[tier].feeRate)
+  reason?: string | null;
+  proof?: string | null;    // attachment ref / description of proof provided
+  actorId?: string | null;
+  organizationId?: string | null;
+  eventId?: string | null;
+  invoiceId?: string | null;
+}
+
+export interface ExternalPaymentDecision {
+  ok: boolean;
+  errors: string[];
+  feeOwed: number;
+  /** Row to insert into leakage_events. */
+  audit: {
+    decision: "marked_external" | "blocked";
+    reason: string | null;
+    proof: string | null;
+    fee_owed: number;
+    admin_notified: boolean;
+    account_flagged: boolean;
+    source: "external_flow";
+    organization_id: string | null;
+    event_id: string | null;
+    invoice_id: string | null;
+    actor_id: string | null;
+  };
+  /** Admin notification payload (consumed by the route). */
+  notify: { kind: "payment_leakage"; severity: "high"; message: string } | null;
+}
+
+/**
+ * Policy for "mark as external": both a reason AND proof are required. If either
+ * is missing the decision is "blocked" and ok=false. When allowed, we compute the
+ * fee owed, notify an admin, and flag the account for review.
+ */
+export function evaluateExternalPayment(input: ExternalPaymentInput): ExternalPaymentDecision {
+  const errors: string[] = [];
+  const reason = (input.reason ?? "").trim() || null;
+  const proof = (input.proof ?? "").trim() || null;
+  if (!reason) errors.push("A reason is required to mark a payment as external.");
+  if (!proof) errors.push("Proof of the external payment is required (receipt, screenshot, or reference).");
+  if (!Number.isFinite(input.amount) || input.amount <= 0) {
+    errors.push("A positive payment amount is required.");
+  }
+
+  const ok = errors.length === 0;
+  const feeOwed = ok ? computeFeeOwed(input.amount, input.feeRate) : 0;
+
+  return {
+    ok,
+    errors,
+    feeOwed,
+    audit: {
+      decision: ok ? "marked_external" : "blocked",
+      reason,
+      proof,
+      fee_owed: feeOwed,
+      admin_notified: ok,
+      account_flagged: ok,
+      source: "external_flow",
+      organization_id: input.organizationId ?? null,
+      event_id: input.eventId ?? null,
+      invoice_id: input.invoiceId ?? null,
+      actor_id: input.actorId ?? null,
+    },
+    notify: ok
+      ? {
+          kind: "payment_leakage",
+          severity: "high",
+          message: `External payment recorded off-platform. Platform fee owed: ${feeOwed}. Reason: ${reason}`,
+        }
+      : null,
+  };
+}
+
+/**
+ * Exact "Payment Protection Notice" copy (blueprint 21.4). Mirrored in the
+ * frontend LeakageModal so both layers stay in sync.
+ */
+export const PAYMENT_PROTECTION_NOTICE = {
+  title: "Payment Protection Notice",
+  body:
+    "It looks like this conversation mentions paying outside of Divini Partners. " +
+    "Payments made through the platform are protected: deposits are held, balances " +
+    "are tracked, disputes are mediated, and both sides are covered by the Divini " +
+    "service guarantee. Paying off-platform voids these protections and breaches the " +
+    "partner agreement, and the platform fee remains owed.",
+  ctas: [
+    "Continue Payment Through Divini",
+    "Mark as External Payment",
+    "Contact Support",
+    "View Payment Policy",
+  ],
+} as const;

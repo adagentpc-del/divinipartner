@@ -1,0 +1,122 @@
+[
+  {
+    "business_name": "Dade County Food Group",
+    "website_url": "https://dadecountyfoodgroup.com/",
+    "city": "Miami",
+    "category": "Catering",
+    "public_email": null,
+    "public_phone": null,
+    "source_url": "https://dadecountyfoodgroup.com/",
+    "one_line_description": "Miami-Dade-based corporate and wedding event catering company run by a team of chefs specializing in globally inspired cuisines."
+  },
+  {
+    "business_name": "Lovables Catering + Kitchen",
+    "website_url": "https://lovablescatering.com/",
+    "city": "Opa-locka",
+    "category": "Catering",
+    "public_email": null,
+    "public_phone": "305-970-1623",
+    "source_url": "https://lovablescatering.com/",
+    "one_line_description": "Miami catering company serving corporate offices, weddings, and special events with plated dinners, food stations, and cocktail receptions."
+  },
+  {
+    "business_name": "R Catering & Events",
+    "website_url": "https://www.rcateringandeventplanning.com/",
+    "city": "Coral Gables",
+    "category": "Catering",
+    "public_email": null,
+    "public_phone": "786-357-8387",
+    "source_url": "https://www.rcateringandeventplanning.com/",
+    "one_line_description": "Miami-Dade catering and event planning company providing personalized service for weddings and social events since 2007."
+  },
+  {
+    "business_name": "Morell Mobile Bar",
+    "website_url": "https://morellmobilebar.com/",
+    "city": "Miami",
+    "category": "Bar and Beverage",
+    "public_email": null,
+    "public_phone": "786-351-5290",
+    "source_url": "https://morellmobilebar.com/",
+    "one_line_description": "Miami mobile bartending and bar service for weddings, corporate events, and private parties throughout South Florida."
+  },
+  {
+    "business_name": "Bar-Solution",
+    "website_url": "https://bar-solution.com/",
+    "city": "Miami",
+    "category": "Bar and Beverage",
+    "public_email": null,
+    "public_phone": "786-395-9825",
+    "source_url": "https://bar-solution.com/",
+    "one_line_description": "Miami bar catering and consulting company providing mobile bars, bartenders, and beverage service for events across South Florida."
+  },
+  {
+    "business_name": "Motive Cinemas",
+    "website_url": "https://www.motivecinemas.com/",
+    "city": "Miami",
+    "category": "Videography",
+    "public_email": "info@motivecinemas.com",
+    "public_phone": "305-702-7989",
+    "source_url": "https://www.motivecinemas.com/",
+    "one_line_description": "Miami video production studio specializing in cinematic wedding films for luxury and destination weddings."
+  },
+  {
+    "business_name": "George Films",
+    "website_url": "https://georgefilms.co/",
+    "city": "Miami",
+    "category": "Videography",
+    "public_email": "georgefilmsco@gmail.com",
+    "public_phone": "980-239-1385",
+    "source_url": "https://georgefilms.co/",
+    "one_line_description": "Miami-based cinematic wedding videography and photography studio creating narrative wedding and event films."
+  },
+  {
+    "business_name": "GG Press",
+    "website_url": "https://www.ggpressmiami.com/",
+    "city": "Miami",
+    "category": "Stationery",
+    "public_email": null,
+    "public_phone": null,
+    "source_url": "https://www.ggpressmiami.com/",
+    "one_line_description": "Miami artisan letterpress and foil-stamping studio printing wedding invitation suites and custom stationery."
+  },
+  {
+    "business_name": "Letterpress Girls",
+    "website_url": "https://www.letterpressgirls.com/",
+    "city": "Miami",
+    "category": "Stationery",
+    "public_email": null,
+    "public_phone": null,
+    "source_url": "https://www.letterpressgirls.com/",
+    "one_line_description": "Miami design and print studio specializing in custom stationery, wedding invitations, letterpress, and foil stamping."
+  },
+  {
+    "business_name": "Flowers Time",
+    "website_url": "https://miamiflowerstime.com/",
+    "city": "Miami",
+    "category": "Decor and Design",
+    "public_email": "info@miamiflowerstime.com",
+    "public_phone": null,
+    "source_url": "https://miamiflowerstime.com/",
+    "one_line_description": "Miami event decor and floral design company offering styling, backdrops, centerpieces, and room draping for weddings and corporate events."
+  },
+  {
+    "business_name": "Miami Luxe Limo",
+    "website_url": "https://www.miamiluxelimo.com/",
+    "city": "Miami",
+    "category": "Transportation",
+    "public_email": null,
+    "public_phone": "305-250-2484",
+    "source_url": "https://www.miamiluxelimo.com/",
+    "one_line_description": "Miami luxury transportation company offering limousine and party bus rentals for weddings and events."
+  },
+  {
+    "business_name": "Trias Flowers and Events",
+    "website_url": "https://www.triasevents.com/",
+    "city": "Miami",
+    "category": "Florals",
+    "public_email": null,
+    "public_phone": "786-476-1537",
+    "source_url": "https://www.triasevents.com/",
+    "one_line_description": "Miami full-service wedding and event florist providing floral design throughout Miami-Dade County."
+  }
+]

@@ -1,0 +1,31 @@
+{
+  "name": "Divini Partners",
+  "short_name": "Divini",
+  "description": "Event partnership marketplace and event-day workspace for Divini Partners.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#123c2e",
+  "theme_color": "#123c2e",
+  "icons": [
+    {
+      "src": "/brand/mark-emerald.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/brand/logo-emerald.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

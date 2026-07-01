@@ -1,0 +1,36 @@
+# dependencies
+node_modules/
+
+# builds / artifacts (dist, dist_check*, dist_bugcheck, dist-verify, dist_<timestamp>, etc.)
+dist/
+dist*/
+build/
+*.tsbuildinfo
+.vite/
+
+# env & secrets
+.env
+.env.*
+!.env.example
+!.env.local.example
+*.pem
+*.key
+serviceAccount*.json
+gha-creds-*.json
+
+# capacitor / native
+ios/App/Pods/
+ios/App/App/public/
+android/
+
+# logs / os / stray
+*.log
+.DS_Store
+*.bak
+err.txt
+_writetest
+_hostpathprobe.txt
+
+# editor
+.idea/
+.vscode/

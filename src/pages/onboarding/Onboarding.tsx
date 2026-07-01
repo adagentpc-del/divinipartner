@@ -1,0 +1,573 @@
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../lib/auth';
+import { apiGet, apiSend } from '../../lib/api';
+
+/**
+ * Divini Partners - AI-assisted onboarding wizard (blueprint section 8).
+ *
+ * Role-aware, multi-step, saveable. The wizard reads/writes /api/profile. AI
+ * suggestions are pulled from the backend (deterministic, clearly labelled, no
+ * invented facts) and the partner accepts / edits / rejects each one. Nothing
+ * publishes until the partner submits for review (or self-publishes on a paid
+ * tier).
+ */
+
+type AiSuggestion = {
+  id: string;
+  section: string | null;
+  field: string | null;
+  suggested_value: { value?: unknown } | null;
+  status: string;
+};
+
+type Draft = {
+  sections: Record<string, any>;
+  current_step: string | null;
+  steps_completed: string[];
+  strength: number;
+  completion_status: string;
+};
+
+type State = {
+  draft: Draft;
+  theme: any | null;
+  slug: string | null;
+  suggestions: AiSuggestion[];
+  org: { id: string; name: string; tier: string | null; verification_status: string | null } | null;
+};
+
+type StepDef = { key: string; title: string; blurb: string; optional?: boolean };
+
+function stepsForRole(role: string | undefined): StepDef[] {
+  const base: StepDef[] = [
+    { key: 'basics', title: 'The basics', blurb: 'Name, tagline, and where you operate.' },
+    { key: 'website', title: 'Do you have a website?', blurb: 'Import a link or skip and add details by hand.' },
+    { key: 'about', title: 'About you', blurb: 'Tell clients who you are and what you create.' },
+    { key: 'services', title: role === 'venue' ? 'Spaces and services' : 'Services', blurb: 'What you offer.' },
+    { key: 'packages', title: 'Packages', blurb: 'Optional curated offerings.', optional: true },
+    { key: 'gallery', title: 'Gallery', blurb: 'Show your work.', optional: true },
+    { key: 'documents', title: 'Documents', blurb: 'COI, W-9, and other files.', optional: true },
+    { key: 'review', title: 'Preview and publish', blurb: 'Review, then submit or publish.' },
+  ];
+  return base;
+}
+
+function ValueText({ v }: { v: unknown }) {
+  if (Array.isArray(v)) return <span>{v.length} item(s) suggested</span>;
+  if (v && typeof v === 'object') return <span>{JSON.stringify(v)}</span>;
+  return <span>{String(v ?? '')}</span>;
+}
+
+export default function Onboarding() {
+  const nav = useNavigate();
+  const { session, company } = useAuth();
+  const role = company?.kind;
+  const steps = useMemo(() => stepsForRole(role), [role]);
+
+  const [state, setState] = useState<State | null>(null);
+  const [stepIdx, setStepIdx] = useState(0);
+  const [sections, setSections] = useState<Record<string, any>>({});
+  const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState<string>('');
+  const [err, setErr] = useState('');
+  const [websiteUrl, setWebsiteUrl] = useState('');
+  const [linkType, setLinkType] = useState('website');
+  const [docUrl, setDocUrl] = useState('');
+
+  const step = steps[stepIdx];
+
+  async function load() {
+    try {
+      const s = await apiGet<State>('/profile');
+      setState(s);
+      setSections(s.draft?.sections ?? {});
+      const restoreKey = s.draft?.current_step;
+      const idx = restoreKey ? steps.findIndex((x) => x.key === restoreKey) : 0;
+      if (idx >= 0) setStepIdx(idx);
+    } catch (e: any) {
+      setErr(e?.message ?? 'Could not load your onboarding.');
+    }
+  }
+
+  useEffect(() => {
+    if (session) load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
+
+  function setField(sec: string, field: string, value: unknown) {
+    setSections((prev) => ({ ...prev, [sec]: { ...(prev[sec] ?? {}), [field]: value } }));
+  }
+
+  async function save(opts?: { stepKey?: string; markComplete?: boolean }) {
+    setBusy(true);
+    setErr('');
+    try {
+      const completed = state?.draft?.steps_completed ?? [];
+      const stepsCompleted = opts?.markComplete && step
+        ? Array.from(new Set([...completed, step.key]))
+        : completed;
+      const r = await apiSend<{ draft: Draft }>('PUT', '/profile/onboarding', {
+        sections,
+        currentStep: opts?.stepKey ?? step?.key ?? null,
+        stepsCompleted,
+        role,
+      });
+      setState((s) => (s ? { ...s, draft: r.draft } : s));
+      setSaved('Saved');
+      setTimeout(() => setSaved(''), 1800);
+      return r.draft;
+    } catch (e: any) {
+      setErr(e?.message ?? 'Could not save.');
+      return null;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function next() {
+    await save({ markComplete: true, stepKey: steps[Math.min(stepIdx + 1, steps.length - 1)]?.key });
+    setStepIdx((i) => Math.min(i + 1, steps.length - 1));
+  }
+  async function back() {
+    await save({ stepKey: steps[Math.max(stepIdx - 1, 0)]?.key });
+    setStepIdx((i) => Math.max(i - 1, 0));
+  }
+  async function saveAndExit() {
+    await save();
+    nav('/app');
+  }
+
+  async function importWebsite() {
+    if (!websiteUrl.trim()) return setErr('Enter a link or skip this step.');
+    setBusy(true);
+    setErr('');
+    try {
+      await apiSend('POST', '/profile/onboarding/website', { url: websiteUrl.trim(), linkType });
+      await load();
+      setSaved('Imported. Review the suggestions below.');
+      setTimeout(() => setSaved(''), 2400);
+    } catch (e: any) {
+      setErr(e?.message ?? 'Could not import that link.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function addDocument() {
+    if (!docUrl.trim()) return;
+    setBusy(true);
+    setErr('');
+    try {
+      await apiSend('POST', '/profile/onboarding/documents', { fileUrl: docUrl.trim(), documentType: 'intake', section: 'documents' });
+      setDocUrl('');
+      await load();
+    } catch (e: any) {
+      setErr(e?.message ?? 'Could not record that document.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function resolveSuggestion(id: string, action: 'accepted' | 'edited' | 'rejected', value?: unknown) {
+    setBusy(true);
+    try {
+      await apiSend('POST', `/profile/onboarding/suggestions/${id}`, { action, value });
+      await load();
+    } catch (e: any) {
+      setErr(e?.message ?? 'Could not update that suggestion.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function publish(mode: 'submit' | 'publish') {
+    setBusy(true);
+    setErr('');
+    try {
+      await save();
+      const r = await apiSend<{ applied: string; slug: string }>('POST', '/profile/publish', { mode });
+      await load();
+      setSaved(r.applied === 'publish' ? 'Published. Your profile is live.' : 'Submitted for review.');
+      setTimeout(() => setSaved(''), 3000);
+    } catch (e: any) {
+      setErr(e?.message ?? 'Could not submit.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const pending = (state?.suggestions ?? []).filter((s) => s.status === 'ai_suggested_pending_verification');
+  const strength = state?.draft?.strength ?? 0;
+  const status = state?.draft?.completion_status ?? 'Draft';
+  const progressPct = Math.round(((stepIdx + 1) / steps.length) * 100);
+
+  return (
+    <div className="dpob">
+      <style>{CSS}</style>
+
+      <header className="dpob-top">
+        <div className="dpob-brand">
+          <span className="dpob-logo">D</span>
+          <div>
+            <div className="dpob-name">Divini Partners</div>
+            <div className="dpob-by">by Divini Group</div>
+          </div>
+        </div>
+        <div className="dpob-topactions">
+          <span className={`dpob-status dpob-status-${status.replace(/\s+/g, '').toLowerCase()}`}>{status}</span>
+          <button className="dpob-ghost" onClick={saveAndExit} disabled={busy}>Save and come back later</button>
+        </div>
+      </header>
+
+      <div className="dpob-meters">
+        <div className="dpob-meter">
+          <div className="dpob-meter-head"><span>Step {stepIdx + 1} of {steps.length}</span><span>{progressPct}%</span></div>
+          <div className="dpob-bar"><div className="dpob-bar-fill" style={{ width: `${progressPct}%` }} /></div>
+        </div>
+        <div className="dpob-meter">
+          <div className="dpob-meter-head"><span>Profile strength</span><span>{strength}%</span></div>
+          <div className="dpob-bar"><div className="dpob-bar-fill gold" style={{ width: `${strength}%` }} /></div>
+        </div>
+      </div>
+
+      <div className="dpob-wrap">
+        <aside className="dpob-steps">
+          {steps.map((s, i) => (
+            <button
+              key={s.key}
+              className={`dpob-stepitem${i === stepIdx ? ' on' : ''}${state?.draft?.steps_completed?.includes(s.key) ? ' done' : ''}`}
+              onClick={() => { void save({ stepKey: s.key }); setStepIdx(i); }}
+            >
+              <span className="dpob-stepnum">{state?.draft?.steps_completed?.includes(s.key) ? '✓' : i + 1}</span>
+              <span className="dpob-steptext">
+                <span className="dpob-stepname">{s.title}</span>
+                <span className="dpob-stepopt">{s.optional ? 'Optional' : 'Required'}</span>
+              </span>
+            </button>
+          ))}
+        </aside>
+
+        <main className="dpob-main">
+          {err && <div className="dpob-err">{err}</div>}
+          {saved && <div className="dpob-ok">{saved}</div>}
+
+          <h1 className="dpob-h1">{step?.title}</h1>
+          <p className="dpob-blurb">{step?.blurb}</p>
+
+          {/* ---- BASICS ---- */}
+          {step?.key === 'basics' && (
+            <div className="dpob-fields">
+              <Field label="Business name" required>
+                <input value={sections.basics?.name ?? ''} onChange={(e) => setField('basics', 'name', e.target.value)} placeholder="Your business name" />
+              </Field>
+              <Field label="Tagline">
+                <input value={sections.basics?.tagline ?? ''} onChange={(e) => setField('basics', 'tagline', e.target.value)} placeholder="A short line that describes you" />
+              </Field>
+              <div className="dpob-row">
+                <Field label="City"><input value={sections.basics?.city ?? ''} onChange={(e) => setField('basics', 'city', e.target.value)} /></Field>
+                <Field label="Region / State"><input value={sections.basics?.region ?? ''} onChange={(e) => setField('basics', 'region', e.target.value)} /></Field>
+              </div>
+            </div>
+          )}
+
+          {/* ---- WEBSITE ---- */}
+          {step?.key === 'website' && (
+            <div className="dpob-fields">
+              <p className="dpob-help">Share a website, Instagram, portfolio, booking page, or Google listing and we will structure a starting point for you. We never invent pricing, capacity, insurance, or certifications. Every suggested field is marked pending your verification.</p>
+              <div className="dpob-row">
+                <Field label="Link type">
+                  <select value={linkType} onChange={(e) => setLinkType(e.target.value)}>
+                    <option value="website">Website</option>
+                    <option value="instagram">Instagram</option>
+                    <option value="portfolio">Portfolio</option>
+                    <option value="booking">Booking page</option>
+                    <option value="google">Google listing</option>
+                    <option value="other">Other</option>
+                  </select>
+                </Field>
+                <Field label="URL">
+                  <input value={websiteUrl} onChange={(e) => setWebsiteUrl(e.target.value)} placeholder="https://" />
+                </Field>
+              </div>
+              <div className="dpob-inline">
+                <button className="dpob-btn" onClick={importWebsite} disabled={busy}>Import and structure</button>
+                <button className="dpob-ghost" onClick={() => setStepIdx((i) => i + 1)} disabled={busy}>Skip, I will add details by hand</button>
+              </div>
+
+              {pending.length > 0 && (
+                <div className="dpob-suggs">
+                  <div className="dpob-suggs-head">AI suggestions, pending your verification</div>
+                  {pending.map((s) => (
+                    <SuggestionRow key={s.id} s={s} onResolve={resolveSuggestion} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ---- ABOUT ---- */}
+          {step?.key === 'about' && (
+            <div className="dpob-fields">
+              <Field label="About" required>
+                <textarea rows={7} value={sections.about?.body ?? ''} onChange={(e) => setField('about', 'body', e.target.value)} placeholder="Who you are, the experiences you create, what makes your work distinctive." />
+              </Field>
+              {pending.filter((p) => p.section === 'about').length > 0 && (
+                <div className="dpob-suggs">
+                  <div className="dpob-suggs-head">Suggested copy, pending verification</div>
+                  {pending.filter((p) => p.section === 'about').map((s) => (
+                    <SuggestionRow key={s.id} s={s} onResolve={resolveSuggestion} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ---- SERVICES ---- */}
+          {step?.key === 'services' && (
+            <ListEditor
+              label={role === 'venue' ? 'Spaces and services' : 'Services'}
+              items={sections.services?.items ?? []}
+              onChange={(items) => setField('services', 'items', items)}
+              fields={[{ key: 'name', label: 'Name' }, { key: 'description', label: 'Description' }]}
+            />
+          )}
+
+          {/* ---- PACKAGES ---- */}
+          {step?.key === 'packages' && (
+            <ListEditor
+              label="Packages"
+              items={sections.packages?.items ?? []}
+              onChange={(items) => setField('packages', 'items', items)}
+              fields={[{ key: 'name', label: 'Package name' }, { key: 'description', label: 'What is included' }, { key: 'priceNote', label: 'Pricing note (you control this)' }]}
+            />
+          )}
+
+          {/* ---- GALLERY ---- */}
+          {step?.key === 'gallery' && (
+            <ListEditor
+              label="Gallery"
+              items={(sections.gallery?.images ?? []).map((u: any) => (typeof u === 'string' ? { url: u } : u))}
+              onChange={(items) => setField('gallery', 'images', items)}
+              fields={[{ key: 'url', label: 'Image URL' }, { key: 'caption', label: 'Caption' }]}
+            />
+          )}
+
+          {/* ---- DOCUMENTS ---- */}
+          {step?.key === 'documents' && (
+            <div className="dpob-fields">
+              <p className="dpob-help">Add references to documents you have uploaded (certificate of insurance, W-9, portfolios). Details drawn from documents stay pending until verified.</p>
+              <div className="dpob-inline">
+                <input value={docUrl} onChange={(e) => setDocUrl(e.target.value)} placeholder="Document URL or reference" />
+                <button className="dpob-btn" onClick={addDocument} disabled={busy}>Add document</button>
+              </div>
+              <ul className="dpob-doclist">
+                {pending.filter((p) => p.section === 'documents').map((s) => (
+                  <li key={s.id}>Document on file, pending verification</li>
+                ))}
+                {(state?.suggestions ?? []).filter((p) => p.section === 'documents' && p.status !== 'rejected').length === 0 && (
+                  <li className="dpob-muted">No documents added yet.</li>
+                )}
+              </ul>
+            </div>
+          )}
+
+          {/* ---- REVIEW ---- */}
+          {step?.key === 'review' && (
+            <div className="dpob-fields">
+              <div className="dpob-preview">
+                <div className="dpob-preview-hero">
+                  <div className="dpob-preview-title">{sections.basics?.name || 'Your business'}</div>
+                  <div className="dpob-preview-tag">{sections.basics?.tagline || 'Your tagline'}</div>
+                </div>
+                <div className="dpob-preview-body">
+                  <p>{sections.about?.body || 'Your about section will appear here.'}</p>
+                  <div className="dpob-preview-grid">
+                    <div><strong>Services</strong><span>{(sections.services?.items ?? []).length}</span></div>
+                    <div><strong>Packages</strong><span>{(sections.packages?.items ?? []).length}</span></div>
+                    <div><strong>Gallery</strong><span>{(sections.gallery?.images ?? []).length}</span></div>
+                    <div><strong>Strength</strong><span>{strength}%</span></div>
+                  </div>
+                </div>
+              </div>
+              {pending.length > 0 && (
+                <div className="dpob-warn">You have {pending.length} AI suggestion(s) awaiting verification. Resolve them so nothing unverified reaches your public profile.</div>
+              )}
+              <div className="dpob-publishrow">
+                <button className="dpob-ghost" onClick={() => publish('submit')} disabled={busy}>Submit for review</button>
+                <button className="dpob-btn" onClick={() => publish('publish')} disabled={busy}>Publish profile</button>
+              </div>
+              <p className="dpob-muted">Publishing is subject to your tier. Free and Free Partner profiles go to a short review first; Partner and Premier may publish directly.</p>
+            </div>
+          )}
+
+          <div className="dpob-nav">
+            <button className="dpob-ghost" onClick={back} disabled={busy || stepIdx === 0}>Back</button>
+            <div className="dpob-nav-right">
+              <button className="dpob-ghost" onClick={() => save()} disabled={busy}>Save progress</button>
+              {stepIdx < steps.length - 1 && <button className="dpob-btn" onClick={next} disabled={busy}>Continue</button>}
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+  return (
+    <label className="dpob-field">
+      <span className="dpob-lbl">{label}{required ? <em> required</em> : <em className="opt"> optional</em>}</span>
+      {children}
+    </label>
+  );
+}
+
+function SuggestionRow({ s, onResolve }: { s: AiSuggestion; onResolve: (id: string, a: 'accepted' | 'edited' | 'rejected', v?: unknown) => void }) {
+  const [editing, setEditing] = useState(false);
+  const initial = s.suggested_value?.value;
+  const [val, setVal] = useState(typeof initial === 'string' ? initial : '');
+  return (
+    <div className="dpob-sugg">
+      <div className="dpob-sugg-meta">
+        <span className="dpob-sugg-field">{s.section} · {s.field}</span>
+        <span className="dpob-sugg-tag">pending verification</span>
+      </div>
+      {editing ? (
+        <textarea rows={3} value={val} onChange={(e) => setVal(e.target.value)} />
+      ) : (
+        <div className="dpob-sugg-val"><ValueText v={initial} /></div>
+      )}
+      <div className="dpob-sugg-actions">
+        {editing ? (
+          <>
+            <button className="dpob-mini" onClick={() => { onResolve(s.id, 'edited', val); setEditing(false); }}>Save edit</button>
+            <button className="dpob-mini ghost" onClick={() => setEditing(false)}>Cancel</button>
+          </>
+        ) : (
+          <>
+            <button className="dpob-mini" onClick={() => onResolve(s.id, 'accepted')}>Accept</button>
+            <button className="dpob-mini ghost" onClick={() => setEditing(true)}>Edit</button>
+            <button className="dpob-mini reject" onClick={() => onResolve(s.id, 'rejected')}>Reject</button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ListEditor({
+  label, items, onChange, fields,
+}: {
+  label: string;
+  items: any[];
+  onChange: (items: any[]) => void;
+  fields: { key: string; label: string }[];
+}) {
+  function update(i: number, key: string, value: string) {
+    const next = items.slice();
+    next[i] = { ...(next[i] ?? {}), [key]: value };
+    onChange(next);
+  }
+  function add() { onChange([...items, {}]); }
+  function remove(i: number) { onChange(items.filter((_, idx) => idx !== i)); }
+  return (
+    <div className="dpob-fields">
+      {items.length === 0 && <p className="dpob-muted">No {label.toLowerCase()} yet.</p>}
+      {items.map((it, i) => (
+        <div className="dpob-listcard" key={i}>
+          {fields.map((f) => (
+            <label className="dpob-field" key={f.key}>
+              <span className="dpob-lbl">{f.label}</span>
+              <input value={it?.[f.key] ?? ''} onChange={(e) => update(i, f.key, e.target.value)} />
+            </label>
+          ))}
+          <button className="dpob-mini reject" onClick={() => remove(i)}>Remove</button>
+        </div>
+      ))}
+      <button className="dpob-btn ghost" onClick={add}>Add {label.toLowerCase().replace(/s$/, '')}</button>
+    </div>
+  );
+}
+
+const CSS = `
+.dpob{--e:#123c2e;--e2:#1E5D4A;--gold:#C9A35B;--ivory:#F7F4EE;--ink:#2c2a26;--muted:#7d776c;--line:#e7e1d6;
+  min-height:100vh;background:var(--ivory);color:var(--ink);font-family:Inter,system-ui,sans-serif;}
+.dpob *{box-sizing:border-box;}
+.dpob-top{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;background:#fff;border-bottom:1px solid var(--line);}
+.dpob-brand{display:flex;align-items:center;gap:11px;}
+.dpob-logo{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--gold),#b58e44);color:var(--e);display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-weight:700;font-size:20px;}
+.dpob-name{font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--e);font-weight:600;}
+.dpob-by{font-size:10px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted);}
+.dpob-topactions{display:flex;align-items:center;gap:12px;}
+.dpob-status{font-size:11px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;padding:4px 10px;border-radius:999px;background:rgba(201,163,91,.18);color:var(--e);border:1px solid rgba(201,163,91,.45);}
+.dpob-status-published,.dpob-status-verified{background:rgba(31,122,77,.14);border-color:rgba(31,122,77,.4);color:#1f7a4d;}
+.dpob-meters{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:16px 28px;background:#fff;border-bottom:1px solid var(--line);}
+.dpob-meter-head{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin-bottom:6px;}
+.dpob-bar{height:8px;border-radius:999px;background:var(--line);overflow:hidden;}
+.dpob-bar-fill{height:100%;background:var(--e2);transition:width .3s;}
+.dpob-bar-fill.gold{background:var(--gold);}
+.dpob-wrap{display:flex;gap:24px;max-width:1080px;margin:0 auto;padding:24px 28px 60px;}
+.dpob-steps{flex:0 0 230px;display:flex;flex-direction:column;gap:4px;}
+.dpob-stepitem{display:flex;align-items:center;gap:11px;text-align:left;background:#fff;border:1px solid var(--line);border-radius:11px;padding:11px 13px;cursor:pointer;font:inherit;transition:.15s;}
+.dpob-stepitem:hover{border-color:var(--e2);}
+.dpob-stepitem.on{border-color:var(--e2);box-shadow:0 0 0 1px var(--e2) inset;background:#f0f6f2;}
+.dpob-stepnum{width:24px;height:24px;flex:0 0 24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;background:rgba(201,163,91,.18);color:var(--e);}
+.dpob-stepitem.done .dpob-stepnum{background:#1f7a4d;color:#fff;}
+.dpob-steptext{display:flex;flex-direction:column;line-height:1.2;}
+.dpob-stepname{font-size:13.5px;font-weight:600;color:var(--ink);}
+.dpob-stepopt{font-size:10.5px;color:var(--muted);}
+.dpob-main{flex:1 1 auto;min-width:0;background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px;}
+.dpob-h1{font-family:'Cormorant Garamond',serif;font-size:30px;color:var(--e);margin:0 0 4px;}
+.dpob-blurb{color:var(--muted);font-size:14px;margin:0 0 22px;}
+.dpob-help{font-size:13px;color:var(--muted);line-height:1.6;background:var(--ivory);border:1px solid var(--line);border-radius:10px;padding:13px 15px;}
+.dpob-fields{display:flex;flex-direction:column;gap:16px;}
+.dpob-field{display:flex;flex-direction:column;gap:6px;}
+.dpob-lbl{font-size:11.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--muted);}
+.dpob-lbl em{font-style:normal;color:var(--gold);font-weight:600;}
+.dpob-lbl em.opt{color:var(--muted);font-weight:500;}
+.dpob input,.dpob textarea,.dpob select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:14px;background:#fff;color:var(--ink);}
+.dpob input:focus,.dpob textarea:focus,.dpob select:focus{outline:none;border-color:var(--e2);}
+.dpob-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.dpob-inline{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+.dpob-inline input{flex:1 1 220px;}
+.dpob-btn{background:var(--e);color:#fff;border:0;border-radius:10px;font:inherit;font-size:13.5px;font-weight:600;padding:11px 18px;cursor:pointer;}
+.dpob-btn:hover{background:var(--e2);}
+.dpob-btn.ghost{background:transparent;color:var(--e);border:1px solid var(--line);}
+.dpob-btn:disabled{opacity:.5;cursor:default;}
+.dpob-ghost{background:transparent;border:1px solid var(--line);border-radius:10px;color:var(--e);font:inherit;font-size:13px;font-weight:600;padding:10px 16px;cursor:pointer;}
+.dpob-ghost:hover{border-color:var(--e2);}
+.dpob-ghost:disabled{opacity:.5;cursor:default;}
+.dpob-suggs{border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--ivory);}
+.dpob-suggs-head{font-size:12px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--e);margin-bottom:10px;}
+.dpob-sugg{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px;}
+.dpob-sugg-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;}
+.dpob-sugg-field{font-size:12px;font-weight:600;color:var(--e);text-transform:capitalize;}
+.dpob-sugg-tag{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#a3382f;background:#fbe9e7;border-radius:999px;padding:2px 8px;}
+.dpob-sugg-val{font-size:13px;color:var(--ink);line-height:1.5;margin-bottom:9px;}
+.dpob-sugg-actions{display:flex;gap:8px;}
+.dpob-mini{background:var(--e);color:#fff;border:0;border-radius:8px;font:inherit;font-size:12px;font-weight:600;padding:6px 12px;cursor:pointer;}
+.dpob-mini.ghost{background:transparent;color:var(--e);border:1px solid var(--line);}
+.dpob-mini.reject{background:transparent;color:#a3382f;border:1px solid #f0cfca;}
+.dpob-listcard{display:flex;flex-direction:column;gap:10px;border:1px solid var(--line);border-radius:11px;padding:14px;background:var(--ivory);}
+.dpob-doclist{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;font-size:13px;}
+.dpob-doclist li{background:var(--ivory);border:1px solid var(--line);border-radius:8px;padding:8px 12px;}
+.dpob-muted{color:var(--muted);font-size:13px;}
+.dpob-preview{border:1px solid var(--line);border-radius:14px;overflow:hidden;}
+.dpob-preview-hero{background:linear-gradient(120deg,var(--e),var(--e2));color:var(--ivory);padding:28px 22px;}
+.dpob-preview-title{font-family:'Cormorant Garamond',serif;font-size:28px;}
+.dpob-preview-tag{font-size:14px;color:rgba(247,244,238,.85);margin-top:4px;}
+.dpob-preview-body{padding:20px 22px;}
+.dpob-preview-body p{font-size:14px;line-height:1.6;color:var(--ink);margin:0 0 16px;}
+.dpob-preview-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+.dpob-preview-grid div{background:var(--ivory);border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;}
+.dpob-preview-grid strong{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);}
+.dpob-preview-grid span{font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--e);}
+.dpob-warn{background:#fff7e8;border:1px solid #e7d4a4;color:#8a6d1f;border-radius:10px;padding:12px 14px;font-size:13px;}
+.dpob-publishrow{display:flex;gap:12px;}
+.dpob-nav{display:flex;justify-content:space-between;margin-top:26px;padding-top:18px;border-top:1px solid var(--line);}
+.dpob-nav-right{display:flex;gap:10px;}
+.dpob-err{background:#fbe9e7;color:#a3382f;border-radius:10px;padding:10px 13px;font-size:13px;margin-bottom:14px;}
+.dpob-ok{background:rgba(31,122,77,.12);color:#1f7a4d;border-radius:10px;padding:10px 13px;font-size:13px;margin-bottom:14px;}
+@media(max-width:860px){.dpob-wrap{flex-direction:column;}.dpob-steps{flex-direction:row;flex-wrap:wrap;}.dpob-stepitem{flex:1 1 140px;}.dpob-meters{grid-template-columns:1fr;}.dpob-row,.dpob-preview-grid{grid-template-columns:1fr 1fr;}}
+`;

@@ -1,0 +1,173 @@
+# Phase 5 Integration - Invoices, Payments + Platform Fees, Payment-Leakage Policy, Contract Pricing, Change Orders
+
+Blueprint sections 20, 21, 22, 23. All Phase 5 work lives in NEW files only. This
+doc tells the integrator (whoever owns `server/src/routes.ts`, `src/App.tsx`, and
+`db/schema.sql`) exactly what to wire up. None of these edits are done here.
+
+## 1. Database
+
+Apply `db/schema-phase5.sql` AFTER `db/schema.sql`. It is additive and idempotent
+(every column add is guarded with `if not exists`, every seed uses
+`on conflict do nothing`).
+
+```
+psql "postgres://aibos:<pw>@localhost:5433/divini_partners" -f db/schema-phase5.sql
+```
+
+What it adds:
+
+- `invoices` extras: `invoice_number` (unique), `venue_id`, `quote_id`,
+  `processing_fee`, `platform_fee_rate`, `deposit_due`, `deposit_status`, `terms`,
+  `notes`, `payment_link`, `brand` (jsonb co-branding), `currency`, `sent_at`,
+  `viewed_at`, `paid_at`, `created_by`, `updated_at`.
+- `payments` extras: `event_id`, `organization_id`, `flow`, `kind`,
+  `processing_fee`, `net_payout`, `payee_org_id`, `payee_label`, `fee_breakdown`,
+  `external_proof`, `external_acknowledged_by`, `fee_owed`, `reference`,
+  `recorded_by`, `updated_at`.
+- `platform_fee_config` (NEW): configurable fees list (blueprint 21.3). Seeded
+  with platform_fee, processing_fee (percent + flat), rush_fee.
+- `leakage_events` (NEW): one row per payment-leakage decision (detected / warned
+  / marked_external / blocked / cleared) with reason, proof, fee_owed,
+  admin_notified, account_flagged.
+- `contract_pricing` extras: `name`, `volume_tier`, `volume_threshold`,
+  `applicable_venues`, `terms`, `approval_status`, `approved_by`, `created_by`,
+  `updated_at`.
+- `change_orders` extras: `change_order_number`, `title`, `reason`,
+  `scope_creep_flag`, `subtotal`, `platform_fee`, `vendor_id`, `responded_at`,
+  `updated_at`.
+
+Note: `change_orders.status` and `contract_pricing.status` were free text in
+schema.sql; Phase 5 uses the enum-like value sets documented in the db modules.
+
+## 2. Backend routers - mount in `server/src/routes.ts`
+
+Add these imports and mounts (the file already has commented placeholders for
+domain mounts):
+
+```ts
+import invoices from "./routes/invoices.js";
+import payments from "./routes/payments.js";
+import contracts from "./routes/contracts.js";
+import changeOrders from "./routes/changeorders.js";
+
+router.use("/invoices", invoices);
+router.use("/payments", payments);
+router.use("/contract-pricing", contracts);
+router.use("/change-orders", changeOrders);
+```
+
+### Routes (method + full path)
+
+Invoices (`server/src/routes/invoices.ts`):
+- `GET    /api/invoices`               list (query: `event_id`, `status`)
+- `GET    /api/invoices/meta`          statuses + labels
+- `POST   /api/invoices`               create a standardized invoice (platform fee from org tier)
+- `GET    /api/invoices/:id`           single standardized invoice
+- `PATCH  /api/invoices/:id/status`    advance invoice status
+
+Payments (`server/src/routes/payments.ts`):
+- `GET    /api/payments`               list (query: `invoice_id`, `event_id`, `external`)
+- `GET    /api/payments/meta`          payout statuses, flows, kinds, configurable fees, tiers, protection notice
+- `GET    /api/payments/summary`       fee + payout roll-up
+- `POST   /api/payments`               record an on-platform payment (applies to invoice balance)
+- `POST   /api/payments/external`      LEAKAGE FLOW: requires `reason` + `proof`; computes fee owed; writes payments + leakage_events + audit_logs + admin notify (feedback_items); flags account. Returns 422 if reason/proof missing (still logs a "blocked" leakage_event).
+- `POST   /api/payments/detect`        scan `text` for leakage language (read-only); returns detection + protection notice copy
+- `PATCH  /api/payments/:id/payout`    advance payout status
+
+Contract pricing (`server/src/routes/contracts.ts`) - Premier-gated for create/approve:
+- `GET    /api/contract-pricing`            list partnerships for the org (returns `premier` boolean)
+- `GET    /api/contract-pricing/meta`       partner types, pricing types, approval statuses
+- `POST   /api/contract-pricing`            create (403 unless tier is premier/white_label)
+- `GET    /api/contract-pricing/:id`        single partnership
+- `PATCH  /api/contract-pricing/:id/status` set approval status (Premier only)
+
+Change orders (`server/src/routes/changeorders.ts`):
+- `GET    /api/change-orders`               list for an event (query `event_id` required)
+- `GET    /api/change-orders/meta`          statuses + labels
+- `POST   /api/change-orders`               create (computes scope-creep flag)
+- `GET    /api/change-orders/:id`           single change order
+- `PATCH  /api/change-orders/:id/status`    advance lifecycle status
+
+All routes use `requireUser` and resolve the org via `db.getActor`. Platform-fee
+rate comes from `db.TIERS[tier].feeRate`. No real payment processor is integrated;
+everything is record/track only, and external payments carry `external_payment_flag`.
+
+## 3. Frontend pages - register routes in `src/App.tsx`
+
+Each component is a default export and uses only `react` + `react-router-dom` +
+the named `src/lib/*` modules. Intended route paths:
+
+| Component | File | Route path |
+| --- | --- | --- |
+| InvoiceList | `src/pages/invoices/InvoiceList.tsx` | `/invoices` |
+| InvoiceDetail | `src/pages/invoices/InvoiceDetail.tsx` | `/invoices/:id` |
+| PaymentsDashboard | `src/pages/payments/PaymentsDashboard.tsx` | `/payments` |
+| ContractPricing | `src/pages/contracts/ContractPricing.tsx` | `/contract-pricing` |
+| ChangeOrders | `src/pages/changeorders/ChangeOrders.tsx` | `/change-orders` (reads `?event_id=`) |
+
+Example wiring (inside the authenticated route group):
+
+```tsx
+import InvoiceList from './pages/invoices/InvoiceList';
+import InvoiceDetail from './pages/invoices/InvoiceDetail';
+import PaymentsDashboard from './pages/payments/PaymentsDashboard';
+import ContractPricing from './pages/contracts/ContractPricing';
+import ChangeOrders from './pages/changeorders/ChangeOrders';
+
+<Route path="/invoices" element={<InvoiceList />} />
+<Route path="/invoices/:id" element={<InvoiceDetail />} />
+<Route path="/payments" element={<PaymentsDashboard />} />
+<Route path="/contract-pricing" element={<ContractPricing />} />
+<Route path="/change-orders" element={<ChangeOrders />} />
+```
+
+## 4. Event Workspace tabs
+
+The Event Workspace should embed these as tabs scoped to the open event:
+- Invoices tab  -> `InvoiceList` filtered by `event_id` (it calls `/api/invoices`;
+  pass `?event_id=` through to the API, or render the list filtered by event).
+- Payments tab  -> `PaymentsDashboard` (or the per-event payment list via
+  `/api/payments?event_id=`).
+- Change Orders tab -> `ChangeOrders`, which already reads `?event_id=` and embeds
+  directly.
+
+## 5. LeakageModal is reusable platform-wide
+
+`src/components/LeakageModal.tsx` exports:
+- default `LeakageModal` - the "Payment Protection Notice" popup with the exact
+  blueprint 21.4 copy and four CTAs (Continue Payment Through Divini, Mark as
+  External Payment, Contact Support, View Payment Policy). Wire CTAs via the
+  `onAction(action)` prop where action is `'continue' | 'external' | 'support' | 'policy'`.
+- named hook `useLeakageGuard(text)` - returns `{ flagged, open, show, dismiss }`.
+
+Use it anywhere free text is entered (messaging threads, invoice notes, quote
+terms). Suggested pattern: run `useLeakageGuard(draftText)`, and when `flagged`
+is true call `show()` (e.g. on send), then render `<LeakageModal open={open} ... />`.
+The "Mark as External Payment" CTA should drive the `POST /api/payments/external`
+flow (which requires reason + proof). The server mirrors the same notice copy and
+the same detection terms in `server/src/lib/leakage.ts`.
+
+## 6. Files added in Phase 5
+
+Backend:
+- `server/src/db/invoices.ts`
+- `server/src/db/payments.ts`
+- `server/src/db/contracts.ts`
+- `server/src/db/changeorders.ts`
+- `server/src/lib/leakage.ts`
+- `server/src/routes/invoices.ts`
+- `server/src/routes/payments.ts`
+- `server/src/routes/contracts.ts`
+- `server/src/routes/changeorders.ts`
+- `db/schema-phase5.sql`
+
+Frontend:
+- `src/pages/invoices/InvoiceList.tsx`
+- `src/pages/invoices/InvoiceDetail.tsx`
+- `src/pages/payments/PaymentsDashboard.tsx`
+- `src/pages/contracts/ContractPricing.tsx`
+- `src/pages/changeorders/ChangeOrders.tsx`
+- `src/components/LeakageModal.tsx`
+
+Docs:
+- `server/src/db/INTEGRATION-phase5.md` (this file)

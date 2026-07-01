@@ -1,0 +1,172 @@
+[
+  {
+    "business_name": "Bill Hansen Catering",
+    "website_url": "https://www.billhansencatering.com/",
+    "city": "Coconut Grove",
+    "category": "Catering",
+    "public_email": "info@billhansencatering.com",
+    "public_phone": "305-858-6660",
+    "source_url": "https://www.billhansencatering.com/",
+    "one_line_description": "Full-service event caterer providing custom menus and event design for weddings, corporate events, and celebrations across South Florida."
+  },
+  {
+    "business_name": "A Joy Catering",
+    "website_url": "https://www.ajoycatering.com/",
+    "city": "Miami",
+    "category": "Catering",
+    "public_email": null,
+    "public_phone": "305-252-0020",
+    "source_url": "https://www.ajoycatering.com/",
+    "one_line_description": "Full-service catering and event design company offering chef-inspired menus for weddings, corporate, and social events throughout South Florida."
+  },
+  {
+    "business_name": "Miami Grill Catering",
+    "website_url": "https://www.miamigrillcatering.com/",
+    "city": "Doral",
+    "category": "Catering",
+    "public_email": null,
+    "public_phone": null,
+    "source_url": "https://www.miamigrillcatering.com/",
+    "one_line_description": "Doral-based catering company providing tailored catering for weddings, corporate events, and special occasions."
+  },
+  {
+    "business_name": "Miami Catering",
+    "website_url": "https://miamicatering.com/",
+    "city": "Miami",
+    "category": "Catering",
+    "public_email": null,
+    "public_phone": "786-357-4990",
+    "source_url": "https://miamicatering.com/",
+    "one_line_description": "Catering services company serving weddings, corporate events, social gatherings, and BBQs across Miami-Dade County."
+  },
+  {
+    "business_name": "The Stuffed Cuban",
+    "website_url": "https://www.thestuffedcuban.com/",
+    "city": "Coral Gables",
+    "category": "Catering",
+    "public_email": null,
+    "public_phone": "305-619-2921",
+    "source_url": "https://www.thestuffedcuban.com/",
+    "one_line_description": "Cuban cuisine caterer known for whole roast pig (Caja China), seafood paellas, and Cuban luaus for weddings and corporate events."
+  },
+  {
+    "business_name": "A Matter of Taste Catering & Event Planning",
+    "website_url": "https://amatteroftaste.biz/",
+    "city": "Coral Gables",
+    "category": "Catering",
+    "public_email": null,
+    "public_phone": "305-567-0710",
+    "source_url": "https://amatteroftaste.biz/",
+    "one_line_description": "Catering and event planning company serving weddings, corporate events, and private parties in South Florida since 1986."
+  },
+  {
+    "business_name": "Edda's Cake Designs",
+    "website_url": "https://eddascakedesigns.com/",
+    "city": "Miami",
+    "category": "Bakery and Cake",
+    "public_email": null,
+    "public_phone": null,
+    "source_url": "https://eddascakedesigns.com/",
+    "one_line_description": "Family-owned Miami bakery baking and decorating custom cakes, wedding cakes, and desserts since 1978."
+  },
+  {
+    "business_name": "Let Them Have Cake",
+    "website_url": "https://letthemhavecakemiami.com/",
+    "city": "Coral Gables",
+    "category": "Bakery and Cake",
+    "public_email": "info@lethemhavecakemiami.com",
+    "public_phone": "305-200-5575",
+    "source_url": "https://letthemhavecakemiami.com/",
+    "one_line_description": "Coral Gables boutique cafe and couture cake atelier creating custom cakes and desserts for weddings and celebrations."
+  },
+  {
+    "business_name": "Elegant Temptations Bakery",
+    "website_url": "https://www.eleganttemptations.com/",
+    "city": "Hialeah Gardens",
+    "category": "Bakery and Cake",
+    "public_email": "etcakes@me.com",
+    "public_phone": "786-660-5584",
+    "source_url": "https://www.eleganttemptations.com/",
+    "one_line_description": "Custom cake bakery offering wedding cakes, dessert tables, and custom confections with delivery throughout South Florida."
+  },
+  {
+    "business_name": "Bake & Dough",
+    "website_url": "https://bakeanddough.com/",
+    "city": "Miami",
+    "category": "Bakery and Cake",
+    "public_email": null,
+    "public_phone": null,
+    "source_url": "https://bakeanddough.com/",
+    "one_line_description": "Miami bakery creating modern buttercream and fondant cakes made in-house, including wedding and custom event cakes."
+  },
+  {
+    "business_name": "T'antay Miami Cake Studio",
+    "website_url": "https://tantaymiami.com/",
+    "city": "Coral Gables",
+    "category": "Bakery and Cake",
+    "public_email": null,
+    "public_phone": null,
+    "source_url": "https://tantaymiami.com/",
+    "one_line_description": "Family-owned Miami cake studio making made-to-order custom cakes, including wedding and engagement cakes, baked from scratch."
+  },
+  {
+    "business_name": "Maison Valentine",
+    "website_url": "https://maisonsvalentine.com/",
+    "city": "Miami Beach",
+    "category": "Bakery and Cake",
+    "public_email": null,
+    "public_phone": null,
+    "source_url": "https://maisonsvalentine.com/pages/about",
+    "one_line_description": "French pastry shop and cafe in Miami Beach crafting artisanal pastries and custom cakes for special occasions."
+  },
+  {
+    "business_name": "Divine Delicacies Custom Cakes",
+    "website_url": "https://www.ddcakes.com/",
+    "city": "Miami",
+    "category": "Bakery and Cake",
+    "public_email": "info@ddcakes.com",
+    "public_phone": "305-554-4446",
+    "source_url": "https://www.ddcakes.com/contact/",
+    "one_line_description": "Family-owned custom cake bakery established in 2001, creating wedding cakes and custom cakes from scratch in Miami."
+  },
+  {
+    "business_name": "Barside Miami",
+    "website_url": "https://www.barsidemiami.com/",
+    "city": "Doral",
+    "category": "Bar and Beverage",
+    "public_email": "alexg@barsidemiami.com",
+    "public_phone": "305-951-3535",
+    "source_url": "https://www.barsidemiami.com/",
+    "one_line_description": "Mobile bartending service providing professional bartenders and signature cocktails for weddings, corporate gatherings, and private parties."
+  },
+  {
+    "business_name": "BarBae Miami",
+    "website_url": "https://barbaemiami.com/",
+    "city": "Miami",
+    "category": "Bar and Beverage",
+    "public_email": null,
+    "public_phone": "305-587-2223",
+    "source_url": "https://barbaemiami.com/",
+    "one_line_description": "Mobile bartending service offering licensed bartenders, themed bars, and custom cocktail menus for weddings and private events."
+  },
+  {
+    "business_name": "Miami Bartender Babe",
+    "website_url": "https://miamibartenderbabe.com/",
+    "city": "Miami",
+    "category": "Bar and Beverage",
+    "public_email": "miamibartenderbabe@gmail.com",
+    "public_phone": "305-613-5953",
+    "source_url": "https://miamibartenderbabe.com/",
+    "one_line_description": "Mobile bartending service offering bartenders, wait staff, beverage catering, and portable bar rentals for weddings and private events."
+  },
+  {
+    "business_name": "305 Cater Bartending",
+    "website_url": "https://www.305caterbartending.com/",
+    "city": "Miami",
+    "category": "Bar and Beverage",
+    "public_email": null,
+    "public_phone": "305-979-0943",
+    "source_url": "https://www.305caterbartending.com/",
+    "one_line_description": "Miami bartending and beverage catering service offering signature cocktails and professional staff for weddings and events."
+  }
+]

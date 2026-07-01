@@ -1,0 +1,282 @@
+[
+  {
+    "business_name": "Loews Miami Beach Hotel",
+    "website_url": "https://www.loewshotels.com/miami-beach",
+    "city": "Miami Beach",
+    "category": "Hotels and Resorts",
+    "public_email": null,
+    "public_phone": "305-604-1601",
+    "source_url": "https://www.loewshotels.com/miami-beach/meetings",
+    "one_line_description": "Oceanfront South Beach hotel offering meeting and event venues including the 27,600-square-foot Americana Ballroom for galas, weddings and large-scale events."
+  },
+  {
+    "business_name": "The Miami Beach EDITION",
+    "website_url": "https://www.editionhotels.com/miami-beach",
+    "city": "Miami Beach",
+    "category": "Hotels and Resorts",
+    "public_email": "mbeditionsales@editionhotels.com",
+    "public_phone": "786-257-4500",
+    "source_url": "https://www.editionhotels.com/miami-beach/meetings-and-events/",
+    "one_line_description": "Luxury Collins Avenue hotel with indoor and outdoor event spaces, including the 8,300-square-foot Forum venue, supported by catering menus from Jean-Georges Vongerichten."
+  },
+  {
+    "business_name": "Cadillac Hotel & Beach Club",
+    "website_url": "https://www.cadillachotelmiamibeach.com",
+    "city": "Miami Beach",
+    "category": "Hotels and Resorts",
+    "public_email": null,
+    "public_phone": "305-538-3373",
+    "source_url": "https://www.cadillachotelmiamibeach.com/event-space",
+    "one_line_description": "Mid-Beach oceanfront Art Deco hotel offering over 11,000 square feet of indoor-outdoor event space for meetings, weddings and celebrations."
+  },
+  {
+    "business_name": "1 Hotel South Beach",
+    "website_url": "https://www.1hotels.com/south-beach",
+    "city": "Miami Beach",
+    "category": "Hotels and Resorts",
+    "public_email": null,
+    "public_phone": "305-604-1000",
+    "source_url": "https://www.1hotels.com/south-beach/gather",
+    "one_line_description": "Nature-inspired oceanfront hotel offering flexible event spaces, from the Terra Ballroom to breakout rooms, for weddings, meetings and social and corporate events."
+  },
+  {
+    "business_name": "Nobu Hotel Miami Beach",
+    "website_url": "https://www.nobuhotels.com/miami-beach",
+    "city": "Miami Beach",
+    "category": "Hotels and Resorts",
+    "public_email": null,
+    "public_phone": null,
+    "source_url": "https://www.nobuhotels.com/miami-beach/meetings-events/",
+    "one_line_description": "Oceanfront Mid-Beach Japanese-inspired hotel offering meetings and celebrations spaces alongside Nobu dining and Esencia Wellness Spa."
+  },
+  {
+    "business_name": "The Betsy Hotel",
+    "website_url": "https://www.thebetsyhotel.com",
+    "city": "Miami Beach",
+    "category": "Hotels and Resorts",
+    "public_email": null,
+    "public_phone": "844-539-2840",
+    "source_url": "https://www.thebetsyhotel.com/gather/meetings-events",
+    "one_line_description": "Ocean Drive boutique hotel in South Beach offering meeting and event venues and wedding spaces alongside LT Steak & Seafood dining."
+  },
+  {
+    "business_name": "Fontainebleau Miami Beach",
+    "website_url": "https://www.fontainebleau.com/miamibeach",
+    "city": "Miami Beach",
+    "category": "Hotels and Resorts",
+    "public_email": null,
+    "public_phone": null,
+    "source_url": "https://www.fontainebleau.com/miamibeach",
+    "one_line_description": "Iconic oceanfront Collins Avenue resort, originally designed by Morris Lapidus, offering extensive ballroom and conference event facilities."
+  },
+  {
+    "business_name": "Novotel Miami Brickell",
+    "website_url": "https://www.novotelmiami.com",
+    "city": "Brickell, Miami",
+    "category": "Hotels and Resorts",
+    "public_email": null,
+    "public_phone": null,
+    "source_url": "https://www.novotelmiami.com/meetings-events/",
+    "one_line_description": "Brickell hotel offering more than 5,000 square feet of flexible meeting space, including the 12th-floor Skyline Ballroom with Biscayne Bay views, for meetings and weddings."
+  },
+  {
+    "business_name": "Hyatt Centric Brickell Miami",
+    "website_url": "https://www.hyatt.com/hyatt-centric/en-US/miact-hyatt-centric-brickell-miami",
+    "city": "Brickell, Miami",
+    "category": "Hotels and Resorts",
+    "public_email": "MIACT.RFP@hyatt.com",
+    "public_phone": "786-441-1234",
+    "source_url": "https://www.hyatt.com/hyatt-centric/en-US/miact-hyatt-centric-brickell-miami/meetings",
+    "one_line_description": "Brickell financial-district hotel with over 12,000 square feet of versatile space, including a grand ballroom and rooftop terrace, for meetings, weddings and special events."
+  },
+  {
+    "business_name": "Four Seasons Hotel Miami",
+    "website_url": "https://www.fourseasons.com/miami",
+    "city": "Brickell, Miami",
+    "category": "Hotels and Resorts",
+    "public_email": null,
+    "public_phone": "305-358-3535",
+    "source_url": "https://www.fourseasons.com/miami/meetings-and-events/",
+    "one_line_description": "Downtown Brickell urban resort featuring 12 redesigned function spaces with Biscayne Bay views and tropical outdoor terraces for meetings, weddings and events."
+  },
+  {
+    "business_name": "EAST Miami",
+    "website_url": "https://www.easthotels.com/en/miami",
+    "city": "Brickell, Miami",
+    "category": "Hotels and Resorts",
+    "public_email": null,
+    "public_phone": null,
+    "source_url": "https://www.easthotels.com/en/Miami/meetings-and-events/",
+    "one_line_description": "Brickell City Centre hotel with versatile venues including The Crush ballroom and outdoor spaces for weddings, meetings, conferences and parties."
+  },
+  {
+    "business_name": "InterContinental Miami",
+    "website_url": "https://www.icmiamihotel.com",
+    "city": "Downtown Miami",
+    "category": "Hotels and Resorts",
+    "public_email": null,
+    "public_phone": "305-577-1000",
+    "source_url": "https://www.icmiamihotel.com/",
+    "one_line_description": "Downtown bayfront hotel offering polished ballrooms, a mezzanine and outdoor lawn for weddings, meetings and events along Biscayne Bay."
+  },
+  {
+    "business_name": "Hilton Miami Downtown",
+    "website_url": "https://www.hilton.com/en/hotels/miadthf-hilton-miami-downtown",
+    "city": "Downtown Miami",
+    "category": "Hotels and Resorts",
+    "public_email": null,
+    "public_phone": null,
+    "source_url": "https://www.hilton.com/en/hotels/miadthf-hilton-miami-downtown/events/",
+    "one_line_description": "Downtown Miami hotel on Biscayne Blvd with 23 meeting rooms and over 62,000 square feet of event space, including the Symphony Ballroom, for conferences, meetings and celebrations."
+  },
+  {
+    "business_name": "JW Marriott Marquis Miami",
+    "website_url": "https://www.marriott.com/en-us/hotels/miamj-jw-marriott-marquis-miami/overview/",
+    "city": "Downtown Miami",
+    "category": "Hotels and Resorts",
+    "public_email": null,
+    "public_phone": null,
+    "source_url": "https://www.marriott.com/en-us/hotels/miamj-jw-marriott-marquis-miami/events/",
+    "one_line_description": "Downtown Miami luxury hotel featuring grand and column-free Metropolitan ballrooms with certified event planners for weddings and special events."
+  },
+  {
+    "business_name": "Loews Coral Gables Hotel",
+    "website_url": "https://www.loewshotels.com/coral-gables",
+    "city": "Coral Gables",
+    "category": "Hotels and Resorts",
+    "public_email": null,
+    "public_phone": "786-772-7600",
+    "source_url": "https://www.loewshotels.com/coral-gables/meetings",
+    "one_line_description": "Coral Gables hotel with more than 30,000 square feet of function space, including the 9,000-square-foot Alhambra Ballroom and outdoor event lawn, for meetings and weddings."
+  },
+  {
+    "business_name": "The Biltmore Hotel Miami Coral Gables",
+    "website_url": "https://biltmorehotel.com",
+    "city": "Coral Gables",
+    "category": "Hotels and Resorts",
+    "public_email": null,
+    "public_phone": "305-445-1926",
+    "source_url": "https://biltmorehotel.com/coral-gables-event-venues/meeting-rooms/",
+    "one_line_description": "Historic National Historic Landmark resort with over 75,000 square feet of indoor/outdoor space, 23 meeting spaces and 3 ballrooms for meetings, weddings and corporate events."
+  },
+  {
+    "business_name": "Hyatt Regency Coral Gables",
+    "website_url": "https://www.hyatt.com/hyatt-regency/en-US/coral-hyatt-regency-coral-gables",
+    "city": "Coral Gables",
+    "category": "Hotels and Resorts",
+    "public_email": null,
+    "public_phone": "305-441-1234",
+    "source_url": "https://www.hyatt.com/hyatt-regency/en-US/coral-hyatt-regency-coral-gables/weddings",
+    "one_line_description": "Mediterranean-style Coral Gables hotel with indoor and outdoor venues including the Alcazaba, Court of Lions and Hall of Ambassadors ballroom for weddings and events."
+  },
+  {
+    "business_name": "Mr. C Miami Coconut Grove",
+    "website_url": "https://www.mrccoconutgrove.com",
+    "city": "Coconut Grove, Miami",
+    "category": "Hotels and Resorts",
+    "public_email": "sales.grove@mrchotels.com",
+    "public_phone": "305-800-6672",
+    "source_url": "https://www.mrccoconutgrove.com/events/",
+    "one_line_description": "Italian-inspired Coconut Grove hotel offering indoor and outdoor venues including the rooftop Starlight Ballroom overlooking Biscayne Bay for weddings, meetings and events."
+  },
+  {
+    "business_name": "Mayfair House Hotel & Garden",
+    "website_url": "https://www.mayfairhousemiami.com",
+    "city": "Coconut Grove, Miami",
+    "category": "Hotels and Resorts",
+    "public_email": null,
+    "public_phone": "305-441-0000",
+    "source_url": "https://www.mayfairhousemiami.com/gather/",
+    "one_line_description": "Coconut Grove hotel offering 8,500 square feet of event space, including the Magnolia Ballroom and garden Terrace, for weddings, meetings and social events."
+  },
+  {
+    "business_name": "The Ritz-Carlton Coconut Grove, Miami",
+    "website_url": "https://www.ritzcarlton.com/en/hotels/miarz-the-ritz-carlton-coconut-grove-miami",
+    "city": "Coconut Grove, Miami",
+    "category": "Hotels and Resorts",
+    "public_email": null,
+    "public_phone": "305-644-4680",
+    "source_url": "https://www.ritzcarlton.com/en/hotels/miarz-the-ritz-carlton-coconut-grove-miami/events/",
+    "one_line_description": "Coconut Grove luxury hotel with about 14,000 square feet of indoor and outdoor space, including a Ballroom and terraces, for meetings, conferences, galas and weddings."
+  },
+  {
+    "business_name": "The Mutiny Hotel",
+    "website_url": "https://www.providentresorts.com/the-mutiny-hotel-coconut-grove-miami",
+    "city": "Coconut Grove, Miami",
+    "category": "Hotels and Resorts",
+    "public_email": null,
+    "public_phone": "866-682-6506",
+    "source_url": "https://www.providentresorts.com/the-mutiny-hotel-coconut-grove-miami/social-events/facilities",
+    "one_line_description": "All-suite Coconut Grove hotel offering 2,880 square feet of flexible meeting and event space, including the Bounty Room and poolside venues, for groups of 10 to 150."
+  },
+  {
+    "business_name": "The Ritz-Carlton Key Biscayne, Miami",
+    "website_url": "https://www.ritzcarlton.com/en/hotels/miakb-the-ritz-carlton-key-biscayne-miami",
+    "city": "Key Biscayne",
+    "category": "Hotels and Resorts",
+    "public_email": null,
+    "public_phone": "305-365-4500",
+    "source_url": "https://www.ritzcarlton.com/en/hotels/miakb-the-ritz-carlton-key-biscayne-miami/events/",
+    "one_line_description": "Oceanfront Key Biscayne resort with 26 event rooms, including the Ritz-Carlton Ballroom and beachfront lawns, for conferences, weddings and meetings."
+  },
+  {
+    "business_name": "Trump National Doral Miami",
+    "website_url": "https://www.trumphotels.com/miami",
+    "city": "Doral",
+    "category": "Hotels and Resorts",
+    "public_email": "Doral.Sales@trumphotels.com",
+    "public_phone": "305-591-6453",
+    "source_url": "https://www.trumphotels.com/miami/meetings",
+    "one_line_description": "Doral golf resort with more than 100,000 square feet of meeting space and 35 function spaces, including the 24,000-square-foot Donald J. Trump Grand Ballroom."
+  },
+  {
+    "business_name": "InterContinental at Doral Miami",
+    "website_url": "https://www.ihg.com/intercontinental/hotels/us/en/doral/miahc/hoteldetail",
+    "city": "Doral",
+    "category": "Hotels and Resorts",
+    "public_email": null,
+    "public_phone": "877-834-3613",
+    "source_url": "https://www.ihg.com/intercontinental/hotels/us/en/doral/miahc/hoteldetail/meetings-events",
+    "one_line_description": "Doral hotel offering 10,000 square feet of flexible ground-floor event space, including the column-free Grand Doral Ballroom, for corporate meetings, weddings and social events."
+  },
+  {
+    "business_name": "DoubleTree by Hilton Miami Doral",
+    "website_url": "https://www.hilton.com/en/hotels/miadrdt-doubletree-miami-doral",
+    "city": "Doral",
+    "category": "Hotels and Resorts",
+    "public_email": null,
+    "public_phone": null,
+    "source_url": "https://www.hilton.com/en/hotels/miadrdt-doubletree-miami-doral/events/",
+    "one_line_description": "Doral hotel with three meeting rooms, including the El Gran Salon, offering flexible event space for weddings, conferences and celebrations."
+  },
+  {
+    "business_name": "The Sunny Hotel, Curio Collection by Hilton",
+    "website_url": "https://www.thesunnyhotel.com",
+    "city": "Sunny Isles Beach",
+    "category": "Hotels and Resorts",
+    "public_email": null,
+    "public_phone": "305-949-1300",
+    "source_url": "https://www.thesunnyhotel.com/gatherings/venues/atlantis-ballroom/",
+    "one_line_description": "Family-owned beachfront Sunny Isles hotel offering ocean-view venues including the 4,800-square-foot Atlantis Ballroom for weddings, celebrations and corporate gatherings."
+  },
+  {
+    "business_name": "Solé Miami, A Noble House Resort",
+    "website_url": "https://www.solemiami.com",
+    "city": "Sunny Isles Beach",
+    "category": "Hotels and Resorts",
+    "public_email": null,
+    "public_phone": "786-374-2211",
+    "source_url": "https://www.solemiami.com/sunny-isles-meetings/",
+    "one_line_description": "Oceanfront Sunny Isles / North Miami resort with 6,500 square feet of meeting space and a beachfront setting for corporate meetings, incentive trips, weddings and social events."
+  },
+  {
+    "business_name": "JW Marriott Miami Turnberry Resort & Spa",
+    "website_url": "https://www.marriott.com/en-us/hotels/miajt-jw-marriott-miami-turnberry-resort-and-spa/overview/",
+    "city": "Aventura",
+    "category": "Hotels and Resorts",
+    "public_email": null,
+    "public_phone": null,
+    "source_url": "https://www.marriott.com/en-us/hotels/miajt-jw-marriott-miami-turnberry-resort-and-spa/events/",
+    "one_line_description": "Aventura resort with extensive indoor and outdoor event venues, golf and spa, offering ballrooms and meeting spaces for weddings and corporate events."
+  }
+]

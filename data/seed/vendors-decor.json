@@ -1,0 +1,282 @@
+[
+  {
+    "business_name": "The Flower Bazaar",
+    "website_url": "https://www.theflowerbazaar.com",
+    "city": "Miami Beach",
+    "category": "Florals",
+    "public_email": "info@theflowerbazaar.com",
+    "public_phone": "305-604-3433",
+    "source_url": "https://www.theflowerbazaar.com/",
+    "one_line_description": "Floral and event design studio in Miami Beach creating flower arrangements and event decor for weddings, corporate galas, and brand activations."
+  },
+  {
+    "business_name": "Simple Florals",
+    "website_url": "https://simpleflorals.com",
+    "city": "Miami",
+    "category": "Florals",
+    "public_email": null,
+    "public_phone": null,
+    "source_url": "https://simpleflorals.com/",
+    "one_line_description": "Modern Miami wedding florist offering art-forward floral design for weddings, events, and brands."
+  },
+  {
+    "business_name": "Sugar Collections",
+    "website_url": "https://sugarcollectionsmiami.com",
+    "city": "Miami",
+    "category": "Florals",
+    "public_email": "sugarcollections@gmail.com",
+    "public_phone": "786-647-3027",
+    "source_url": "https://sugarcollectionsmiami.com/",
+    "one_line_description": "Miami floral design studio offering event florals for weddings, corporate parties, and installations alongside arrangement delivery."
+  },
+  {
+    "business_name": "Gather and Bloom Events",
+    "website_url": "https://gatherandbloomevents.com",
+    "city": "Miami",
+    "category": "Florals",
+    "public_email": "plan@gatherandbloomevents.com",
+    "public_phone": "786-219-1756",
+    "source_url": "https://gatherandbloomevents.com/",
+    "one_line_description": "Miami-based floral design team creating individualized arrangements for weddings, showers, and corporate events."
+  },
+  {
+    "business_name": "Neroli Blume",
+    "website_url": "https://neroliblume.com",
+    "city": "Miami",
+    "category": "Florals",
+    "public_email": "info@neroliblume.com",
+    "public_phone": "786-967-1887",
+    "source_url": "https://neroliblume.com/",
+    "one_line_description": "Wynwood-based Miami florist offering bespoke floral design for weddings, events, and brand activations."
+  },
+  {
+    "business_name": "Nery's Flowers",
+    "website_url": "https://www.nerysflowers.com",
+    "city": "Miami",
+    "category": "Florals",
+    "public_email": null,
+    "public_phone": null,
+    "source_url": "https://www.nerysflowers.com/",
+    "one_line_description": "Floral design studio in Miami specializing in flowers for weddings and special events across South Florida."
+  },
+  {
+    "business_name": "Atelier Belladonna",
+    "website_url": "https://www.atelierbelladonna.com",
+    "city": "Miami",
+    "category": "Florals",
+    "public_email": "flowers@atelierbelladonna.com",
+    "public_phone": "786-622-4089",
+    "source_url": "https://www.atelierbelladonna.com/contact",
+    "one_line_description": "Miami floral design studio providing arrangements and floral services for weddings, events, and celebrations."
+  },
+  {
+    "business_name": "Flowertopia",
+    "website_url": "https://www.flowertopia.net",
+    "city": "Miami",
+    "category": "Florals",
+    "public_email": null,
+    "public_phone": "305-965-7972",
+    "source_url": "https://www.flowertopia.net/contact_us.php",
+    "one_line_description": "Miami florist offering custom floral arrangements and wedding flowers including bridal bouquets and boutonnieres."
+  },
+  {
+    "business_name": "Petal Productions",
+    "website_url": "https://www.petalproduction.com",
+    "city": "Miami",
+    "category": "Florals",
+    "public_email": "info@petalproductions.com",
+    "public_phone": "305-571-5153",
+    "source_url": "https://www.petalproduction.com/about",
+    "one_line_description": "Miami floral design and event production studio creating florals and decor for weddings, corporate events, and installations."
+  },
+  {
+    "business_name": "Eventluxe",
+    "website_url": "https://www.eventluxe.com",
+    "city": "Miami",
+    "category": "Decor and Design",
+    "public_email": null,
+    "public_phone": null,
+    "source_url": "https://www.eventluxe.com/",
+    "one_line_description": "Miami event furniture rental, decor, and custom fabrication firm building branded environments and experiential activations."
+  },
+  {
+    "business_name": "Opulence Entertainment Group",
+    "website_url": "https://www.opulencemia.com",
+    "city": "Miami",
+    "category": "Decor and Design",
+    "public_email": "events@opulencemia.com",
+    "public_phone": "786-282-3290",
+    "source_url": "https://www.opulencemia.com/",
+    "one_line_description": "Coral Gables-based event production company offering creative design and decor, scenic fabrication, and full-service production for Miami events."
+  },
+  {
+    "business_name": "Florida Event Decor",
+    "website_url": "https://www.floridaeventdecor.com",
+    "city": "Miami",
+    "category": "Decor and Design",
+    "public_email": null,
+    "public_phone": "305-424-7150",
+    "source_url": "https://www.floridaeventdecor.com/Miami-FL/",
+    "one_line_description": "Event decor firm providing custom scenic fabrication, branded stage sets, furniture, and themed environments for Miami corporate events and galas."
+  },
+  {
+    "business_name": "SuperMarket Creative",
+    "website_url": "https://supermarketcreative.com",
+    "city": "Miami",
+    "category": "Decor and Design",
+    "public_email": "hello@supermarketcreative.com",
+    "public_phone": "305-420-5110",
+    "source_url": "https://supermarketcreative.com/experiential-events",
+    "one_line_description": "Miami creative studio producing experiential events, brand activations, set design, and event production for brands."
+  },
+  {
+    "business_name": "Evolution Eventos",
+    "website_url": "https://eieventos.com",
+    "city": "Miami",
+    "category": "Decor and Design",
+    "public_email": null,
+    "public_phone": null,
+    "source_url": "https://eieventos.com/",
+    "one_line_description": "Miami event design company creating custom decor, floral arrangements, and lighting for weddings, galas, and social celebrations."
+  },
+  {
+    "business_name": "Mi Vintage Rentals",
+    "website_url": "https://www.mivintagerentals.com",
+    "city": "Miami",
+    "category": "Rentals",
+    "public_email": "letsparty@mivintagerentals.com",
+    "public_phone": "786-499-3110",
+    "source_url": "https://www.mivintagerentals.com/",
+    "one_line_description": "Miami specialty event rental company offering tables, chairs, lounge furniture, and decor pieces for weddings and events."
+  },
+  {
+    "business_name": "Red Events Rentals",
+    "website_url": "https://redeventsrentals.com",
+    "city": "Doral",
+    "category": "Rentals",
+    "public_email": "info@redeventsrentals.com",
+    "public_phone": "754-423-2418",
+    "source_url": "https://redeventsrentals.com/",
+    "one_line_description": "Doral-based event rental company providing tables, chairs, tents, lounge furniture, linens, staging, and lighting across Miami-Dade."
+  },
+  {
+    "business_name": "Panache Events",
+    "website_url": "https://panacheevents.com",
+    "city": "Miami",
+    "category": "Rentals",
+    "public_email": null,
+    "public_phone": "786-749-0000",
+    "source_url": "https://panacheevents.com/locations-miami",
+    "one_line_description": "Miami party rental company offering tables, chairs, event furniture, linens, dinnerware, and staging for weddings and events."
+  },
+  {
+    "business_name": "So Cool Events",
+    "website_url": "https://socoolevents.com",
+    "city": "Miami",
+    "category": "Rentals",
+    "public_email": null,
+    "public_phone": "305-635-8088",
+    "source_url": "https://socoolevents.com/locations/miami-events/furniture-rentals",
+    "one_line_description": "Miami event rental company offering lounge furniture, sofas, tables, chairs, bars, and decor for weddings and high-end events."
+  },
+  {
+    "business_name": "Happy Party Rental",
+    "website_url": "https://www.happypartyrental.com",
+    "city": "Miami",
+    "category": "Rentals",
+    "public_email": "goldenmoments@gmevents.info",
+    "public_phone": "305-676-7726",
+    "source_url": "https://www.happypartyrental.com/",
+    "one_line_description": "Miami event rental company providing tents, tables, chairs, dance floors, staging, lounge furniture, and flooring."
+  },
+  {
+    "business_name": "Decora Event Rentals",
+    "website_url": "https://decoraeventrentals.com",
+    "city": "Hialeah",
+    "category": "Rentals",
+    "public_email": null,
+    "public_phone": "305-822-3355",
+    "source_url": "https://decoraeventrentals.com/",
+    "one_line_description": "Event furniture rental company serving Miami, Hialeah, and Miami Beach with furniture collections, tents, and decor for weddings and events."
+  },
+  {
+    "business_name": "STR Miami",
+    "website_url": "https://www.str-miami.com",
+    "city": "Miami",
+    "category": "Lighting and Production",
+    "public_email": "sales@str-miami.com",
+    "public_phone": "305-964-9691",
+    "source_url": "https://www.str-miami.com/",
+    "one_line_description": "Miami multimedia, staging, and audiovisual production company providing sound, lighting, LED video, staging, and rigging for live events."
+  },
+  {
+    "business_name": "Gravitate Productions",
+    "website_url": "https://www.workwithgravitate.com",
+    "city": "Doral",
+    "category": "Lighting and Production",
+    "public_email": "info@gravitateproductions.com",
+    "public_phone": "305-747-7077",
+    "source_url": "https://www.workwithgravitate.com/",
+    "one_line_description": "Doral-based audiovisual production company offering lighting, staging, rigging, LED walls, and projection mapping for live, virtual, and hybrid events."
+  },
+  {
+    "business_name": "Event Factor",
+    "website_url": "https://www.theeventfactor.com",
+    "city": "Miami",
+    "category": "Lighting and Production",
+    "public_email": null,
+    "public_phone": "786-222-9914",
+    "source_url": "https://www.theeventfactor.com/",
+    "one_line_description": "Miami event production company providing audiovisual, lighting design, staging, and entertainment for weddings, corporate events, and galas."
+  },
+  {
+    "business_name": "MPE Event Group",
+    "website_url": "https://www.mpeeventgroup.com",
+    "city": "Opa-locka",
+    "category": "Lighting and Production",
+    "public_email": null,
+    "public_phone": "305-209-6355",
+    "source_url": "https://www.mpeeventgroup.com/lighting-production",
+    "one_line_description": "South Florida event branding and production company specializing in lighting production, uplighting, staging, and custom event branding."
+  },
+  {
+    "business_name": "ILLUMENE",
+    "website_url": "https://illumene.com",
+    "city": "Miami",
+    "category": "Lighting and Production",
+    "public_email": "info@illumene.com",
+    "public_phone": "786-597-3705",
+    "source_url": "https://illumene.com/",
+    "one_line_description": "Miami lighting and event production company offering chandelier rental, uplighting, string lights, staging, and audiovisual for events."
+  },
+  {
+    "business_name": "Mia Sound Production",
+    "website_url": "https://miasoundproduction.com",
+    "city": "Miami",
+    "category": "Lighting and Production",
+    "public_email": "info@miasoundproduction.com",
+    "public_phone": "786-277-3563",
+    "source_url": "https://miasoundproduction.com/",
+    "one_line_description": "Miami event production company providing audiovisual, lighting, live sound, staging, LED walls, and pipe and drape rentals."
+  },
+  {
+    "business_name": "The Bride Candy",
+    "website_url": "https://thebridecandy.com",
+    "city": "Miami",
+    "category": "Florals",
+    "public_email": null,
+    "public_phone": null,
+    "source_url": "https://thebridecandy.com/",
+    "one_line_description": "Miami wedding floral design studio led by floral designer Christopher Plaza creating bouquets and on-site floral installations."
+  },
+  {
+    "business_name": "Doral Roses",
+    "website_url": "https://doralroses.miami",
+    "city": "Doral",
+    "category": "Florals",
+    "public_email": null,
+    "public_phone": null,
+    "source_url": "https://doralroses.miami/",
+    "one_line_description": "Doral-based florist offering floral arrangements plus floral decoration services for weddings and events across Miami-Dade."
+  }
+]
