@@ -34,3 +34,6 @@ _hostpathprobe.txt
 # editor
 .idea/
 .vscode/
+
+# vite temp
+vite.config.ts.timestamp-*
