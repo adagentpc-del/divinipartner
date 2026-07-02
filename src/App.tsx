@@ -8,6 +8,8 @@ import Login from './pages/Login';
 import AuthCallback from './pages/AuthCallback';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
+import Cookies from './pages/Cookies';
+import CookieBanner from './components/CookieBanner';
 import PaymentPolicy from './pages/PaymentPolicy';
 import MarketplaceConduct from './pages/MarketplaceConduct';
 import NonCircumvention from './pages/NonCircumvention';
@@ -273,6 +275,7 @@ function Routed() {
       <Route path="/pricing" element={<Pricing />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />
+      <Route path="/cookies" element={<Cookies />} />
       <Route path="/payment-policy" element={<PaymentPolicy />} />
       <Route path="/marketplace-conduct" element={<MarketplaceConduct />} />
       <Route path="/non-circumvention" element={<NonCircumvention />} />
@@ -468,6 +471,7 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routed />
+        <CookieBanner />
       </BrowserRouter>
     </AuthProvider>
   );

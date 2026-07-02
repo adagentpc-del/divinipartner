@@ -24,6 +24,7 @@ export default function Register() {
   const [err, setErr] = useState('');
   const [done, setDone] = useState(false);
   const [resent, setResent] = useState(false);
+  const [agreed, setAgreed] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -31,6 +32,7 @@ export default function Register() {
     if (!email.trim()) return setErr('Enter your email address.');
     if (password.length < 8) return setErr('Password must be at least 8 characters.');
     if (password !== confirm) return setErr('Passwords do not match.');
+    if (!agreed) return setErr('Please accept the Terms and Privacy Policy to continue.');
     setBusy(true);
     try {
       await createAccount(email.trim(), password, confirm);
@@ -71,6 +73,8 @@ export default function Register() {
         .reg .foot{font-size:13px;color:#7d776c;margin-top:14px;text-align:center}
         .reg a{color:#1E5D4A}
         .reg .link{background:none;border:none;padding:0;color:#1E5D4A;cursor:pointer;font:inherit;text-decoration:underline}
+        .reg .consent{display:flex;gap:9px;align-items:flex-start;margin-top:16px;font-size:12.5px;color:#7d776c;line-height:1.5}
+        .reg .consent input{width:auto;margin-top:2px}
       `}</style>
       <div className="wrap">
         <div className="brand">Divini Partners</div>
@@ -107,7 +111,11 @@ export default function Register() {
                 <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" autoComplete="new-password" />
                 <div className="lbl">Confirm password</div>
                 <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="Re-enter your password" autoComplete="new-password" />
-                <button className="btn" disabled={busy}>{busy ? 'Creating...' : 'Create account'}</button>
+                <label className="consent">
+                  <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
+                  <span>I am 18+ and agree to the <Link to="/terms">Terms</Link> and <Link to="/privacy">Privacy Policy</Link>. I understand Divini Partners is a marketplace and is not a party to bookings or transactions between users; disputes are resolved directly between users, with arbitration as described in the Terms.</span>
+                </label>
+                <button className="btn" disabled={busy || !agreed}>{busy ? 'Creating...' : 'Create account'}</button>
               </form>
               <p className="foot">
                 Already have an account? <Link to="/login">Sign in</Link>
