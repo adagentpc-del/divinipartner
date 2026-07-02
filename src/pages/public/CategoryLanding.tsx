@@ -274,7 +274,7 @@ export default function CategoryLanding() {
   return (
     <div className="dcl">
       <CategoryStyles />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJson) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJson).replace(/</g, '\\u003c') }} />
       <Header nav={nav} login={login} join={join} />
 
       <section className="hero">

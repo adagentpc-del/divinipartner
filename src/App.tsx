@@ -9,6 +9,7 @@ import AuthCallback from './pages/AuthCallback';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 import Cookies from './pages/Cookies';
+import Accessibility from './pages/Accessibility';
 import CookieBanner from './components/CookieBanner';
 import PaymentPolicy from './pages/PaymentPolicy';
 import MarketplaceConduct from './pages/MarketplaceConduct';
@@ -276,6 +277,7 @@ function Routed() {
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />
       <Route path="/cookies" element={<Cookies />} />
+      <Route path="/accessibility" element={<Accessibility />} />
       <Route path="/payment-policy" element={<PaymentPolicy />} />
       <Route path="/marketplace-conduct" element={<MarketplaceConduct />} />
       <Route path="/non-circumvention" element={<NonCircumvention />} />
@@ -466,10 +468,31 @@ function Routed() {
   );
 }
 
+function SkipToContent() {
+  return (
+    <a
+      className="skip-link"
+      href="#main"
+      onClick={(e) => {
+        const m = document.querySelector("main");
+        if (m) {
+          e.preventDefault();
+          (m as HTMLElement).setAttribute("tabindex", "-1");
+          (m as HTMLElement).focus();
+          m.scrollIntoView();
+        }
+      }}
+    >
+      Skip to content
+    </a>
+  );
+}
+
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <SkipToContent />
         <Routed />
         <CookieBanner />
       </BrowserRouter>

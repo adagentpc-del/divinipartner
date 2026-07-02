@@ -259,7 +259,7 @@ export default function PublicProfile() {
           {/* ---- Partner-branded body ---- */}
           <main className="pp-body">
             <section className="pp-hero" style={cover ? { backgroundImage: `linear-gradient(120deg, rgba(0,0,0,.35), rgba(0,0,0,.15)), url(${cover})` } : undefined}>
-              {theme.logo_url && <img className="pp-herologo" src={theme.logo_url} alt="" />}
+              {theme.logo_url && <img className="pp-herologo" src={theme.logo_url} alt="Business logo" />}
               <h1 className="pp-herotitle">{profile.hero?.title || profile.organization.name || 'Partner profile'}</h1>
               {profile.hero?.tagline && <p className="pp-herotag">{profile.hero.tagline}</p>}
               {(profile.sections?.location?.city || profile.sections?.location?.region) && (

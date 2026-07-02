@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../lib/auth';
-import { getVendorProfile, updateCompany, deleteMyAccount } from '../lib/db';
+import { getVendorProfile, updateCompany, deleteMyAccount, exportMyData } from '../lib/db';
 
 export default function Profile() {
   const { company, refreshCompany, signOut } = useAuth();
@@ -13,6 +13,8 @@ export default function Profile() {
   const [busy, setBusy] = useState(false);
   const [dbusy, setDbusy] = useState(false);
   const [derr, setDerr] = useState('');
+  const [xbusy, setXbusy] = useState(false);
+  const [xerr, setXerr] = useState('');
 
   useEffect(() => {
     if (!company) return;
@@ -28,6 +30,17 @@ export default function Profile() {
     await updateCompany(company.id, { name, contact_name: contact, phone, city });
     await refreshCompany();
     setMsg('Saved.'); setBusy(false);
+  }
+
+  async function downloadData() {
+    setXerr(''); setXbusy(true);
+    try {
+      await exportMyData();
+    } catch (e: any) {
+      setXerr(e.message ?? 'Could not export your data. Please try again.');
+    } finally {
+      setXbusy(false);
+    }
   }
 
   async function removeAccount() {
@@ -96,6 +109,18 @@ export default function Profile() {
           <div className="card">
             <h3 style={{ fontSize: 18, marginBottom: 10 }}>Team &amp; seats</h3>
             <div className="note">1 of 1 seat used · beta is limited to 1 user. Up to 5 included at launch.</div>
+          </div>
+
+          <div className="card">
+            <h3 style={{ fontSize: 18, marginBottom: 10 }}>Your data</h3>
+            <div className="note" style={{ lineHeight: 1.7 }}>
+              Download a copy of your account and organization data (profile, listings, quotes, bids,
+              messages, and more) as a JSON file.
+            </div>
+            {xerr && <div className="err" style={{ marginTop: 10 }}>{xerr}</div>}
+            <button type="button" className="btn" style={{ marginTop: 12 }} onClick={downloadData} disabled={xbusy}>
+              {xbusy ? 'Preparing…' : 'Download my data'}
+            </button>
           </div>
 
           <div className="card" style={{ borderColor: '#e1b4b4' }}>

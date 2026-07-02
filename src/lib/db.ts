@@ -3,7 +3,7 @@
  * backend (src/lib/api.ts) instead of Supabase PostgREST/Storage. Function
  * signatures are unchanged so the pages need no rewrites for data access.
  */
-import { apiGet, apiSend, apiUpload } from './api';
+import { apiGet, apiSend, apiUpload, apiBlob } from './api';
 
 export async function createCompanyForUser(_userId: string, payload: {
   kind: 'buyer' | 'vendor'; name: string; contact_name?: string; email?: string;
@@ -109,6 +109,18 @@ export async function updateCompany(id: string, patch: { name?: string; contact_
 }
 export async function deleteMyAccount() {
   await apiSend('POST', '/account/delete');
+}
+export async function exportMyData() {
+  const blob = await apiBlob('/account/export');
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `divini-partners-data-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  // Defer cleanup: revoking synchronously after click cancels the download in
+  // Firefox/Safari. A macrotask tick lets the browser start the download first.
+  setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 0);
 }
 
 // ---- feature flags ----

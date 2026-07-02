@@ -81,23 +81,25 @@ export default function Login() {
         )}
 
         <form onSubmit={submit}>
-          <label className="note" style={{ display: 'block', marginBottom: 6 }}>Email</label>
+          <label htmlFor="login-email" className="note" style={{ display: 'block', marginBottom: 6 }}>Email</label>
           <input
+            id="login-email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@business.com"
             autoComplete="email"
-            style={{ width: '100%', padding: 12, border: '1px solid #e7e1d6', borderRadius: 10, fontSize: 15, marginBottom: 12, boxSizing: 'border-box' }}
+            style={{ width: '100%', padding: 12, border: '1px solid #8a8378', borderRadius: 10, fontSize: 15, marginBottom: 12, boxSizing: 'border-box' }}
           />
-          <label className="note" style={{ display: 'block', marginBottom: 6 }}>Password</label>
+          <label htmlFor="login-password" className="note" style={{ display: 'block', marginBottom: 6 }}>Password</label>
           <input
+            id="login-password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Your password"
             autoComplete="current-password"
-            style={{ width: '100%', padding: 12, border: '1px solid #e7e1d6', borderRadius: 10, fontSize: 15, marginBottom: 16, boxSizing: 'border-box' }}
+            style={{ width: '100%', padding: 12, border: '1px solid #8a8378', borderRadius: 10, fontSize: 15, marginBottom: 16, boxSizing: 'border-box' }}
           />
           <button className="btn primary block lg" disabled={busy}>
             {busy ? 'Signing in...' : 'Sign in'}

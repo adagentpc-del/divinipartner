@@ -67,7 +67,7 @@ export default function DiscoverHub() {
   return (
     <div className="dhub">
       <Styles />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(hubJson) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(hubJson).replace(/</g, '\\u003c') }} />
 
       <header>
         <div className="wrap bar">

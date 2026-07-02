@@ -82,7 +82,23 @@ const clientDistDir = process.env.CLIENT_DIST_DIR
   ? path.resolve(process.env.CLIENT_DIST_DIR)
   : path.join(serverDir, "public");
 
-app.use(express.static(clientDistDir, { index: false }));
+app.use(
+  express.static(clientDistDir, {
+    index: false,
+    etag: true,
+    setHeaders(res, filePath) {
+      // Vite emits content-hashed files under /assets — safe to cache forever.
+      // The HTML shell and other root files must revalidate so new deploys show.
+      if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      } else if (/\.(html|webmanifest)$/.test(filePath) || filePath.endsWith("sw.js")) {
+        res.setHeader("Cache-Control", "no-cache");
+      } else {
+        res.setHeader("Cache-Control", "public, max-age=3600");
+      }
+    },
+  }),
+);
 
 // Public sitemap.xml + robots.txt (must be before the SPA fallback so they are
 // not swallowed by index.html). Mounted at app root, not under /api.

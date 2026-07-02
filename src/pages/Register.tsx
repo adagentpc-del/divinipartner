@@ -105,12 +105,12 @@ export default function Register() {
               <div className="sub">Sign up with your email and a password. You will verify your email before signing in.</div>
               {err && <div className="err">{err}</div>}
               <form onSubmit={submit}>
-                <div className="lbl">Email</div>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@business.com" autoComplete="email" />
-                <div className="lbl">Password</div>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" autoComplete="new-password" />
-                <div className="lbl">Confirm password</div>
-                <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="Re-enter your password" autoComplete="new-password" />
+                <label className="lbl" htmlFor="reg-email">Email</label>
+                <input id="reg-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@business.com" autoComplete="email" />
+                <label className="lbl" htmlFor="reg-password">Password</label>
+                <input id="reg-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" autoComplete="new-password" />
+                <label className="lbl" htmlFor="reg-confirm">Confirm password</label>
+                <input id="reg-confirm" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="Re-enter your password" autoComplete="new-password" />
                 <label className="consent">
                   <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
                   <span>I am 18+ and agree to the <Link to="/terms">Terms</Link> and <Link to="/privacy">Privacy Policy</Link>. I understand Divini Partners is a marketplace and is not a party to bookings or transactions between users; disputes are resolved directly between users, with arbitration as described in the Terms.</span>

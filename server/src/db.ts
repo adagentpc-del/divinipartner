@@ -469,3 +469,114 @@ export async function transferOrgOwner(args: {
     client.release();
   }
 }
+
+// ============================================================================
+// Self-service data rights: export (GDPR/CPRA portability) + account erasure.
+// Both scope strictly to the caller's own user_id and their organization_id, so
+// a user can only ever export/delete their own data. Table discovery is via the
+// Postgres catalog (information_schema), so new tables are covered automatically.
+// ============================================================================
+
+const SECRET_COL = /(password|secret|token|hash|otp|mfa|private_key)/i;
+function redactRows(rows: Record<string, unknown>[]): Record<string, unknown>[] {
+  return rows.map((r) => {
+    const o: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(r)) o[k] = SECRET_COL.test(k) ? "[redacted]" : v;
+    return o;
+  });
+}
+async function publicTablesWithColumn(col: string): Promise<string[]> {
+  const r = await pool.query(
+    `select table_name from information_schema.columns
+       where table_schema = 'public' and column_name = $1 order by table_name`,
+    [col],
+  );
+  return r.rows
+    .map((x: { table_name: string }) => x.table_name)
+    .filter((t) => /^[a-z_][a-z0-9_]*$/.test(t)); // catalog-sourced; validate anyway
+}
+
+/** Assemble a portable JSON bundle of everything tied to this user + their org. */
+export async function exportMyData(userId: string): Promise<Record<string, unknown>> {
+  const out: Record<string, unknown> = {
+    exportGeneratedAt: new Date().toISOString(),
+    note: "Personal data export for your Divini Partners account. Scoped to your user and organization.",
+  };
+  const u = await pool.query(
+    `select id, email, name, role, organization_id, created_at from users where id = $1`,
+    [userId],
+  );
+  out.account = u.rows[0] ?? null;
+  const orgId = (u.rows[0] as { organization_id?: string } | undefined)?.organization_id ?? null;
+
+  if (orgId) {
+    const o = await pool.query(`select * from organizations where id = $1`, [orgId]);
+    out.organization = redactRows(o.rows)[0] ?? null;
+  }
+
+  const linkedToYou: Record<string, unknown> = {};
+  for (const t of await publicTablesWithColumn("user_id")) {
+    try {
+      const r = await pool.query(`select * from ${t} where user_id = $1 limit 5000`, [userId]);
+      if (r.rows.length) linkedToYou[t] = redactRows(r.rows);
+    } catch { /* table not queryable this way; skip */ }
+  }
+  out.recordsLinkedToYou = linkedToYou;
+
+  if (orgId) {
+    const orgRecords: Record<string, unknown> = {};
+    for (const t of await publicTablesWithColumn("organization_id")) {
+      try {
+        const r = await pool.query(`select * from ${t} where organization_id = $1 limit 5000`, [orgId]);
+        if (r.rows.length) orgRecords[t] = redactRows(r.rows);
+      } catch { /* skip */ }
+    }
+    out.organizationRecords = orgRecords;
+  }
+  return out;
+}
+
+/**
+ * Erase the caller's account. If they are the SOLE member of their organization,
+ * the org and its records are purged too; otherwise only the user is removed and
+ * the org (shared with other members) is preserved. Transactional: any failure
+ * rolls the whole thing back.
+ */
+export async function deleteMyAccountCascade(userId: string): Promise<{ deletedOrg: boolean }> {
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    const u = (await client.query(`select organization_id from users where id = $1`, [userId])).rows[0] as
+      | { organization_id: string | null }
+      | undefined;
+    const orgId = u?.organization_id ?? null;
+    let deletedOrg = false;
+
+    if (orgId) {
+      const members = (
+        await client.query(`select count(*)::int as c from users where organization_id = $1`, [orgId])
+      ).rows[0].c as number;
+      if (members <= 1) {
+        // sole member: purge org-owned rows, then the org itself
+        for (const t of await publicTablesWithColumn("organization_id")) {
+          if (t === "users") continue;
+          try { await client.query(`delete from ${t} where organization_id = $1`, [orgId]); } catch { /* fk/order; best effort */ }
+        }
+        try { await client.query(`delete from organizations where id = $1`, [orgId]); deletedOrg = true; } catch { /* leave if blocked */ }
+      }
+    }
+    // remove rows explicitly keyed to this user, then the user (cascades the rest)
+    for (const t of await publicTablesWithColumn("user_id")) {
+      if (t === "users") continue;
+      try { await client.query(`delete from ${t} where user_id = $1`, [userId]); } catch { /* best effort */ }
+    }
+    await client.query(`delete from users where id = $1`, [userId]);
+    await client.query("commit");
+    return { deletedOrg };
+  } catch (e) {
+    await client.query("rollback");
+    throw e;
+  } finally {
+    client.release();
+  }
+}

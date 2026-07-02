@@ -105,6 +105,7 @@ import commandCenter from "./routes/command-center.js";
 // Phase 1 platform upgrade: Vendor Teams (WS-A) + Nonprofit core (WS-B) + Sponsor portal (WS-C)
 import vendorTeam from "./routes/vendor-team.js";
 import accountAssignments from "./routes/account-assignments.js";
+import account from "./routes/account.js";
 import intakeRouting from "./routes/intake-routing.js";
 import quoteApprovals from "./routes/quote-approvals.js";
 import fundraisingEvents from "./routes/fundraising-events.js";
@@ -230,6 +231,7 @@ router.use("/marketplace-intel", marketplaceIntel);
 router.use("/command-center", commandCenter);
 // Phase 1 platform upgrade
 router.use("/vendor-team", vendorTeam);
+router.use("/account", account);
 router.use("/account-assignments", accountAssignments);
 router.use("/intake-routing", intakeRouting);
 router.use("/quote-approvals", quoteApprovals);
