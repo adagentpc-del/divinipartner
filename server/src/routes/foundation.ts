@@ -48,6 +48,11 @@ router.get(
   }),
 );
 
+// Current policy versions recorded with each user's terms acceptance. Bump these
+// when the Terms / Privacy effective dates change so re-acceptance is tracked.
+const TERMS_VERSION = "2026-06-24";   // Terms of Service effective date
+const PRIVACY_VERSION = "2026-06-08"; // Privacy Policy effective date
+
 router.post(
   "/register",
   requireUser,
@@ -83,6 +88,8 @@ router.post(
       tier: effectiveTier,
       name,
       phone,
+      agreementVersion: TERMS_VERSION,
+      policyVersion: PRIVACY_VERSION,
       ip,
     });
     // Attribution: if this registration came from a platform invite, mark it
