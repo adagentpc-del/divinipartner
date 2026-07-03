@@ -33,7 +33,7 @@ export function SiteHeader({ active }: { active?: string }) {
     <header className="pub-header">
       <div className="wrap pub-bar">
         <div className="pub-logo" onClick={() => go('/')}>
-          <div className="mk">D</div>
+          <img src="/brand/mark-emerald.png" alt="Divini Group" style={{ width: 38, height: 38, objectFit: 'contain', display: 'block' }} />
           <div>
             <div className="nm">Divini Partners</div>
             <div className="tg">by Divini Group</div>
@@ -50,10 +50,10 @@ export function SiteHeader({ active }: { active?: string }) {
             </a>
           ))}
           <a className="pub-login" onClick={() => go('/login')}>
-            Login
+            Log in
           </a>
-          <button className="btn primary pub-navlink" onClick={() => go('/demo')}>
-            Book a Demo
+          <button className="btn primary pub-navlink" onClick={() => go('/register')}>
+            Sign Up
           </button>
           <button
             className="pub-burger"
@@ -71,10 +71,10 @@ export function SiteHeader({ active }: { active?: string }) {
             {n.label}
           </a>
         ))}
-        <a onClick={() => go('/login')}>Login</a>
+        <a onClick={() => go('/login')}>Log in</a>
         <div className="pub-mobile-cta">
-          <button className="btn primary block" onClick={() => go('/demo')}>
-            Book a Demo
+          <button className="btn primary block" onClick={() => go('/register')}>
+            Sign Up
           </button>
         </div>
       </div>
@@ -94,8 +94,8 @@ export function SiteFooter() {
             intelligence.
           </h2>
           <div className="ctas">
-            <button className="btn gold lg" onClick={() => nav('/demo')}>
-              Book a Demo
+            <button className="btn gold lg" onClick={() => nav('/register')}>
+              Get Started Today
             </button>
             <button className="btn ghost lg" onClick={() => nav('/register?role=venue&founding=1')}>
               Become a Founding Member
@@ -126,7 +126,7 @@ export function SiteFooter() {
           </div>
           <div>
             <div className="fh">Company</div>
-            <a onClick={() => nav('/demo')}>Book a Demo</a>
+            <a onClick={() => nav('/#how-it-works')}>Watch a Demo</a>
             <a onClick={() => nav('/register')}>Get Started</a>
             <a onClick={() => nav('/login')}>Login</a>
             <a onClick={() => nav('/privacy')}>Privacy</a>

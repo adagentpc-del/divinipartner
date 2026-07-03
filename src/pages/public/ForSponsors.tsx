@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PublicLayout } from './components/PublicChrome';
+import RoleValue from '../../components/marketing/RoleValue';
 import NetworkMap from '../../components/marketing/NetworkMap';
 import RoiPanel from '../../components/marketing/RoiPanel';
 import OpportunityFeedPreview from '../../components/marketing/OpportunityFeedPreview';
@@ -182,8 +183,8 @@ export default function ForSponsors() {
             Intelligence and Revenue Infrastructure Platform.
           </p>
           <div className="ctas">
-            <button className="btn gold lg" onClick={() => nav('/demo')}>
-              Book a Demo
+            <button className="btn gold lg" onClick={() => nav('/register')}>
+              Get Started Today
             </button>
             <button className="btn ghost lg" onClick={() => nav('/register?role=sponsor')}>
               Get started
@@ -318,13 +319,14 @@ export default function ForSponsors() {
               <button className="btn gold lg" onClick={() => nav('/register?role=sponsor')}>
                 Get started
               </button>
-              <button className="btn ghost lg" onClick={() => nav('/demo')}>
-                Book a Demo
+              <button className="btn ghost lg" onClick={() => nav('/register')}>
+                Get Started Today
               </button>
             </div>
           </div>
         </div>
       </section>
+      <RoleValue role="sponsor" />
     </PublicLayout>
   );
 }

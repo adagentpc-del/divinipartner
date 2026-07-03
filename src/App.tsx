@@ -300,7 +300,7 @@ function Routed() {
       <Route path="/claim/:slug/verify" element={<ClaimVerify />} />
 
       {/* auth (native email/password) */}
-      <Route path="/login" element={session ? <Navigate to="/app" replace /> : <Login />} />
+      <Route path="/login" element={<Login />} />
       <Route path="/register" element={session ? <Navigate to="/app" replace /> : <Register />} />
       <Route path="/verify-email" element={<VerifyEmail />} />
       <Route path="/forgot" element={session ? <Navigate to="/app" replace /> : <ForgotPassword />} />

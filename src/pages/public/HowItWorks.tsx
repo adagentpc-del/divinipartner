@@ -167,8 +167,8 @@ export default function HowItWorks() {
               transactions.
             </p>
             <div className="ctas">
-              <button className="btn gold lg" onClick={() => nav('/demo')}>
-                Book a Demo
+              <button className="btn gold lg" onClick={() => nav('/register')}>
+                Get Started Today
               </button>
               <button className="btn ghost lg" onClick={() => nav('/register')}>
                 Get started
@@ -250,8 +250,8 @@ export default function HowItWorks() {
                 platform built for venue intelligence and revenue.
               </p>
               <div className="ctas">
-                <button className="btn gold lg" onClick={() => nav('/demo')}>
-                  Book a Demo
+                <button className="btn gold lg" onClick={() => nav('/register')}>
+                  Get Started Today
                 </button>
                 <button className="btn ghost lg" onClick={() => nav('/register')}>
                   Get started

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SiteHeader, SiteFooter } from './components/PublicChrome';
+import RoleValue from '../../components/marketing/RoleValue';
 import ReadinessGauge from '../../components/marketing/ReadinessGauge';
 import RevenueWaterfall from '../../components/marketing/RevenueWaterfall';
 import Scorecard from '../../components/marketing/Scorecard';
@@ -294,8 +295,8 @@ export default function ForVenues() {
               administration.
             </p>
             <div className="vnu-cta">
-              <button className="btn gold lg" onClick={() => nav('/demo')}>
-                Book a Demo
+              <button className="btn gold lg" onClick={() => nav('/register')}>
+                Get Started Today
               </button>
               <button className="btn ghost lg" onClick={() => nav('/register?role=venue')}>
                 Get started
@@ -525,8 +526,8 @@ export default function ForVenues() {
                 booked, beautifully run events.
               </p>
               <div className="vnu-cta">
-                <button className="btn gold lg" onClick={() => nav('/demo')}>
-                  Book a Demo
+                <button className="btn gold lg" onClick={() => nav('/register')}>
+                  Get Started Today
                 </button>
                 <button className="btn ghost lg" onClick={() => nav('/register?role=venue')}>
                   Get started
@@ -536,6 +537,7 @@ export default function ForVenues() {
           </div>
         </section>
       </main>
+      <RoleValue role="venue" />
       <SiteFooter />
     </>
   );

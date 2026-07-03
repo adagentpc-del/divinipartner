@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { SiteHeader, SiteFooter } from './components/PublicChrome';
+import RoleValue from '../../components/marketing/RoleValue';
 import DeviceShowcase, { ShowScreen } from '../../components/DeviceShowcase';
 import FlowDiagram, { FlowStep } from '../../components/FlowDiagram';
 
@@ -120,8 +121,8 @@ export default function ForClients() {
               free to browse, plan, and book, and every fee is shown plainly before you pay.
             </p>
             <div className="ctas">
-              <button className="btn gold lg" onClick={() => nav('/demo')}>
-                Book a Demo
+              <button className="btn gold lg" onClick={() => nav('/register')}>
+                Get Started Today
               </button>
               <button className="btn ghost lg" onClick={() => nav('/register?role=client')}>
                 Get started
@@ -188,8 +189,8 @@ export default function ForClients() {
               <h2>Start planning your event today</h2>
               <p>Clients always plan for free. Open your event workspace and bring your celebration to life.</p>
               <div className="cli-cta-row">
-                <button className="btn gold lg" onClick={() => nav('/demo')}>
-                  Book a Demo
+                <button className="btn gold lg" onClick={() => nav('/register')}>
+                  Get Started Today
                 </button>
                 <button className="btn ghost lg" onClick={() => nav('/register?role=client')}>
                   Get started
@@ -199,6 +200,7 @@ export default function ForClients() {
           </div>
         </section>
       </main>
+      <RoleValue role="client" />
       <SiteFooter />
     </>
   );

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SiteHeader, SiteFooter } from './components/PublicChrome';
+import RoleValue from '../../components/marketing/RoleValue';
 import BeforeAfter from '../../components/marketing/BeforeAfter';
 import RoiPanel from '../../components/marketing/RoiPanel';
 
@@ -202,8 +203,8 @@ export default function ForPlanners() {
               sponsorships, and guest experiences.
             </p>
             <div className="ctas">
-              <button className="btn gold lg" onClick={() => nav('/demo')}>
-                Book a Demo
+              <button className="btn gold lg" onClick={() => nav('/register')}>
+                Get Started Today
               </button>
               <button className="btn ghost lg" onClick={() => nav('/register?role=planner')}>
                 Get started
@@ -363,8 +364,8 @@ export default function ForPlanners() {
               <h2>Spend less time coordinating. Spend more time creating unforgettable experiences.</h2>
               <p>Join the founding network of planners running premium events on Divini Partners.</p>
               <div className="pln-cta-row">
-                <button className="btn gold lg" onClick={() => nav('/demo')}>
-                  Book a Demo
+                <button className="btn gold lg" onClick={() => nav('/register')}>
+                  Get Started Today
                 </button>
                 <button className="btn ghost lg" onClick={() => nav('/register?role=planner')}>
                   Get started
@@ -374,6 +375,7 @@ export default function ForPlanners() {
           </div>
         </section>
       </main>
+      <RoleValue role="planner" />
       <SiteFooter />
     </>
   );

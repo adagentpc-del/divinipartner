@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SiteHeader, SiteFooter } from './public/components/PublicChrome';
 import EcosystemGraph from '../components/marketing/EcosystemGraph';
+import { ROLE_CONTENT, type RoleKey } from '../components/marketing/RoleValue';
 import { reportSignal } from '../lib/fingerprint';
 
 /* ------------------------------------------------------------------ *
@@ -13,6 +14,43 @@ const PAINS: { t: string; d: string }[] = [
   { t: 'Endless Follow-Ups', d: 'Chasing confirmations one email at a time.' },
   { t: 'Vendor Confusion', d: 'Nobody sure who is responsible for what, or when.' },
   { t: 'Lost Revenue Opportunities', d: 'Upgrades, sponsorships, and rebookings left on the table.' },
+];
+
+/* ------------------------------------------------------------------ *
+ * Per-role explainer videos (self-serve, no live demos to host).
+ * Paste a YouTube/Vimeo *embed* URL into `embed` for each role when your
+ * videos are ready — e.g. 'https://www.youtube.com/embed/XXXXXXXXXXX'.
+ * Leave '' to show a "coming soon" placeholder.
+ * ------------------------------------------------------------------ */
+const PERSONA_DEMOS: { role: string; title: string; blurb: string; embed: string; cta: string }[] = [
+  {
+    role: 'venue',
+    title: 'For Venues',
+    blurb: 'Turn your space into a booking engine. Publish availability and pricing, receive qualified inquiries, and fill your calendar with far less back-and-forth.',
+    embed: '',
+    cta: 'Join as a Venue',
+  },
+  {
+    role: 'vendor',
+    title: 'For Vendors',
+    blurb: 'Get matched to the events you are right for. Receive quote requests, send pricing in minutes, and win more work without cold outreach.',
+    embed: '',
+    cta: 'Join as a Vendor',
+  },
+  {
+    role: 'planner',
+    title: 'For Planners',
+    blurb: 'Run every event from one workspace. Discover venues and vendors, compare quotes side by side, and coordinate the day-of without the email chaos.',
+    embed: '',
+    cta: 'Join as a Planner',
+  },
+  {
+    role: 'client',
+    title: 'For Clients',
+    blurb: 'Plan your event with confidence. Describe what you want, get matched to venues and vendors, and see transparent pricing from first inquiry to final payment.',
+    embed: '',
+    cta: 'Plan Your Event',
+  },
 ];
 
 const SOLUTIONS: { kicker: string; t: string; d: string }[] = [
@@ -216,7 +254,7 @@ function EventBuilder() {
           </div>
         </label>
 
-        <button className="btn primary lg lnd-builder-cta" onClick={() => nav('/demo')}>
+        <button className="btn primary lg lnd-builder-cta" onClick={() => nav('/register')}>
           Build This Event With Us
         </button>
       </div>
@@ -386,8 +424,8 @@ export default function Landing() {
               administration, and transparent transactions from first inquiry to final payment.
             </p>
             <div className="cta">
-              <button className="btn gold lg" onClick={() => nav('/demo')}>
-                Book a Demo
+              <button className="btn gold lg" onClick={() => nav('/register')}>
+                Get Started Today
               </button>
               <button className="btn ghost lg" onClick={() => nav('/marketplace')}>
                 Explore the Marketplace
@@ -461,6 +499,40 @@ export default function Landing() {
               budget, and timeline in real time.
             </p>
             <EventBuilder />
+          </div>
+        </section>
+
+        {/* 4b. HOW IT WORKS — per-role explainer videos (no hosted demos) */}
+        <section id="how-it-works" style={{ background: 'var(--ivory)' }}>
+          <div className="wrap">
+            <div className="kicker">See how it works</div>
+            <h2>Built for your role</h2>
+            <p className="sectsub">
+              Whether you run a venue, provide a service, plan events, or are hosting one — here is how
+              Divini Partners works for you. Watch a short walkthrough and start today.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))', gap: 24 }}>
+              {PERSONA_DEMOS.map((p) => (
+                <div key={p.role} style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: 20, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ background: 'var(--emerald-deep)', padding: '20px 22px' }}>
+                    <div style={{ fontSize: 11, letterSpacing: '.7px', textTransform: 'uppercase', fontWeight: 700, color: 'var(--champagne)', marginBottom: 14 }}>How it works</div>
+                    <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 11 }}>
+                      {ROLE_CONTENT[p.role as RoleKey].flow.slice(0, 4).map((s, i) => (
+                        <li key={i} style={{ display: 'flex', gap: 11, alignItems: 'center' }}>
+                          <span style={{ flexShrink: 0, width: 24, height: 24, borderRadius: '50%', background: 'var(--champagne)', color: 'var(--emerald-deep)', fontSize: 12, fontWeight: 800, display: 'grid', placeItems: 'center' }}>{i + 1}</span>
+                          <span style={{ fontSize: 13.5, color: '#fff', lineHeight: 1.35, fontWeight: 600 }}>{s.title}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                  <div style={{ padding: '22px 22px 24px', display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
+                    <h3 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 24, color: 'var(--emerald-deep)', margin: 0 }}>{p.title}</h3>
+                    <p style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 1.6, margin: 0, flex: 1 }}>{p.blurb}</p>
+                    <button className="btn primary" style={{ marginTop: 6, alignSelf: 'flex-start' }} onClick={() => nav(`/register?role=${p.role}`)}>{p.cta}</button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 

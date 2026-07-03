@@ -12,9 +12,11 @@ import { useAuth } from '../lib/auth';
  * Zero em dashes.
  */
 export default function Login() {
-  const { signIn, resendVerification } = useAuth();
+  const { session, signIn, resendVerification, signOut } = useAuth();
   const nav = useNavigate();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => {
+    try { return localStorage.getItem('divini.lastEmail') || ''; } catch { return ''; }
+  });
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -33,6 +35,7 @@ export default function Login() {
     setBusy(true);
     try {
       await signIn(email.trim(), password);
+      try { localStorage.setItem('divini.lastEmail', email.trim()); } catch { /* ignore */ }
       nav('/app', { replace: true });
     } catch (e: any) {
       const msg = e?.message ?? 'Could not sign you in.';
@@ -63,6 +66,20 @@ export default function Login() {
           </div>
         </div>
 
+        {session ? (
+          <div>
+            <div style={{ background: '#eef4f0', border: '1px solid #cfe0d6', borderRadius: 10, padding: '12px 14px', fontSize: 14, marginBottom: 14 }}>
+              You are signed in as <strong>{session.user.email || 'your account'}</strong>.
+            </div>
+            <button className="btn primary block lg" onClick={() => nav('/app', { replace: true })}>
+              Continue to your account
+            </button>
+            <button className="btn block" style={{ marginTop: 10 }} onClick={() => void signOut()}>
+              Switch account
+            </button>
+          </div>
+        ) : (
+        <>
         {err && (
           <div style={{ background: '#fbe9e7', color: '#a3382f', borderRadius: 10, padding: '10px 12px', fontSize: 13, marginBottom: 14 }}>
             {err}
@@ -112,6 +129,8 @@ export default function Login() {
         <p className="note" style={{ margin: '6px 0 0', lineHeight: 1.6 }}>
           <Link to="/forgot" style={{ color: '#1E5D4A' }}>Forgot password?</Link>
         </p>
+        </>
+        )}
       </div>
     </div>
   );

@@ -416,8 +416,8 @@ export default function DemoPage() {
                 >
                   Get started
                 </button>
-                <button className="btn lg" onClick={() => nav('/demo')}>
-                  Book a Demo
+                <button className="btn lg" onClick={() => nav('/register')}>
+                  Get Started Today
                 </button>
               </div>
             </div>
@@ -433,8 +433,8 @@ export default function DemoPage() {
                 built for venue intelligence and revenue.
               </p>
               <div className="ctas">
-                <button className="btn gold lg" onClick={() => nav('/demo')}>
-                  Book a Demo
+                <button className="btn gold lg" onClick={() => nav('/register')}>
+                  Get Started Today
                 </button>
                 <button className="btn ghost lg" onClick={() => nav('/register')}>
                   Get started

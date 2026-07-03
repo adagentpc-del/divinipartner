@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { SiteHeader, SiteFooter } from './components/PublicChrome';
+import RoleValue from '../../components/marketing/RoleValue';
 import BeforeAfter from '../../components/marketing/BeforeAfter';
 import Scorecard from '../../components/marketing/Scorecard';
 import OpportunityFeedPreview from '../../components/marketing/OpportunityFeedPreview';
@@ -96,7 +97,7 @@ const ROI_METRICS: { k: string; v: string; d?: string }[] = [
 
 export default function ForVendors() {
   const nav = useNavigate();
-  const demo = () => nav('/demo');
+  const demo = () => nav('/register');
   const join = () => nav('/register?role=vendor');
 
   return (
@@ -182,7 +183,7 @@ export default function ForVendors() {
             </p>
             <div className="vnd-ctas">
               <button className="btn gold lg" onClick={demo}>
-                Book a Demo
+                Get Started Today
               </button>
               <button className="btn ghost lg" onClick={join}>
                 Get started
@@ -359,7 +360,7 @@ export default function ForVendors() {
                   Get started
                 </button>
                 <button className="btn ghost lg" onClick={demo}>
-                  Book a Demo
+                  Get Started Today
                 </button>
               </div>
             </div>
@@ -367,6 +368,7 @@ export default function ForVendors() {
         </section>
       </main>
 
+      <RoleValue role="vendor" />
       <SiteFooter />
     </div>
   );
