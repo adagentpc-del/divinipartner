@@ -127,6 +127,14 @@ router.post(
     if (!Number.isFinite(amount) || amount <= 0) {
       return res.status(400).json({ error: "positive amount required" });
     }
+    if (b.invoice_id) {
+      // IDOR gate: only a party to the invoice may record a payment against it
+      // (same guard as the checkout/capture paths).
+      const authorized = await authorizeInvoiceParty(actor.org.id, b.invoice_id);
+      if (!authorized) {
+        return res.status(403).json({ error: "not authorized to pay this invoice" });
+      }
+    }
     const row = await recordPayment(actor.org.id, actor.org.tier, actor.user.id, {
       invoice_id: b.invoice_id ?? null,
       event_id: b.event_id ?? null,
