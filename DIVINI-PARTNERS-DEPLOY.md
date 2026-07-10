@@ -29,7 +29,7 @@ docker exec aibos_postgres psql -U aibos -d divini_partners -c "select count(*) 
 
 ### A3. Server web console — write env (single line; preview values, OIDC added in Stage B)
 ```
-cd /root/sites/divini-partners && PGPW=$(grep -oP '(?<=postgres://aibos:)[^@]+' /root/sites/divinipartner/.env.local | head -1) && mkdir -p /root/partners-files && printf 'DATABASE_URL=postgres://aibos:%s@localhost:5433/divini_partners\nPORT=3011\nPUBLIC_APP_URL=http://167.172.135.196:3011\nBASE_PATH=/\nADMIN_ALLOWED_EMAILS=adagentpc@gmail.com\nFILE_STORAGE_DIR=/root/partners-files\nDOWNLOAD_URL_SECRET=%s\nOIDC_ISSUER=\nOIDC_JWKS_URL=\nOIDC_CLIENT_ID=\nVITE_OIDC_ISSUER=\nVITE_OIDC_CLIENT_ID=\n' "$PGPW" "$(openssl rand -hex 32)" > .env.local && echo "env written pgpw=${#PGPW}"
+cd /root/sites/divini-partners && PGPW=$(grep -oP '(?<=postgres://aibos:)[^@]+' /root/sites/divinipartner/.env.local | head -1) && mkdir -p /root/partners-files && printf 'DATABASE_URL=postgres://aibos:%s@localhost:5433/divini_partners\nPORT=3011\nPUBLIC_APP_URL=http://167.172.135.196:3011\nBASE_PATH=/\nADMIN_ALLOWED_EMAILS=adagentpc@gmail.com\nFILE_STORAGE_DIR=/root/partners-files\nDOWNLOAD_URL_SECRET=%s\nSESSION_SECRET=%s\nOIDC_ISSUER=\nOIDC_JWKS_URL=\nOIDC_CLIENT_ID=\nVITE_OIDC_ISSUER=\nVITE_OIDC_CLIENT_ID=\n' "$PGPW" "$(openssl rand -hex 32)" "$(openssl rand -hex 32)" > .env.local && echo "env written pgpw=${#PGPW}"
 ```
 
 ### A4. Server web console — install, build, start, open firewall
