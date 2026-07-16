@@ -88,14 +88,32 @@ export async function getQuote(id: string): Promise<QuoteRow> {
   return row;
 }
 
+/**
+ * IDOR gate for quote-by-id access. A quote belongs to an event; the actor may
+ * read or act on it only if they can access that event (client/planner/owning
+ * org on the demand side, an assigned vendor org on the supply side, or admin).
+ * Reuses the canonical getEvent() access check. Routes that take a quote id from
+ * the request MUST call this before reading or mutating the quote, otherwise any
+ * authenticated user could read competitors' pricing/PDFs or accept/decline any
+ * quote by id. Returns the quote row so callers avoid a second fetch.
+ */
+export async function authorizeQuoteAccess(actor: Actor, id: string): Promise<QuoteRow> {
+  const quote = await getQuote(id);
+  if (!quote.event_id) throw new NotFoundError("quote not found");
+  await getEvent(actor, quote.event_id); // throws NotFound/Forbidden if no access
+  return quote;
+}
+
 /** Quotes on an event (event-owner / participant view). */
 export async function listEventQuotes(actor: Actor, eventId: string): Promise<QuoteRow[]> {
   await getEvent(actor, eventId); // access check
   return q<QuoteRow>(`select * from quotes where event_id = $1 order by created_at desc`, [eventId]);
 }
 
-/** Quotes on a single bid. */
-export async function listBidQuotes(eventId: string, bidId: string): Promise<QuoteRow[]> {
+/** Quotes on a single bid. Access-checked: the actor must be able to see the
+ *  parent event, otherwise this would leak competitors' quotes on any bid. */
+export async function listBidQuotes(actor: Actor, eventId: string, bidId: string): Promise<QuoteRow[]> {
+  await getEvent(actor, eventId); // access check
   return q<QuoteRow>(
     `select * from quotes where bid_id = $1 and event_id = $2 order by created_at desc`,
     [bidId, eventId],

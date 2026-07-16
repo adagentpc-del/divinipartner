@@ -173,7 +173,11 @@ export async function setStatus(
   status: DisputeStatus,
   body: { resolution?: string; resolution_amount?: number } = {},
 ): Promise<{ prev: DisputeRow; next: DisputeRow }> {
-  const prev = await getRowOrThrow(id);
+  // IDOR gate: only a party to the dispute (or an admin) may change its status
+  // or write a resolution. getDispute enforces party membership and throws
+  // otherwise; the earlier getRowOrThrow did not, letting a non-party tamper
+  // with any dispute's status/resolution by id.
+  const prev = await getDispute(actor, isAdmin, id);
   const admin = isAdminActor(actor, isAdmin);
   const terminal = ["resolved", "refunded", "denied", "cancelled", "closed"].includes(status);
   if (!admin && terminal) {
