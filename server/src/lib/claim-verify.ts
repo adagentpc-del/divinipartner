@@ -204,6 +204,20 @@ export async function confirmClaim(args: {
     };
   }
 
+  // Ownership binding: if the claim/verification was started by a signed-in
+  // user, ONLY that user may finish the conversion. Without this, a
+  // domain-verified (or already-verified) claim could be converted into a
+  // partner org owned by a DIFFERENT logged-in caller who merely knows the slug
+  // (marketplace listing takeover). An anonymously-started verification
+  // (user_id null) is bound instead by possession of the emailed code above.
+  if (v.user_id && v.user_id !== args.sub) {
+    return {
+      ok: false,
+      error: "this claim was started by a different account",
+      status: 403,
+    };
+  }
+
   return convertToPartner(profile, v, args.sub, args.email ?? v.verified_email ?? null);
 }
 

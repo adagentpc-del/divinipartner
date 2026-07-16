@@ -70,13 +70,22 @@ function formEncode(obj: Record<string, unknown>, prefix = ""): string {
   return parts.join("&");
 }
 
-async function stripePost<T = any>(path: string, body: Record<string, unknown>): Promise<T> {
+async function stripePost<T = any>(
+  path: string,
+  body: Record<string, unknown>,
+  idempotencyKey?: string,
+): Promise<T> {
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${secret()}`,
+    "Content-Type": "application/x-www-form-urlencoded",
+  };
+  // Stripe idempotency: replaying the same key returns the ORIGINAL result
+  // instead of creating a second object. Critical for money moves so a retry
+  // after a network blip cannot create a duplicate transfer.
+  if (idempotencyKey) headers["Idempotency-Key"] = idempotencyKey;
   const res = await fetch(`${STRIPE_API}${path}`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${secret()}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
+    headers,
     body: formEncode(body),
   });
   const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
@@ -181,6 +190,7 @@ export async function createTransfer(args: {
   currency?: string;
   destinationAccountId: string;
   metadata?: Record<string, string>;
+  idempotencyKey?: string;
 }): Promise<{ transferId: string }> {
   if (!isConfigured()) throw new StripeNotConfigured();
   const body: Record<string, unknown> = {
@@ -189,6 +199,6 @@ export async function createTransfer(args: {
     destination: args.destinationAccountId,
   };
   if (args.metadata && Object.keys(args.metadata).length) body.metadata = args.metadata;
-  const transfer = await stripePost<{ id: string }>("/v1/transfers", body);
+  const transfer = await stripePost<{ id: string }>("/v1/transfers", body, args.idempotencyKey);
   return { transferId: transfer.id };
 }

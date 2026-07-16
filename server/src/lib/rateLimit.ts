@@ -42,10 +42,21 @@ interface Bucket {
   resetAt: number;
 }
 
-/** Best-effort client IP, honoring a single upstream proxy hop. */
+/**
+ * Client IP for rate-limit keying behind exactly ONE trusted reverse proxy
+ * (Caddy). Proxies APPEND to X-Forwarded-For, so the RIGHTMOST entry is the one
+ * our own proxy set (the real client as it saw it); the leftmost entries are
+ * attacker-controlled and MUST NOT be trusted. Using the leftmost value let an
+ * attacker rotate a fake header per request to get a fresh bucket and bypass the
+ * limiter entirely (credential stuffing, code brute force). Take the last hop.
+ */
 function clientIp(req: Request): string {
-  const fwd = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim();
-  return fwd || req.socket?.remoteAddress || "unknown";
+  const xff = req.headers["x-forwarded-for"] as string | undefined;
+  if (xff) {
+    const hops = xff.split(",").map((s) => s.trim()).filter(Boolean);
+    if (hops.length) return hops[hops.length - 1];
+  }
+  return req.socket?.remoteAddress || "unknown";
 }
 
 /**
