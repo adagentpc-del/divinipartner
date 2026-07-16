@@ -27,6 +27,7 @@ const NAV: Record<string, [string, string, string][]> = {
     ['/partnership-matches', 'Partnership Matches', '⇄'],
     ['/divini-scores', 'Divini Scores', '✷'],
     ['/founding-member', 'Founding Member', '♛'],
+    ['/referral-dashboard', 'Refer & Earn', '♢'],
     ['/profile', 'Company', '⚙'],
   ],
   vendor: [
@@ -44,6 +45,7 @@ const NAV: Record<string, [string, string, string][]> = {
     ['/opportunities', 'Opportunities', '◎'],
     ['/divini-scores', 'Divini Scores', '✷'],
     ['/founding-member', 'Founding Member', '♛'],
+    ['/referral-dashboard', 'Refer & Earn', '♢'],
     ['/profile', 'Profile', '☺'],
   ],
 };
