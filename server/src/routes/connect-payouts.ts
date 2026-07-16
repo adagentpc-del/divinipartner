@@ -405,11 +405,20 @@ router.post(
       return res.json({ released: false, status: "blocked", reason });
     }
 
-    // Move to 'releasing' so a double-click cannot double-pay.
-    await q(
-      `update payout_instructions set status = 'releasing', updated_at = now() where id = $1`,
+    // Atomically claim the instruction for release. The status predicate makes
+    // this a compare-and-swap: two concurrent releases (double-click / retry)
+    // race on this UPDATE and only ONE flips a row from a releasable status to
+    // 'releasing'. The loser gets zero rows and is rejected, so createTransfer
+    // runs at most once. (The earlier unconditional UPDATE did NOT prevent this.)
+    const claim = await q(
+      `update payout_instructions set status = 'releasing', updated_at = now()
+        where id = $1 and status in ('pending','ready','blocked','failed')
+        returning id`,
       [instr.id],
     );
+    if (!claim.length) {
+      return res.status(409).json({ error: "payout is already being released or has been released" });
+    }
 
     try {
       const transfer = await createTransfer({
@@ -421,6 +430,10 @@ router.post(
           source_revenue_id: String(instr.source_revenue_id ?? ""),
           recipient_kind: String(instr.recipient_kind ?? ""),
         },
+        // Stripe-side idempotency: even if this request is retried after a network
+        // error where Stripe DID create the transfer, the same key returns the
+        // original transfer instead of a second money move.
+        idempotencyKey: `payout_release_${instr.id}`,
       });
       const row = await q1<any>(
         `update payout_instructions set

@@ -35,6 +35,8 @@ import * as payouts from "../db/payouts.js";
 import * as engine from "../lib/payoutEngine.js";
 import { logAction } from "../lib/audit.js";
 import { notify } from "../lib/notify.js";
+import * as db from "../db.js";
+import { getPartnerForUser } from "../db/partners.js";
 
 const h =
   (fn: (req: Request, res: Response) => Promise<unknown>) =>
@@ -60,6 +62,18 @@ router.get(
   requireUser,
   h(async (req, res) => {
     const partnerId = req.params.partnerId;
+    // IDOR gate: a signed-in user may read ONLY their own partner's payout data.
+    // Without this, any authenticated user could enumerate /me/:partnerId and
+    // read another partner's commission amounts and bank last4/name. Admins
+    // (ADMIN_ALLOWED_EMAILS) may read any partner for support.
+    const auth = getAuth(req);
+    if (!auth.isAdmin) {
+      const actor = await db.getActor(auth.userId!, auth.email);
+      const own = await getPartnerForUser(actor.user.id, actor.org?.id ?? null);
+      if (!own || own.id !== partnerId) {
+        return res.status(403).json({ error: "forbidden" });
+      }
+    }
     const method = await payouts.paymentMethodStatus(partnerId);
     const rows = await payouts.listPayouts(partnerId);
     res.json({

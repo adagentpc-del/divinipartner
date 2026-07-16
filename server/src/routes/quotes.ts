@@ -47,8 +47,9 @@ router.get(
 router.get(
   "/bid/:bidId",
   h(async (req, res) => {
+    const a = await actor(req);
     const eventId = (req.query.event_id as string) || "";
-    res.json({ quotes: await quotes.listBidQuotes(eventId, req.params.bidId) });
+    res.json({ quotes: await quotes.listBidQuotes(a, eventId, req.params.bidId) });
   }),
 );
 
@@ -67,7 +68,9 @@ router.post(
 router.get(
   "/:id",
   h(async (req, res) => {
-    res.json({ quote: await quotes.getQuote(req.params.id) });
+    const a = await actor(req);
+    const quote = await quotes.authorizeQuoteAccess(a, req.params.id);
+    res.json({ quote });
   }),
 );
 
@@ -75,6 +78,8 @@ router.get(
 router.get(
   "/:id/standardized",
   h(async (req, res) => {
+    const a = await actor(req);
+    await quotes.authorizeQuoteAccess(a, req.params.id);
     res.json({ quote: await quotes.getStandardizedQuote(req.params.id) });
   }),
 );
@@ -83,6 +88,8 @@ router.get(
 router.get(
   "/:id/pdf",
   h(async (req, res) => {
+    const a = await actor(req);
+    await quotes.authorizeQuoteAccess(a, req.params.id);
     const qd = await quotes.getStandardizedQuote(req.params.id);
     const pdf = await renderQuotePdf(qd);
     res.setHeader("Content-Type", "application/pdf");
@@ -96,6 +103,7 @@ router.patch(
   "/:id",
   h(async (req, res) => {
     const a = await actor(req);
+    await quotes.authorizeQuoteAccess(a, req.params.id);
     res.json({ quote: await quotes.reviseQuote(a, req.params.id, req.body ?? {}) });
   }),
 );
@@ -105,6 +113,7 @@ router.post(
   "/:id/submit",
   h(async (req, res) => {
     const a = await actor(req);
+    await quotes.authorizeQuoteAccess(a, req.params.id);
     const quote = await quotes.submitQuote(req.params.id);
     // Submitting a quote notifies the event owner side, excluding the submitter.
     const eventId = (await recipients.quoteEventId(quote.id).catch(() => null)) ?? "";
@@ -125,6 +134,7 @@ router.post(
   "/:id/accept",
   h(async (req, res) => {
     const a = await actor(req);
+    await quotes.authorizeQuoteAccess(a, req.params.id);
     // Terminal event: accepting a quote wins the deal. Auto-close idempotently
     // (sets 'accepted' + stamps closed_at only on first close) and incrementally
     // refresh the relationship graph for the parties. Re-firing is a no-op.
@@ -146,6 +156,7 @@ router.post(
   "/:id/decline",
   h(async (req, res) => {
     const a = await actor(req);
+    await quotes.authorizeQuoteAccess(a, req.params.id);
     const quote = await quotes.setQuoteStatus(req.params.id, "declined");
     const to = recipients.excluding(
       await recipients.quoteVendorEmails(quote.id).catch(() => [] as string[]),
@@ -161,6 +172,7 @@ router.post(
   "/:id/request-revision",
   h(async (req, res) => {
     const a = await actor(req);
+    await quotes.authorizeQuoteAccess(a, req.params.id);
     const quote = await quotes.setQuoteStatus(req.params.id, "revision_requested");
     const to = recipients.excluding(
       await recipients.quoteVendorEmails(quote.id).catch(() => [] as string[]),

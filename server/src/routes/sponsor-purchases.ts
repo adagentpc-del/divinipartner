@@ -45,6 +45,7 @@ import {
   notifyFulfillmentDue,
 } from "../lib/sponsorFulfillment.js";
 import { enabledProcessors, createCheckout, type Processor } from "../lib/processors.js";
+import { findPaymentByReference } from "../db/payments.js";
 import { PUBLIC_APP_URL, BASE_PATH } from "../config.js";
 import { validateUrlUpload } from "../lib/uploadGuard.js";
 
@@ -229,7 +230,27 @@ router.post(
     }
     const body = req.body ?? {};
     const paymentId = typeof body.payment_id === "string" ? body.payment_id : null;
-    const amount = body.amount != null ? Number(body.amount) : null;
+    // The amount is ALWAYS the server-side purchase price (package price stamped
+    // at purchase creation), never the client-supplied body.amount. Trusting the
+    // client amount would let a sponsor understate/inflate the recorded amount.
+    const amount = purchase.amount != null ? Number(purchase.amount) : null;
+    // When a real processor is live, a sponsorship may only be marked paid off a
+    // VERIFIED captured payment: payment_id must resolve to a recorded payment
+    // (written by the Stripe/PayPal capture+webhook path) whose amount covers the
+    // purchase. This closes the self-confirm bypass where a sponsor could obtain
+    // fulfillment without paying. When no processor is configured the platform is
+    // in record-only mode and this manual confirmation is the intended fallback.
+    const en = enabledProcessors();
+    if (en.stripe || en.paypal) {
+      if (!paymentId) {
+        return res.status(402).json({ error: "payment required: complete checkout before confirming" });
+      }
+      const pay = await findPaymentByReference(paymentId);
+      const expected = amount ?? 0;
+      if (!pay || Number(pay.amount) + 1e-6 < expected) {
+        return res.status(402).json({ error: "no matching captured payment found for this sponsorship" });
+      }
+    }
     const updated = await repo.markPaid(purchase.id, paymentId, amount);
     // Terminal event: payment recorded closes the sponsorship deal. Stamp
     // closed_at idempotently and incrementally refresh the relationship graph

@@ -37,6 +37,15 @@ import * as discoverySearch from "../lib/discovery-search.js";
 import * as emails from "../lib/claim-emails.js";
 import * as verify from "../lib/claim-verify.js";
 import { validateUrlUpload } from "../lib/uploadGuard.js";
+import { rateLimit } from "../lib/rateLimit.js";
+
+/**
+ * Tight limiter for the public, token/code-bearing claim endpoints. The generic
+ * 300/min API limiter leaves room to brute-force the 6-digit email code or
+ * enumerate slugs; 15/min per client IP makes that infeasible while staying well
+ * clear of any legitimate claimant. Keyed on the trusted-proxy client IP.
+ */
+const claimTokenLimit = rateLimit({ windowMs: 60_000, max: 15 });
 
 const h =
   (fn: (req: Request, res: Response) => Promise<unknown>) =>
@@ -151,6 +160,7 @@ router.post(
 // POST /verify : start a claim.
 router.post(
   "/verify",
+  claimTokenLimit,
   h(async (req, res) => {
     const auth = getAuth(req);
     const { slug, fullName, role, businessEmail, agreementAccepted } = req.body ?? {};
@@ -172,6 +182,7 @@ router.post(
 // POST /verify/confirm : confirm a claim and convert to Free Partner.
 router.post(
   "/verify/confirm",
+  claimTokenLimit,
   h(async (req, res) => {
     const auth = getAuth(req);
     const { slug, code } = req.body ?? {};
