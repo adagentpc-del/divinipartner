@@ -11,6 +11,7 @@ import { Router, type Request, type Response, type NextFunction } from "express"
 import { getAuth, requireUser } from "../auth.js";
 import * as db from "../db.js";
 import { TIERS } from "../db.js";
+import { getEvent } from "../db/events.js";
 import {
   createChangeOrder,
   listChangeOrders,
@@ -36,8 +37,11 @@ router.get(
   "/",
   requireUser,
   h(async (req, res) => {
+    const auth = getAuth(req);
+    const actor = await db.getActor(auth.userId!, auth.email);
     const eventId = typeof req.query.event_id === "string" ? req.query.event_id : null;
     if (!eventId) return res.status(400).json({ error: "event_id required" });
+    await getEvent(actor, eventId); // IDOR gate: must be a participant of the event
     const rows = await listChangeOrders(eventId, {
       status: typeof req.query.status === "string" ? req.query.status : undefined,
     });
@@ -53,6 +57,7 @@ router.post(
     const actor = await db.getActor(auth.userId!, auth.email);
     const b = req.body ?? {};
     if (!b.event_id) return res.status(400).json({ error: "event_id required" });
+    await getEvent(actor, b.event_id); // IDOR gate: only event participants may create a change order
     const feeRate =
       actor.org?.tier && (TIERS as Record<string, { feeRate: number }>)[actor.org.tier]
         ? (TIERS as Record<string, { feeRate: number }>)[actor.org.tier].feeRate
@@ -78,8 +83,11 @@ router.get(
   "/:id",
   requireUser,
   h(async (req, res) => {
+    const auth = getAuth(req);
+    const actor = await db.getActor(auth.userId!, auth.email);
     const row = await getChangeOrder(req.params.id);
-    if (!row) return res.status(404).json({ error: "not found" });
+    if (!row || !row.event_id) return res.status(404).json({ error: "not found" });
+    await getEvent(actor, row.event_id); // IDOR gate: must be a participant of the CO's event
     res.json({ change_order: row });
   }),
 );
@@ -88,8 +96,13 @@ router.patch(
   "/:id/status",
   requireUser,
   h(async (req, res) => {
+    const auth = getAuth(req);
+    const actor = await db.getActor(auth.userId!, auth.email);
     const status = (req.body ?? {}).status as ChangeOrderStatus;
     if (!status) return res.status(400).json({ error: "status required" });
+    const existing = await getChangeOrder(req.params.id);
+    if (!existing || !existing.event_id) return res.status(404).json({ error: "not found" });
+    await getEvent(actor, existing.event_id); // IDOR gate before mutating status
     try {
       const row = await updateChangeOrderStatus(req.params.id, status);
       if (!row) return res.status(404).json({ error: "not found" });

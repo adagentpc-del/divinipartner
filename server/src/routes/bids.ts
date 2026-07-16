@@ -10,6 +10,7 @@ import { getAuth, requireUser } from "../auth.js";
 import * as db from "../db.js";
 import * as bids from "../db/bids.js";
 import * as quotes from "../db/quotes.js";
+import { getEvent } from "../db/events.js";
 import { notify } from "../lib/notify.js";
 import { recipients } from "../lib/recipients.js";
 
@@ -61,6 +62,18 @@ router.get(
     const a = await actor(req);
     const bid = await bids.getBid(req.params.id);
     const access = bids.canVendorAccessBid(bid, a.org?.tier ?? null, new Date(), a.org?.id ?? null);
+    // Don't leak a private/invite-only RFP's budget + scope to a vendor who is
+    // not permitted to see it. When vendor access is denied, only the event side
+    // (owner/planner/assigned participant) may view the full bid; everyone else
+    // gets 403 instead of the serialized row.
+    if (!access.allowed) {
+      try {
+        if (bid.event_id) await getEvent(a, bid.event_id);
+        else throw new Error("no event");
+      } catch {
+        return res.status(403).json({ error: access.reason || "no access to this bid" });
+      }
+    }
     res.json({ bid, access });
   }),
 );
