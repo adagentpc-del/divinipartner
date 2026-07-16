@@ -13,6 +13,7 @@
  * Zero em dashes.
  */
 import { getToken } from './api';
+import { consentGranted } from '../components/CookieBanner';
 
 const BASE = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
 
@@ -146,6 +147,12 @@ function authHeader(): Record<string, string> {
  * error is swallowed so it can never break the page.
  */
 export async function reportSignal(path: string): Promise<void> {
+  // Consent gate: device fingerprint + IP + approximate geolocation are
+  // consent-based signals per the published Cookie & Privacy policies. Do NOT
+  // send them unless the visitor chose "Accept all". Gating here covers every
+  // caller. (Previously this fired unconditionally, contradicting the policy and
+  // voiding the consent basis.)
+  if (!consentGranted()) return;
   try {
     const fingerprint = await getFingerprint();
     const body = {
