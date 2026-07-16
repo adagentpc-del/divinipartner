@@ -2,6 +2,7 @@ import { ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { useFeatures } from '../lib/features';
+import OnboardingGuide from './OnboardingGuide';
 
 const NAV: Record<string, [string, string, string][]> = {
   buyer: [
@@ -93,7 +94,10 @@ export default function Shell({ children }: { children: ReactNode }) {
           <span className="nm">Divini Partners</span>
           <a onClick={signOut} style={{ color: '#fff', cursor: 'pointer', fontSize: 13 }}>Sign out</a>
         </div>
-        <div className="content">{children}</div>
+        <div className="content">
+          {company && <OnboardingGuide role={role} />}
+          {children}
+        </div>
         <nav className="mbottom">
           {items.map(([path, label, icon]) => (
             <a key={path} className={loc.pathname === path ? 'active' : ''} onClick={() => nav(path)}>
