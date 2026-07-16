@@ -26,6 +26,21 @@ function readInviteToken(params: URLSearchParams): string | null {
   }
 }
 
+/**
+ * Referral code from ?ref= or the localStorage stash set by the /r/:code
+ * landing page (which survives the email-verify round-trip). Read once so the
+ * field can be prefilled; the user can still edit or enter one manually.
+ */
+function readRefCode(params: URLSearchParams): string {
+  const fromUrl = params.get('ref');
+  if (fromUrl) return fromUrl.trim();
+  try {
+    return (localStorage.getItem('divini_ref') ?? '').trim();
+  } catch {
+    return '';
+  }
+}
+
 type Role = 'venue' | 'vendor' | 'supplier' | 'installer' | 'planner' | 'client' | 'sponsor';
 type Tier = 'client' | 'free_partner' | 'partner' | 'premier';
 
@@ -52,6 +67,9 @@ export default function GetStarted() {
   const inviteToken = readInviteToken(params);
   const [role, setRole] = useState<Role | null>(null);
   const [orgName, setOrgName] = useState('');
+  const [contactName, setContactName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [refCode, setRefCode] = useState<string>(() => readRefCode(params));
   const [tier, setTier] = useState<Tier>('free_partner');
   // Pricing V2 (server flag): no membership tiers. When on, hide the plan
   // picker and register everyone free. Read from /api/pricing.
@@ -85,12 +103,27 @@ export default function GetStarted() {
         role,
         orgName: orgName.trim(),
         tier: effectiveTier,
+        ...(contactName.trim() ? { name: contactName.trim() } : {}),
+        ...(phone.trim() ? { phone: phone.trim() } : {}),
         ...(inviteToken ? { invite: inviteToken } : {}),
       });
       try {
         sessionStorage.removeItem('divini.invite');
       } catch {
         /* ignore */
+      }
+      // Referral capture: if this signup carried a referral code (from /r/:code
+      // or entered by hand), convert it now. The server grants the referrer a
+      // credit and flags this user's signup incentive; it is idempotent and
+      // self-referral-safe. Best-effort so it never blocks account setup.
+      const code = refCode.trim();
+      if (code) {
+        await apiSend('POST', '/referrals/convert', { code }).catch(() => undefined);
+        try {
+          localStorage.removeItem('divini_ref');
+        } catch {
+          /* ignore */
+        }
       }
       void reportSignal('/get-started');
       await refreshCompany();
@@ -156,6 +189,15 @@ export default function GetStarted() {
 
             <div className="lbl">{isClient ? 'Account name' : 'Business name'}</div>
             <input value={orgName} onChange={(e) => setOrgName(e.target.value)} placeholder={isClient ? 'Your name or company' : 'Your business name'} />
+
+            <div className="lbl">Your name</div>
+            <input value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="Full name" autoComplete="name" />
+
+            <div className="lbl">Phone</div>
+            <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(305) 555-0100" autoComplete="tel" inputMode="tel" />
+
+            <div className="lbl">Referral code <span style={{ textTransform: 'none', fontWeight: 400, color: '#9a9488' }}>(optional)</span></div>
+            <input value={refCode} onChange={(e) => setRefCode(e.target.value)} placeholder="Enter a referral code if you have one" autoCapitalize="characters" />
 
             {!isClient && role && !pricingV2 && (
               <>
