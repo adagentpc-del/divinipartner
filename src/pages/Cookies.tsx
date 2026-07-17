@@ -14,7 +14,7 @@ export default function Cookies() {
       <div style={{ color: '#6b7a72', marginBottom: 28 }}>Effective July 1, 2026</div>
 
       <p>
-        This Cookie Policy explains how Divini Group ("Divini Partners," "we," "us") uses cookies and
+        This Cookie Policy explains how Divini Group LLC ("Divini Partners," "we," "us") uses cookies and
         similar technologies on the Divini Partners websites and applications. It should be read
         together with our <Link to="/privacy" style={{ color: '#1f6f50' }}>Privacy Policy</Link>.
       </p>

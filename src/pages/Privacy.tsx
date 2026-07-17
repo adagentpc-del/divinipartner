@@ -87,7 +87,7 @@ export default function Privacy() {
         Questions or deletion requests: <a href="mailto:support@divinipartners.com" style={{ color: '#1f6f50' }}>support@divinipartners.com</a>.
       </p>
       <p>
-        Divini Partners by Divini Group<br />
+        Divini Partners by Divini Group LLC<br />
         Headquartered in Miami, Florida
       </p>
 

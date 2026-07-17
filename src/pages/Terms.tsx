@@ -12,7 +12,7 @@ export default function Terms() {
       <div style={{ color: '#6b7a72', marginBottom: 28 }}>Effective June 24, 2026</div>
 
       <p>
-        These Terms of Service (the "Terms") are a binding agreement between you and Divini Group
+        These Terms of Service (the "Terms") are a binding agreement between you and Divini Group LLC
         ("Divini Partners," "we," "us," or "our") governing your access to and use of the Divini
         Partners websites, applications, and services (collectively, the "Platform"). By creating an
         account, accessing, or using the Platform, you agree to these Terms and to our{' '}
@@ -173,7 +173,7 @@ export default function Terms() {
         Questions about these Terms: <a href="mailto:support@divinipartners.com" style={{ color: '#1f6f50' }}>support@divinipartners.com</a>.
       </p>
       <p>
-        Divini Partners by Divini Group<br />
+        Divini Partners by Divini Group LLC<br />
         Headquartered in Miami, Florida
       </p>
 
