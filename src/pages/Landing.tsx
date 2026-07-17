@@ -216,7 +216,7 @@ function EventBuilder() {
           </div>
         </label>
 
-        <button className="btn primary lg lnd-builder-cta" onClick={() => nav('/demo')}>
+        <button className="btn primary lg lnd-builder-cta" onClick={() => nav('/register')}>
           Build This Event With Us
         </button>
       </div>
@@ -386,8 +386,8 @@ export default function Landing() {
               administration, and transparent transactions from first inquiry to final payment.
             </p>
             <div className="cta">
-              <button className="btn gold lg" onClick={() => nav('/demo')}>
-                Book a Demo
+              <button className="btn gold lg" onClick={() => nav('/register')}>
+                Get Started
               </button>
               <button className="btn ghost lg" onClick={() => nav('/marketplace')}>
                 Explore the Marketplace
