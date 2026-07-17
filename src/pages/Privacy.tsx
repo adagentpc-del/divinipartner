@@ -48,10 +48,12 @@ export default function Privacy() {
 
       <h2 style={h2}>How it’s stored and who processes it</h2>
       <p>
-        Your data is stored with our infrastructure providers, who process it on our behalf:
-        <strong> Supabase</strong> (database, authentication, and file storage), <strong>Vercel</strong> (web hosting),
-        and <strong>PayPal</strong> (vendor subscription payments - we do not store full card details). We do not sell your
-        personal information, and we do not share it with third parties for their own marketing.
+        Your data is stored with our infrastructure and service providers, who process it on our behalf:
+        <strong> DigitalOcean</strong> (cloud hosting, database, and file storage), our
+        <strong> email delivery provider</strong> (transactional and account emails), and our payment processors
+        <strong> Stripe</strong> and <strong>PayPal</strong> (payments - card data is handled by the processor and we do
+        not store full card details). We do not sell your personal information, and we do not share it with third parties
+        for their own marketing.
       </p>
 
       <h2 style={h2}>Visibility within the marketplace</h2>

@@ -113,7 +113,7 @@ export default function Register() {
                 <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="Re-enter your password" autoComplete="new-password" />
                 <label className="consent">
                   <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
-                  <span>I am 18+ and agree to the <Link to="/terms">Terms</Link> and <Link to="/privacy">Privacy Policy</Link>. I understand Divini Partners is a marketplace and is not a party to bookings or transactions between users; disputes are resolved directly between users, with arbitration as described in the Terms.</span>
+                  <span>I am 18+ and agree to the <Link to="/terms">Terms</Link> and <Link to="/privacy">Privacy Policy</Link>. I understand Divini Partners is a marketplace and is not a party to bookings or transactions between users; disputes between users are resolved directly between them, and any dispute with Divini Partners is governed by the dispute-resolution terms in the Terms.</span>
                 </label>
                 <button className="btn" disabled={busy || !agreed}>{busy ? 'Creating...' : 'Create account'}</button>
               </form>
