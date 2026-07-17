@@ -23,7 +23,6 @@ import ForVendors from './pages/public/ForVendors';
 import ForPlanners from './pages/public/ForPlanners';
 import ForSponsors from './pages/public/ForSponsors';
 import ForClients from './pages/public/ForClients';
-import DemoPage from './pages/public/DemoPage';
 import Marketplace from './pages/public/Marketplace';
 import HowItWorks from './pages/public/HowItWorks';
 import Pricing from './pages/public/Pricing';
@@ -269,7 +268,7 @@ function Routed() {
       <Route path="/for-planners" element={<ForPlanners />} />
       <Route path="/for-sponsors" element={<ForSponsors />} />
       <Route path="/for-clients" element={<ForClients />} />
-      <Route path="/demo" element={<DemoPage />} />
+      <Route path="/demo" element={<Navigate to="/register" replace />} />
       <Route path="/marketplace" element={<Marketplace />} />
       <Route path="/how-it-works" element={<HowItWorks />} />
       <Route path="/pricing" element={<Pricing />} />
