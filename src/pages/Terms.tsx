@@ -172,6 +172,10 @@ export default function Terms() {
       <p>
         Questions about these Terms: <a href="mailto:support@divinipartners.com" style={{ color: '#1f6f50' }}>support@divinipartners.com</a>.
       </p>
+      <p>
+        Divini Partners by Divini Group<br />
+        Headquartered in Miami, Florida
+      </p>
 
       <div style={{ marginTop: 40 }}>
         <Link to="/" style={{ color: '#1f6f50' }}>← Back to Divini Partners</Link>
