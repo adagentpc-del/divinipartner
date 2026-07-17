@@ -82,6 +82,14 @@ export const DOWNLOAD_URL_SECRET =
 export const PUBLIC_APP_URL = (process.env.PUBLIC_APP_URL || "").replace(/\/$/, "");
 export const BASE_PATH = (process.env.BASE_PATH || "/").replace(/\/$/, "") || "";
 
+// Legal entity + valid physical postal address. Required in every commercial
+// email footer (CAN-SPAM 15 U.S.C. 7704(a)(5)) and shown on legal pages.
+// Env-overridable so it can be updated without a code change.
+export const COMPANY_LEGAL_NAME = process.env.COMPANY_LEGAL_NAME || "Divini Group";
+export const COMPANY_POSTAL_ADDRESS =
+  process.env.COMPANY_POSTAL_ADDRESS ||
+  "1756 N Bayshore Drive, Suite 14L, Miami, FL 33132";
+
 export function getAdminAllowedEmails(): string[] {
   return (process.env.ADMIN_ALLOWED_EMAILS || "")
     .split(",")
