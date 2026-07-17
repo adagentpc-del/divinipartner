@@ -17,7 +17,7 @@
  */
 import * as claim from "../db/claim.js";
 import { sendEmail } from "./email.js";
-import { PUBLIC_APP_URL, BASE_PATH } from "../config.js";
+import { PUBLIC_APP_URL, BASE_PATH, COMPANY_LEGAL_NAME, COMPANY_POSTAL_ADDRESS } from "../config.js";
 
 export const MAX_SENDS = 6;
 export const WEEKLY_STEPS = 4; // first four sends are weekly, then monthly
@@ -101,7 +101,7 @@ export function complianceFooter(p: Personalization): string {
     "You are receiving this because we created an unclaimed listing for your business from publicly available information.",
     `Unsubscribe from these messages: ${unsubscribeUrl(p.slug)}`,
     `Request removal of your listing entirely: ${removalUrl(p.slug)}`,
-    "Divini Group, South Florida. We honor every unsubscribe and removal request promptly.",
+    `${COMPANY_LEGAL_NAME}, ${COMPANY_POSTAL_ADDRESS}. We honor every unsubscribe and removal request promptly.`,
   ].join("\n");
 }
 

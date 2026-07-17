@@ -13,6 +13,8 @@ import {
   POSTAL_API_URL,
   PUBLIC_APP_URL,
   BASE_PATH,
+  COMPANY_LEGAL_NAME,
+  COMPANY_POSTAL_ADDRESS,
   emailEnabled,
 } from "../config.js";
 
@@ -53,7 +55,7 @@ function wrapHtml(subject: string, text: string): string {
   <div style="font-family:Georgia,serif;font-size:22px;color:#123c2e;font-weight:700;margin-bottom:16px">Divini Partners</div>
   <h1 style="font-family:Georgia,serif;font-size:20px;color:#123c2e;font-weight:600;margin:0 0 14px">${escapeHtml(subject)}</h1>
   ${body}
-  <div style="margin-top:22px;border-top:1px solid #e7e1d6;padding-top:14px;font-size:12px;color:#7d776c">Divini Partners by Divini Group</div>
+  <div style="margin-top:22px;border-top:1px solid #e7e1d6;padding-top:14px;font-size:12px;color:#7d776c">Divini Partners by ${escapeHtml(COMPANY_LEGAL_NAME)}<br/>${escapeHtml(COMPANY_POSTAL_ADDRESS)}</div>
 </div>`;
 }
 
