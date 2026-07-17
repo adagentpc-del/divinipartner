@@ -1,341 +1,370 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import type { NavItem } from '../pages/dashboards/DashboardShell';
 
 /**
- * OnboardingGuide - first-run guided onboarding for new members.
+ * Guided onboarding for first-time members.
  *
- * Two parts, both role-aware and self-contained (no external tour library):
- *   1. A spotlight TOUR that runs once on first app entry. It dims the screen,
- *      cuts a spotlight hole around the real nav item for each step, and shows a
- *      popover that tells the person where they are and what to do next
- *      (Back / Skip / Next). Steps whose target is not on the page are skipped
- *      gracefully. Completion is remembered in localStorage.
- *   2. A persistent "Getting started" CHECKLIST card (dismissible) that tracks
- *      setup progress. Each item links straight to the right page; items are
- *      remembered in localStorage and the card auto-hides once everything is done
- *      or the user dismisses it. A "Take the tour" link re-opens the tour.
+ * Two coordinated surfaces, both driven off the SAME nav `items` the live
+ * DashboardShell renders, so the guidance always points at real routes:
+ *   1. A spotlight TOUR that dims the app and highlights real sidebar buttons
+ *      (`.dpdash-navitem`), stepping through the highest-value places to start.
+ *   2. A persistent "Getting started" CHECKLIST that deep-links into the same
+ *      routes and remembers what's done.
  *
- * Mounted inside Shell for signed-in members with a company. Zero server calls,
- * so it can never break a page. Zero em dashes in user copy is not required here,
- * but styling is kept in the Divini palette.
+ * Zero server calls. State lives in localStorage so it never nags twice and
+ * survives reloads. Rendered inside DashboardShell's content area; it anchors
+ * to the sidebar that is guaranteed to be on-screen there.
  */
 
-type Role = string;
-
-type TourStep = {
-  navLabel?: string; // nav item text to spotlight; omit for a centered card
-  title: string;
-  body: string;
+type Props = {
+  items: NavItem[];
+  navLabel: string;
+  onNavigate: (to: string) => void;
 };
 
-type CheckItem = {
-  key: string;
-  label: string;
-  link: string;
-  auto?: boolean; // pre-completed (e.g. account created)
-};
+const K_TOUR = 'divini_onboard_tour_v2';
+const K_CHECK = 'divini_onboard_checklist_v2';
+const K_DISMISS = 'divini_onboard_dismissed_v2';
 
-const TOUR_KEY = 'divini_tour_v1';
-const CHECK_KEY = 'divini_checklist_v1';
-const CHECK_DISMISS_KEY = 'divini_checklist_dismissed_v1';
-
-function isVendorRole(role: Role): boolean {
-  return role === 'vendor' || role === 'supplier' || role === 'installer';
-}
-
-function tourSteps(role: Role): TourStep[] {
-  const welcome: TourStep = {
-    title: 'Welcome to Divini Partners',
-    body: 'Let us take 30 seconds to show you around so you know exactly where to go and what to do next.',
-  };
-  const refer: TourStep = {
-    navLabel: 'Refer & Earn',
-    title: 'Refer & Earn',
-    body: 'Invite venues, vendors, planners, or clients. When they join you earn a $10 credit, and they get 50% off their first two months.',
-  };
-  if (isVendorRole(role)) {
-    return [
-      welcome,
-      { navLabel: 'Dashboard', title: 'Your Dashboard', body: 'This is your command center. Your activity, matches, and next best actions all live here.' },
-      { navLabel: 'Search Bids', title: 'Find work', body: 'Browse open opportunities matched to your services. This is where new business comes from.' },
-      { navLabel: 'My Bids', title: 'Track your quotes', body: 'Everything you have quoted or won is here, from first response to booked event.' },
-      { navLabel: 'Pricing Rules', title: 'Set your pricing', body: 'Add your services and pricing so you can quote fast and get matched to the right jobs.' },
-      refer,
-      { navLabel: 'Profile', title: 'Finish your profile', body: 'Complete your profile so clients can find and trust you. When you are done, use the Getting started checklist below to finish setup.' },
-    ];
-  }
-  return [
-    welcome,
-    { navLabel: 'Dashboard', title: 'Your Dashboard', body: 'This is your command center. Your events, quotes, and next best actions all live here.' },
-    { navLabel: 'Projects', title: 'Create an event', body: 'Start an event or project here, then source and compare vendors in one place.' },
-    { navLabel: 'Command Center', title: 'Your daily priorities', body: 'What needs your attention today, ranked. Check this first each day.' },
-    refer,
-    { navLabel: 'Company', title: 'Finish your profile', body: 'Complete your company profile so you get matched to the right partners. When you are done, use the Getting started checklist below.' },
-  ];
-}
-
-function checkItems(role: Role): CheckItem[] {
-  const common: CheckItem[] = [
-    { key: 'account', label: 'Create your account', link: '/app', auto: true },
-    { key: 'profile', label: 'Complete your profile', link: isVendorRole(role) ? '/profile' : '/profile' },
-    { key: 'refer', label: 'Invite a partner and earn $10', link: '/referral-dashboard' },
-  ];
-  if (isVendorRole(role)) {
-    return [
-      common[0],
-      common[1],
-      { key: 'pricing', label: 'List your services and pricing', link: '/vendor-pricing' },
-      { key: 'bid', label: 'Find and bid on your first job', link: '/search-bids' },
-      common[2],
-    ];
-  }
-  return [
-    common[0],
-    common[1],
-    { key: 'project', label: 'Create your first event', link: '/projects' },
-    { key: 'marketplace', label: 'Explore the marketplace', link: '/marketplace' },
-    common[2],
-  ];
-}
-
-function readDone(): Record<string, boolean> {
+function readJSON<T>(key: string, fallback: T): T {
   try {
-    return JSON.parse(localStorage.getItem(CHECK_KEY) || '{}') || {};
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
   } catch {
-    return {};
+    return fallback;
+  }
+}
+function writeJSON(key: string, value: unknown) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* storage may be unavailable (private mode); guidance is best-effort */
   }
 }
 
-export default function OnboardingGuide({ role }: { role: Role }) {
-  const nav = useNavigate();
-  const steps = useMemo(() => tourSteps(role), [role]);
-  const items = useMemo(() => checkItems(role), [role]);
+type Rect = { top: number; left: number; width: number; height: number } | null;
 
-  // ---- Tour state ----
-  const [tourActive, setTourActive] = useState(false);
-  const [stepIdx, setStepIdx] = useState(0);
-  const [rect, setRect] = useState<DOMRect | null>(null);
+function navButtonRect(label: string): Rect {
+  const nodes = Array.from(document.querySelectorAll<HTMLElement>('.dpdash-navitem'));
+  const match = nodes.find((n) => {
+    const t = n.querySelector('.dpdash-navtext')?.textContent ?? n.textContent ?? '';
+    return t.trim() === label.trim();
+  });
+  if (!match) return null;
+  const r = match.getBoundingClientRect();
+  if (!r.width || !r.height) return null;
+  return { top: r.top, left: r.left, width: r.width, height: r.height };
+}
 
-  // ---- Checklist state ----
-  const [done, setDone] = useState<Record<string, boolean>>(() => readDone());
-  const [dismissed, setDismissed] = useState(false);
+export default function OnboardingGuide({ items, navLabel, onNavigate }: Props) {
+  // Resolve the meaningful destinations out of the live nav so nothing is a dead link.
+  const find = (pred: (i: NavItem) => boolean) => items.find((i) => i.to && pred(i));
+  const profile = find((i) => i.to === '/profile') ?? find((i) => /profile|company|account/i.test(i.label));
+  const referral = find((i) => i.to === '/referral-dashboard') ?? find((i) => /refer/i.test(i.label));
+  const payout = find((i) => /payout|connect-payouts/i.test(i.to || '')) ?? find((i) => /payout|bank/i.test(i.label));
+  const primary = items.find((i) => i.to && i.to !== '/app') ?? items[0];
+  const first = items[0];
 
-  useEffect(() => {
-    try {
-      if (!localStorage.getItem(TOUR_KEY)) setTourActive(true);
-      setDismissed(Boolean(localStorage.getItem(CHECK_DISMISS_KEY)));
-    } catch {
-      /* storage unavailable: default to showing nothing intrusive */
+  const workspaceName = (navLabel || '').replace(/workspace/i, '').trim();
+
+  // ---- TOUR ------------------------------------------------------------
+  type Step = { title: string; body: string; targetLabel?: string };
+  const steps = useMemo<Step[]>(() => {
+    const s: Step[] = [
+      {
+        title: `Welcome to Divini Partners`,
+        body: `You're all set up. This quick tour shows the three things worth doing first so you start getting value today. Takes about 20 seconds.`,
+      },
+    ];
+    if (first) {
+      s.push({
+        title: 'This is your navigation',
+        body: `Every tool for ${workspaceName ? workspaceName : 'your'} workspace lives in this sidebar. You can always get back here from any page.`,
+        targetLabel: first.label,
+      });
     }
-  }, []);
-
-  const finishTour = (markDone = true) => {
-    setTourActive(false);
-    if (markDone) {
-      try {
-        localStorage.setItem(TOUR_KEY, '1');
-      } catch {
-        /* ignore */
-      }
+    if (profile) {
+      s.push({
+        title: 'Complete your profile first',
+        body: `A complete profile is what wins work and builds trust. Add your details, logo, and what you offer — it only takes a few minutes.`,
+        targetLabel: profile.label,
+      });
     }
-  };
-
-  // Find the DOM node for the current step's nav label (best-effort).
-  const findTarget = (label?: string): HTMLElement | null => {
-    if (!label) return null;
-    const anchors = Array.from(document.querySelectorAll('aside.sidebar nav.nav a')) as HTMLElement[];
-    return anchors.find((a) => (a.textContent || '').trim().includes(label)) || null;
-  };
-
-  // Advance past steps whose target is missing so the tour never dead-ends.
-  const resolveStep = (idx: number, dir: 1 | -1): number => {
-    let i = idx;
-    while (i >= 0 && i < steps.length) {
-      const s = steps[i];
-      if (!s.navLabel || findTarget(s.navLabel)) return i;
-      i += dir;
+    if (referral) {
+      s.push({
+        title: 'Refer & earn',
+        body: `Share your referral link and earn rewards when partners you invite join and transact. Your link and earnings live here.`,
+        targetLabel: referral.label,
+      });
     }
-    return -1;
+    s.push({
+      title: `You're ready to go`,
+      body: `That's the tour. Your "Getting started" checklist stays in the corner so you can finish setup whenever you like.`,
+    });
+    return s;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, navLabel]);
+
+  const [tourStep, setTourStep] = useState<number>(() => (localStorage.getItem(K_TOUR) ? -1 : 0));
+  const [rect, setRect] = useState<Rect>(null);
+
+  const measure = () => {
+    const step = steps[tourStep];
+    if (tourStep < 0 || !step || !step.targetLabel) {
+      setRect(null);
+      return;
+    }
+    setRect(navButtonRect(step.targetLabel));
   };
 
   useLayoutEffect(() => {
-    if (!tourActive) return;
-    const step = steps[stepIdx];
-    const measure = () => {
-      const el = findTarget(step?.navLabel);
-      setRect(el ? el.getBoundingClientRect() : null);
-    };
     measure();
-    window.addEventListener('resize', measure);
-    window.addEventListener('scroll', measure, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tourStep, steps]);
+
+  useEffect(() => {
+    if (tourStep < 0) return;
+    const onResize = () => measure();
+    window.addEventListener('resize', onResize);
+    window.addEventListener('scroll', onResize, true);
     return () => {
-      window.removeEventListener('resize', measure);
-      window.removeEventListener('scroll', measure, true);
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('scroll', onResize, true);
     };
-  }, [tourActive, stepIdx, steps]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tourStep, steps]);
 
-  const go = (dir: 1 | -1) => {
-    const next = resolveStep(stepIdx + dir, dir);
-    if (next === -1) {
-      finishTour(true);
-      return;
-    }
-    setStepIdx(next);
+  const endTour = () => {
+    localStorage.setItem(K_TOUR, 'done');
+    setTourStep(-1);
   };
 
-  const startTour = () => {
-    setStepIdx(resolveStep(0, 1));
-    setTourActive(true);
-  };
+  // ---- CHECKLIST -------------------------------------------------------
+  type Task = { id: string; label: string; hint: string; to: string };
+  const tasks = useMemo<Task[]>(() => {
+    const t: Task[] = [];
+    if (profile && profile.to) t.push({ id: 'profile', label: 'Complete your company profile', hint: 'Logo, details, and what you offer', to: profile.to });
+    if (primary && primary.to) t.push({ id: 'explore', label: `Explore ${primary.label}`, hint: 'See your workspace in action', to: primary.to });
+    if (payout && payout.to) t.push({ id: 'payout', label: 'Set up how you get paid', hint: 'Connect your payout account', to: payout.to });
+    if (referral && referral.to) t.push({ id: 'referral', label: 'Grab your referral link', hint: 'Invite partners and earn rewards', to: referral.to });
+    return t;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items]);
 
-  const toggleItem = (key: string, auto?: boolean) => {
-    if (auto) return;
+  const [done, setDone] = useState<Record<string, boolean>>(() => readJSON<Record<string, boolean>>(K_CHECK, {}));
+  const [dismissed, setDismissed] = useState<boolean>(() => localStorage.getItem(K_DISMISS) === '1');
+  const [collapsed, setCollapsed] = useState<boolean>(false);
+
+  const markDone = (id: string) => {
     setDone((prev) => {
-      const next = { ...prev, [key]: !prev[key] };
-      try {
-        localStorage.setItem(CHECK_KEY, JSON.stringify(next));
-      } catch {
-        /* ignore */
-      }
+      const next = { ...prev, [id]: true };
+      writeJSON(K_CHECK, next);
       return next;
     });
   };
-
-  const isItemDone = (it: CheckItem) => it.auto || done[it.key];
-  const doneCount = items.filter(isItemDone).length;
-  const allDone = doneCount >= items.length;
-
   const dismissChecklist = () => {
+    localStorage.setItem(K_DISMISS, '1');
     setDismissed(true);
-    try {
-      localStorage.setItem(CHECK_DISMISS_KEY, '1');
-    } catch {
-      /* ignore */
+  };
+
+  const doneCount = tasks.filter((t) => done[t.id]).length;
+  const allDone = tasks.length > 0 && doneCount === tasks.length;
+
+  const goTask = (t: Task) => {
+    markDone(t.id);
+    onNavigate(t.to);
+  };
+  const goStepTarget = () => {
+    const step = steps[tourStep];
+    const item = step?.targetLabel ? items.find((i) => i.label === step.targetLabel) : undefined;
+    if (item?.to) {
+      endTour();
+      onNavigate(item.to);
     }
   };
 
-  // ---- Popover placement ----
-  const popStyle = useMemo(() => {
-    if (!rect) {
-      return { left: '50%', top: '50%', transform: 'translate(-50%, -50%)' } as const;
-    }
-    const gap = 16;
-    const vw = window.innerWidth;
-    // Sidebar is on the left; place popover to the RIGHT of the nav item when
-    // there is room, otherwise below it (mobile bottom nav / narrow screens).
-    if (vw > 720 && rect.right + 340 < vw) {
-      return { left: `${rect.right + gap}px`, top: `${Math.max(12, rect.top - 8)}px` } as const;
-    }
-    return { left: '50%', top: `${Math.min(window.innerHeight - 240, rect.bottom + gap)}px`, transform: 'translateX(-50%)' } as const;
-  }, [rect]);
+  const showTour = tourStep >= 0 && steps.length > 0;
+  const showChecklist = !showTour && !dismissed && tasks.length > 0 && !allDone;
 
-  const step = steps[stepIdx];
-  const showChecklist = !dismissed && !allDone;
+  // Tooltip placement: beside the highlighted sidebar button, else centered.
+  const tip: React.CSSProperties = rect
+    ? {
+        position: 'fixed',
+        top: Math.max(16, Math.min(rect.top - 8, window.innerHeight - 260)),
+        left: Math.min(rect.left + rect.width + 18, window.innerWidth - 360),
+      }
+    : { position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' };
+
+  if (!showTour && !showChecklist) return null;
 
   return (
     <>
-      {/* ---- Getting started checklist ---- */}
-      {showChecklist && (
-        <div className="dg-checklist">
-          <div className="dg-ck-head">
-            <div>
-              <div className="dg-ck-title">Getting started</div>
-              <div className="dg-ck-sub">{doneCount} of {items.length} done</div>
-            </div>
-            <button className="dg-x" onClick={dismissChecklist} aria-label="Dismiss">×</button>
-          </div>
-          <div className="dg-bar"><div className="dg-bar-fill" style={{ width: `${(doneCount / items.length) * 100}%` }} /></div>
-          <ul className="dg-ck-list">
-            {items.map((it) => {
-              const d = isItemDone(it);
-              return (
-                <li key={it.key} className={d ? 'done' : ''}>
-                  <button className="dg-check" onClick={() => toggleItem(it.key, it.auto)} aria-label={d ? 'Completed' : 'Mark complete'}>
-                    {d ? '✓' : ''}
-                  </button>
-                  <span className="dg-ck-label">{it.label}</span>
-                  {!d && (
-                    <button className="dg-go" onClick={() => nav(it.link)}>Go</button>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-          <div className="dg-ck-foot">
-            <button className="dg-link" onClick={startTour}>↻ Take the guided tour</button>
-          </div>
-        </div>
-      )}
+      <style>{CSS}</style>
 
-      {/* ---- Spotlight tour ---- */}
-      {tourActive && step && (
-        <div className="dg-tour" role="dialog" aria-modal="true">
+      {showTour && (
+        <div className="dgo-tour" role="dialog" aria-modal="true" aria-label="Getting started tour">
           {rect ? (
             <div
-              className="dg-spot"
-              style={{
-                left: `${rect.left - 6}px`,
-                top: `${rect.top - 6}px`,
-                width: `${rect.width + 12}px`,
-                height: `${rect.height + 12}px`,
-              }}
+              className="dgo-spot"
+              style={{ position: 'fixed', top: rect.top - 6, left: rect.left - 6, width: rect.width + 12, height: rect.height + 12 }}
             />
           ) : (
-            <div className="dg-dim" />
+            <div className="dgo-scrim" />
           )}
-          <div className="dg-pop" style={popStyle}>
-            <div className="dg-steps">Step {stepIdx + 1} of {steps.length}</div>
-            <div className="dg-title">{step.title}</div>
-            <div className="dg-body">{step.body}</div>
-            <div className="dg-actions">
-              <button className="dg-skip" onClick={() => finishTour(true)}>Skip tour</button>
-              <div className="dg-right">
-                {stepIdx > 0 && <button className="dg-back" onClick={() => go(-1)}>Back</button>}
-                <button className="dg-next" onClick={() => go(1)}>
-                  {stepIdx >= steps.length - 1 ? 'Finish' : 'Next →'}
-                </button>
+
+          <div className="dgo-card" style={tip}>
+            <div className="dgo-step">
+              Step {tourStep + 1} of {steps.length}
+            </div>
+            <h3 className="dgo-title">{steps[tourStep].title}</h3>
+            <p className="dgo-body">{steps[tourStep].body}</p>
+            <div className="dgo-row">
+              <button type="button" className="dgo-skip" onClick={endTour}>
+                Skip
+              </button>
+              <div className="dgo-actions">
+                {tourStep > 0 && (
+                  <button type="button" className="dgo-ghost" onClick={() => setTourStep((s) => Math.max(0, s - 1))}>
+                    Back
+                  </button>
+                )}
+                {steps[tourStep].targetLabel && (
+                  <button type="button" className="dgo-ghost" onClick={goStepTarget}>
+                    Take me there
+                  </button>
+                )}
+                {tourStep < steps.length - 1 ? (
+                  <button type="button" className="dgo-primary" onClick={() => setTourStep((s) => s + 1)}>
+                    Next
+                  </button>
+                ) : (
+                  <button type="button" className="dgo-primary" onClick={endTour}>
+                    Done
+                  </button>
+                )}
               </div>
             </div>
           </div>
         </div>
       )}
 
-      <style>{`
-        .dg-checklist{background:#fff;border:1px solid #e4ddcd;border-radius:14px;padding:16px 18px;margin:0 0 18px;box-shadow:0 20px 40px -32px rgba(18,60,46,.35)}
-        .dg-ck-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
-        .dg-ck-title{font-weight:800;color:#123c2e;font-size:16px}
-        .dg-ck-sub{color:#8a836f;font-size:12.5px;margin-top:1px}
-        .dg-x{border:0;background:transparent;color:#a49b86;font-size:20px;line-height:1;cursor:pointer;padding:0 2px}
-        .dg-x:hover{color:#6b6350}
-        .dg-bar{height:6px;background:#eee7d8;border-radius:99px;margin:12px 0 12px;overflow:hidden}
-        .dg-bar-fill{height:100%;background:linear-gradient(90deg,#1E5D4A,#2c7a5f);border-radius:99px;transition:width .3s}
-        .dg-ck-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
-        .dg-ck-list li{display:flex;align-items:center;gap:10px;padding:6px 0}
-        .dg-check{width:22px;height:22px;min-width:22px;border-radius:6px;border:1.5px solid #cdc6b3;background:#fff;color:#1E5D4A;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center}
-        .dg-ck-list li.done .dg-check{background:#1E5D4A;border-color:#1E5D4A;color:#fff}
-        .dg-ck-list li.done .dg-ck-label{color:#9a9280;text-decoration:line-through}
-        .dg-ck-label{flex:1;color:#2c2a26;font-size:14px}
-        .dg-go{border:1px solid #1E5D4A;background:#f0f6f2;color:#1E5D4A;font-weight:700;font-size:12.5px;padding:4px 12px;border-radius:8px;cursor:pointer}
-        .dg-go:hover{background:#1E5D4A;color:#fff}
-        .dg-ck-foot{margin-top:12px;border-top:1px solid #efe9db;padding-top:10px}
-        .dg-link{border:0;background:transparent;color:#1E5D4A;font-weight:700;font-size:13px;cursor:pointer;padding:0}
-        .dg-link:hover{text-decoration:underline}
+      {showChecklist && (
+        <div className={`dgo-check${collapsed ? ' is-collapsed' : ''}`}>
+          <button type="button" className="dgo-check-head" onClick={() => setCollapsed((c) => !c)}>
+            <span className="dgo-check-title">Getting started</span>
+            <span className="dgo-check-count">
+              {doneCount}/{tasks.length}
+            </span>
+            <span className="dgo-check-chev" aria-hidden="true">
+              {collapsed ? '▲' : '▼'}
+            </span>
+          </button>
 
-        .dg-tour{position:fixed;inset:0;z-index:9999}
-        .dg-dim{position:absolute;inset:0;background:rgba(10,20,15,.62)}
-        .dg-spot{position:absolute;border-radius:10px;box-shadow:0 0 0 9999px rgba(10,20,15,.62),0 0 0 3px #c9a86a inset;pointer-events:none;transition:all .2s ease}
-        .dg-pop{position:absolute;width:320px;max-width:calc(100vw - 32px);background:#fff;border-radius:14px;padding:18px;box-shadow:0 24px 60px -18px rgba(0,0,0,.5);z-index:10000}
-        .dg-steps{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#c9a86a}
-        .dg-title{font-size:18px;font-weight:800;color:#123c2e;margin:6px 0 6px}
-        .dg-body{font-size:14px;color:#4a4a44;line-height:1.5}
-        .dg-actions{display:flex;align-items:center;justify-content:space-between;margin-top:16px}
-        .dg-right{display:flex;gap:8px}
-        .dg-skip{border:0;background:transparent;color:#9a9280;font-size:13px;cursor:pointer}
-        .dg-skip:hover{color:#6b6350}
-        .dg-back{border:1px solid #d9d2c1;background:#fff;color:#4a4a44;font-weight:700;font-size:13px;padding:7px 14px;border-radius:9px;cursor:pointer}
-        .dg-next{border:0;background:#1E5D4A;color:#fff;font-weight:700;font-size:13px;padding:7px 16px;border-radius:9px;cursor:pointer}
-        .dg-next:hover{background:#174a3b}
-      `}</style>
+          {!collapsed && (
+            <div className="dgo-check-body">
+              <div className="dgo-progress" aria-hidden="true">
+                <span style={{ width: `${tasks.length ? (doneCount / tasks.length) * 100 : 0}%` }} />
+              </div>
+              <ul className="dgo-tasks">
+                {tasks.map((t) => (
+                  <li key={t.id} className={done[t.id] ? 'is-done' : ''}>
+                    <button type="button" className="dgo-check-box" onClick={() => markDone(t.id)} aria-label={done[t.id] ? 'Done' : 'Mark done'}>
+                      {done[t.id] ? '✓' : ''}
+                    </button>
+                    <button type="button" className="dgo-task-link" onClick={() => goTask(t)}>
+                      <span className="dgo-task-label">{t.label}</span>
+                      <span className="dgo-task-hint">{t.hint}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <button type="button" className="dgo-dismiss" onClick={dismissChecklist}>
+                Dismiss checklist
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </>
   );
 }
+
+const CSS = `
+.dgo-tour { position: fixed; inset: 0; z-index: 4000; }
+.dgo-scrim { position: fixed; inset: 0; background: rgba(18,28,24,.55); }
+.dgo-spot {
+  border-radius: 11px;
+  box-shadow: 0 0 0 3px #C9A35B, 0 0 0 9999px rgba(18,28,24,.62);
+  pointer-events: none;
+  transition: top .18s ease, left .18s ease, width .18s ease, height .18s ease;
+}
+.dgo-card {
+  width: 340px; max-width: calc(100vw - 32px);
+  background: #fff; color: #2c2a26; border-radius: 16px;
+  border: 1px solid #e7e1d6;
+  box-shadow: 0 24px 60px rgba(18,28,24,.32);
+  padding: 20px 20px 16px; z-index: 4001;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+.dgo-step { font-size: 10.5px; letter-spacing: 1.3px; text-transform: uppercase; color: #C9A35B; font-weight: 700; }
+.dgo-title { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 23px; color: #123c2e; margin: 4px 0 8px; line-height: 1.12; }
+.dgo-body { font-size: 13.5px; line-height: 1.6; color: #5c574e; margin: 0 0 16px; }
+.dgo-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.dgo-actions { display: flex; align-items: center; gap: 8px; }
+.dgo-skip { background: transparent; border: 0; color: #9a9488; font: inherit; font-size: 12.5px; cursor: pointer; padding: 6px 2px; }
+.dgo-skip:hover { color: #5c574e; }
+.dgo-ghost, .dgo-primary {
+  font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
+  border-radius: 9px; padding: 8px 14px; transition: background .15s ease, border-color .15s ease;
+}
+.dgo-ghost { background: transparent; color: #123c2e; border: 1px solid #e2dccf; }
+.dgo-ghost:hover { border-color: #123c2e; background: rgba(18,60,46,.04); }
+.dgo-primary { background: #123c2e; color: #fff; border: 1px solid #123c2e; }
+.dgo-primary:hover { background: #1E5D4A; }
+
+.dgo-check {
+  position: fixed; right: 22px; bottom: 22px; z-index: 3500;
+  width: 320px; max-width: calc(100vw - 32px);
+  background: #fff; border: 1px solid #e7e1d6; border-radius: 15px;
+  box-shadow: 0 18px 44px rgba(18,28,24,.22);
+  overflow: hidden;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+.dgo-check-head {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  background: linear-gradient(120deg, #123c2e, #1E5D4A); color: #F7F4EE;
+  border: 0; cursor: pointer; font: inherit; padding: 13px 15px; text-align: left;
+}
+.dgo-check-title { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 17px; font-weight: 600; flex: 1 1 auto; }
+.dgo-check-count {
+  font-size: 11.5px; font-weight: 700; color: #123c2e; background: #C9A35B;
+  border-radius: 999px; padding: 2px 9px;
+}
+.dgo-check-chev { font-size: 10px; color: rgba(247,244,238,.8); }
+
+.dgo-check-body { padding: 12px 14px 14px; }
+.dgo-progress { height: 6px; border-radius: 999px; background: #eee7da; overflow: hidden; margin: 2px 0 12px; }
+.dgo-progress span { display: block; height: 100%; background: linear-gradient(90deg, #C9A35B, #b58e44); transition: width .3s ease; }
+
+.dgo-tasks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.dgo-tasks li { display: flex; align-items: flex-start; gap: 10px; padding: 6px 4px; border-radius: 9px; }
+.dgo-tasks li:hover { background: rgba(18,60,46,.04); }
+.dgo-check-box {
+  flex: 0 0 20px; width: 20px; height: 20px; margin-top: 1px;
+  border-radius: 6px; border: 1.5px solid #cfc7b6; background: #fff;
+  color: #123c2e; font-size: 12px; font-weight: 800; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: all .15s ease;
+}
+.dgo-tasks li.is-done .dgo-check-box { background: #123c2e; border-color: #123c2e; color: #C9A35B; }
+.dgo-task-link { flex: 1 1 auto; text-align: left; background: transparent; border: 0; cursor: pointer; font: inherit; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+.dgo-task-label { font-size: 13px; font-weight: 600; color: #2c2a26; }
+.dgo-tasks li.is-done .dgo-task-label { color: #9a9488; text-decoration: line-through; }
+.dgo-task-hint { font-size: 11.5px; color: #9a9488; }
+.dgo-dismiss { margin-top: 10px; background: transparent; border: 0; color: #9a9488; font: inherit; font-size: 12px; cursor: pointer; padding: 4px 2px; }
+.dgo-dismiss:hover { color: #5c574e; }
+
+@media (max-width: 760px) {
+  .dgo-card { position: fixed !important; top: auto !important; bottom: 16px; left: 16px !important; right: 16px; transform: none !important; width: auto; }
+  .dgo-check { right: 12px; left: 12px; bottom: 12px; width: auto; }
+}
+`;
