@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
+import OnboardingGuide from '../../components/OnboardingGuide';
 
 export type NavItem = { label: string; icon?: string; to?: string };
 
@@ -133,7 +134,10 @@ export default function DashboardShell({
               <p>Loading your dashboard</p>
             </div>
           ) : (
-            children
+            <>
+              <OnboardingGuide items={items} navLabel={navLabel} onNavigate={(to) => nav(to)} />
+              {children}
+            </>
           )}
         </main>
       </div>
