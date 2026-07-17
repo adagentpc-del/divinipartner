@@ -294,10 +294,7 @@ export default function ForVenues() {
               administration.
             </p>
             <div className="vnu-cta">
-              <button className="btn gold lg" onClick={() => nav('/demo')}>
-                Book a Demo
-              </button>
-              <button className="btn ghost lg" onClick={() => nav('/register?role=venue')}>
+              <button className="btn gold lg" onClick={() => nav('/register?role=venue')}>
                 Get started
               </button>
             </div>
@@ -525,10 +522,7 @@ export default function ForVenues() {
                 booked, beautifully run events.
               </p>
               <div className="vnu-cta">
-                <button className="btn gold lg" onClick={() => nav('/demo')}>
-                  Book a Demo
-                </button>
-                <button className="btn ghost lg" onClick={() => nav('/register?role=venue')}>
+                <button className="btn gold lg" onClick={() => nav('/register?role=venue')}>
                   Get started
                 </button>
               </div>

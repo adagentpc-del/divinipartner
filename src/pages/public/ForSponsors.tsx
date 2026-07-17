@@ -182,10 +182,7 @@ export default function ForSponsors() {
             Intelligence and Revenue Infrastructure Platform.
           </p>
           <div className="ctas">
-            <button className="btn gold lg" onClick={() => nav('/demo')}>
-              Book a Demo
-            </button>
-            <button className="btn ghost lg" onClick={() => nav('/register?role=sponsor')}>
+            <button className="btn gold lg" onClick={() => nav('/register?role=sponsor')}>
               Get started
             </button>
           </div>
@@ -317,9 +314,6 @@ export default function ForSponsors() {
             <div className="ctas">
               <button className="btn gold lg" onClick={() => nav('/register?role=sponsor')}>
                 Get started
-              </button>
-              <button className="btn ghost lg" onClick={() => nav('/demo')}>
-                Book a Demo
               </button>
             </div>
           </div>

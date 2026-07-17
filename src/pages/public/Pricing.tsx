@@ -345,9 +345,6 @@ export default function Pricing() {
                 <button className="btn gold lg" onClick={() => join()}>
                   Get started free
                 </button>
-                <button className="btn ghost lg" onClick={() => nav('/demo')}>
-                  Book a Demo
-                </button>
               </div>
             </div>
           </div>

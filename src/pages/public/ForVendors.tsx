@@ -96,7 +96,6 @@ const ROI_METRICS: { k: string; v: string; d?: string }[] = [
 
 export default function ForVendors() {
   const nav = useNavigate();
-  const demo = () => nav('/demo');
   const join = () => nav('/register?role=vendor');
 
   return (
@@ -181,10 +180,7 @@ export default function ForVendors() {
               administration and more time booking work.
             </p>
             <div className="vnd-ctas">
-              <button className="btn gold lg" onClick={demo}>
-                Book a Demo
-              </button>
-              <button className="btn ghost lg" onClick={join}>
+              <button className="btn gold lg" onClick={join}>
                 Get started
               </button>
             </div>
@@ -357,9 +353,6 @@ export default function ForVendors() {
               <div className="vnd-ctas">
                 <button className="btn gold lg" onClick={join}>
                   Get started
-                </button>
-                <button className="btn ghost lg" onClick={demo}>
-                  Book a Demo
                 </button>
               </div>
             </div>

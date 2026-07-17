@@ -202,10 +202,7 @@ export default function ForPlanners() {
               sponsorships, and guest experiences.
             </p>
             <div className="ctas">
-              <button className="btn gold lg" onClick={() => nav('/demo')}>
-                Book a Demo
-              </button>
-              <button className="btn ghost lg" onClick={() => nav('/register?role=planner')}>
+              <button className="btn gold lg" onClick={() => nav('/register?role=planner')}>
                 Get started
               </button>
             </div>
@@ -363,10 +360,7 @@ export default function ForPlanners() {
               <h2>Spend less time coordinating. Spend more time creating unforgettable experiences.</h2>
               <p>Join the founding network of planners running premium events on Divini Partners.</p>
               <div className="pln-cta-row">
-                <button className="btn gold lg" onClick={() => nav('/demo')}>
-                  Book a Demo
-                </button>
-                <button className="btn ghost lg" onClick={() => nav('/register?role=planner')}>
+                <button className="btn gold lg" onClick={() => nav('/register?role=planner')}>
                   Get started
                 </button>
               </div>
