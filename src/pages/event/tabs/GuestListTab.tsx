@@ -38,6 +38,18 @@ export default function GuestListTab({ eventId }: { eventId: string }) {
   const [showBulk, setShowBulk] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const shareUrl = `${window.location.origin}/e/${eventId}`;
+  async function copyShare() {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* clipboard may be unavailable */
+    }
+  }
 
   async function load() {
     try {
@@ -113,6 +125,16 @@ export default function GuestListTab({ eventId }: { eventId: string }) {
     <div>
       <style>{G_CSS}</style>
       {err ? <p className="ew-error">{err}</p> : null}
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', background: '#f0f6f2', border: '1px solid #d7e6de', borderRadius: 10, padding: '10px 12px', marginBottom: 14 }}>
+        <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.4px', textTransform: 'uppercase', color: '#1E5D4A' }}>Public RSVP link</span>
+        <input readOnly value={shareUrl} onFocus={(e) => e.currentTarget.select()}
+          style={{ flex: 1, minWidth: 180, padding: '8px 10px', border: '1px solid #cfe0d7', borderRadius: 8, fontSize: 13, color: '#2c2a26', background: '#fff' }} />
+        <button type="button" onClick={copyShare}
+          style={{ padding: '8px 14px', border: 'none', borderRadius: 8, background: '#1E5D4A', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+          {copied ? 'Copied' : 'Copy link'}
+        </button>
+      </div>
 
       {counts ? (
         <div className="gl-stats">
