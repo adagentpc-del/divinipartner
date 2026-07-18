@@ -60,6 +60,15 @@ const TIERS: { key: Tier; label: string; price: string; fee: string }[] = [
   { key: 'premier', label: 'Premier', price: '$99 / month', fee: '1% platform fee' },
 ];
 
+// Client membership plans. The client pays the platform fee, so their plan sets
+// the % they pay (capped at $2,500 per event). Free clients stay on the base
+// rate; Plus/Pro subscribe to lower their fee.
+const CLIENT_TIERS: { key: Tier; label: string; price: string; fee: string }[] = [
+  { key: 'client', label: 'Free', price: 'Free', fee: '5% fee, capped $2,500/event' },
+  { key: 'partner', label: 'Plus', price: '$45 / month', fee: '2.5% fee, capped $2,500/event' },
+  { key: 'premier', label: 'Pro', price: '$99 / month', fee: '1% fee, capped $2,500/event' },
+];
+
 export default function GetStarted() {
   const nav = useNavigate();
   const [params] = useSearchParams();
@@ -71,6 +80,7 @@ export default function GetStarted() {
   const [phone, setPhone] = useState('');
   const [refCode, setRefCode] = useState<string>(() => readRefCode(params));
   const [tier, setTier] = useState<Tier>('free_partner');
+  const [clientTier, setClientTier] = useState<Tier>('client');
   // Pricing V2 (server flag): no membership tiers. When on, hide the plan
   // picker and register everyone free. Read from /api/pricing.
   const [pricingV2, setPricingV2] = useState(false);
@@ -81,7 +91,7 @@ export default function GetStarted() {
   const isClient = role === 'client';
   // Under Pricing V2 the plan picker is hidden and everyone registers free:
   // a client stays client, every other role is a free partner.
-  const effectiveTier: Tier = isClient ? 'client' : pricingV2 ? 'free_partner' : tier;
+  const effectiveTier: Tier = isClient ? clientTier : pricingV2 ? 'free_partner' : tier;
 
   useEffect(() => {
     let alive = true;
@@ -223,8 +233,28 @@ export default function GetStarted() {
                 </div>
               </>
             )}
-            {isClient && <div className="lbl">Plan</div>}
-            {isClient && <div className="free">Free. Plan events, compare quotes, and pay through the platform at no monthly cost.</div>}
+            {isClient && (
+              <>
+                <div className="lbl">Choose your plan</div>
+                <div className="tiers">
+                  {CLIENT_TIERS.map((t) => (
+                    <div
+                      key={t.key}
+                      className={'tier' + (clientTier === t.key ? ' on' : '')}
+                      onClick={() => setClientTier(t.key)}
+                    >
+                      <div className="tn">{t.label}</div>
+                      <div className="tp">{t.price}</div>
+                      <div className="tf">{t.fee}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="free" style={{ marginTop: 10 }}>
+                  Free to plan events and compare quotes. Your plan sets the small fee you pay
+                  when you book, capped at $2,500 per event. Upgrade anytime to lower it.
+                </div>
+              </>
+            )}
 
             <label className="agree">
               <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
