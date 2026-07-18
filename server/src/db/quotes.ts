@@ -11,8 +11,59 @@ import { q, q1 } from "../pool.js";
 import { NotFoundError, ForbiddenError, TIERS, type Actor, type Tier } from "../db.js";
 import { getBid } from "./bids.js";
 import { PRICING_V2 } from "../config.js";
-import { computeOnTopCharge } from "./payments.js";
 import { getEvent } from "./events.js";
+import { computePlatformFee } from "../lib/platformFees.js";
+
+// Money model: the CLIENT pays; their org tier sets the platform fee %. The fee
+// is capped at $2,500 PER EVENT, cumulative across all bookings on that event,
+// with a $2 minimum profit per booking. See money-model-review.md.
+const EVENT_FEE_CAP_CENTS = 250000; // $2,500 per event, all tiers
+const MIN_FEE_CENTS = 200; // $2 minimum platform profit per booking
+
+/** The paying CLIENT org's plan tier for an event (defaults to free = 5%). */
+async function clientPlanForEvent(eventId: string): Promise<{ tier: string | null }> {
+  const row = await q1<{ tier: string | null }>(
+    `select o.tier from events e
+       join users u on u.id = e.client_id
+       join organizations o on o.id = u.organization_id
+      where e.id = $1 limit 1`,
+    [eventId],
+  );
+  return { tier: row?.tier ?? null };
+}
+
+/** Platform fees already committed on this event (accepted/converted quotes),
+ *  in cents, for the per-EVENT cumulative $2,500 cap. */
+async function eventFeeSoFarCents(eventId: string, excludeQuoteId?: string | null): Promise<number> {
+  const params: unknown[] = [eventId];
+  let extra = "";
+  if (excludeQuoteId) {
+    params.push(excludeQuoteId);
+    extra = ` and id <> $${params.length}`;
+  }
+  const row = await q1<{ c: string | number }>(
+    `select coalesce(sum(platform_fee),0) as c from quotes
+       where event_id = $1 and status in ('accepted','converted')${extra}`,
+    params,
+  );
+  return Math.round((Number(row?.c) || 0) * 100);
+}
+
+/** Client-tier platform fee for a booking on an event, honoring the per-event
+ *  cumulative $2,500 cap and the $2 floor. Returns dollars + the effective rate. */
+async function clientPlatformFee(
+  eventId: string,
+  subtotal: number,
+  excludeQuoteId?: string | null,
+): Promise<{ fee: number; rate: number }> {
+  const plan = await clientPlanForEvent(eventId);
+  const soFar = await eventFeeSoFarCents(eventId, excludeQuoteId);
+  const remaining = Math.max(0, EVENT_FEE_CAP_CENTS - soFar);
+  const res = computePlatformFee(Math.round(subtotal * 100), { tier: plan.tier });
+  let feeCents = Math.min(res.platformFeeCents, remaining);
+  if (remaining > 0) feeCents = Math.max(feeCents, Math.min(MIN_FEE_CENTS, remaining));
+  return { fee: Math.round(feeCents) / 100, rate: res.feeRate };
+}
 
 export type QuoteStatus =
   | "draft"
@@ -146,11 +197,20 @@ export async function createQuote(actor: Actor, input: CreateQuoteInput): Promis
 
   const items = Array.isArray(input.line_items) ? input.line_items : [];
   const subtotal = computeSubtotal(items);
-  // Pricing V2: flat 5% platform fee ADDED ON TOP of the vendor subtotal. The
-  // vendor's payout is the full subtotal; the client total = subtotal + fee.
-  // Legacy: tier-rate fee added on top of the subtotal (unchanged).
-  const feeRate = PRICING_V2 ? computeOnTopCharge(subtotal).feeRate : feeRateFor(actor);
-  const platformFee = Math.round(subtotal * feeRate * 100) / 100;
+  // Money model (client pays): the platform fee is ADDED ON TOP of the vendor
+  // subtotal and set by the CLIENT org's tier (5% / 2.5% / 1%), capped at $2,500
+  // cumulatively PER EVENT. The vendor's payout is the full subtotal; the client
+  // total = subtotal + fee. Legacy (PRICING_V2 off): vendor-tier rate, unchanged.
+  let feeRate: number;
+  let platformFee: number;
+  if (PRICING_V2) {
+    const r = await clientPlatformFee(eventId, subtotal);
+    platformFee = r.fee;
+    feeRate = r.rate;
+  } else {
+    feeRate = feeRateFor(actor);
+    platformFee = Math.round(subtotal * feeRate * 100) / 100;
+  }
   const total = Math.round((subtotal + platformFee) * 100) / 100;
   const status: QuoteStatus = input.submit ? "submitted" : "generated";
 
@@ -184,8 +244,16 @@ export async function reviseQuote(
   const cur = await getQuote(id);
   const items = patch.line_items ?? cur.line_items ?? [];
   const subtotal = computeSubtotal(items);
-  const feeRate = PRICING_V2 ? computeOnTopCharge(subtotal).feeRate : feeRateFor(actor);
-  const platformFee = Math.round(subtotal * feeRate * 100) / 100;
+  let feeRate: number;
+  let platformFee: number;
+  if (PRICING_V2 && cur.event_id) {
+    const r = await clientPlatformFee(cur.event_id, subtotal, id);
+    platformFee = r.fee;
+    feeRate = r.rate;
+  } else {
+    feeRate = feeRateFor(actor);
+    platformFee = Math.round(subtotal * feeRate * 100) / 100;
+  }
   const total = Math.round((subtotal + platformFee) * 100) / 100;
   const row = await q1<QuoteRow>(
     `update quotes set
