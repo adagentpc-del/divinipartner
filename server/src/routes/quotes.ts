@@ -49,6 +49,7 @@ router.get(
   h(async (req, res) => {
     const a = await actor(req);
     const eventId = (req.query.event_id as string) || "";
+    if (!eventId) return res.status(400).json({ error: "event_id required" });
     res.json({ quotes: await quotes.listBidQuotes(a, eventId, req.params.bidId) });
   }),
 );
