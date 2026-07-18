@@ -75,9 +75,14 @@ router.post(
     // partner account. The tier picker is ignored entirely when the flag is on,
     // so no paid tier can be created. Legacy behavior (honor the picker, default
     // free_partner) is kept when the flag is off.
+    // Under Pricing V2 the CLIENT pays the platform fee, so a client may choose a
+    // paid membership plan that lowers their fee % (Free=client, Plus=partner,
+    // Pro=premier). Non-clients register free (their monetization is visibility /
+    // Featured, not a fee tier). Legacy path unchanged.
+    const CLIENT_PLAN_TIERS = ["client", "partner", "premier"];
     const effectiveTier: db.Tier = PRICING_V2
       ? role === "client"
-        ? "client"
+        ? (CLIENT_PLAN_TIERS.includes(tier) ? (tier as db.Tier) : "client")
         : "free_partner"
       : TIERS[tier as db.Tier]
         ? (tier as db.Tier)
