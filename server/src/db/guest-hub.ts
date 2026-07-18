@@ -280,14 +280,85 @@ export async function upsertEventInfo(
  * null when the event does not exist.
  */
 export async function getPublicEventInfo(eventId: string): Promise<{
-  event: { id: string; name: string; date_time: string | null } | null;
+  event: {
+    id: string;
+    name: string;
+    date_time: string | null;
+    type: string | null;
+    venue_name: string | null;
+    venue_city: string | null;
+    host: string | null;
+  } | null;
   info: EventInfoRow | null;
 } | null> {
-  const ev = await q1<{ id: string; name: string; date_time: string | null }>(
-    `select id, name, date_time from events where id = $1`,
+  const ev = await q1<{
+    id: string;
+    name: string;
+    date_time: string | null;
+    type: string | null;
+    venue_name: string | null;
+    venue_city: string | null;
+    host: string | null;
+  }>(
+    `select e.id, e.name, e.date_time, e.type,
+            v.name as venue_name, v.city as venue_city,
+            o.name as host
+       from events e
+       left join venues v on v.id = e.venue_id
+       left join organizations o on o.id = e.organization_id
+      where e.id = $1`,
     [eventId],
   );
   if (!ev) return null;
   const info = await q1<EventInfoRow>(`${INFO_SELECT} where event_id = $1`, [eventId]);
   return { event: ev, info };
+}
+
+/**
+ * Public self-RSVP. No auth: a guest reaching the shareable event link submits
+ * their own RSVP. Writes into the host-visible `guests` table (the same table
+ * the event owner manages in the Guest List tab) so self-RSVPs show up there and
+ * roll into the live counts. Idempotent per (event_id, lower(email)): a repeat
+ * submit updates the existing row instead of creating duplicates. Only
+ * attendee-safe fields are accepted; nothing about the event or other guests is
+ * returned. Returns false when the event does not exist.
+ */
+export async function submitPublicRsvp(
+  eventId: string,
+  input: {
+    name: string;
+    email: string;
+    status: "confirmed" | "declined";
+    party_size?: number | null;
+    note?: string | null;
+  },
+): Promise<boolean> {
+  const ev = await q1<{ id: string; client_id: string | null; planner_id: string | null }>(
+    `select id, client_id, planner_id from events where id = $1`,
+    [eventId],
+  );
+  if (!ev) return false;
+  const status = input.status === "declined" ? "declined" : "confirmed";
+  const party = Math.max(1, Math.min(20, Math.floor(Number(input.party_size) || 1)));
+  const owner = ev.client_id ?? ev.planner_id ?? null;
+  const note = input.note ? input.note.slice(0, 500) : null;
+  const existing = await q1<{ id: string }>(
+    `select id from guests where event_id = $1 and lower(email) = lower($2) limit 1`,
+    [eventId, input.email],
+  );
+  if (existing) {
+    await q1(
+      `update guests set name = coalesce($3, name), rsvp_status = $4, party_size = $5,
+         notes = coalesce($6, notes) where id = $1 and event_id = $2`,
+      [existing.id, eventId, input.name, status, party, note],
+    );
+  } else {
+    await q1(
+      `insert into guests
+         (event_id, name, email, rsvp_status, party_size, guest_group, invited_by, notes, created_by)
+       values ($1,$2,$3,$4,$5,'Public RSVP','self',$6,$7)`,
+      [eventId, input.name, input.email, status, party, note, owner],
+    );
+  }
+  return true;
 }
