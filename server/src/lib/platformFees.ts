@@ -32,7 +32,7 @@ const ENTERPRISE_DEFAULT_FEE_RATE = 0.01;
 export const PLANS: Record<PlanKey, Plan> = {
   free: { key: "free", label: "Free", feeRate: 0.05, capCents: 250000, monthlyCents: 0 },
   partner: { key: "partner", label: "Partner", feeRate: 0.025, capCents: 250000, monthlyCents: 4500 },
-  premier: { key: "premier", label: "Premier", feeRate: 0.01, capCents: 500000, monthlyCents: 9900 },
+  premier: { key: "premier", label: "Premier", feeRate: 0.01, capCents: 250000, monthlyCents: 9900 },
   // enterprise rate/cap/monthly are resolved per org (see computePlatformFee); the
   // record values below are the defaults used when no org override is present.
   enterprise: { key: "enterprise", label: "Enterprise", feeRate: ENTERPRISE_DEFAULT_FEE_RATE, capCents: null, monthlyCents: 0 },
