@@ -42,6 +42,32 @@ router.get(
   }),
 );
 
+// Public self-RSVP (no auth). Body: { name, email, status, party_size?, note? }.
+// Upserts into the host-visible guests table via the shareable event link.
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+router.post(
+  "/public/rsvp/:eventId",
+  h(async (req, res) => {
+    const { name, email, status, party_size, note } = req.body ?? {};
+    if (!name || typeof name !== "string" || !name.trim()) {
+      return res.status(400).json({ error: "name required" });
+    }
+    if (!email || typeof email !== "string" || !EMAIL_RE.test(email.trim())) {
+      return res.status(400).json({ error: "valid email required" });
+    }
+    const st = status === "declined" ? "declined" : "confirmed";
+    const ok = await hub.submitPublicRsvp(req.params.eventId, {
+      name: name.trim().slice(0, 120),
+      email: email.trim().toLowerCase().slice(0, 200),
+      status: st,
+      party_size: typeof party_size === "number" ? party_size : Number(party_size) || 1,
+      note: typeof note === "string" ? note : null,
+    });
+    if (!ok) return res.status(404).json({ error: "event not found" });
+    res.json({ ok: true, status: st });
+  }),
+);
+
 // ---- AUTHENTICATED ---------------------------------------------------------
 router.use(requireUser);
 
