@@ -110,6 +110,7 @@ import AdminCircumvention from './pages/AdminCircumvention';
 import AdminPartners from './pages/AdminPartners';
 import PartnerPortal from './pages/PartnerPortal';
 import PartnerOnboarding from './pages/PartnerOnboarding';
+import PublicEventRsvp from './pages/PublicEventRsvp';
 import AdminPayouts from './pages/AdminPayouts';
 import ReferralDashboard from './pages/ReferralDashboard';
 import AuditViewer from './pages/AuditViewer';
@@ -459,6 +460,9 @@ function Routed() {
       <Route path="/partner-onboarding/:code" element={<PartnerOnboarding />} />
       {/* Public referral landing - records the code then forwards to register. */}
       <Route path="/r/:code" element={<ReferralLanding />} />
+
+      {/* Public shareable event / RSVP page - anyone with the link can RSVP. */}
+      <Route path="/e/:eventId" element={<PublicEventRsvp />} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
