@@ -1,15 +1,23 @@
-# Render Blueprint for Divini Procure.
-# Single Node web service: builds the Vite SPA + the Express backend (server/)
-# and serves BOTH from one process. Database is external (the owned local
-# Postgres via DATABASE_URL). Auth = Authentik (OIDC). Files = local disk
-# (FILE_STORAGE_DIR — mount a persistent disk for it in production).
+# Render Blueprint for Divini Partners (divinipartners.com).
+# One Node web service builds the Vite SPA + the Express backend (server/) and
+# serves BOTH from a single process. Database = Render managed Postgres via
+# DATABASE_URL. Auth = native email/password (SESSION_SECRET). Uploaded files =
+# persistent disk at FILE_STORAGE_DIR (encrypted at rest via STORAGE_ENCRYPTION_KEY).
 #
-# NODE_ENV is set only at runtime (startCommand), not as a build env var, so
-# `pnpm install` during build still installs devDependencies (vite, typescript).
+# BUILD-FAILURE FIX: build the frontend with `vite build` directly, NOT
+# `pnpm run build` (which runs `tsc && vite build` and fails on a pre-existing
+# type error in the dead src/components/Shell.tsx). This mirrors the droplet's
+# deploy.sh, which has always skipped the frontend typecheck.
+#
+# NODE_ENV is set only at runtime (startCommand), so the build still installs
+# devDependencies (vite, typescript).
 services:
   - type: web
-    name: divini-procure
+    name: divinipartner
     runtime: node
+    # plan: free for now (build-fix validation, no new spend). BEFORE PRODUCTION
+    # CUTOVER change to `starter` (~$7/mo) so it never cold-starts AND so the disk
+    # block at the bottom can attach (a persistent disk requires a paid plan).
     plan: free
     region: oregon
     branch: main
@@ -18,7 +26,7 @@ services:
       set -e
       corepack enable
       pnpm install --no-frozen-lockfile --prod=false
-      BASE_PATH=/ pnpm run build
+      BASE_PATH=/ pnpm exec vite build
       pnpm --dir server install --no-frozen-lockfile --prod=false
       pnpm --dir server run build
       rm -rf server/dist/public
@@ -26,38 +34,56 @@ services:
     startCommand: NODE_ENV=production node --enable-source-maps server/dist/index.js
     healthCheckPath: /api/healthz
     envVars:
+      # ---- safe to keep in git (non-secret config) ----
       - key: NODE_VERSION
         value: "22.22.0"
-      # ---- set these in the host dashboard (sync:false = not in git) ----
-      - key: DATABASE_URL
+      - key: PRICING_V2
+        value: "true"
+      - key: VENUE_SHARE_OF_FEE_V2
+        value: "0.05"
+      - key: FOUNDING_VENUE_CAP
+        value: "100"
+      - key: STORAGE_PROVIDER
+        value: "local"
+      - key: FILE_STORAGE_DIR
+        value: /data/divini-files
+      # ---- set these in the Render dashboard (sync:false = never in git) ----
+      # Copy each value verbatim from the droplet's server .env.local.
+      - key: DATABASE_URL              # -> Render managed Postgres INTERNAL url
         sync: false
-      # Authentik (OIDC) — backend verification (runtime)
-      - key: OIDC_ISSUER
+      - key: SESSION_SECRET            # reuse the droplet's value so users stay logged in
         sync: false
-      - key: OIDC_JWKS_URL
+      - key: DOWNLOAD_URL_SECRET       # reuse verbatim so signed download URLs keep working
         sync: false
-      - key: OIDC_CLIENT_ID
+      - key: STORAGE_ENCRYPTION_KEY    # CRITICAL: copy verbatim or existing files cannot be decrypted
         sync: false
-      - key: OIDC_CLIENT_SECRET
+      - key: PAYOUT_ENC_KEY            # CRITICAL: copy verbatim or stored payout data cannot be decrypted
         sync: false
-      # Authentik (OIDC) — frontend (build-time, Vite inlines these)
-      - key: VITE_OIDC_ISSUER
+      - key: PUBLIC_APP_URL            # https://divinipartners.com
         sync: false
-      - key: VITE_OIDC_CLIENT_ID
+      - key: EMAIL_PROVIDER            # resend
         sync: false
-      - key: VITE_OIDC_REDIRECT_URI
+      - key: EMAIL_API_KEY
         sync: false
-      # Admin gate + storage + serving
+      - key: EMAIL_FROM
+        sync: false
+      - key: COMPANY_POSTAL_ADDRESS    # CAN-SPAM footer (email only)
+        sync: false
+      - key: COMPANY_LEGAL_NAME        # Divini Group LLC
+        sync: false
       - key: ADMIN_ALLOWED_EMAILS
         sync: false
-      - key: FILE_STORAGE_DIR
-        value: /data/procure-files
-      - key: DOWNLOAD_URL_SECRET
-        sync: false
-      - key: PUBLIC_APP_URL
-        sync: false
-    # Persistent disk for uploaded files (production).
-    disk:
-      name: procure-files
-      mountPath: /data/procure-files
-      sizeGB: 5
+      # ---- leave UNSET until go-live (no money moves yet) ----
+      # STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET,
+      # PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, PAYPAL_WEBHOOK_ID, PAYPAL_ENV
+      # ---- optional (only if these features are in use) ----
+      # LLM_PROVIDER / LLM_API_KEY / LLM_BASE_URL / LLM_MODEL (AI features)
+      # SEARCH_PROVIDER / SEARCH_API_KEY (marketplace search)
+    # BEFORE CUTOVER: switch plan to `starter` above and UNCOMMENT this disk so
+    # uploaded files survive deploys (a persistent disk requires a paid plan).
+    # Until then STORAGE_PROVIDER=local writes to ephemeral disk (fine for build
+    # validation; not for real uploads). Alternative: set STORAGE_PROVIDER=s3.
+    # disk:
+    #   name: divini-files
+    #   mountPath: /data/divini-files
+    #   sizeGB: 5
