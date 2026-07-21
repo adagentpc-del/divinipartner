@@ -4,13 +4,15 @@
 # DATABASE_URL. Auth = native email/password (SESSION_SECRET). Uploaded files =
 # persistent disk at FILE_STORAGE_DIR (encrypted at rest via STORAGE_ENCRYPTION_KEY).
 #
-# BUILD-FAILURE FIX: build the frontend with `vite build` directly, NOT
-# `pnpm run build` (which runs `tsc && vite build` and fails on a pre-existing
-# type error in the dead src/components/Shell.tsx). This mirrors the droplet's
-# deploy.sh, which has always skipped the frontend typecheck.
+# BUILD: use npm (flat node_modules), mirroring the droplet's deploy.sh, which
+# builds cleanly. pnpm's isolated node_modules breaks tsc's automatic @types/node
+# discovery, so the server build failed with "Cannot find name 'process'/'console'".
+# Frontend is built with `npx vite build` directly (NOT `npm run build`, which runs
+# `tsc && vite build` and trips on a pre-existing type error in the dead Shell.tsx).
+# The server build runs its own tsc (`npm --prefix server run build`) and is clean.
 #
 # NODE_ENV is set only at runtime (startCommand), so the build still installs
-# devDependencies (vite, typescript).
+# devDependencies (vite, typescript, @types/*).
 services:
   - type: web
     name: divinipartner
@@ -24,11 +26,10 @@ services:
     autoDeploy: true
     buildCommand: |
       set -e
-      corepack enable
-      pnpm install --no-frozen-lockfile --prod=false
-      BASE_PATH=/ pnpm exec vite build
-      pnpm --dir server install --no-frozen-lockfile --prod=false
-      pnpm --dir server run build
+      npm install --no-audit --no-fund
+      BASE_PATH=/ npx vite build
+      npm --prefix server install --no-audit --no-fund
+      npm --prefix server run build
       rm -rf server/dist/public
       cp -r dist server/dist/public
     startCommand: NODE_ENV=production node --enable-source-maps server/dist/index.js
