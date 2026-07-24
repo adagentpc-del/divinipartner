@@ -5022,3 +5022,7 @@ create table if not exists quote_messages (
   created_at timestamptz default now()
 );
 create index if not exists idx_quote_messages_quote on quote_messages(quote_id);
+
+-- ===== Partner auto-send: contact email + account-type targeting =====
+alter table partners add column if not exists contact_email text;
+alter table partners add column if not exists applies_account_types text[];

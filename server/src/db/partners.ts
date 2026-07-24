@@ -53,12 +53,30 @@ export const SUBSCRIPTION_MODES: SubscriptionMode[] = [
   "custom",
 ];
 
+/**
+ * Referred account types a partner's commission can be scoped to. Matches the
+ * organizations.type values used across the platform. An empty applies_account_types
+ * means the partner earns on every account type.
+ */
+export const ACCOUNT_TYPES: string[] = [
+  "client",
+  "planner",
+  "vendor",
+  "venue",
+  "sponsor",
+  "nonprofit",
+  "supplier",
+  "installer",
+  "exhibitor",
+];
+
 export interface Partner {
   id: string;
   organization_id: string | null;
   user_id: string | null;
   name: string | null;
   company: string | null;
+  contact_email: string | null;
   partner_type: string | null;
   referral_code: string | null;
   referral_link: string | null;
@@ -69,6 +87,7 @@ export interface Partner {
   applies_transaction_fees: boolean | null;
   applies_setup_fees: boolean | null;
   applies_enterprise: boolean | null;
+  applies_account_types: string[] | null;
   subscription_mode: string | null;
   subscription_months: number | null;
   subscription_share_pct: number | string | null;
@@ -109,6 +128,7 @@ export interface PartnerCommission {
 export interface PartnerSettings {
   name?: string | null;
   company?: string | null;
+  contact_email?: string | null;
   organization_id?: string | null;
   user_id?: string | null;
   partner_type?: PartnerType | null;
@@ -119,6 +139,7 @@ export interface PartnerSettings {
   applies_transaction_fees?: boolean | null;
   applies_setup_fees?: boolean | null;
   applies_enterprise?: boolean | null;
+  applies_account_types?: string[] | null;
   subscription_mode?: SubscriptionMode | null;
   subscription_months?: number | null;
   subscription_share_pct?: number | null;
@@ -145,6 +166,17 @@ function randomCode(len = 8): string {
 export function referralLinkForCode(code: string): string {
   const base = PUBLIC_APP_URL || "";
   const path = `${BASE_PATH}/?ref=${encodeURIComponent(code)}`;
+  return base ? `${base}${path}` : path;
+}
+
+/**
+ * Build the partner contract + bank-wire onboarding link for an onboarding code.
+ * This is where the partner reviews and accepts the referral agreement and
+ * submits their banking details so they can be paid out.
+ */
+export function onboardingLinkForCode(code: string): string {
+  const base = PUBLIC_APP_URL || "";
+  const path = `${BASE_PATH}/partner-onboarding/${encodeURIComponent(code)}`;
   return base ? `${base}${path}` : path;
 }
 
@@ -201,25 +233,28 @@ export async function createPartner(settings: PartnerSettings): Promise<Partner>
   const link = referralLinkForCode(code);
   const row = await q1<Partner>(
     `insert into partners (
-       organization_id, user_id, name, company, partner_type,
+       organization_id, user_id, name, company, contact_email, partner_type,
        referral_code, referral_link,
        revenue_share_pct, commission_type, flat_fee_cents,
        applies_subscriptions, applies_transaction_fees, applies_setup_fees, applies_enterprise,
+       applies_account_types,
        subscription_mode, subscription_months, subscription_share_pct,
        effective_date, expiration_date, duration_kind, status, notes
      ) values (
-       $1,$2,$3,$4,$5,
-       $6,$7,
-       coalesce($8,0), coalesce($9,'percentage'), coalesce($10,0),
-       coalesce($11,true), coalesce($12,true), coalesce($13,false), coalesce($14,false),
-       coalesce($15,'include'), $16, $17,
-       $18, $19, coalesce($20,'lifetime'), coalesce($21,'active'), $22
+       $1,$2,$3,$4,$5,$6,
+       $7,$8,
+       coalesce($9,0), coalesce($10,'percentage'), coalesce($11,0),
+       coalesce($12,true), coalesce($13,true), coalesce($14,false), coalesce($15,false),
+       $16,
+       coalesce($17,'include'), $18, $19,
+       $20, $21, coalesce($22,'lifetime'), coalesce($23,'active'), $24
      ) returning *`,
     [
       settings.organization_id ?? null,
       settings.user_id ?? null,
       settings.name ?? null,
       settings.company ?? null,
+      settings.contact_email ?? null,
       settings.partner_type ?? null,
       code,
       link,
@@ -230,6 +265,7 @@ export async function createPartner(settings: PartnerSettings): Promise<Partner>
       settings.applies_transaction_fees ?? null,
       settings.applies_setup_fees ?? null,
       settings.applies_enterprise ?? null,
+      settings.applies_account_types ?? null,
       settings.subscription_mode ?? null,
       settings.subscription_months ?? null,
       settings.subscription_share_pct ?? null,
@@ -247,6 +283,7 @@ export async function createPartner(settings: PartnerSettings): Promise<Partner>
 const EDITABLE_COLUMNS: Array<keyof PartnerSettings> = [
   "name",
   "company",
+  "contact_email",
   "organization_id",
   "user_id",
   "partner_type",
@@ -257,6 +294,7 @@ const EDITABLE_COLUMNS: Array<keyof PartnerSettings> = [
   "applies_transaction_fees",
   "applies_setup_fees",
   "applies_enterprise",
+  "applies_account_types",
   "subscription_mode",
   "subscription_months",
   "subscription_share_pct",
@@ -415,8 +453,23 @@ export async function recordCommission(args: RecordCommissionArgs): Promise<Reco
     subscriptionCycle: args.subscriptionCycle,
   });
 
-  const excluded = result.commissionCents <= 0;
+  // Account-type targeting: when the partner is scoped to specific referred
+  // account types, a referral from an out-of-scope account earns nothing. The
+  // row is still written (excluded) so the ledger stays auditable. Best-effort:
+  // if the org type cannot be resolved, we do not exclude on this basis.
+  let outOfScope = false;
+  const scope = Array.isArray(partner.applies_account_types) ? partner.applies_account_types : [];
+  if (scope.length && args.referredOrgId) {
+    const org = await q1<{ type: string | null }>(
+      `select type from organizations where id = $1`,
+      [args.referredOrgId],
+    ).catch(() => null);
+    if (org?.type && !scope.includes(org.type)) outOfScope = true;
+  }
+
+  const excluded = outOfScope || result.commissionCents <= 0;
   const status = excluded ? "excluded" : args.status ?? "pending";
+  const commissionCents = outOfScope ? 0 : result.commissionCents;
 
   const row = await q1<PartnerCommission>(
     `insert into partner_commissions (
@@ -435,7 +488,7 @@ export async function recordCommission(args: RecordCommissionArgs): Promise<Reco
       Math.round(args.processingCostCents) || 0,
       result.netProfitCents,
       result.sharePct,
-      result.commissionCents,
+      commissionCents,
       status,
       excluded,
       args.note ?? null,
@@ -446,7 +499,7 @@ export async function recordCommission(args: RecordCommissionArgs): Promise<Reco
     row: row as PartnerCommission,
     netProfitCents: result.netProfitCents,
     sharePct: result.sharePct,
-    commissionCents: result.commissionCents,
+    commissionCents,
   };
 }
 

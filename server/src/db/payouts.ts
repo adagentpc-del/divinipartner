@@ -182,7 +182,10 @@ function genCode(): string {
 }
 
 /** Super-admin: create (or reuse) an onboarding link for a partner. */
-export async function createOnboarding(partnerId: string): Promise<OnboardingRecord> {
+export async function createOnboarding(
+  partnerId: string,
+  email?: string | null,
+): Promise<OnboardingRecord> {
   // Reuse an existing not-yet-verified record so we do not orphan links.
   const existing = await q1<OnboardingRecord>(
     `select ${ONB_PUBLIC_COLS} from partner_onboarding
@@ -193,10 +196,10 @@ export async function createOnboarding(partnerId: string): Promise<OnboardingRec
   if (existing) return existing;
   const code = genCode();
   return (await q1<OnboardingRecord>(
-    `insert into partner_onboarding (partner_id, onboarding_code, status)
-       values ($1,$2,'awaiting')
+    `insert into partner_onboarding (partner_id, onboarding_code, email, status)
+       values ($1,$2,$3,'awaiting')
      returning ${ONB_PUBLIC_COLS}`,
-    [partnerId, code],
+    [partnerId, code, email ?? null],
   )) as OnboardingRecord;
 }
 

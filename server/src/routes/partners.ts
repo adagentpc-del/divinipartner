@@ -28,12 +28,16 @@ import {
   listCommissions,
   commissionTotals,
   recordCommission,
+  onboardingLinkForCode,
+  referralLinkForCode,
   PARTNER_TYPES,
   COMMISSION_TYPES,
   SUBSCRIPTION_MODES,
+  ACCOUNT_TYPES,
   type PartnerSettings,
   type Attribution,
 } from "../db/partners.js";
+import { createOnboarding } from "../db/payouts.js";
 import type { CommissionSource } from "../lib/partnerCommission.js";
 
 const h =
@@ -60,6 +64,7 @@ router.get("/meta", (_req, res) => {
     partner_types: PARTNER_TYPES,
     commission_types: COMMISSION_TYPES,
     subscription_modes: SUBSCRIPTION_MODES,
+    account_types: ACCOUNT_TYPES,
     attributions: ATTRIBUTIONS,
     commission_sources: COMMISSION_SOURCES,
     duration_kinds: ["lifetime", "limited"],
@@ -87,6 +92,10 @@ function readSettings(body: Record<string, unknown>): PartnerSettings {
 
   if ("name" in body) s.name = str(body.name);
   if ("company" in body) s.company = str(body.company);
+  if ("contact_email" in body) {
+    const e = str(body.contact_email);
+    s.contact_email = e ? e.trim().toLowerCase() : null;
+  }
   if ("organization_id" in body) s.organization_id = str(body.organization_id);
   if ("user_id" in body) s.user_id = str(body.user_id);
   if ("partner_type" in body && PARTNER_TYPES.includes(body.partner_type as never))
@@ -99,6 +108,14 @@ function readSettings(body: Record<string, unknown>): PartnerSettings {
   if ("applies_transaction_fees" in body) s.applies_transaction_fees = boolOrNull(body.applies_transaction_fees);
   if ("applies_setup_fees" in body) s.applies_setup_fees = boolOrNull(body.applies_setup_fees);
   if ("applies_enterprise" in body) s.applies_enterprise = boolOrNull(body.applies_enterprise);
+  if ("applies_account_types" in body) {
+    const raw = body.applies_account_types;
+    const list = Array.isArray(raw)
+      ? raw.map((v) => String(v)).filter((v) => ACCOUNT_TYPES.includes(v))
+      : [];
+    // Empty array is stored as null so "no restriction" reads as "all types".
+    s.applies_account_types = list.length ? Array.from(new Set(list)) : null;
+  }
   if ("subscription_mode" in body && SUBSCRIPTION_MODES.includes(body.subscription_mode as never))
     s.subscription_mode = body.subscription_mode as PartnerSettings["subscription_mode"];
   if ("subscription_months" in body) s.subscription_months = numOrNull(body.subscription_months);
@@ -127,7 +144,68 @@ router.post(
       { name: partner.name, partner_type: partner.partner_type, referral_code: partner.referral_code },
       { summary: `Created partner ${partner.name ?? partner.referral_code ?? partner.id}`, ip: req.ip },
     );
-    res.status(201).json({ partner });
+
+    // Auto-provision the contract + bank-wire onboarding link and (if we have an
+    // email) send the referral agreement so the partner can accept it and enter
+    // their payout details in one step. Best-effort: a partner is still created
+    // even if onboarding link creation or the email send fails.
+    let onboardingCode: string | null = null;
+    let onboardingLink: string | null = null;
+    let contractEmailed = false;
+    try {
+      const onboarding = await createOnboarding(partner.id, partner.contact_email);
+      onboardingCode = onboarding.onboarding_code;
+      onboardingLink = onboarding.onboarding_code
+        ? onboardingLinkForCode(onboarding.onboarding_code)
+        : null;
+      await logAction(
+        { id: null, email: auth.email },
+        "partner.onboarding_link_created",
+        "partner_onboarding",
+        onboarding.id,
+        null,
+        { partner_id: partner.id, onboarding_code: onboarding.onboarding_code, auto: true },
+        { summary: "Auto-created partner onboarding link on partner creation", ip: req.ip },
+      );
+
+      if (partner.contact_email && onboardingLink) {
+        const refLink = partner.referral_link ?? (partner.referral_code ? referralLinkForCode(partner.referral_code) : null);
+        const pct = Number(partner.revenue_share_pct ?? 0);
+        const flat = Number(partner.flat_fee_cents ?? 0);
+        const terms =
+          partner.commission_type === "flat"
+            ? `a flat ${(flat / 100).toFixed(2)} per referral`
+            : `${pct}% of platform profit`;
+        const scope =
+          Array.isArray(partner.applies_account_types) && partner.applies_account_types.length
+            ? partner.applies_account_types.join(", ")
+            : "all account types";
+        const message = [
+          `Welcome to the Divini Partners referral program${partner.name ? `, ${partner.name}` : ""}.`,
+          `Your agreement: ${terms} on referred ${scope}.`,
+          refLink ? `Your referral link: ${refLink}` : "",
+          `Review and accept your referral agreement and add your bank-wire payout details here so you can be paid out automatically.`,
+        ]
+          .filter(Boolean)
+          .join("\n\n");
+        await notify
+          .partnerContractSent(partner.contact_email, partner.name ?? partner.company ?? "Partner", {
+            link: onboardingLink,
+            message,
+            partner_id: partner.id,
+          })
+          .catch(() => null);
+        contractEmailed = true;
+      }
+    } catch {
+      // Onboarding provisioning is best-effort; the partner + link already exist.
+    }
+
+    res.status(201).json({
+      partner,
+      onboarding: { code: onboardingCode, link: onboardingLink },
+      contract_emailed: contractEmailed,
+    });
   }),
 );
 

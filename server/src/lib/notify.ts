@@ -52,7 +52,8 @@ export type NotifyKind =
   | "login_alert"
   | "security_event"
   | "privacy_request_received"
-  | "revenue_share_updated";
+  | "revenue_share_updated"
+  | "partner_contract_sent";
 
 export interface NotifyPayload {
   kind: NotifyKind;
@@ -352,4 +353,17 @@ export const notify = {
   /** A revenue-share rate or commission agreement was updated. */
   revenueShareUpdated: (to: string | string[], label: string, ctx?: Record<string, unknown>) =>
     deliver({ kind: "revenue_share_updated", to, subject: `Revenue share updated: ${label}`, context: ctx }),
+
+  /**
+   * A new referral partner was created: send them the referral agreement and the
+   * secure link to accept it and submit their bank-wire payout details. Pass the
+   * onboarding link as context.link and any welcome copy as context.message.
+   */
+  partnerContractSent: (to: string | string[], partnerName: string, ctx?: Record<string, unknown>) =>
+    deliver({
+      kind: "partner_contract_sent",
+      to,
+      subject: `Your Divini Partners referral agreement and payout setup`,
+      context: { partnerName, ...ctx },
+    }),
 };

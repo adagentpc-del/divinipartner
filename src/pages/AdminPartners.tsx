@@ -12,6 +12,7 @@ type Partner = {
   id: string;
   name: string | null;
   company: string | null;
+  contact_email: string | null;
   partner_type: string | null;
   referral_code: string | null;
   referral_link: string | null;
@@ -22,6 +23,7 @@ type Partner = {
   applies_transaction_fees: boolean | null;
   applies_setup_fees: boolean | null;
   applies_enterprise: boolean | null;
+  applies_account_types: string[] | null;
   subscription_mode: string | null;
   subscription_months: number | null;
   subscription_share_pct: number | string | null;
@@ -35,6 +37,7 @@ type Meta = {
   partner_types: string[];
   commission_types: string[];
   subscription_modes: string[];
+  account_types: string[];
   duration_kinds: string[];
   statuses: string[];
 };
@@ -50,10 +53,10 @@ const money = (cents: number | string | null | undefined) =>
   `$${(Number(cents ?? 0) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 const emptySettings = (): Partial<Partner> => ({
-  name: '', company: '', partner_type: 'strategic', revenue_share_pct: 0,
+  name: '', company: '', contact_email: '', partner_type: 'strategic', revenue_share_pct: 0,
   commission_type: 'percentage', flat_fee_cents: 0,
   applies_subscriptions: true, applies_transaction_fees: true,
-  applies_setup_fees: false, applies_enterprise: false,
+  applies_setup_fees: false, applies_enterprise: false, applies_account_types: [],
   subscription_mode: 'include', subscription_months: null, subscription_share_pct: null,
   effective_date: null, expiration_date: null, duration_kind: 'lifetime', status: 'active', notes: '',
 });
@@ -68,6 +71,9 @@ export default function AdminPartners() {
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [created, setCreated] = useState<
+    { name: string; onboardingLink: string | null; emailed: boolean; email: string | null } | null
+  >(null);
 
   async function load() {
     setLoading(true); setErr(null);
@@ -92,16 +98,37 @@ export default function AdminPartners() {
 
   async function save() {
     if (!form) return;
-    setBusy(true); setErr(null);
+    setBusy(true); setErr(null); setCreated(null);
     try {
-      if (editingId) await apiSend('PATCH', `/partners/${editingId}`, form);
-      else await apiSend('POST', '/partners', form);
+      if (editingId) {
+        await apiSend('PATCH', `/partners/${editingId}`, form);
+      } else {
+        const r = await apiSend<{
+          partner: Partner;
+          onboarding: { code: string | null; link: string | null };
+          contract_emailed: boolean;
+        }>('POST', '/partners', form);
+        setCreated({
+          name: r.partner.name || r.partner.company || 'Partner',
+          onboardingLink: r.onboarding?.link ?? null,
+          emailed: !!r.contract_emailed,
+          email: r.partner.contact_email ?? null,
+        });
+      }
       setForm(null); setEditingId(null);
       await load();
     } catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
   }
 
   function set<K extends keyof Partner>(k: K, v: Partner[K]) { setForm((f) => ({ ...(f ?? {}), [k]: v })); }
+
+  function toggleAccountType(t: string) {
+    setForm((f) => {
+      const cur = Array.isArray(f?.applies_account_types) ? f!.applies_account_types! : [];
+      const next = cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t];
+      return { ...(f ?? {}), applies_account_types: next };
+    });
+  }
 
   if (!isAdmin) {
     return <div className="ap"><style>{AP_CSS}</style><p className="ap-guard">This page is restricted to platform administrators.</p></div>;
@@ -120,6 +147,31 @@ export default function AdminPartners() {
       </header>
 
       {err ? <p className="ap-err">{err}</p> : null}
+
+      {created ? (
+        <div className="ap-created">
+          <div className="ap-created-head">
+            <strong>{created.name} created.</strong>
+            <button type="button" className="ap-btn ghost sm" onClick={() => setCreated(null)}>Dismiss</button>
+          </div>
+          <p className="ap-muted">
+            {created.emailed
+              ? `The referral agreement and bank-wire payout setup were emailed to ${created.email}.`
+              : 'Add a contact email to auto-send the agreement. Share the contract + payout link below with the partner.'}
+          </p>
+          {created.onboardingLink ? (
+            <div className="ap-created-link">
+              <span className="ap-muted">Contract + payout link</span>
+              <code>{created.onboardingLink}</code>
+              <button
+                type="button"
+                className="ap-btn sm"
+                onClick={() => { void navigator.clipboard?.writeText(created.onboardingLink || ''); }}
+              >Copy link</button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {loading ? (
         <p className="ap-muted">Loading partners...</p>
@@ -154,6 +206,8 @@ export default function AdminPartners() {
               <input value={form.name ?? ''} onChange={(e) => set('name', e.target.value)} /></label>
             <label className="ap-field"><span>Company</span>
               <input value={form.company ?? ''} onChange={(e) => set('company', e.target.value)} /></label>
+            <label className="ap-field"><span>Contact email (auto-sends contract)</span>
+              <input type="email" placeholder="partner@example.com" value={form.contact_email ?? ''} onChange={(e) => set('contact_email', e.target.value)} /></label>
             <label className="ap-field"><span>Partner type</span>
               <select value={form.partner_type ?? ''} onChange={(e) => set('partner_type', e.target.value)}>
                 {meta.partner_types.map((t) => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}
@@ -202,6 +256,22 @@ export default function AdminPartners() {
             ))}
           </div>
 
+          <div className="ap-accttypes">
+            <span className="ap-accttypes-label">Applies to account types</span>
+            <p className="ap-muted ap-accttypes-hint">Which referred account types this partner earns commission on. Leave all unchecked to earn on every account type.</p>
+            <div className="ap-accttypes-grid">
+              {meta.account_types.map((t) => {
+                const on = Array.isArray(form.applies_account_types) && form.applies_account_types.includes(t);
+                return (
+                  <label key={t} className="ap-toggle">
+                    <input type="checkbox" checked={!!on} onChange={() => toggleAccountType(t)} />
+                    <span className="ap-cap">{t}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
           <label className="ap-field ap-wide"><span>Notes</span>
             <textarea rows={2} value={form.notes ?? ''} onChange={(e) => set('notes', e.target.value)} /></label>
 
@@ -219,6 +289,11 @@ export default function AdminPartners() {
               <h2 className="ap-h2">{detail.partner.name || detail.partner.company || 'Partner'}</h2>
               <p className="ap-muted">Referral code <code>{detail.partner.referral_code}</code></p>
               {detail.partner.referral_link ? <p className="ap-link">{detail.partner.referral_link}</p> : null}
+              {detail.partner.contact_email ? <p className="ap-muted">Contact <code>{detail.partner.contact_email}</code></p> : null}
+              <p className="ap-muted">Earns on{' '}
+                {Array.isArray(detail.partner.applies_account_types) && detail.partner.applies_account_types.length
+                  ? detail.partner.applies_account_types.join(', ')
+                  : 'all account types'}</p>
             </div>
             <button type="button" className="ap-btn ghost sm" onClick={() => setDetail(null)}>Close</button>
           </div>
@@ -309,6 +384,15 @@ const AP_CSS = `
 .ap-wide { margin-top: 12px; }
 .ap-toggles { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 14px; }
 .ap-toggle { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--dp-ink); }
+.ap-accttypes { margin-top: 16px; border-top: 1px solid var(--dp-line); padding-top: 14px; }
+.ap-accttypes-label { font-size: 12px; font-weight: 600; color: var(--dp-muted); }
+.ap-accttypes-hint { margin: 4px 0 10px; }
+.ap-accttypes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px 14px; }
+.ap-created { border: 1px solid rgba(30,93,74,.3); background: rgba(30,93,74,.07); border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; }
+.ap-created-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ap-created-head strong { color: var(--dp-emerald); font-size: 14px; }
+.ap-created-link { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+.ap-created-link code { font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; color: var(--dp-emerald-2); background: #fff; border: 1px solid var(--dp-line); border-radius: 6px; padding: 4px 8px; word-break: break-all; }
 .ap-formactions { display: flex; gap: 8px; margin-top: 16px; }
 .ap-detailhead { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
 .ap-link { font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; color: var(--dp-emerald-2); word-break: break-all; margin: 2px 0 0; }
