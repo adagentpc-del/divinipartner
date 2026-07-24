@@ -29,6 +29,7 @@ const NAV: NavItem[] = [
   { label: 'Business Health', icon: 'B', to: '/business-health' },
   { label: 'Profile', icon: 'R', to: '/profile' },
   { label: 'Referrals', icon: 'r', to: '/referral-dashboard' },
+  { label: 'Tours', icon: 'T', to: '/tours' },
   { label: 'Preferred Partners', icon: 'P', to: '/preferred-partners' },
   { label: 'Campaigns', icon: 'C', to: '/relationship-campaigns' },
   { label: 'Payout Bank', icon: '@', to: '/connect-payouts/settings' },

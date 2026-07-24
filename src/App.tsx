@@ -101,6 +101,8 @@ import JoinInvite from './pages/join/JoinInvite';
 import PublicBid from './pages/public/PublicBid';
 import PublicAgenda from './pages/public/PublicAgenda';
 import PublicEventLanding from './pages/public/PublicEventLanding';
+import PublicTour from './pages/public/PublicTour';
+import TourManager from './pages/TourManager';
 import SignDocument from './pages/sign/SignDocument';
 
 // claim engine
@@ -300,6 +302,7 @@ function Routed() {
       <Route path="/b/:token" element={<PublicBid />} />
       <Route path="/agenda/:eventId" element={<PublicAgenda />} />
       <Route path="/event/:eventId" element={<PublicEventLanding />} />
+      <Route path="/tour/:tourId" element={<PublicTour />} />
 
       {/* public claim engine */}
       <Route path="/claim/:slug" element={<UnclaimedProfile />} />
@@ -369,6 +372,7 @@ function Routed() {
       <Route path="/preferred-vendors" element={<Authed><PreferredVendors /></Authed>} />
       <Route path="/preferred-partners" element={<Authed><PreferredPartners /></Authed>} />
       <Route path="/relationship-campaigns" element={<Authed><RelationshipCampaigns /></Authed>} />
+      <Route path="/tours" element={<Authed><TourManager /></Authed>} />
       <Route path="/revenue-inventory" element={<Authed><RevenueInventory /></Authed>} />
       <Route path="/sponsorships" element={<Authed><SponsorshipMarketplace /></Authed>} />
       <Route path="/events/:id/guests" element={<Authed><EventGuestManager /></Authed>} />
