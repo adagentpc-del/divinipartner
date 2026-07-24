@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { apiSend } from '../lib/api';
+import { useState, useEffect } from 'react';
+import { apiGet, apiSend } from '../lib/api';
 
 /**
  * Friction Elimination - UPGRADE 3 Venue Comparison Engine (in-app surface).
@@ -78,6 +78,35 @@ export default function VenueComparison() {
   const [error, setError] = useState<string | null>(null);
   const [ran, setRan] = useState(false);
 
+  // Venue picker: select up to 5 and open the pros/cons comparison in a new tab.
+  const [venueList, setVenueList] = useState<{ id: string; name: string | null; city: string | null }[]>([]);
+  const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState<string[]>([]);
+  const [capNote, setCapNote] = useState(false);
+
+  async function loadVenues(term?: string) {
+    try {
+      const r = await apiGet<{ venues: { id: string; name: string | null; city: string | null }[] }>(
+        `/compare/venues/list${term ? `?q=${encodeURIComponent(term)}` : ''}`,
+      );
+      setVenueList(r.venues ?? []);
+    } catch { /* non-fatal */ }
+  }
+  useEffect(() => { void loadVenues(); }, []);
+
+  function toggleVenue(id: string) {
+    setSelected((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id);
+      if (prev.length >= 5) { setCapNote(true); return prev; }
+      setCapNote(false);
+      return [...prev, id];
+    });
+  }
+  function compareSelected() {
+    if (selected.length < 2) return;
+    window.open(`/compare/venues?ids=${selected.join(',')}`, '_blank');
+  }
+
   async function runCompare() {
     const venueIds = idsText
       .split(/[\s,]+/)
@@ -148,7 +177,41 @@ export default function VenueComparison() {
       </div>
 
       <div className="card" style={{ marginBottom: 18 }}>
-        <label style={{ display: 'block', fontWeight: 600, marginBottom: 6 }}>Venue IDs</label>
+        <label style={{ display: 'block', fontWeight: 600, marginBottom: 6 }}>Select venues to compare</label>
+        <div style={{ fontSize: 13, color: '#8a8475', marginBottom: 8 }}>
+          Pick 2 to 5 venues, then open a side by side comparison with pros and cons in a new tab.
+        </div>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 10, flexWrap: 'wrap' }}>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') void loadVenues(search); }}
+            placeholder="Search venues by name or city"
+            style={{ flex: '1 1 220px', padding: '8px 10px', border: '1px solid #e5e0d6', borderRadius: 8, fontSize: 14 }}
+          />
+          <button className="btn" onClick={() => loadVenues(search)}>Search</button>
+          <button className="btn primary" onClick={compareSelected} disabled={selected.length < 2}>
+            Compare selected ({selected.length})
+          </button>
+        </div>
+        {capNote && <div style={{ fontSize: 12, color: '#a12', marginBottom: 8 }}>Select up to 5.</div>}
+        <div style={{ maxHeight: 240, overflowY: 'auto', border: '1px solid #eee7da', borderRadius: 8 }}>
+          {venueList.length === 0 ? (
+            <div style={{ padding: 12, color: '#8a8475', fontSize: 13 }}>No published venues found. You can paste venue IDs below instead.</div>
+          ) : (
+            venueList.map((v) => (
+              <label key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderBottom: '1px solid #f2ede2', cursor: 'pointer' }}>
+                <input type="checkbox" checked={selected.includes(v.id)} onChange={() => toggleVenue(v.id)} />
+                <span style={{ fontWeight: 600 }}>{v.name ?? 'Venue'}</span>
+                {v.city && <span style={{ color: '#8a8475', fontSize: 13 }}>{v.city}</span>}
+              </label>
+            ))
+          )}
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 18 }}>
+        <label style={{ display: 'block', fontWeight: 600, marginBottom: 6 }}>Or compare by venue IDs (with cost estimate)</label>
         <textarea
           value={idsText}
           onChange={(e) => setIdsText(e.target.value)}

@@ -23,6 +23,15 @@ async function actor(req: Request): Promise<db.Actor> {
 const router = Router();
 router.use(requireUser);
 
+/** Selectable venue list for the compare picker. */
+router.get(
+  "/venues/list",
+  h(async (req, res) => {
+    await actor(req);
+    res.json({ venues: await cmp.listVenuesForCompare((req.query.q as string) || undefined) });
+  }),
+);
+
 router.post(
   "/venues",
   h(async (req, res) => {

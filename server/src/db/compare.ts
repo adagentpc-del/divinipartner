@@ -198,6 +198,27 @@ export async function compareVendors(_actor: Actor, idsIn: unknown): Promise<Com
   );
 }
 
+// ---- Venue picker list ------------------------------------------------------
+
+/** Published venues a client can pick to compare (id + name + city). */
+export async function listVenuesForCompare(term?: string): Promise<{ id: string; name: string | null; city: string | null }[]> {
+  const params: unknown[] = [];
+  let where = `p.published_status = 'published' and p.kind = 'venue'`;
+  if (term && term.trim()) {
+    params.push(`%${term.trim().toLowerCase()}%`);
+    where += ` and (lower(coalesce(ve.name,'')) like $${params.length} or lower(coalesce(ve.city,'')) like $${params.length})`;
+  }
+  return q<{ id: string; name: string | null; city: string | null }>(
+    `select ve.id, ve.name, ve.city
+       from venues ve
+       join profiles p on p.organization_id = ve.organization_id
+      where ${where}
+      order by ve.name asc
+      limit 50`,
+    params,
+  );
+}
+
 // ---- Venues -----------------------------------------------------------------
 
 export async function compareVenues(_actor: Actor, idsIn: unknown): Promise<CompareResult> {
