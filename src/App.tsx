@@ -103,6 +103,7 @@ import PublicAgenda from './pages/public/PublicAgenda';
 import PublicEventLanding from './pages/public/PublicEventLanding';
 import PublicTour from './pages/public/PublicTour';
 import TourManager from './pages/TourManager';
+import Compare from './pages/Compare';
 import SignDocument from './pages/sign/SignDocument';
 
 // claim engine
@@ -373,6 +374,7 @@ function Routed() {
       <Route path="/preferred-partners" element={<Authed><PreferredPartners /></Authed>} />
       <Route path="/relationship-campaigns" element={<Authed><RelationshipCampaigns /></Authed>} />
       <Route path="/tours" element={<Authed><TourManager /></Authed>} />
+      <Route path="/compare/:type" element={<Authed><Compare /></Authed>} />
       <Route path="/revenue-inventory" element={<Authed><RevenueInventory /></Authed>} />
       <Route path="/sponsorships" element={<Authed><SponsorshipMarketplace /></Authed>} />
       <Route path="/events/:id/guests" element={<Authed><EventGuestManager /></Authed>} />

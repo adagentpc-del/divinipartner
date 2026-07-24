@@ -36,6 +36,7 @@ import eventLanding from "./routes/event-landing.js";
 import publicEvent from "./routes/public-event.js";
 import tours from "./routes/tours.js";
 import publicTour from "./routes/public-tour.js";
+import compare from "./routes/compare.js";
 import tasks from "./routes/tasks.js";
 // Phase 7
 import reviews from "./routes/reviews.js";
@@ -184,6 +185,7 @@ router.use("/event-landing", eventLanding);
 router.use("/public/event", publicEvent);
 router.use("/tours", tours);
 router.use("/public/tour", publicTour);
+router.use("/compare", compare);
 router.use("/tasks", tasks);
 router.use("/reviews", reviews);
 router.use("/intelligence", intelligence);

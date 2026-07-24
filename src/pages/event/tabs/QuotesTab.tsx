@@ -38,6 +38,28 @@ export default function QuotesTab({ eventId }: { eventId: string }) {
   const [open, setOpen] = useState<Standardized | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [capNote, setCapNote] = useState(false);
+
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      if (prev.includes(id)) {
+        setCapNote(false);
+        return prev.filter((x) => x !== id);
+      }
+      if (prev.length >= 5) {
+        setCapNote(true);
+        return prev;
+      }
+      setCapNote(false);
+      return [...prev, id];
+    });
+  }
+
+  function compareSelected() {
+    if (selected.length < 2 || selected.length > 5) return;
+    window.open(`/compare/quotes?ids=${selected.join(',')}`, '_blank');
+  }
 
   async function load() {
     try {
@@ -81,13 +103,20 @@ export default function QuotesTab({ eventId }: { eventId: string }) {
       {rows.length === 0 ? (
         <div className="ew-empty"><p>No quotes received yet. Quotes from vendors appear here once submitted.</p></div>
       ) : (
+        <>
+        <div className="ew-cmp-bar">
+          <button type="button" className="ew-btn sm" disabled={selected.length < 2 || selected.length > 5} onClick={compareSelected}>Compare ({selected.length})</button>
+          <span className="ew-cmp-hint">Select 2 to 5 quotes to compare side by side.</span>
+          {capNote ? <span className="ew-cmp-cap">Select up to 5</span> : null}
+        </div>
         <table className="ew-table">
           <thead>
-            <tr><th>Quote</th><th>Subtotal</th><th>Platform fee</th><th>Total</th><th>Status</th><th></th></tr>
+            <tr><th></th><th>Quote</th><th>Subtotal</th><th>Platform fee</th><th>Total</th><th>Status</th><th></th></tr>
           </thead>
           <tbody>
             {rows.map((q) => (
               <tr key={q.id}>
+                <td><input type="checkbox" checked={selected.includes(q.id)} onChange={() => toggleSelect(q.id)} aria-label={`Select quote ${q.id.slice(0, 8)}`} /></td>
                 <td className="ew-mono">{q.id.slice(0, 8)}</td>
                 <td>{money(q.subtotal)}</td>
                 <td>{money(q.platform_fee)}</td>
@@ -98,6 +127,7 @@ export default function QuotesTab({ eventId }: { eventId: string }) {
             ))}
           </tbody>
         </table>
+        </>
       )}
 
       {open ? (
@@ -172,4 +202,7 @@ const Q_CSS = `
 .ew-q-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .ew-btn.danger { background: #8a3a3a; }
 .ew-btn.danger:hover { background: #743030; }
+.ew-cmp-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.ew-cmp-hint { font-size: 12px; color: #7d776c; }
+.ew-cmp-cap { font-size: 12px; color: #a8631a; }
 `;
