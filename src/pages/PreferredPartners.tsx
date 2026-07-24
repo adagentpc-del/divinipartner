@@ -12,7 +12,7 @@ import { apiGet, apiSend } from '../lib/api';
  * note, and can be removed. Self-contained styling under .pp-. Zero em dashes.
  */
 
-type Kind = 'vendor' | 'sponsor' | 'venue' | 'planner' | 'supplier' | 'installer';
+type Kind = 'vendor' | 'sponsor' | 'venue' | 'planner' | 'supplier' | 'installer' | 'client' | 'nonprofit';
 type Tier = 'preferred' | 'approved' | 'exclusive' | 'recommended' | 'vip';
 
 const KINDS: { key: Kind; label: string; suggestable: boolean }[] = [
@@ -20,6 +20,8 @@ const KINDS: { key: Kind; label: string; suggestable: boolean }[] = [
   { key: 'sponsor', label: 'Sponsors', suggestable: true },
   { key: 'venue', label: 'Venues', suggestable: false },
   { key: 'planner', label: 'Planners', suggestable: false },
+  { key: 'client', label: 'Clients', suggestable: false },
+  { key: 'nonprofit', label: 'Nonprofits', suggestable: false },
   { key: 'supplier', label: 'Suppliers', suggestable: false },
   { key: 'installer', label: 'Installers', suggestable: false },
 ];
