@@ -9,6 +9,7 @@
  */
 import { Router, type Request, type Response, type NextFunction } from "express";
 import * as el from "../db/eventLanding.js";
+import * as ex from "../db/eventExhibitor.js";
 
 const h =
   (fn: (req: Request, res: Response) => Promise<unknown>) =>
@@ -31,6 +32,24 @@ router.post(
   h(async (req, res) => {
     const result = await el.registerAttendee(req.params.eventId, req.body ?? {});
     if (!result) return res.status(400).json({ error: "This event is not accepting attendees." });
+    res.status(201).json(result);
+  }),
+);
+
+/** Public: what a vendor can buy to exhibit. */
+router.get(
+  "/:eventId/exhibit",
+  h(async (req, res) => {
+    res.json(await ex.publicExhibitorOffer(req.params.eventId));
+  }),
+);
+
+/** Public: apply to exhibit (creates an order; charge is wired to the pay rail). */
+router.post(
+  "/:eventId/apply",
+  h(async (req, res) => {
+    const result = await ex.applyExhibitor(req.params.eventId, req.body ?? {});
+    if (!result) return res.status(400).json({ error: "This event is not taking vendors yet." });
     res.status(201).json(result);
   }),
 );

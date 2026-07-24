@@ -41,6 +41,34 @@ type RegisterResult = {
   total_cents: number;
 };
 
+type ExhibitPackage = {
+  id: string;
+  name: string;
+  price_cents: number;
+  includes_booth: boolean;
+  benefits: string | null;
+  sold_out: boolean;
+};
+
+type ExhibitBooth = {
+  id: string;
+  label: string;
+  price_cents: number;
+};
+
+type ExhibitOffer = {
+  packages: ExhibitPackage[];
+  booths: ExhibitBooth[];
+};
+
+type ApplyResult = {
+  ok: true;
+  order_id: string;
+  status: 'pending_payment' | 'confirmed';
+  amount_cents: number;
+  platform_fee_cents: number;
+};
+
 function fullDate(v: string | null): string | null {
   if (!v) return null;
   const d = new Date(v);
@@ -64,6 +92,10 @@ function slotTime(start: string | null, end: string | null): string | null {
 
 function money(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
+}
+
+function priceOrFree(cents: number): string {
+  return cents > 0 ? money(cents) : 'Free';
 }
 
 function placeLabel(place: Landing['place']): string | null {
@@ -90,6 +122,17 @@ export default function PublicEventLanding() {
   const [attendErr, setAttendErr] = useState('');
   const [result, setResult] = useState<RegisterResult | null>(null);
 
+  // Exhibit / vendor application state.
+  const [offer, setOffer] = useState<ExhibitOffer | null>(null);
+  const [packageId, setPackageId] = useState('');
+  const [boothId, setBoothId] = useState('');
+  const [vName, setVName] = useState('');
+  const [vEmail, setVEmail] = useState('');
+  const [vCompany, setVCompany] = useState('');
+  const [vBusy, setVBusy] = useState(false);
+  const [vErr, setVErr] = useState('');
+  const [applyResult, setApplyResult] = useState<ApplyResult | null>(null);
+
   useEffect(() => {
     let live = true;
     (async () => {
@@ -100,6 +143,18 @@ export default function PublicEventLanding() {
         // Preselect the first tier that is not sold out.
         const firstAvailable = r.landing.tiers.find((t) => !t.sold_out);
         if (firstAvailable) setTierId(firstAvailable.id);
+        // When the vendor CTA is on, also load the exhibitor offer so we can
+        // show packages and booths. A failure here is non-fatal; we simply
+        // fall back to the simple two-button vendor behavior.
+        if (r.landing.settings.vendor_cta_enabled) {
+          try {
+            const ex = await apiGet<ExhibitOffer>(`/public/event/${encodeURIComponent(eventId)}/exhibit`);
+            if (!live) return;
+            setOffer(ex);
+          } catch {
+            /* exhibit offer unavailable; keep the simple vendor fallback */
+          }
+        }
       } catch (e: any) {
         if (live) setErr(e?.message ?? 'This event is not available.');
       } finally {
@@ -140,6 +195,42 @@ export default function PublicEventLanding() {
       setAttendErr(e?.message ?? 'Something went wrong. Please try again.');
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function submitApply(e: React.FormEvent) {
+    e.preventDefault();
+    if (!landing) return;
+    if (!vName.trim() || !vEmail.trim()) {
+      setVErr('Please add your name and email.');
+      return;
+    }
+    if (!packageId && !boothId) {
+      setVErr('Pick a package or a booth.');
+      return;
+    }
+    setVBusy(true);
+    setVErr('');
+    try {
+      const body: {
+        contact_name: string;
+        email: string;
+        company?: string;
+        package_id?: string;
+        booth_id?: string;
+      } = {
+        contact_name: vName.trim(),
+        email: vEmail.trim(),
+      };
+      if (vCompany.trim()) body.company = vCompany.trim();
+      if (packageId) body.package_id = packageId;
+      if (boothId) body.booth_id = boothId;
+      const r = await apiSend<ApplyResult>('POST', `/public/event/${encodeURIComponent(eventId)}/apply`, body);
+      setApplyResult(r);
+    } catch (e: any) {
+      setVErr(e?.message ?? 'Something went wrong. Please try again.');
+    } finally {
+      setVBusy(false);
     }
   }
 
@@ -324,23 +415,160 @@ export default function PublicEventLanding() {
               </div>
             )}
 
-            {landing.settings.vendor_cta_enabled && (
-              <div className="el-card el-vendor">
-                <h2>Become a vendor</h2>
-                <p className="el-sub">
-                  Bring your product or service to this event, or put your brand in front of the audience as a
-                  sponsor. Create your Divini Partners page and we will connect you with the organizer.
-                </p>
-                <div className="el-vendor-actions">
-                  <button type="button" className="el-btn" onClick={() => goVendor('vendor')}>
-                    Become a vendor
-                  </button>
-                  <button type="button" className="el-btn ghost" onClick={() => goVendor('sponsor')}>
-                    Sponsor this event
-                  </button>
+            {landing.settings.vendor_cta_enabled &&
+              (offer && (offer.packages.length > 0 || offer.booths.length > 0) ? (
+                <div className="el-card el-vendor">
+                  <h2>Become a vendor</h2>
+                  <p className="el-sub">
+                    Reserve your spot at this event. Choose an exhibitor package or a booth, add your contact
+                    details, and apply. We will follow up with next steps.
+                  </p>
+
+                  {applyResult ? (
+                    <div className="el-success">
+                      {applyResult.status === 'confirmed' ? (
+                        <p className="el-thanks">
+                          You are confirmed as a vendor. We will follow up with next steps.
+                        </p>
+                      ) : (
+                        <p className="el-thanks">
+                          Application received - total {money(applyResult.amount_cents)} including a{' '}
+                          {money(applyResult.platform_fee_cents)} platform fee. Payment will be collected next.
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <form className="el-form" onSubmit={submitApply}>
+                      {offer.packages.length > 0 && (
+                        <div className="el-offer-group">
+                          <div className="el-offer-label">Packages</div>
+                          <div className="el-tiers">
+                            {offer.packages.map((pkg) => (
+                              <label
+                                key={pkg.id}
+                                className={`el-tier el-offer${pkg.sold_out ? ' sold' : ''}${
+                                  packageId === pkg.id ? ' picked' : ''
+                                }`}
+                              >
+                                <input
+                                  type="radio"
+                                  name="package"
+                                  value={pkg.id}
+                                  checked={packageId === pkg.id}
+                                  disabled={pkg.sold_out}
+                                  onChange={() => setPackageId(pkg.id)}
+                                />
+                                <span className="el-offer-body">
+                                  <span className="el-tier-name">{pkg.name}</span>
+                                  {pkg.includes_booth && <span className="el-offer-note">Booth included</span>}
+                                  {pkg.benefits && <span className="el-offer-benefits">{pkg.benefits}</span>}
+                                </span>
+                                <span className="el-tier-price">
+                                  {pkg.sold_out ? 'Sold out' : priceOrFree(pkg.price_cents)}
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                          {packageId && (
+                            <button
+                              type="button"
+                              className="el-clear"
+                              onClick={() => setPackageId('')}
+                            >
+                              Clear package selection
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      {offer.booths.length > 0 && (
+                        <div className="el-offer-group">
+                          <div className="el-offer-label">Available booths</div>
+                          <div className="el-tiers">
+                            {offer.booths.map((booth) => (
+                              <label
+                                key={booth.id}
+                                className={`el-tier${boothId === booth.id ? ' picked' : ''}`}
+                              >
+                                <input
+                                  type="radio"
+                                  name="booth"
+                                  value={booth.id}
+                                  checked={boothId === booth.id}
+                                  onChange={() => setBoothId(booth.id)}
+                                />
+                                <span className="el-tier-name">{booth.label}</span>
+                                <span className="el-tier-price">{priceOrFree(booth.price_cents)}</span>
+                              </label>
+                            ))}
+                          </div>
+                          {boothId && (
+                            <button type="button" className="el-clear" onClick={() => setBoothId('')}>
+                              Clear booth selection
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      <input
+                        className="el-input"
+                        type="text"
+                        placeholder="Your name"
+                        value={vName}
+                        onChange={(e) => setVName(e.target.value)}
+                        required
+                      />
+                      <input
+                        className="el-input"
+                        type="email"
+                        placeholder="Email"
+                        value={vEmail}
+                        onChange={(e) => setVEmail(e.target.value)}
+                        required
+                      />
+                      <input
+                        className="el-input"
+                        type="text"
+                        placeholder="Company (optional)"
+                        value={vCompany}
+                        onChange={(e) => setVCompany(e.target.value)}
+                      />
+                      {vErr && <p className="el-err">{vErr}</p>}
+                      <button type="submit" className="el-btn" disabled={vBusy}>
+                        {vBusy ? 'Submitting...' : 'Apply to exhibit'}
+                      </button>
+                    </form>
+                  )}
+
+                  <div className="el-vendor-alt">
+                    <p className="el-sub">Or create your full vendor account:</p>
+                    <div className="el-vendor-actions">
+                      <button type="button" className="el-btn ghost" onClick={() => goVendor('vendor')}>
+                        Become a vendor
+                      </button>
+                      <button type="button" className="el-btn ghost" onClick={() => goVendor('sponsor')}>
+                        Sponsor this event
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className="el-card el-vendor">
+                  <h2>Become a vendor</h2>
+                  <p className="el-sub">
+                    Bring your product or service to this event, or put your brand in front of the audience as a
+                    sponsor. Create your Divini Partners page and we will connect you with the organizer.
+                  </p>
+                  <div className="el-vendor-actions">
+                    <button type="button" className="el-btn" onClick={() => goVendor('vendor')}>
+                      Become a vendor
+                    </button>
+                    <button type="button" className="el-btn ghost" onClick={() => goVendor('sponsor')}>
+                      Sponsor this event
+                    </button>
+                  </div>
+                </div>
+              ))}
           </>
         ) : null}
       </div>
@@ -400,4 +628,15 @@ const CSS = `
 .el-thanks { color: #9ad0b0; font-size: 15px; margin: 0; line-height: 1.5; }
 .el-vendor-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .el-vendor-actions .el-btn { flex: 1; min-width: 160px; }
+.el-offer-group { display: grid; gap: 8px; }
+.el-offer-label { font-size: 13px; text-transform: uppercase; letter-spacing: .6px; color: #8a94a6; }
+.el-tier.el-offer { align-items: start; }
+.el-offer-body { display: flex; flex-direction: column; gap: 4px; }
+.el-offer-note { font-size: 12px; color: #9ad0b0; }
+.el-offer-benefits { font-size: 13px; opacity: .75; line-height: 1.4; }
+.el-clear { justify-self: start; background: none; border: none; padding: 0; color: #8aa8e6;
+  font-size: 13px; font-family: inherit; cursor: pointer; }
+.el-clear:hover { color: #b9c4d6; }
+.el-vendor-alt { margin-top: 20px; padding-top: 16px; border-top: 1px solid #232a37; }
+.el-vendor-alt .el-sub { margin-bottom: 10px; }
 `;

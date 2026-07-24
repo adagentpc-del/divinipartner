@@ -13,6 +13,7 @@ import { Router, type Request, type Response, type NextFunction } from "express"
 import { getAuth, requireUser } from "../auth.js";
 import * as db from "../db.js";
 import * as el from "../db/eventLanding.js";
+import * as ex from "../db/eventExhibitor.js";
 
 const h =
   (fn: (req: Request, res: Response) => Promise<unknown>) =>
@@ -78,6 +79,65 @@ router.get(
   h(async (req, res) => {
     const a = await actor(req);
     res.json({ registrations: await el.listRegistrations(a, req.params.eventId) });
+  }),
+);
+
+// ---- Exhibitor management (packages + booths + orders) ----------------------
+
+router.get(
+  "/event/:eventId/exhibitor",
+  h(async (req, res) => {
+    const a = await actor(req);
+    const [packages, booths, orders] = await Promise.all([
+      ex.listPackages(req.params.eventId),
+      ex.listBooths(req.params.eventId),
+      ex.listOrders(a, req.params.eventId),
+    ]);
+    res.json({ packages, booths, orders });
+  }),
+);
+
+router.post(
+  "/event/:eventId/packages",
+  h(async (req, res) => {
+    const a = await actor(req);
+    res.status(201).json({ package: await ex.createPackage(a, req.params.eventId, req.body ?? {}) });
+  }),
+);
+
+router.patch(
+  "/packages/:id",
+  h(async (req, res) => {
+    const a = await actor(req);
+    res.json({ package: await ex.updatePackage(a, req.params.id, req.body ?? {}) });
+  }),
+);
+
+router.delete(
+  "/packages/:id",
+  h(async (req, res) => {
+    const a = await actor(req);
+    const ok = await ex.deletePackage(a, req.params.id);
+    if (!ok) return res.status(404).json({ error: "package not found" });
+    res.status(204).end();
+  }),
+);
+
+router.post(
+  "/event/:eventId/booths",
+  h(async (req, res) => {
+    const a = await actor(req);
+    res.status(201).json({ booth: await ex.createBooth(a, req.params.eventId, req.body ?? {}) });
+  }),
+);
+
+router.delete(
+  "/booths/:id",
+  h(async (req, res) => {
+    const a = await actor(req);
+    const ok = await ex.deleteBooth(a, req.params.id);
+    if (!ok) return res.status(404).json({ error: "booth not found" });
+    res.status(204).end();
   }),
 );
 

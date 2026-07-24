@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { apiGet } from '../../lib/api';
 import OverviewTab from './tabs/OverviewTab';
 import PublicPageTab from './tabs/PublicPageTab';
+import ExhibitorsTab from './tabs/ExhibitorsTab';
 import VendorsTab from './tabs/VendorsTab';
 import BidsTab from './tabs/BidsTab';
 import QuotesTab from './tabs/QuotesTab';
@@ -61,6 +62,7 @@ export default function EventWorkspace() {
   const tabs: Tab[] = [
     { key: 'overview', label: 'Overview', element: <OverviewTab eventId={id} /> },
     { key: 'public_page', label: 'Public Page', element: <PublicPageTab eventId={id} /> },
+    { key: 'exhibitors', label: 'Exhibitors', element: <ExhibitorsTab eventId={id} /> },
     { key: 'readiness', label: 'Readiness', element: <EventReadinessPanel eventId={id} /> },
     { key: 'venue', label: 'Venue', element: <VenueTab eventId={id} /> },
     { key: 'vendors', label: 'Vendors', element: <VendorsTab eventId={id} /> },

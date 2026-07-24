@@ -110,13 +110,77 @@ export async function updateTour(
 }
 
 /**
+ * Copy the reusable public config from a source event onto a target event:
+ * landing settings, ticket tiers, public agenda items, floorplans, exhibitor
+ * packages, and booths. Times/sold/status reset so the copy is a fresh setup.
+ * The source must belong to the same org (or the caller is an admin).
+ */
+export async function copyEventConfig(actor: Actor, sourceEventId: string, targetEventId: string): Promise<void> {
+  const isAdmin = actor.user.role === "super_admin" || actor.user.role === "admin";
+  const src = await q1<{ organization_id: string | null }>(
+    `select organization_id from events where id = $1`,
+    [sourceEventId],
+  );
+  if (!src) throw new NotFoundError("source event not found");
+  if (!isAdmin && src.organization_id !== (actor.org?.id ?? null)) {
+    throw new ForbiddenError("you do not own the source event");
+  }
+
+  await q(
+    `insert into event_landing_settings (event_id, attend_mode, vendor_cta_enabled, headline, description)
+     select $2, attend_mode, vendor_cta_enabled, headline, description
+       from event_landing_settings where event_id = $1
+     on conflict (event_id) do nothing`,
+    [sourceEventId, targetEventId],
+  );
+  await q(
+    `insert into event_ticket_tiers (event_id, name, price_cents, quantity, sort_order)
+     select $2, name, price_cents, quantity, sort_order
+       from event_ticket_tiers where event_id = $1`,
+    [sourceEventId, targetEventId],
+  );
+  await q(
+    `insert into itinerary_items (event_id, title, description, category, location, track, is_public, source, status)
+     select $2, title, description, category, location, track, true, 'manual', 'planned'
+       from itinerary_items where event_id = $1 and is_public = true`,
+    [sourceEventId, targetEventId],
+  );
+  await q(
+    `insert into floorplans (event_id, name, description, file_url, thumbnail_url, width, height, scale, place_name, place_address, source_kind)
+     select $2, name, description, file_url, thumbnail_url, width, height, scale, place_name, place_address, source_kind
+       from floorplans where event_id = $1`,
+    [sourceEventId, targetEventId],
+  );
+  await q(
+    `insert into event_exhibitor_packages (event_id, name, price_cents, quantity, includes_booth, benefits, sort_order)
+     select $2, name, price_cents, quantity, includes_booth, benefits, sort_order
+       from event_exhibitor_packages where event_id = $1`,
+    [sourceEventId, targetEventId],
+  );
+  await q(
+    `insert into event_booths (event_id, label, price_cents, zone_ref, sort_order)
+     select $2, label, price_cents, zone_ref, sort_order
+       from event_booths where event_id = $1`,
+    [sourceEventId, targetEventId],
+  );
+}
+
+/**
  * Add a stop: create a full event (reusing createEvent so it gets the standard
  * lifecycle + org scoping), then tie it to the tour with an order + city.
+ * Optionally copy the whole public setup from a previous stop (copy_from_event_id).
  */
 export async function addStop(
   actor: Actor,
   tourId: string,
-  input: { name: string; city?: string | null; date_time?: string | null; venue_id?: string | null; type?: string | null },
+  input: {
+    name: string;
+    city?: string | null;
+    date_time?: string | null;
+    venue_id?: string | null;
+    type?: string | null;
+    copy_from_event_id?: string | null;
+  },
 ): Promise<TourStop> {
   await assertOwnsTour(actor, tourId);
   if (!input.name || typeof input.name !== "string") throw new ForbiddenError("stop name required");
@@ -136,6 +200,10 @@ export async function addStop(
     `update events set tour_id = $2, tour_stop_order = $3, stop_city = $4 where id = $1`,
     [ev.id, tourId, nextOrder?.n ?? 1, input.city ?? null],
   );
+
+  if (input.copy_from_event_id) {
+    await copyEventConfig(actor, input.copy_from_event_id, ev.id);
+  }
 
   const stop = await q1<TourStop>(
     `select id as event_id, name, date_time, stop_city, tour_stop_order, status, venue_id

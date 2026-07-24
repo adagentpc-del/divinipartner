@@ -35,7 +35,7 @@ export default function TourManager() {
   const [copied, setCopied] = useState(false);
 
   const [newTour, setNewTour] = useState({ name: '', description: '' });
-  const [newStop, setNewStop] = useState({ name: '', city: '', date_time: '' });
+  const [newStop, setNewStop] = useState({ name: '', city: '', date_time: '', copy_from: '' });
 
   async function loadTours() {
     try {
@@ -79,8 +79,9 @@ export default function TourManager() {
         name: newStop.name.trim(),
         city: newStop.city.trim() || null,
         date_time: newStop.date_time ? new Date(newStop.date_time).toISOString() : null,
+        copy_from_event_id: newStop.copy_from || null,
       });
-      setNewStop({ name: '', city: '', date_time: '' });
+      setNewStop({ name: '', city: '', date_time: '', copy_from: '' });
       await openTour(selected);
       await loadTours();
       setMsg('Stop added. Open it to set the venue, schedule, floorplans, packages, booths, and tickets.');
@@ -157,6 +158,15 @@ export default function TourManager() {
                   onChange={(e) => setNewStop({ ...newStop, city: e.target.value })} />
                 <input className="tm-in" type="datetime-local" value={newStop.date_time}
                   onChange={(e) => setNewStop({ ...newStop, date_time: e.target.value })} />
+                {stops.length > 0 && (
+                  <select className="tm-in" value={newStop.copy_from}
+                    onChange={(e) => setNewStop({ ...newStop, copy_from: e.target.value })}>
+                    <option value="">Start blank</option>
+                    {stops.map((s) => (
+                      <option key={s.event_id} value={s.event_id}>Copy setup from: {s.name}</option>
+                    ))}
+                  </select>
+                )}
                 <button type="submit" className="tm-btn" disabled={busy}>Add stop</button>
               </form>
 
