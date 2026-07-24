@@ -88,6 +88,8 @@ export type ItineraryItemRow = {
   status: string | null;
   pinned: boolean | null;
   sort_order: number | null;
+  is_public: boolean | null;
+  track: string | null;
   created_at: string;
   updated_at: string | null;
 };
@@ -117,6 +119,8 @@ export type ItineraryItemInput = {
   status?: string | null;
   pinned?: boolean | null;
   sort_order?: number | null;
+  is_public?: boolean | null;
+  track?: string | null;
 };
 
 export async function addItineraryItem(
@@ -128,8 +132,9 @@ export async function addItineraryItem(
   const row = await q1<ItineraryItemRow>(
     `insert into itinerary_items
        (event_id, organization_id, title, description, category, start_time, end_time,
-        duration_minutes, location, owner_role, owner_label, source, status, pinned, sort_order, created_by)
-     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'manual',$12,$13,$14,$15)
+        duration_minutes, location, owner_role, owner_label, source, status, pinned, sort_order,
+        is_public, track, created_by)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'manual',$12,$13,$14,$15,$16,$17)
      returning *`,
     [
       eventId,
@@ -146,6 +151,8 @@ export async function addItineraryItem(
       input.status ?? "planned",
       input.pinned ?? false,
       input.sort_order ?? 0,
+      input.is_public ?? false,
+      input.track ?? null,
       actor.user.id,
     ],
   );
@@ -181,6 +188,8 @@ export async function updateItineraryItem(
         status = coalesce($11, status),
         pinned = coalesce($12, pinned),
         sort_order = coalesce($13, sort_order),
+        is_public = coalesce($14, is_public),
+        track = coalesce($15, track),
         updated_at = now()
       where id = $1 returning *`,
     [
@@ -197,6 +206,8 @@ export async function updateItineraryItem(
       patch.status ?? null,
       patch.pinned ?? null,
       patch.sort_order ?? null,
+      patch.is_public ?? null,
+      patch.track ?? null,
     ],
   );
   return row as ItineraryItemRow;

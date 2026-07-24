@@ -13,12 +13,14 @@ type Floorplan = {
   file_url: string | null;
   scale: string | null;
   is_primary: boolean | null;
+  place_name: string | null;
+  place_address: string | null;
   created_at: string;
 };
 
 export default function FloorplansTab({ eventId }: { eventId: string }) {
   const [plans, setPlans] = useState<Floorplan[]>([]);
-  const [form, setForm] = useState({ name: '', file_url: '', description: '', scale: '' });
+  const [form, setForm] = useState({ name: '', file_url: '', description: '', scale: '', place_name: '', place_address: '' });
   const [active, setActive] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -38,7 +40,7 @@ export default function FloorplansTab({ eventId }: { eventId: string }) {
     setBusy(true); setErr(null);
     try {
       const r = await apiSend<{ floorplan: Floorplan }>('POST', `/seating/floorplans/event/${eventId}`, form);
-      setForm({ name: '', file_url: '', description: '', scale: '' });
+      setForm({ name: '', file_url: '', description: '', scale: '', place_name: '', place_address: '' });
       setActive(r.floorplan.id);
       await load();
     } catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
@@ -65,6 +67,10 @@ export default function FloorplansTab({ eventId }: { eventId: string }) {
           onChange={(e) => setForm({ ...form, name: e.target.value })} />
         <input className="fp-in" placeholder="Image or PDF URL" value={form.file_url}
           onChange={(e) => setForm({ ...form, file_url: e.target.value })} />
+        <input className="fp-in" placeholder="Place name (any location, no venue needed)" value={form.place_name}
+          onChange={(e) => setForm({ ...form, place_name: e.target.value })} />
+        <input className="fp-in" placeholder="Place address (optional)" value={form.place_address}
+          onChange={(e) => setForm({ ...form, place_address: e.target.value })} />
         <input className="fp-in" placeholder="Scale (e.g. 1px = 1ft)" value={form.scale}
           onChange={(e) => setForm({ ...form, scale: e.target.value })} />
         <button type="submit" className="ew-btn sm" disabled={busy}>Add floorplan</button>
@@ -92,6 +98,7 @@ export default function FloorplansTab({ eventId }: { eventId: string }) {
                     <button type="button" className="fp-del" onClick={() => remove(current.id)}>Remove</button>
                   </div>
                 </div>
+                {current.place_name ? <p className="ew-muted">At: {current.place_name}{current.place_address ? ` - ${current.place_address}` : ''}</p> : null}
                 {current.description ? <p className="ew-muted">{current.description}</p> : null}
                 {current.file_url ? (
                   /\.(png|jpe?g|webp|gif|svg)(\?|$)/i.test(current.file_url)

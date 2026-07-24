@@ -1,5 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { apiGet } from '../../../lib/api';
+import { apiGet, apiSend } from '../../../lib/api';
+
+type PubItem = {
+  id: string;
+  title: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  location: string | null;
+  track: string | null;
+  is_public: boolean | null;
+};
 
 /**
  * Phase 6 - Itinerary tab (blueprint 15). The auto-built day-of itinerary,
@@ -55,13 +65,52 @@ export default function ItineraryTab({ eventId }: { eventId: string }) {
   const [role, setRole] = useState('all');
   const [err, setErr] = useState<string | null>(null);
 
+  const [pub, setPub] = useState<PubItem[]>([]);
+  const [pubForm, setPubForm] = useState({ title: '', start_time: '', track: '', location: '' });
+  const [pubBusy, setPubBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+
   async function load() {
     try {
       const r = await apiGet<{ itinerary: Built }>(`/itinerary/event/${eventId}/build`);
       setBuilt(r.itinerary);
     } catch (e) { setErr((e as Error).message); }
   }
-  useEffect(() => { void load(); /* eslint-disable-next-line */ }, [eventId]);
+  async function loadPublic() {
+    try {
+      const r = await apiGet<{ items: PubItem[] }>(`/itinerary/event/${eventId}/items`);
+      setPub((r.items ?? []).filter((i) => i.is_public));
+    } catch { /* non-fatal */ }
+  }
+  useEffect(() => { void load(); void loadPublic(); /* eslint-disable-next-line */ }, [eventId]);
+
+  async function addPublic(e: React.FormEvent) {
+    e.preventDefault();
+    if (!pubForm.title.trim()) return;
+    setPubBusy(true);
+    try {
+      await apiSend('POST', `/itinerary/event/${eventId}/items`, {
+        title: pubForm.title.trim(),
+        start_time: pubForm.start_time ? new Date(pubForm.start_time).toISOString() : null,
+        track: pubForm.track.trim() || null,
+        location: pubForm.location.trim() || null,
+        category: 'program',
+        is_public: true,
+      });
+      setPubForm({ title: '', start_time: '', track: '', location: '' });
+      await loadPublic();
+    } catch (e) { setErr((e as Error).message); } finally { setPubBusy(false); }
+  }
+  async function removePublic(id: string) {
+    try { await apiSend('DELETE', `/itinerary/items/${id}`); await loadPublic(); }
+    catch (e) { setErr((e as Error).message); }
+  }
+  function copyLink() {
+    const url = `${window.location.origin}/agenda/${eventId}`;
+    void navigator.clipboard?.writeText(url);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1600);
+  }
 
   if (err) return <p className="ew-error">{err}</p>;
   if (!built) return <p className="ew-muted">Building itinerary...</p>;
@@ -80,6 +129,38 @@ export default function ItineraryTab({ eventId }: { eventId: string }) {
           <div className="it-gen">Generated {new Date(built.generated_at).toLocaleString()}{built.event.date_time ? ` · Event ${new Date(built.event.date_time).toLocaleDateString()}` : ''}</div>
         </div>
         <button type="button" className="ew-btn ghost sm" onClick={load}>Rebuild</button>
+      </div>
+
+      <div className="it-pub">
+        <div className="it-pubhead">
+          <div>
+            <div className="ew-ov-kicker" style={{ color: '#9a8a5e' }}>Public agenda</div>
+            <div className="it-pubsub">A shareable schedule of what you have planned. Only items you add here are visible to guests.</div>
+          </div>
+          <button type="button" className="ew-btn ghost sm" onClick={copyLink}>{copied ? 'Copied' : 'Copy share link'}</button>
+        </div>
+        <form className="it-pubform" onSubmit={addPublic}>
+          <input className="fp-in" placeholder="Session title" value={pubForm.title}
+            onChange={(e) => setPubForm({ ...pubForm, title: e.target.value })} />
+          <input className="fp-in" type="datetime-local" value={pubForm.start_time}
+            onChange={(e) => setPubForm({ ...pubForm, start_time: e.target.value })} />
+          <input className="fp-in" placeholder="Track (e.g. Main Stage)" value={pubForm.track}
+            onChange={(e) => setPubForm({ ...pubForm, track: e.target.value })} />
+          <input className="fp-in" placeholder="Location (optional)" value={pubForm.location}
+            onChange={(e) => setPubForm({ ...pubForm, location: e.target.value })} />
+          <button type="submit" className="ew-btn sm" disabled={pubBusy}>Add to agenda</button>
+        </form>
+        {pub.length > 0 ? (
+          <div className="it-publist">
+            {pub.map((p) => (
+              <div key={p.id} className="it-pubitem">
+                <span className="it-pubtime">{fmtTime(p.start_time)}</span>
+                <span className="it-pubtitle">{p.title}{p.track ? <span className="it-pubtrack">{p.track}</span> : null}</span>
+                <button type="button" className="fp-del" onClick={() => removePublic(p.id)}>Remove</button>
+              </div>
+            ))}
+          </div>
+        ) : <div className="it-pubempty">No public agenda items yet. Add the sessions guests should see.</div>}
       </div>
 
       {built.checks.length > 0 ? (
@@ -131,6 +212,17 @@ export default function ItineraryTab({ eventId }: { eventId: string }) {
 }
 
 const I_CSS = `
+.it-pub { background: #fff; border: 1px solid #e7e1d6; border-radius: 12px; padding: 14px 16px; margin-bottom: 18px; }
+.it-pubhead { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.it-pubsub { font-size: 12px; color: #7d776c; max-width: 460px; margin-top: 2px; }
+.it-pubform { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.it-pubform .fp-in { font: inherit; font-size: 12.5px; padding: 7px 10px; border: 1px solid #e7e1d6; border-radius: 8px; background: #fff; color: #2c2a26; flex: 1 1 140px; min-width: 0; }
+.it-publist { display: flex; flex-direction: column; gap: 6px; }
+.it-pubitem { display: flex; align-items: center; gap: 10px; border: 1px solid #f0ebe0; border-radius: 10px; padding: 8px 11px; }
+.it-pubtime { font-size: 12px; font-weight: 600; color: #123c2e; min-width: 64px; }
+.it-pubtitle { flex: 1; font-size: 13px; color: #2c2a26; display: flex; align-items: center; gap: 8px; }
+.it-pubtrack { font-size: 9.5px; font-weight: 700; letter-spacing: .4px; color: #1E5D4A; background: rgba(30,93,74,.12); border-radius: 4px; padding: 1px 6px; }
+.it-pubempty { font-size: 12px; color: #b3aa99; padding: 8px 0; }
 .it-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
 .it-evname { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 24px; color: #123c2e; line-height: 1.1; }
 .it-gen { font-size: 11.5px; color: #b3aa99; margin-top: 2px; }

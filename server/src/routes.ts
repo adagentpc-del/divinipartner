@@ -31,6 +31,7 @@ import changeorders from "./routes/changeorders.js";
 import guests from "./routes/guests.js";
 import seating from "./routes/seating.js";
 import itinerary from "./routes/itinerary.js";
+import publicAgenda from "./routes/public-agenda.js";
 import tasks from "./routes/tasks.js";
 // Phase 7
 import reviews from "./routes/reviews.js";
@@ -174,6 +175,7 @@ router.use("/change-orders", changeorders);
 router.use("/guests", guests);
 router.use("/seating", seating);
 router.use("/itinerary", itinerary);
+router.use("/public/agenda", publicAgenda);
 router.use("/tasks", tasks);
 router.use("/reviews", reviews);
 router.use("/intelligence", intelligence);

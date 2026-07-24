@@ -40,6 +40,8 @@ export const ZONE_TYPES: { key: string; label: string }[] = [
   { key: "check_in", label: "Check-in" },
   { key: "photo", label: "Photo" },
   { key: "vendor", label: "Vendor zone" },
+  { key: "booth", label: "Booth / exhibitor" },
+  { key: "sponsor", label: "Sponsor activation" },
   { key: "bar", label: "Bar" },
   { key: "lounge", label: "Lounge" },
 ];
@@ -61,6 +63,9 @@ export type FloorplanRow = {
   height: string | null;
   scale: string | null;
   is_primary: boolean | null;
+  place_name: string | null;
+  place_address: string | null;
+  source_kind: string | null;
   created_at: string;
   updated_at: string | null;
 };
@@ -83,6 +88,9 @@ export type FloorplanInput = {
   scale?: string | null;
   venue_id?: string | null;
   is_primary?: boolean | null;
+  place_name?: string | null;
+  place_address?: string | null;
+  source_kind?: string | null;
 };
 
 export async function addFloorplan(
@@ -94,8 +102,8 @@ export async function addFloorplan(
   const row = await q1<FloorplanRow>(
     `insert into floorplans
        (event_id, venue_id, organization_id, name, description, file_url, thumbnail_url,
-        width, height, scale, is_primary, created_by)
-     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+        width, height, scale, is_primary, place_name, place_address, source_kind, created_by)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
      returning *`,
     [
       eventId,
@@ -109,6 +117,9 @@ export async function addFloorplan(
       input.height ?? 700,
       input.scale ?? null,
       input.is_primary ?? false,
+      input.place_name ?? null,
+      input.place_address ?? null,
+      input.source_kind ?? "upload",
       actor.user.id,
     ],
   );
@@ -140,6 +151,9 @@ export async function updateFloorplan(
         height = coalesce($7, height),
         scale = coalesce($8, scale),
         is_primary = coalesce($9, is_primary),
+        place_name = coalesce($10, place_name),
+        place_address = coalesce($11, place_address),
+        source_kind = coalesce($12, source_kind),
         updated_at = now()
       where id = $1 returning *`,
     [
@@ -152,6 +166,9 @@ export async function updateFloorplan(
       patch.height ?? null,
       patch.scale ?? null,
       patch.is_primary ?? null,
+      patch.place_name ?? null,
+      patch.place_address ?? null,
+      patch.source_kind ?? null,
     ],
   );
   return row as FloorplanRow;
