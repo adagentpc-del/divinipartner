@@ -4822,3 +4822,44 @@ create table if not exists preferred_partners (
 );
 create index if not exists idx_pref_partners_owner on preferred_partners(owner_org_id);
 create index if not exists idx_pref_partners_kind on preferred_partners(owner_org_id, partner_kind);
+
+-- ===== WS-3 relationship campaigns =====
+-- --- WS-3 relationship campaigns: annual rebooking outreach to saved partners --
+-- An org drafts one message to a saved-partner segment or a past event's roster,
+-- sends a test, then approves the send. Recipients resolve to real partner orgs
+-- (accounts), deduped and suppression-filtered. Reuses the email transport.
+create table if not exists relationship_campaigns (
+  id uuid primary key default gen_random_uuid(),
+  owner_org_id uuid references organizations(id) on delete cascade,
+  name text not null,
+  audience jsonb not null default '{}',
+  subject text,
+  body_html text,
+  cta_kind text check (cta_kind in ('clone_playbook','open_rfp','sponsorship_packages','create_event','custom')),
+  cta_ref uuid,
+  cta_url text,
+  status text not null default 'draft'
+    check (status in ('draft','test_sent','approved','sending','sent','cancelled')),
+  recipient_count int default 0,
+  sent_count int default 0,
+  test_sent_at timestamptz,
+  approved_at timestamptz,
+  sent_at timestamptz,
+  created_by uuid references users(id) on delete set null,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+create index if not exists idx_relcampaigns_owner on relationship_campaigns(owner_org_id);
+
+create table if not exists relationship_campaign_recipients (
+  id uuid primary key default gen_random_uuid(),
+  campaign_id uuid references relationship_campaigns(id) on delete cascade,
+  partner_org_id uuid,
+  email text not null,
+  name text,
+  status text not null default 'pending'
+    check (status in ('pending','sent','failed','suppressed')),
+  sent_at timestamptz,
+  created_at timestamptz default now()
+);
+create index if not exists idx_relcamp_recipients_campaign on relationship_campaign_recipients(campaign_id);

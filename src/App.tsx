@@ -138,6 +138,7 @@ import VendorPricingRules from './pages/VendorPricingRules';
 import QuoteDraftReview from './pages/QuoteDraftReview';
 import PreferredVendors from './pages/PreferredVendors';
 import PreferredPartners from './pages/PreferredPartners';
+import RelationshipCampaigns from './pages/RelationshipCampaigns';
 import RevenueInventory from './pages/RevenueInventory';
 import SponsorshipMarketplace from './pages/SponsorshipMarketplace';
 import EventGuestManager from './pages/event/EventGuestManager';
@@ -363,6 +364,7 @@ function Routed() {
       <Route path="/quote-drafts/:id" element={<Authed><QuoteDraftReview /></Authed>} />
       <Route path="/preferred-vendors" element={<Authed><PreferredVendors /></Authed>} />
       <Route path="/preferred-partners" element={<Authed><PreferredPartners /></Authed>} />
+      <Route path="/relationship-campaigns" element={<Authed><RelationshipCampaigns /></Authed>} />
       <Route path="/revenue-inventory" element={<Authed><RevenueInventory /></Authed>} />
       <Route path="/sponsorships" element={<Authed><SponsorshipMarketplace /></Authed>} />
       <Route path="/events/:id/guests" element={<Authed><EventGuestManager /></Authed>} />
