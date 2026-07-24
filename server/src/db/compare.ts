@@ -78,7 +78,7 @@ function build(type: CompareResult["type"], opts: Opt[], rowSpecs: RowSpec[], fl
     opts.forEach((o, i) => {
       const pass = f.test(o.data);
       if (pass && f.pro) proscons[i].pros.push(f.pro);
-      if (!pass && f.con) proscons[i].cons.push(f.con);
+      if (pass && f.con) proscons[i].cons.push(f.con);
     });
   }
 
@@ -114,7 +114,12 @@ export async function compareQuotes(actor: Actor, idsIn: unknown): Promise<Compa
       where qt.id = any($1::uuid[])`,
     [ids],
   );
-  // IDOR: the caller must be able to see each quote's event.
+  // IDOR: the caller must be able to see each quote's event. A quote with no
+  // event_id (bid-only or orphaned) has no gate, so refuse it outright rather
+  // than leak it.
+  if (rows.some((r) => !r.event_id)) {
+    throw new ForbiddenError("one of those quotes is not tied to an event you can access");
+  }
   const events = Array.from(new Set(rows.map((r) => r.event_id).filter((x): x is string => !!x)));
   for (const ev of events) await getEvent(actor, ev);
 
@@ -157,6 +162,8 @@ export async function compareQuotes(actor: Actor, idsIn: unknown): Promise<Compa
 export async function compareVendors(_actor: Actor, idsIn: unknown): Promise<CompareResult> {
   const ids = clampIds(idsIn);
   if (ids.length < 2) throw new ForbiddenError("pick at least 2 vendors to compare");
+  // Keyed on ORGANIZATION id (the stable identity used by the event roster);
+  // a vendor org may or may not have a vendors profile row, so join on org.
   const rows = await q<{
     id: string;
     name: string | null;
@@ -167,12 +174,12 @@ export async function compareVendors(_actor: Actor, idsIn: unknown): Promise<Com
     premier_status: boolean | null;
     score: number | null;
   }>(
-    `select v.id, o.name, v.category, v.review_score, v.service_radius,
+    `select o.id, o.name, v.category, v.review_score, v.service_radius,
             v.preferred_status, v.premier_status, ds.score
-       from vendors v
-       left join organizations o on o.id = v.organization_id
+       from organizations o
+       left join vendors v on v.organization_id = o.id
        left join divini_scores ds on ds.entity_type = 'vendor' and ds.entity_id = v.id
-      where v.id = any($1::uuid[])`,
+      where o.id = any($1::uuid[])`,
     [ids],
   );
   const opts: Opt[] = ids

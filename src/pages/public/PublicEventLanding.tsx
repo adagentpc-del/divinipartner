@@ -344,8 +344,8 @@ export default function PublicEventLanding() {
                       <p className="el-thanks">You are registered.</p>
                     ) : (
                       <p className="el-thanks">
-                        Order created - total {money(result.amount_cents)} including a{' '}
-                        {money(result.platform_fee_cents)} platform fee. Payment will be collected next.
+                        Order received - ticket total {money(result.amount_cents)}. Payment will be
+                        collected next.
                       </p>
                     )}
                   </div>

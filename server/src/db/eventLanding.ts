@@ -40,7 +40,7 @@ function normMode(v: unknown): AttendMode {
 }
 
 /** Throw unless the actor owns this event (org, client, or planner). */
-async function assertOwnsEvent(actor: Actor, eventId: string): Promise<void> {
+export async function assertOwnsEvent(actor: Actor, eventId: string): Promise<void> {
   const row = await q1<{ ok: boolean }>(
     `select true as ok from events
       where id = $1
@@ -62,10 +62,12 @@ export async function getSettings(eventId: string): Promise<LandingSettings> {
     [eventId],
   );
   if (row) return row;
-  // Default (unsaved) settings so the UI has something to render.
+  // Default (unsaved) settings so the UI has something to render. attend_mode is
+  // 'off' until the coordinator opts in, so an event that never configured a
+  // public page does NOT accept public registrations.
   return {
     event_id: eventId,
-    attend_mode: "free",
+    attend_mode: "off",
     vendor_cta_enabled: true,
     headline: null,
     description: null,
@@ -278,9 +280,6 @@ export async function registerAttendee(eventId: string, input: RegisterInput): P
       [input.tier_id, eventId],
     );
     if (!tier) throw new NotFoundError("ticket tier not found");
-    if (tier.quantity != null && tier.sold + qty > tier.quantity) {
-      throw new ForbiddenError("not enough tickets left in that tier");
-    }
   }
 
   const amountCents = tier ? tier.price_cents * qty : 0;
@@ -302,6 +301,18 @@ export async function registerAttendee(eventId: string, input: RegisterInput): P
 
   const orderStatus = amountCents > 0 ? "pending_payment" : "confirmed";
 
+  // Reserve the tier inventory atomically BEFORE recording the order so two
+  // concurrent buyers cannot oversell a limited tier (guarded conditional update).
+  if (tier) {
+    const reserved = await q1<{ id: string }>(
+      `update event_ticket_tiers set sold = sold + $2
+        where id = $1 and (quantity is null or sold + $2 <= quantity)
+        returning id`,
+      [tier.id, qty],
+    );
+    if (!reserved) throw new ForbiddenError("not enough tickets left in that tier");
+  }
+
   const reg = await q1<{ id: string }>(
     `insert into event_registrations
        (event_id, attendee_name, email, ticket_type, tier_id, quantity, amount_cents,
@@ -321,10 +332,6 @@ export async function registerAttendee(eventId: string, input: RegisterInput): P
       orderStatus === "confirmed" ? "confirmed" : "pending",
     ],
   );
-
-  if (tier) {
-    await q(`update event_ticket_tiers set sold = sold + $2 where id = $1`, [tier.id, qty]);
-  }
 
   return {
     ok: true,

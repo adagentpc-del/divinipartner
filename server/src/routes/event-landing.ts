@@ -31,7 +31,8 @@ router.use(requireUser);
 router.get(
   "/event/:eventId",
   h(async (req, res) => {
-    await actor(req); // resolvable user
+    const a = await actor(req);
+    await el.assertOwnsEvent(a, req.params.eventId); // owner-only: exposes sold counts + inactive tiers
     const [settings, tiers] = await Promise.all([
       el.getSettings(req.params.eventId),
       el.listTiers(req.params.eventId),

@@ -127,9 +127,8 @@ export default function VendorsTab({ eventId }: { eventId: string }) {
                   <td>
                     <input
                       type="checkbox"
-                      checked={r.vendor_id !== null && selected.includes(r.vendor_id)}
-                      disabled={r.vendor_id === null}
-                      onChange={() => { if (r.vendor_id !== null) toggleSelect(r.vendor_id); }}
+                      checked={selected.includes(r.organization_id)}
+                      onChange={() => toggleSelect(r.organization_id)}
                     />
                   </td>
                   <td className="ew-mono">{r.organization_id}</td>

@@ -190,7 +190,6 @@ export async function applyExhibitor(eventId: string, input: ApplyInput): Promis
       [input.package_id, eventId],
     );
     if (!pkg) throw new NotFoundError("package not found");
-    if (pkg.quantity != null && pkg.sold >= pkg.quantity) throw new ForbiddenError("that package is sold out");
     amountCents += pkg.price_cents;
   }
 
@@ -201,8 +200,30 @@ export async function applyExhibitor(eventId: string, input: ApplyInput): Promis
       [input.booth_id, eventId],
     );
     if (!booth) throw new NotFoundError("booth not found");
-    if (booth.status !== "available") throw new ForbiddenError("that booth is no longer available");
     amountCents += booth.price_cents;
+  }
+
+  // Reserve inventory atomically BEFORE recording the order so concurrent
+  // applications cannot oversell a package or double-book a booth.
+  if (pkg) {
+    const claimed = await q1<{ id: string }>(
+      `update event_exhibitor_packages set sold = sold + 1
+        where id = $1 and (quantity is null or sold < quantity)
+        returning id`,
+      [pkg.id],
+    );
+    if (!claimed) throw new ForbiddenError("that package is sold out");
+  }
+  if (booth) {
+    const held = await q1<{ id: string }>(
+      `update event_booths set status = 'held' where id = $1 and status = 'available' returning id`,
+      [booth.id],
+    );
+    if (!held) {
+      // Roll back the package claim if we already took it.
+      if (pkg) await q(`update event_exhibitor_packages set sold = greatest(sold - 1, 0) where id = $1`, [pkg.id]);
+      throw new ForbiddenError("that booth is no longer available");
+    }
   }
 
   let platformFeeCents = 0;
@@ -225,9 +246,6 @@ export async function applyExhibitor(eventId: string, input: ApplyInput): Promis
      values ($1,$2,$3,$4,$5,$6,$7,$8,$9) returning id`,
     [eventId, contact, email, input.company ?? null, pkg?.id ?? null, booth?.id ?? null, amountCents, platformFeeCents, status],
   );
-
-  if (pkg) await q(`update event_exhibitor_packages set sold = sold + 1 where id = $1`, [pkg.id]);
-  if (booth) await q(`update event_booths set status = 'held' where id = $1`, [booth.id]);
 
   return { ok: true, order_id: order?.id ?? "", status, amount_cents: amountCents, platform_fee_cents: platformFeeCents };
 }
