@@ -37,6 +37,18 @@ function sendsEnabled(): boolean {
   return (process.env.REL_CAMPAIGNS_ENABLED ?? "true").toLowerCase() !== "false";
 }
 
+/**
+ * Read-only / individual roles must not create or dispatch campaigns (they could
+ * otherwise email the org's whole partner list). Owner-scoping is separate; this
+ * is an intra-org role gate on the sensitive write/send actions.
+ */
+const NON_OPERATOR_ROLES = new Set(["viewer", "donor", "volunteer"]);
+function assertOperator(a: db.Actor): void {
+  if (NON_OPERATOR_ROLES.has(a.user.role ?? "")) {
+    throw new db.ForbiddenError("your role cannot create or send campaigns");
+  }
+}
+
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string),
@@ -67,6 +79,7 @@ router.post(
   "/",
   h(async (req, res) => {
     const a = await actor(req);
+    assertOperator(a);
     const { name } = req.body ?? {};
     if (!name || typeof name !== "string") return res.status(400).json({ error: "name required" });
     res.status(201).json({ campaign: await rc.createCampaign(a, req.body) });
@@ -116,6 +129,7 @@ router.post(
   "/:id/test",
   h(async (req, res) => {
     const a = await actor(req);
+    assertOperator(a);
     const campaign = await rc.getCampaign(a, req.params.id);
     const to = a.user.email;
     if (!to) return res.status(400).json({ error: "no email on your account" });
@@ -131,6 +145,7 @@ router.post(
   "/:id/send",
   h(async (req, res) => {
     const a = await actor(req);
+    assertOperator(a);
     if (!sendsEnabled()) {
       return res.status(403).json({ error: "Relationship campaigns are currently disabled." });
     }

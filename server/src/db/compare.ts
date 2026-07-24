@@ -8,7 +8,7 @@
  */
 import { q, q1 } from "../pool.js";
 import { ForbiddenError, type Actor } from "../db.js";
-import { getEvent } from "./events.js";
+import { assertOwnsEvent } from "./eventLanding.js";
 
 export const MAX_COMPARE = 5;
 
@@ -114,14 +114,14 @@ export async function compareQuotes(actor: Actor, idsIn: unknown): Promise<Compa
       where qt.id = any($1::uuid[])`,
     [ids],
   );
-  // IDOR: the caller must be able to see each quote's event. A quote with no
-  // event_id (bid-only or orphaned) has no gate, so refuse it outright rather
-  // than leak it.
+  // Quote comparison is an OWNER action (a client weighing bids on their event).
+  // Gate on event ownership, not mere read-access, so an attached vendor cannot
+  // compare competitors' quotes. A quote with no event_id has no gate: refuse it.
   if (rows.some((r) => !r.event_id)) {
-    throw new ForbiddenError("one of those quotes is not tied to an event you can access");
+    throw new ForbiddenError("one of those quotes is not tied to an event you own");
   }
   const events = Array.from(new Set(rows.map((r) => r.event_id).filter((x): x is string => !!x)));
-  for (const ev of events) await getEvent(actor, ev);
+  for (const ev of events) await assertOwnsEvent(actor, ev);
 
   const lineCount = (li: unknown): number => {
     if (Array.isArray(li)) return li.length;

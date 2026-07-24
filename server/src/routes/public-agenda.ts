@@ -44,6 +44,9 @@ router.get(
       [eventId],
     );
 
+    // Nothing published yet: 404 rather than leak a draft event's basics.
+    if (items.length === 0) return res.status(404).json({ error: "No public agenda for this event." });
+
     res.json({
       event: { id: ev.id, name: ev.name, date_time: ev.date_time },
       items,

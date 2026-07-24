@@ -228,6 +228,16 @@ export async function getPublicLanding(eventId: string): Promise<PublicLanding |
     [eventId],
   );
 
+  // Only expose a public landing once the coordinator has opted in: a saved
+  // settings row, at least one active tier, or at least one public agenda item.
+  // An event that never configured a public page returns null (404), so draft
+  // events do not leak their metadata by guessed id.
+  const persisted = await q1<{ event_id: string }>(
+    `select event_id from event_landing_settings where event_id = $1`,
+    [eventId],
+  );
+  if (!persisted && tiers.length === 0 && agenda.length === 0) return null;
+
   return {
     event: { id: ev.id, name: ev.name, date_time: ev.date_time, type: ev.type, organizer: ev.organizer },
     place: { venue_name: ev.venue_name, venue_city: ev.venue_city, floorplan_place: fp?.place_name ?? null },
