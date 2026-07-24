@@ -140,34 +140,93 @@ export async function getQuote(id: string): Promise<QuoteRow> {
 }
 
 /**
+ * True when the actor is on the DEMAND side of the event (the owner: owning org,
+ * client, or planner, or admin). Owners see every quote; an attached VENDOR is on
+ * the supply side and must only ever see its own quotes.
+ */
+async function isEventOwner(actor: Actor, eventId: string): Promise<boolean> {
+  if (actor.user.role === "super_admin" || actor.user.role === "admin") return true;
+  const row = await q1<{ ok: boolean }>(
+    `select true as ok from events
+      where id = $1
+        and (($2::uuid is not null and organization_id = $2)
+             or client_id = $3 or planner_id = $3)
+      limit 1`,
+    [eventId, actor.org?.id ?? null, actor.user.id],
+  );
+  return !!row?.ok;
+}
+
+/** The vendors.id values that belong to the actor's org (its supply-side identity). */
+async function orgVendorIds(actor: Actor): Promise<string[]> {
+  const orgId = actor.org?.id ?? null;
+  if (!orgId) return [];
+  const rows = await q<{ id: string }>(`select id from vendors where organization_id = $1`, [orgId]);
+  return rows.map((r) => r.id);
+}
+
+/**
  * IDOR gate for quote-by-id access. A quote belongs to an event; the actor may
- * read or act on it only if they can access that event (client/planner/owning
- * org on the demand side, an assigned vendor org on the supply side, or admin).
- * Reuses the canonical getEvent() access check. Routes that take a quote id from
- * the request MUST call this before reading or mutating the quote, otherwise any
- * authenticated user could read competitors' pricing/PDFs or accept/decline any
- * quote by id. Returns the quote row so callers avoid a second fetch.
+ * read or act on it only if they can access that event. The event OWNER (demand
+ * side) may act on any quote; an attached VENDOR may only touch its own org's
+ * quote, never a competitor's. Routes that take a quote id from the request MUST
+ * call this. Returns the quote row so callers avoid a second fetch.
  */
 export async function authorizeQuoteAccess(actor: Actor, id: string): Promise<QuoteRow> {
   const quote = await getQuote(id);
   if (!quote.event_id) throw new NotFoundError("quote not found");
-  await getEvent(actor, quote.event_id); // throws NotFound/Forbidden if no access
+  await getEvent(actor, quote.event_id); // event-access gate (owner or attached vendor)
+  if (await isEventOwner(actor, quote.event_id)) return quote;
+  const mine = await orgVendorIds(actor);
+  if (quote.vendor_id && mine.includes(quote.vendor_id)) return quote;
+  throw new ForbiddenError("you can only view your own quote on this event");
+}
+
+/**
+ * Owner-only authorization for DEMAND-SIDE decisions on a quote (accept, decline,
+ * request revision). Only the event owner (or admin) may decide; a vendor cannot
+ * self-accept its own quote.
+ */
+export async function authorizeQuoteOwner(actor: Actor, id: string): Promise<QuoteRow> {
+  const quote = await getQuote(id);
+  if (!quote.event_id) throw new NotFoundError("quote not found");
+  if (!(await isEventOwner(actor, quote.event_id))) {
+    throw new ForbiddenError("only the event owner can decide on this quote");
+  }
   return quote;
 }
 
-/** Quotes on an event (event-owner / participant view). */
+/**
+ * Quotes on an event. The owner sees all; an attached vendor sees only its own
+ * org's quotes (never competitors' pricing).
+ */
 export async function listEventQuotes(actor: Actor, eventId: string): Promise<QuoteRow[]> {
   await getEvent(actor, eventId); // access check
-  return q<QuoteRow>(`select * from quotes where event_id = $1 order by created_at desc`, [eventId]);
+  if (await isEventOwner(actor, eventId)) {
+    return q<QuoteRow>(`select * from quotes where event_id = $1 order by created_at desc`, [eventId]);
+  }
+  const mine = await orgVendorIds(actor);
+  if (mine.length === 0) return [];
+  return q<QuoteRow>(
+    `select * from quotes where event_id = $1 and vendor_id = any($2::uuid[]) order by created_at desc`,
+    [eventId, mine],
+  );
 }
 
-/** Quotes on a single bid. Access-checked: the actor must be able to see the
- *  parent event, otherwise this would leak competitors' quotes on any bid. */
+/** Quotes on a single bid. Owner sees all; an attached vendor sees only its own. */
 export async function listBidQuotes(actor: Actor, eventId: string, bidId: string): Promise<QuoteRow[]> {
   await getEvent(actor, eventId); // access check
+  if (await isEventOwner(actor, eventId)) {
+    return q<QuoteRow>(
+      `select * from quotes where bid_id = $1 and event_id = $2 order by created_at desc`,
+      [bidId, eventId],
+    );
+  }
+  const mine = await orgVendorIds(actor);
+  if (mine.length === 0) return [];
   return q<QuoteRow>(
-    `select * from quotes where bid_id = $1 and event_id = $2 order by created_at desc`,
-    [bidId, eventId],
+    `select * from quotes where bid_id = $1 and event_id = $2 and vendor_id = any($3::uuid[]) order by created_at desc`,
+    [bidId, eventId, mine],
   );
 }
 

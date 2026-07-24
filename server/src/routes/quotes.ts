@@ -135,7 +135,7 @@ router.post(
   "/:id/accept",
   h(async (req, res) => {
     const a = await actor(req);
-    await quotes.authorizeQuoteAccess(a, req.params.id);
+    await quotes.authorizeQuoteOwner(a, req.params.id);
     // Terminal event: accepting a quote wins the deal. Auto-close idempotently
     // (sets 'accepted' + stamps closed_at only on first close) and incrementally
     // refresh the relationship graph for the parties. Re-firing is a no-op.
@@ -157,7 +157,7 @@ router.post(
   "/:id/decline",
   h(async (req, res) => {
     const a = await actor(req);
-    await quotes.authorizeQuoteAccess(a, req.params.id);
+    await quotes.authorizeQuoteOwner(a, req.params.id);
     const quote = await quotes.setQuoteStatus(req.params.id, "declined");
     const to = recipients.excluding(
       await recipients.quoteVendorEmails(quote.id).catch(() => [] as string[]),
@@ -173,7 +173,7 @@ router.post(
   "/:id/request-revision",
   h(async (req, res) => {
     const a = await actor(req);
-    await quotes.authorizeQuoteAccess(a, req.params.id);
+    await quotes.authorizeQuoteOwner(a, req.params.id);
     const quote = await quotes.setQuoteStatus(req.params.id, "revision_requested");
     const to = recipients.excluding(
       await recipients.quoteVendorEmails(quote.id).catch(() => [] as string[]),
