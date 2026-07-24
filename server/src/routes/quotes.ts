@@ -185,4 +185,53 @@ router.post(
   }),
 );
 
+/** Q&A / negotiate thread on a quote. Owner or the quote's own vendor may read. */
+router.get(
+  "/:id/messages",
+  h(async (req, res) => {
+    const a = await actor(req);
+    res.json({ messages: await quotes.listQuoteMessages(a, req.params.id) });
+  }),
+);
+
+/**
+ * Post a question / negotiation message on a quote. The author side is derived
+ * server-side from event ownership. When the client asks for changes
+ * (request_revision), the quote is pushed back to 'revision_requested' so the
+ * vendor updates it. Notifies the other party best-effort.
+ */
+router.post(
+  "/:id/messages",
+  h(async (req, res) => {
+    const a = await actor(req);
+    const body = (req.body?.body as string) ?? "";
+    if (!body.trim()) return res.status(400).json({ error: "body required" });
+    const message = await quotes.postQuoteMessage(a, req.params.id, {
+      body,
+      request_revision: !!req.body?.request_revision,
+    });
+    // Notify the opposite side. Client authored -> tell the vendor org; vendor
+    // authored -> tell the event owner. Best-effort, never blocks the reply.
+    const eventId = (await recipients.quoteEventId(req.params.id).catch(() => null)) ?? "";
+    const name = eventId
+      ? ((await recipients.eventName(eventId).catch(() => null)) ?? "your event")
+      : "your event";
+    const to =
+      message.author_side === "client"
+        ? recipients.excluding(
+            await recipients.quoteVendorEmails(req.params.id).catch(() => [] as string[]),
+            a.user.email,
+          )
+        : recipients.excluding(
+            eventId ? await recipients.eventOwnerEmails(eventId).catch(() => [] as string[]) : [],
+            a.user.email,
+          );
+    if (to.length)
+      await notify
+        .messagePosted(to, name, { quoteId: req.params.id, requestRevision: message.request_revision })
+        .catch(() => undefined);
+    res.status(201).json({ message });
+  }),
+);
+
 export default router;

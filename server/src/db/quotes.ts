@@ -230,6 +230,56 @@ export async function listBidQuotes(actor: Actor, eventId: string, bidId: string
   );
 }
 
+// ---- Quote Q&A thread (negotiate / ask questions) --------------------------
+
+export interface QuoteMessageRow {
+  id: string;
+  quote_id: string;
+  author_side: string;
+  body: string;
+  request_revision: boolean;
+  created_at: string;
+}
+
+/** The Q&A thread on a quote (owner or the quote's own vendor). */
+export async function listQuoteMessages(actor: Actor, quoteId: string): Promise<QuoteMessageRow[]> {
+  await authorizeQuoteAccess(actor, quoteId); // owner OR the quote's vendor
+  return q<QuoteMessageRow>(
+    `select id, quote_id, author_side, body, request_revision, created_at
+       from quote_messages where quote_id = $1 order by created_at asc`,
+    [quoteId],
+  );
+}
+
+/**
+ * Post a message on a quote. The event owner posts as 'client'; the quote's own
+ * vendor posts as 'vendor'. When the client sends with request_revision, the
+ * quote is pushed back to the vendor (status revision_requested). Returns the row
+ * plus the author side so the route can notify the other party.
+ */
+export async function postQuoteMessage(
+  actor: Actor,
+  quoteId: string,
+  input: { body: string; request_revision?: boolean },
+): Promise<QuoteMessageRow> {
+  const quote = await authorizeQuoteAccess(actor, quoteId);
+  const body = (input.body ?? "").trim();
+  if (!body) throw new ForbiddenError("message body required");
+  const side = quote.event_id && (await isEventOwner(actor, quote.event_id)) ? "client" : "vendor";
+  const requestRevision = side === "client" && !!input.request_revision;
+
+  const row = await q1<QuoteMessageRow>(
+    `insert into quote_messages (quote_id, event_id, author_user_id, author_side, body, request_revision)
+     values ($1,$2,$3,$4,$5,$6)
+     returning id, quote_id, author_side, body, request_revision, created_at`,
+    [quoteId, quote.event_id, actor.user.id, side, body, requestRevision],
+  );
+  if (requestRevision) {
+    await q(`update quotes set status = 'revision_requested' where id = $1`, [quoteId]);
+  }
+  return row as QuoteMessageRow;
+}
+
 export type CreateQuoteInput = {
   bid_id?: string | null;
   event_id?: string | null;

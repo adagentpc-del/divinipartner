@@ -27,6 +27,15 @@ type Standardized = {
   actions: string[];
 };
 
+type QuoteMessage = {
+  id: string;
+  quote_id: string;
+  author_side: string;
+  body: string;
+  request_revision: boolean;
+  created_at: string;
+};
+
 function money(v: string | null | undefined): string {
   if (v == null) return '-';
   const n = Number(v);
@@ -40,6 +49,10 @@ export default function QuotesTab({ eventId }: { eventId: string }) {
   const [busy, setBusy] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
   const [capNote, setCapNote] = useState(false);
+  const [thread, setThread] = useState<QuoteMessage[]>([]);
+  const [msgBody, setMsgBody] = useState('');
+  const [askRevision, setAskRevision] = useState(false);
+  const [msgBusy, setMsgBusy] = useState(false);
 
   function toggleSelect(id: string) {
     setSelected((prev) => {
@@ -73,11 +86,43 @@ export default function QuotesTab({ eventId }: { eventId: string }) {
 
   async function view(id: string) {
     setErr(null);
+    setThread([]);
+    setMsgBody('');
+    setAskRevision(false);
     try {
       const r = await apiGet<{ quote: Standardized }>(`/quotes/${id}/standardized`);
       setOpen(r.quote);
+      await loadThread(id);
     } catch (e) {
       setErr((e as Error).message);
+    }
+  }
+
+  async function loadThread(id: string) {
+    try {
+      const r = await apiGet<{ messages: QuoteMessage[] }>(`/quotes/${id}/messages`);
+      setThread(r.messages);
+    } catch {
+      /* thread is best-effort; the quote still opens without it */
+    }
+  }
+
+  async function sendMsg(id: string) {
+    const body = msgBody.trim();
+    if (!body) return;
+    setMsgBusy(true);
+    setErr(null);
+    try {
+      await apiSend('POST', `/quotes/${id}/messages`, { body, request_revision: askRevision });
+      setMsgBody('');
+      setAskRevision(false);
+      await loadThread(id);
+      // Requesting a revision pushes the quote back, so refresh the status column.
+      if (askRevision) await load();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setMsgBusy(false);
     }
   }
 
@@ -164,6 +209,47 @@ export default function QuotesTab({ eventId }: { eventId: string }) {
               <button type="button" className="ew-btn ghost" disabled={busy} onClick={() => act(open.quote_id, 'request-revision')}>Request revision</button>
               <button type="button" className="ew-btn danger" disabled={busy} onClick={() => act(open.quote_id, 'decline')}>Decline</button>
             </div>
+
+            <div className="ew-q-thread">
+              <div className="ew-q-secttitle">Questions &amp; negotiation</div>
+              {thread.length === 0 ? (
+                <p className="ew-q-threadempty">No messages yet. Ask the vendor a question or request changes below.</p>
+              ) : (
+                <ul className="ew-q-msgs">
+                  {thread.map((m) => (
+                    <li key={m.id} className={`ew-q-msg ${m.author_side === 'client' ? 'me' : 'them'}`}>
+                      <div className="ew-q-msgmeta">
+                        <span>{m.author_side === 'client' ? 'You' : open.brand.vendor}</span>
+                        {m.request_revision ? <span className="ew-q-revtag">revision requested</span> : null}
+                        <span className="ew-q-msgtime">{new Date(m.created_at).toLocaleString()}</span>
+                      </div>
+                      <div className="ew-q-msgbody">{m.body}</div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <textarea
+                className="ew-q-compose"
+                rows={3}
+                placeholder="Ask the vendor a question or describe the changes you need..."
+                value={msgBody}
+                onChange={(e) => setMsgBody(e.target.value)}
+              />
+              <label className="ew-q-revcheck">
+                <input type="checkbox" checked={askRevision} onChange={(e) => setAskRevision(e.target.checked)} />
+                Request changes (pushes the quote back to the vendor to update)
+              </label>
+              <div className="ew-q-actions">
+                <button
+                  type="button"
+                  className="ew-btn"
+                  disabled={msgBusy || !msgBody.trim()}
+                  onClick={() => sendMsg(open.quote_id)}
+                >
+                  {askRevision ? 'Send & request changes' : 'Send question'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       ) : null}
@@ -205,4 +291,17 @@ const Q_CSS = `
 .ew-cmp-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
 .ew-cmp-hint { font-size: 12px; color: #7d776c; }
 .ew-cmp-cap { font-size: 12px; color: #a8631a; }
+.ew-q-thread { border-top: 1px solid #e7e1d6; margin-top: 18px; padding-top: 16px; }
+.ew-q-threadempty { font-size: 12.5px; color: #7d776c; margin: 4px 0 12px; }
+.ew-q-msgs { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.ew-q-msg { border-radius: 10px; padding: 8px 12px; font-size: 13px; }
+.ew-q-msg.me { background: rgba(18,60,46,.06); }
+.ew-q-msg.them { background: rgba(247,244,238,.9); border: 1px solid #efe9dd; }
+.ew-q-msgmeta { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #7d776c; margin-bottom: 3px; }
+.ew-q-msgmeta > span:first-child { font-weight: 600; color: #4a463e; }
+.ew-q-msgtime { margin-left: auto; }
+.ew-q-revtag { background: #a8631a; color: #fff; border-radius: 6px; padding: 1px 6px; font-size: 10px; letter-spacing: .3px; text-transform: uppercase; }
+.ew-q-msgbody { color: #2c2a26; white-space: pre-wrap; }
+.ew-q-compose { width: 100%; border: 1px solid #e7e1d6; border-radius: 10px; padding: 10px; font: inherit; font-size: 13px; resize: vertical; box-sizing: border-box; }
+.ew-q-revcheck { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: #4a463e; margin: 8px 0 10px; }
 `;
