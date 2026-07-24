@@ -100,6 +100,7 @@ import VendorNetwork from './pages/network/VendorNetwork';
 import JoinInvite from './pages/join/JoinInvite';
 import PublicBid from './pages/public/PublicBid';
 import PublicAgenda from './pages/public/PublicAgenda';
+import PublicEventLanding from './pages/public/PublicEventLanding';
 import SignDocument from './pages/sign/SignDocument';
 
 // claim engine
@@ -298,6 +299,7 @@ function Routed() {
       <Route path="/join/:token" element={<JoinInvite />} />
       <Route path="/b/:token" element={<PublicBid />} />
       <Route path="/agenda/:eventId" element={<PublicAgenda />} />
+      <Route path="/event/:eventId" element={<PublicEventLanding />} />
 
       {/* public claim engine */}
       <Route path="/claim/:slug" element={<UnclaimedProfile />} />

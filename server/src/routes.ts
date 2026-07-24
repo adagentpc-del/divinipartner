@@ -32,6 +32,8 @@ import guests from "./routes/guests.js";
 import seating from "./routes/seating.js";
 import itinerary from "./routes/itinerary.js";
 import publicAgenda from "./routes/public-agenda.js";
+import eventLanding from "./routes/event-landing.js";
+import publicEvent from "./routes/public-event.js";
 import tasks from "./routes/tasks.js";
 // Phase 7
 import reviews from "./routes/reviews.js";
@@ -176,6 +178,8 @@ router.use("/guests", guests);
 router.use("/seating", seating);
 router.use("/itinerary", itinerary);
 router.use("/public/agenda", publicAgenda);
+router.use("/event-landing", eventLanding);
+router.use("/public/event", publicEvent);
 router.use("/tasks", tasks);
 router.use("/reviews", reviews);
 router.use("/intelligence", intelligence);
