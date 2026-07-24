@@ -84,6 +84,7 @@ const NAV: NavItem[] = [
   { label: 'Command Center', icon: 'M', to: '/command-center' },
   { label: 'Business Health', icon: 'H', to: '/business-health' },
   { label: 'Referrals', icon: 'r', to: '/referral-dashboard' },
+  { label: 'Preferred Partners', icon: 'P', to: '/preferred-partners' },
   { label: 'Payout Bank', icon: '@', to: '/connect-payouts/settings' },
   { label: 'My Payouts', icon: '$', to: '/connect-payouts/mine' },
 ];

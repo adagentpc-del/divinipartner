@@ -25,6 +25,7 @@ const NAV: NavItem[] = [
   { label: 'Profile', icon: 'R', to: '/profile' },
   { label: 'Decks & Programs', icon: 'K', to: '/profile/decks-programs' },
   { label: 'Referrals', icon: 'r', to: '/referral-dashboard' },
+  { label: 'Preferred Partners', icon: 'P', to: '/preferred-partners' },
   { label: 'Payout Bank', icon: '@', to: '/connect-payouts/settings' },
   { label: 'My Payouts', icon: '$', to: '/connect-payouts/mine' },
 ];

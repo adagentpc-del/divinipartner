@@ -4798,3 +4798,27 @@ create table if not exists bid_share_leads (
   created_at timestamptz default now()
 );
 create index if not exists idx_bid_share_leads_bid on bid_share_leads(bid_id);
+
+-- ===== WS-2 preferred_partners =====
+-- --- WS-2 preferred_partners: save preferred vendors AND sponsors (org-scoped) --
+-- A general saved-counterparty store next to the venue-only preferred_vendors and
+-- the vendor-only starred_vendors. owner_org_id saves partner_org_id of any kind.
+create table if not exists preferred_partners (
+  id uuid primary key default gen_random_uuid(),
+  owner_org_id   uuid references organizations(id) on delete cascade,
+  partner_org_id uuid references organizations(id) on delete cascade,
+  partner_kind text not null
+    check (partner_kind in ('vendor','sponsor','nonprofit','venue','planner','supplier','installer','client')),
+  tier text check (tier in ('preferred','approved','exclusive','recommended','vip')),
+  label text,
+  note text,
+  last_event_id uuid,
+  last_worked_at timestamptz,
+  times_worked int default 0,
+  saved_by uuid references users(id) on delete set null,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  unique (owner_org_id, partner_org_id, partner_kind)
+);
+create index if not exists idx_pref_partners_owner on preferred_partners(owner_org_id);
+create index if not exists idx_pref_partners_kind on preferred_partners(owner_org_id, partner_kind);
