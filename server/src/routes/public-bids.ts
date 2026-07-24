@@ -44,4 +44,26 @@ router.post(
   }),
 );
 
+router.post(
+  "/:token/interest",
+  h(async (req, res) => {
+    const { name, email, phone, message, amount, party } = req.body ?? {};
+    if (!name || typeof name !== "string" || !email || typeof email !== "string") {
+      return res.status(400).json({ error: "name and email are required" });
+    }
+    const amt =
+      amount == null || amount === "" ? null : Number.isFinite(Number(amount)) ? Number(amount) : null;
+    const result = await shares.createLead(req.params.token, {
+      name,
+      email,
+      phone: typeof phone === "string" ? phone : null,
+      message: typeof message === "string" ? message : null,
+      amount: amt,
+      party: typeof party === "string" ? party : null,
+    });
+    if (!result) return res.status(404).json({ error: "This bid link is no longer available." });
+    res.status(201).json({ ok: true });
+  }),
+);
+
 export default router;

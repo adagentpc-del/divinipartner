@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { apiGet, apiSend } from '../../../lib/api';
+import ShareBidPanel from '../../../components/ShareBidPanel';
 
 type Bid = {
   id: string;
@@ -23,6 +24,7 @@ export default function BidsTab({ eventId }: { eventId: string }) {
   const [statuses, setStatuses] = useState<StatusMeta[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [shareOpen, setShareOpen] = useState<Record<string, boolean>>({});
   const [form, setForm] = useState({ category: '', scope: '', budget_min: '', budget_max: '', tier_access: 'premier', rush: false });
 
   async function load() {
@@ -110,6 +112,18 @@ export default function BidsTab({ eventId }: { eventId: string }) {
                   {statuses.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
                 </select>
               </div>
+              {b.status !== 'draft' ? (
+                <div className="ew-bid-share">
+                  <button
+                    type="button"
+                    className="ew-btn ghost sm"
+                    onClick={() => setShareOpen((prev) => ({ ...prev, [b.id]: !prev[b.id] }))}
+                  >
+                    {shareOpen[b.id] ? 'Hide share links' : 'Share'}
+                  </button>
+                  {shareOpen[b.id] ? <ShareBidPanel bidId={b.id} /> : null}
+                </div>
+              ) : null}
             </div>
           ))}
         </div>
@@ -131,6 +145,7 @@ const B_CSS = `
 .ew-bid-scopep { margin: 0; font-size: 13px; color: #4a463e; line-height: 1.5; }
 .ew-bid-meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; color: #7d776c; }
 .ew-bid-meta select { font: inherit; padding: 6px 9px; border: 1px solid #e7e1d6; border-radius: 7px; background: #fff; }
+.ew-bid-share { display: flex; flex-direction: column; gap: 6px; }
 .ew-tag { font-size: 10px; letter-spacing: .5px; text-transform: uppercase; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
 .ew-tag.tier-premier { background: rgba(201,163,91,.2); color: #8a6d27; border: 1px solid rgba(201,163,91,.5); }
 .ew-tag.tier-partner { background: rgba(30,93,74,.12); color: #1E5D4A; border: 1px solid rgba(30,93,74,.3); }

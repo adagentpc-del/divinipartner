@@ -287,3 +287,93 @@ export async function trackShareFunnel(
     ],
   );
 }
+
+// ---- Express interest leads -------------------------------------------------
+
+export interface BidShareLeadRow {
+  id: string;
+  share_link_id: string | null;
+  bid_id: string | null;
+  event_id: string | null;
+  party: ShareAudience;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  message: string | null;
+  amount: string | null;
+  created_at: string;
+}
+
+export interface LeadInput {
+  name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  message?: string | null;
+  amount?: number | null;
+  party?: string | null;
+}
+
+/**
+ * Public "express interest" capture. A sponsor or vendor raises a hand on the
+ * shared bid page without an account yet. Resolves the active link by token
+ * (mirrors trackShareFunnel), records a lead, bumps submit_count, and logs a
+ * 'submitted' funnel event. Returns null when the token is inactive/unknown so
+ * the caller can answer 404.
+ */
+export async function createLead(
+  token: string,
+  input: LeadInput,
+): Promise<{ ok: true } | null> {
+  const link = await q1<{ id: string; bid_id: string; event_id: string | null }>(
+    `select id, bid_id, event_id from bid_share_links where token = $1 and is_active = true`,
+    [token],
+  );
+  if (!link) return null;
+
+  const party: ShareAudience = isAudience(input.party) ? input.party : "any";
+  await q(
+    `insert into bid_share_leads
+       (share_link_id, bid_id, event_id, party, name, email, phone, message, amount)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+    [
+      link.id,
+      link.bid_id,
+      link.event_id,
+      party,
+      input.name ?? null,
+      input.email ?? null,
+      input.phone ?? null,
+      input.message ?? null,
+      input.amount ?? null,
+    ],
+  );
+
+  await q(`update bid_share_links set submit_count = submit_count + 1 where id = $1`, [link.id]);
+  await q(
+    `insert into bid_share_events (share_link_id, kind, actor_email, meta)
+     values ($1,'submitted',$2,$3)`,
+    [
+      link.id,
+      input.email ?? null,
+      JSON.stringify({
+        party,
+        name: input.name ?? null,
+        email: input.email ?? null,
+        phone: input.phone ?? null,
+        message: input.message ?? null,
+        amount: input.amount ?? null,
+      }),
+    ],
+  );
+
+  return { ok: true };
+}
+
+/** List the express-interest leads for a bid (owner only, IDOR-gated). */
+export async function listLeads(actor: Actor, bidId: string): Promise<BidShareLeadRow[]> {
+  await assertOwnsBid(actor, bidId);
+  return q<BidShareLeadRow>(
+    `select * from bid_share_leads where bid_id = $1 order by created_at desc limit 500`,
+    [bidId],
+  );
+}

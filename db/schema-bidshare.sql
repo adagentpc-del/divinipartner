@@ -43,3 +43,20 @@ create table if not exists bid_share_events (
   created_at timestamptz default now()
 );
 create index if not exists idx_bid_share_events_link on bid_share_events(share_link_id);
+
+-- Public "express interest" leads. A sponsor or vendor can raise a hand on the
+-- shared bid page without creating an account yet. The organizer follows up.
+create table if not exists bid_share_leads (
+  id uuid primary key default gen_random_uuid(),
+  share_link_id uuid references bid_share_links(id) on delete cascade,
+  bid_id uuid,
+  event_id uuid,
+  party text not null default 'any' check (party in ('vendor','sponsor','any')),
+  name text,
+  email text,
+  phone text,
+  message text,
+  amount numeric,
+  created_at timestamptz default now()
+);
+create index if not exists idx_bid_share_leads_bid on bid_share_leads(bid_id);

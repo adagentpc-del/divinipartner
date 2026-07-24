@@ -48,6 +48,14 @@ router.get(
 );
 
 router.get(
+  "/bid/:bidId/leads",
+  h(async (req, res) => {
+    const a = await actor(req);
+    res.json({ leads: await shares.listLeads(a, req.params.bidId) });
+  }),
+);
+
+router.get(
   "/:id/funnel",
   h(async (req, res) => {
     const a = await actor(req);

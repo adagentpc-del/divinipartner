@@ -9,7 +9,7 @@
  */
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { apiGet } from '../../lib/api';
+import { apiGet, apiSend } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { stashBidShare, trackBidShare } from '../../lib/bidShare';
 
@@ -50,6 +50,40 @@ export default function PublicBid() {
   const [view, setView] = useState<PublicBidView | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
+
+  // Secondary "express interest now" path: capture a lead with no account yet.
+  const [leadName, setLeadName] = useState('');
+  const [leadEmail, setLeadEmail] = useState('');
+  const [leadMessage, setLeadMessage] = useState('');
+  const [leadAmount, setLeadAmount] = useState('');
+  const [leadBusy, setLeadBusy] = useState(false);
+  const [leadErr, setLeadErr] = useState('');
+  const [leadSent, setLeadSent] = useState(false);
+
+  async function submitInterest(e: React.FormEvent) {
+    e.preventDefault();
+    if (!view) return;
+    if (!leadName.trim() || !leadEmail.trim()) {
+      setLeadErr('Please add your name and email.');
+      return;
+    }
+    setLeadBusy(true);
+    setLeadErr('');
+    try {
+      await apiSend('POST', `/public/bids/${encodeURIComponent(view.token)}/interest`, {
+        name: leadName.trim(),
+        email: leadEmail.trim(),
+        message: leadMessage.trim() || null,
+        amount: view.audience === 'sponsor' && leadAmount.trim() ? Number(leadAmount) : null,
+        party: view.audience,
+      });
+      setLeadSent(true);
+    } catch (e: any) {
+      setLeadErr(e?.message ?? 'Something went wrong. Please try again.');
+    } finally {
+      setLeadBusy(false);
+    }
+  }
 
   useEffect(() => {
     let live = true;
@@ -162,6 +196,59 @@ export default function PublicBid() {
                   Free to create your page. You only build your profile once, then submit here.
                 </p>
               )}
+
+              <div className="pb-interest">
+                {leadSent ? (
+                  <p className="pb-thanks">Thanks - the organizer will follow up with you.</p>
+                ) : (
+                  <>
+                    <div className="pb-or">or express interest now</div>
+                    <p className="pb-fine">
+                      Not ready to register? Leave your details and the organizer will reach out.
+                    </p>
+                    <form className="pb-form" onSubmit={submitInterest}>
+                      <input
+                        className="pb-input"
+                        type="text"
+                        placeholder="Your name"
+                        value={leadName}
+                        onChange={(e) => setLeadName(e.target.value)}
+                        required
+                      />
+                      <input
+                        className="pb-input"
+                        type="email"
+                        placeholder="Email"
+                        value={leadEmail}
+                        onChange={(e) => setLeadEmail(e.target.value)}
+                        required
+                      />
+                      {isSponsor && (
+                        <input
+                          className="pb-input"
+                          type="number"
+                          min="0"
+                          step="any"
+                          placeholder="Amount you have in mind (optional)"
+                          value={leadAmount}
+                          onChange={(e) => setLeadAmount(e.target.value)}
+                        />
+                      )}
+                      <textarea
+                        className="pb-input"
+                        rows={3}
+                        placeholder="Anything to add? (optional)"
+                        value={leadMessage}
+                        onChange={(e) => setLeadMessage(e.target.value)}
+                      />
+                      {leadErr && <p className="pb-err">{leadErr}</p>}
+                      <button type="submit" className="pb-btn ghost" disabled={leadBusy}>
+                        {leadBusy ? 'Sending...' : 'Express interest'}
+                      </button>
+                    </form>
+                  </>
+                )}
+              </div>
             </>
           ) : null}
         </div>
@@ -192,4 +279,13 @@ const CSS = `
 .pb-btn.ghost { background: transparent; border: 1px solid #2a3342; color: #e9edf4; }
 .pb-fine { font-size: 12px; opacity: .65; margin: 10px 2px 0; }
 .pb-loading { opacity: .8; }
+.pb-interest { margin-top: 22px; padding-top: 18px; border-top: 1px solid #232a37; }
+.pb-or { text-align: center; font-size: 12px; text-transform: uppercase; letter-spacing: .6px; opacity: .6; margin-bottom: 6px; }
+.pb-form { display: grid; gap: 10px; margin-top: 12px; }
+.pb-input { width: 100%; box-sizing: border-box; background: #0f131b; border: 1px solid #2a3342; border-radius: 10px;
+  padding: 11px 12px; font-size: 14px; color: #e9edf4; font-family: inherit; }
+.pb-input:focus { outline: none; border-color: #4c8bf5; }
+.pb-input::placeholder { color: #7c8698; }
+.pb-err { color: #f2a3a3; font-size: 13px; margin: 0; }
+.pb-thanks { color: #9ad0b0; font-size: 15px; margin: 4px 0 0; }
 `;
