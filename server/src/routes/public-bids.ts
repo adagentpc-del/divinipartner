@@ -11,6 +11,7 @@
  */
 import { Router, type Request, type Response, type NextFunction } from "express";
 import * as shares from "../db/bidShares.js";
+import { publicWriteRateLimit } from "../lib/rateLimit.js";
 
 const h =
   (fn: (req: Request, res: Response) => Promise<unknown>) =>
@@ -30,6 +31,7 @@ router.get(
 
 router.post(
   "/:token/track",
+  publicWriteRateLimit,
   h(async (req, res) => {
     const { kind, email, org_id, meta } = req.body ?? {};
     if (!kind || typeof kind !== "string") {
@@ -46,6 +48,7 @@ router.post(
 
 router.post(
   "/:token/interest",
+  publicWriteRateLimit,
   h(async (req, res) => {
     const { name, email, phone, message, amount, party } = req.body ?? {};
     if (!name || typeof name !== "string" || !email || typeof email !== "string") {

@@ -139,4 +139,28 @@ export const authRateLimit: RequestHandler = rateLimit({
   name: "auth",
 });
 
+/**
+ * Baseline throttle for the unauthenticated public surface (/api/public/*: bid
+ * views, event landings, agendas, tours). 60 requests per IP per minute - ample
+ * for a human loading a landing page and firing a couple of funnel pings, low
+ * enough to blunt scraping. Sits on top of the global /api limiter.
+ */
+export const publicRateLimit: RequestHandler = rateLimit({
+  windowMs: 60_000,
+  max: 60,
+  name: "public",
+});
+
+/**
+ * Strict limiter for public WRITE endpoints (funnel tracking, lead capture,
+ * attendee registration, exhibitor application): 12 per IP per minute. Blunts
+ * lead-spam and counter-inflation without blocking a real person who fills a
+ * form once. Applied per-route on the public POST handlers.
+ */
+export const publicWriteRateLimit: RequestHandler = rateLimit({
+  windowMs: 60_000,
+  max: 12,
+  name: "public-write",
+});
+
 export default rateLimit;

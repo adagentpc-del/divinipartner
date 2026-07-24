@@ -37,6 +37,7 @@ import publicEvent from "./routes/public-event.js";
 import tours from "./routes/tours.js";
 import publicTour from "./routes/public-tour.js";
 import compare from "./routes/compare.js";
+import { publicRateLimit, publicWriteRateLimit } from "./lib/rateLimit.js";
 import tasks from "./routes/tasks.js";
 // Phase 7
 import reviews from "./routes/reviews.js";
@@ -167,6 +168,9 @@ router.use("/profile-extras", profileDecksPrograms);
 router.use("/events", events);
 router.use("/bids", bids);
 router.use("/bid-shares", bidShares);
+// Baseline throttle across the whole unauthenticated public surface (must be
+// registered before any /public/* mount so it covers all of them).
+router.use("/public", publicRateLimit);
 router.use("/public/bids", publicBids);
 router.use("/quotes", quotes);
 router.use("/messages", messages);
