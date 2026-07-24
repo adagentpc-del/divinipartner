@@ -32,6 +32,10 @@ export interface SponsorUsed {
   name: string | null;
   category: string | null;
   status: string | null;
+  /** Present for charity sponsors sourced from sponsor_purchases. */
+  amount?: number | null;
+  /** 'venue_inventory' | 'charity_purchase' - where the sponsor row came from. */
+  source?: string | null;
 }
 
 export interface MemorySnapshot {

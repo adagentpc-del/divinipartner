@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { apiGet, apiSend } from '../lib/api';
 import { reportSignal } from '../lib/fingerprint';
+import { completeBidShareRegistration } from '../lib/bidShare';
 
 /**
  * Get started: role + plan + account-name selection. Shown to a verified,
@@ -137,7 +138,10 @@ export default function GetStarted() {
       }
       void reportSignal('/get-started');
       await refreshCompany();
-      nav('/app', { replace: true });
+      // If this signup came from a shared bid link, mark them registered and
+      // route straight to submit instead of the generic dashboard.
+      const share = await completeBidShareRegistration({ email: null }).catch(() => null);
+      nav(share?.next ?? '/app', { replace: true });
     } catch (e: any) {
       setErr(e?.message ?? 'Could not finish setting up your account.');
     } finally {

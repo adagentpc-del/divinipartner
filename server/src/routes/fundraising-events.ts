@@ -12,6 +12,7 @@ import { Router, type Request, type Response, type NextFunction } from "express"
 import { getAuth, requireUser } from "../auth.js";
 import * as db from "../db.js";
 import * as fr from "../db/fundraising.js";
+import { isTerminalStatus, onFundraisingCompleted } from "../db/completion.js";
 
 const h =
   (fn: (req: Request, res: Response) => Promise<unknown>) =>
@@ -62,7 +63,14 @@ router.patch(
   "/:id",
   h(async (req, res) => {
     const a = await actor(req);
-    res.json({ event: await fr.updateFundraisingEvent(a, req.params.id, req.body ?? {}) });
+    const event = await fr.updateFundraisingEvent(a, req.params.id, req.body ?? {});
+    // WS-1: on a terminal status, persist the recap + archive the linked event.
+    if (isTerminalStatus(event.status)) {
+      onFundraisingCompleted(a, event.id).catch((err) =>
+        console.error(`[WS-1] onFundraisingCompleted failed for ${event.id}`, err),
+      );
+    }
+    res.json({ event });
   }),
 );
 

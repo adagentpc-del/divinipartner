@@ -162,6 +162,8 @@ export type HistoryRow = {
   budget: string | null;
   categories: string[] | null;
   vendor_org_ids: string[] | null;
+  sponsor_org_ids: string[] | null;
+  sponsor_total: string | null;
   summary: unknown;
   outcome: string | null;
   completed_at: string | null;
@@ -170,8 +172,8 @@ export type HistoryRow = {
 
 const H_COLS = `
   id, event_id, organization_id, name, event_type, venue_id, venue_org_id,
-  guest_count, total_spend, budget, categories, vendor_org_ids, summary,
-  outcome, completed_at, created_at
+  guest_count, total_spend, budget, categories, vendor_org_ids, sponsor_org_ids,
+  sponsor_total, summary, outcome, completed_at, created_at
 `;
 
 /** List the org's event history (most recent first). */
@@ -196,6 +198,8 @@ export type HistoryInput = {
   budget?: number | null;
   categories?: string[] | null;
   vendor_org_ids?: string[] | null;
+  sponsor_org_ids?: string[] | null;
+  sponsor_total?: number | null;
   summary?: unknown;
   outcome?: string | null;
   completed_at?: string | null;
@@ -209,9 +213,9 @@ export async function recordHistory(actor: Actor, input: HistoryInput): Promise<
   const row = await q1<HistoryRow>(
     `insert into event_history
        (event_id, organization_id, name, event_type, venue_id, venue_org_id,
-        guest_count, total_spend, budget, categories, vendor_org_ids, summary,
-        outcome, completed_at)
-     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,coalesce($14, now()))
+        guest_count, total_spend, budget, categories, vendor_org_ids,
+        sponsor_org_ids, sponsor_total, summary, outcome, completed_at)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,coalesce($16, now()))
      returning ${H_COLS}`,
     [
       input.event_id ?? null,
@@ -225,6 +229,8 @@ export async function recordHistory(actor: Actor, input: HistoryInput): Promise<
       input.budget ?? null,
       input.categories ?? null,
       input.vendor_org_ids ?? null,
+      input.sponsor_org_ids ?? null,
+      input.sponsor_total ?? null,
       input.summary != null ? JSON.stringify(input.summary) : null,
       input.outcome ?? "completed",
       input.completed_at ?? null,

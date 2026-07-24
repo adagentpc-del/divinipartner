@@ -14,6 +14,8 @@ import profileDecksPrograms from "./routes/profile-decks-programs.js";
 // Phase 3
 import events from "./routes/events.js";
 import bids from "./routes/bids.js";
+import bidShares from "./routes/bid-shares.js";
+import publicBids from "./routes/public-bids.js";
 import quotes from "./routes/quotes.js";
 import messages from "./routes/messages.js";
 // Phase 4
@@ -156,6 +158,8 @@ router.use("/profile", profiles);
 router.use("/profile-extras", profileDecksPrograms);
 router.use("/events", events);
 router.use("/bids", bids);
+router.use("/bid-shares", bidShares);
+router.use("/public/bids", publicBids);
 router.use("/quotes", quotes);
 router.use("/messages", messages);
 router.use("/inventory", inventory);

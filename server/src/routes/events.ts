@@ -10,6 +10,7 @@ import * as db from "../db.js";
 import * as events from "../db/events.js";
 import { notify } from "../lib/notify.js";
 import { recipients } from "../lib/recipients.js";
+import { isTerminalStatus, onEventCompleted } from "../db/completion.js";
 
 const h =
   (fn: (req: Request, res: Response) => Promise<unknown>) =>
@@ -89,6 +90,13 @@ router.post(
     );
     if (to.length)
       await notify.eventStatusChanged(to, ev.name, status, { eventId: ev.id }).catch(() => undefined);
+    // WS-1: on a terminal status, durably archive the event (vendors + sponsors)
+    // and persist any linked fundraising recap. Best-effort, never blocks.
+    if (isTerminalStatus(status)) {
+      onEventCompleted(a, ev.id).catch((err) =>
+        console.error(`[WS-1] onEventCompleted failed for ${ev.id}`, err),
+      );
+    }
     res.json({ event: ev });
   }),
 );

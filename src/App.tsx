@@ -98,6 +98,7 @@ import VendorReadiness from './pages/VendorReadiness';
 // vendor network + invites
 import VendorNetwork from './pages/network/VendorNetwork';
 import JoinInvite from './pages/join/JoinInvite';
+import PublicBid from './pages/public/PublicBid';
 import SignDocument from './pages/sign/SignDocument';
 
 // claim engine
@@ -292,6 +293,7 @@ function Routed() {
 
       {/* public invite landing */}
       <Route path="/join/:token" element={<JoinInvite />} />
+      <Route path="/b/:token" element={<PublicBid />} />
 
       {/* public claim engine */}
       <Route path="/claim/:slug" element={<UnclaimedProfile />} />

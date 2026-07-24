@@ -71,15 +71,37 @@ export async function recordEventMemory(actor: Actor, eventId: string): Promise<
 
   // Sponsorship opportunities are venue-scoped (no event_id column), so the
   // sponsor stack for the snapshot is the open inventory at this event's venue.
-  const sponsors = ev.venue_id
+  const venueSponsors = ev.venue_id
     ? await q<SponsorUsed>(
-        `select id, name, category, status
+        `select id, name, category, status, 'venue_inventory' as source
            from sponsorship_opportunities
           where venue_id = $1
           order by created_at asc`,
         [ev.venue_id],
       )
     : [];
+
+  // Charity sponsors: orgs that bought a sponsorship package on a fundraising
+  // event linked to THIS event (fundraising_events.event_id = eventId). This is
+  // the durable "who actually sponsored this event" record, sourced from the
+  // real purchase rows, and is unioned with the venue-side inventory above.
+  const charitySponsors = await q<SponsorUsed>(
+    `select spur.sponsor_org_id as id,
+            o.name as name,
+            pkg.tier as category,
+            spur.status as status,
+            spur.amount as amount,
+            'charity_purchase' as source
+       from sponsor_purchases spur
+       join fundraising_events fe on fe.id = spur.fundraising_event_id
+       left join sponsorship_packages pkg on pkg.id = spur.sponsorship_package_id
+       left join organizations o on o.id = spur.sponsor_org_id
+      where fe.event_id = $1
+      order by spur.created_at asc`,
+    [eventId],
+  );
+
+  const sponsors: SponsorUsed[] = [...venueSponsors, ...charitySponsors];
 
   const invoices = await q<{ total: string | null; status: string | null }>(
     `select total, status from invoices where event_id = $1`,

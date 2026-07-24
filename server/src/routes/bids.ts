@@ -10,6 +10,7 @@ import { getAuth, requireUser } from "../auth.js";
 import * as db from "../db.js";
 import * as bids from "../db/bids.js";
 import * as quotes from "../db/quotes.js";
+import * as bidShares from "../db/bidShares.js";
 import { getEvent } from "../db/events.js";
 import { notify } from "../lib/notify.js";
 import { recipients } from "../lib/recipients.js";
@@ -86,14 +87,18 @@ router.post(
     const { event_id } = req.body ?? {};
     if (!event_id) return res.status(400).json({ error: "event_id required" });
     const bid = await bids.createBid(a, req.body);
+    let share: bidShares.BidShareLinkRow | null = null;
     if (bid.status !== "draft") {
       // A live bid is confirmed to the event owner side (client, planner, the
       // organizing org, the venue). Best-effort, never blocks the response.
       const to = await recipients.eventOwnerEmails(bid.event_id).catch(() => [] as string[]);
       const name = (await recipients.eventName(bid.event_id).catch(() => null)) ?? "your event";
       if (to.length) await notify.bidPosted(to, name, { bidId: bid.id }).catch(() => undefined);
+      // Auto-mint a default public share link so the owner can immediately hand
+      // it to a vendor/sponsor they met in person. Best-effort.
+      share = await bidShares.ensureDefaultShareLink(a, bid.id).catch(() => null);
     }
-    res.status(201).json({ bid });
+    res.status(201).json({ bid, share });
   }),
 );
 
