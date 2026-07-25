@@ -28,7 +28,6 @@ import {
   listCommissions,
   commissionTotals,
   recordCommission,
-  onboardingLinkForCode,
   referralLinkForCode,
   PARTNER_TYPES,
   COMMISSION_TYPES,
@@ -37,8 +36,15 @@ import {
   type PartnerSettings,
   type Attribution,
 } from "../db/partners.js";
-import { createOnboarding } from "../db/payouts.js";
+import { PUBLIC_APP_URL, BASE_PATH } from "../config.js";
 import type { CommissionSource } from "../lib/partnerCommission.js";
+
+/** Where a partner registers/connects their Stripe payout account (no bank data stored by us). */
+function payoutRegistrationLink(): string {
+  const base = PUBLIC_APP_URL || "";
+  const path = `${BASE_PATH}/connect-payouts/settings`;
+  return base ? `${base}${path}` : path;
+}
 
 const h =
   (fn: (req: Request, res: Response) => Promise<unknown>) =>
@@ -145,30 +151,15 @@ router.post(
       { summary: `Created partner ${partner.name ?? partner.referral_code ?? partner.id}`, ip: req.ip },
     );
 
-    // Auto-provision the contract + bank-wire onboarding link and (if we have an
-    // email) send the referral agreement so the partner can accept it and enter
-    // their payout details in one step. Best-effort: a partner is still created
-    // even if onboarding link creation or the email send fails.
-    let onboardingCode: string | null = null;
-    let onboardingLink: string | null = null;
+    // Send the referral agreement and direct the partner to REGISTER FOR A STRIPE
+    // PAYOUT ACCOUNT. We never collect or store bank details; the partner signs in
+    // with this email and connects Stripe (hosted onboarding), so Stripe holds all
+    // banking data and we keep only the connected-account id + capability flags.
+    // Best-effort: the partner is still created even if the email send fails.
+    const payoutLink = payoutRegistrationLink();
     let contractEmailed = false;
     try {
-      const onboarding = await createOnboarding(partner.id, partner.contact_email);
-      onboardingCode = onboarding.onboarding_code;
-      onboardingLink = onboarding.onboarding_code
-        ? onboardingLinkForCode(onboarding.onboarding_code)
-        : null;
-      await logAction(
-        { id: null, email: auth.email },
-        "partner.onboarding_link_created",
-        "partner_onboarding",
-        onboarding.id,
-        null,
-        { partner_id: partner.id, onboarding_code: onboarding.onboarding_code, auto: true },
-        { summary: "Auto-created partner onboarding link on partner creation", ip: req.ip },
-      );
-
-      if (partner.contact_email && onboardingLink) {
+      if (partner.contact_email) {
         const refLink = partner.referral_link ?? (partner.referral_code ? referralLinkForCode(partner.referral_code) : null);
         const pct = Number(partner.revenue_share_pct ?? 0);
         const flat = Number(partner.flat_fee_cents ?? 0);
@@ -184,26 +175,35 @@ router.post(
           `Welcome to the Divini Partners referral program${partner.name ? `, ${partner.name}` : ""}.`,
           `Your agreement: ${terms} on referred ${scope}.`,
           refLink ? `Your referral link: ${refLink}` : "",
-          `Review and accept your referral agreement and add your bank-wire payout details here so you can be paid out automatically.`,
+          `To get paid, sign in or create your account with this email (${partner.contact_email}) and connect your Stripe payout account. Stripe securely collects your banking details; Divini Partners never stores them.`,
         ]
           .filter(Boolean)
           .join("\n\n");
         await notify
           .partnerContractSent(partner.contact_email, partner.name ?? partner.company ?? "Partner", {
-            link: onboardingLink,
+            link: payoutLink,
             message,
             partner_id: partner.id,
           })
           .catch(() => null);
         contractEmailed = true;
+        await logAction(
+          { id: null, email: auth.email },
+          "partner.payout_invite_sent",
+          "partner",
+          partner.id,
+          null,
+          { partner_id: partner.id, contact_email: partner.contact_email },
+          { summary: "Emailed Stripe payout registration invite to partner", ip: req.ip },
+        );
       }
     } catch {
-      // Onboarding provisioning is best-effort; the partner + link already exist.
+      // The invite email is best-effort; the partner + referral link already exist.
     }
 
     res.status(201).json({
       partner,
-      onboarding: { code: onboardingCode, link: onboardingLink },
+      payout: { link: payoutLink },
       contract_emailed: contractEmailed,
     });
   }),

@@ -85,13 +85,23 @@ async function partnerIdForCaller(userId: string, email: string | null): Promise
   try {
     const actor = await db.getActor(userId, email);
     const orgId = actor.org?.id ?? null;
+    const mail = (actor.user.email ?? "").trim().toLowerCase();
+    // Match the partner record by user id, org, OR the contact email the admin
+    // set when creating the partner. The email match is what lets a referral
+    // partner who simply registers/sign in with that email reach their own
+    // Stripe payout onboarding without an admin manually linking the account.
     const row = await q1<{ id: string }>(
       `select id from partners
         where (user_id = $1)
            or ($2::uuid is not null and organization_id = $2)
-        order by case when user_id = $1 then 0 else 1 end
+           or ($3 <> '' and lower(contact_email) = $3)
+        order by case
+                   when user_id = $1 then 0
+                   when $3 <> '' and lower(contact_email) = $3 then 1
+                   else 2
+                 end
         limit 1`,
-      [actor.user.id, orgId],
+      [actor.user.id, orgId, mail],
     );
     return row?.id ?? null;
   } catch {

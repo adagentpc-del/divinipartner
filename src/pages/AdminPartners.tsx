@@ -105,12 +105,12 @@ export default function AdminPartners() {
       } else {
         const r = await apiSend<{
           partner: Partner;
-          onboarding: { code: string | null; link: string | null };
+          payout: { link: string | null };
           contract_emailed: boolean;
         }>('POST', '/partners', form);
         setCreated({
           name: r.partner.name || r.partner.company || 'Partner',
-          onboardingLink: r.onboarding?.link ?? null,
+          onboardingLink: r.payout?.link ?? null,
           emailed: !!r.contract_emailed,
           email: r.partner.contact_email ?? null,
         });
@@ -156,12 +156,12 @@ export default function AdminPartners() {
           </div>
           <p className="ap-muted">
             {created.emailed
-              ? `The referral agreement and bank-wire payout setup were emailed to ${created.email}.`
-              : 'Add a contact email to auto-send the agreement. Share the contract + payout link below with the partner.'}
+              ? `The referral agreement was emailed to ${created.email} with a link to register and connect their Stripe payout account. Stripe collects their banking details; we never store them.`
+              : 'Add a contact email to auto-send the agreement. Share the payout registration link below so the partner can connect Stripe.'}
           </p>
           {created.onboardingLink ? (
             <div className="ap-created-link">
-              <span className="ap-muted">Contract + payout link</span>
+              <span className="ap-muted">Stripe payout registration link</span>
               <code>{created.onboardingLink}</code>
               <button
                 type="button"
