@@ -31,6 +31,12 @@ import {
   type PaymentKind,
 } from "../db/payments.js";
 import { applyPaymentToInvoice, getInvoicePartiesById } from "../db/invoices.js";
+import {
+  confirmTicketOrder,
+  confirmExhibitorOrder,
+  releaseTicketOrder,
+  releaseExhibitorOrder,
+} from "../db/publicCheckout.js";
 import { recordProcessorPayment, computeFees, decomposeGrossOnTop } from "../db/payments.js";
 import {
   getPayoutAccount,
@@ -712,9 +718,17 @@ router.post(
         const s = (event.data as { object?: Record<string, unknown> } | undefined)?.object ?? {};
         if (s.payment_status === "paid") {
           const m = (s.metadata as Record<string, string> | null) ?? {};
+          const reference = String((s.payment_intent as string) || s.id);
+          // Public event orders (tickets / exhibitor booths): confirm the specific
+          // order idempotently. This is the backstop for the synchronous
+          // /public/event/checkout/confirm return; both converge on the same row.
+          if (m.purpose === "event_ticket" && m.order_id) {
+            await confirmTicketOrder(m.order_id, reference).catch(() => false);
+          } else if (m.purpose === "exhibitor" && m.order_id) {
+            await confirmExhibitorOrder(m.order_id, reference).catch(() => false);
+          }
           const orgId = m.org_id;
           if (orgId) {
-            const reference = String((s.payment_intent as string) || s.id);
             const amt = Number(s.amount_total ?? 0) / 100;
             const autoSplit = !!(await activeStripeDestination(orgId)); // Connect transferred the net
             const { created } = await recordProcessorPayment(orgId, m.tier || (await orgTier(orgId)), m.recorded_by || null, {
@@ -729,6 +743,17 @@ router.post(
             });
             if (created && m.invoice_id) await applyPaymentToInvoice(m.invoice_id, amt);
           }
+        }
+      }
+      // An abandoned Stripe Checkout expires: release the inventory a public
+      // ticket / exhibitor order was holding so it returns to the pool.
+      if (event.type === "checkout.session.expired") {
+        const s = (event.data as { object?: Record<string, unknown> } | undefined)?.object ?? {};
+        const m = (s.metadata as Record<string, string> | null) ?? {};
+        if (m.purpose === "event_ticket" && m.order_id) {
+          await releaseTicketOrder(m.order_id).catch(() => false);
+        } else if (m.purpose === "exhibitor" && m.order_id) {
+          await releaseExhibitorOrder(m.order_id).catch(() => false);
         }
       }
       return res.json({ received: true });

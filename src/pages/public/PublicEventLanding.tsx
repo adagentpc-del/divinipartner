@@ -32,6 +32,8 @@ type Landing = {
   }[];
 };
 
+type Checkout = { redirect_url: string; session_ref: string } | null;
+
 type RegisterResult = {
   ok: true;
   registration_id: string;
@@ -39,6 +41,8 @@ type RegisterResult = {
   amount_cents: number;
   platform_fee_cents: number;
   total_cents: number;
+  checkout?: Checkout;
+  payment_required?: boolean;
 };
 
 type ExhibitPackage = {
@@ -67,6 +71,8 @@ type ApplyResult = {
   status: 'pending_payment' | 'confirmed';
   amount_cents: number;
   platform_fee_cents: number;
+  checkout?: Checkout;
+  payment_required?: boolean;
 };
 
 function fullDate(v: string | null): string | null {
@@ -112,6 +118,9 @@ export default function PublicEventLanding() {
   const [landing, setLanding] = useState<Landing | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
+
+  // Payment return banner: set when the buyer lands back from Stripe checkout.
+  const [payState, setPayState] = useState<'confirming' | 'paid' | 'cancelled' | 'failed' | null>(null);
 
   // Attend form state.
   const [name, setName] = useState('');
@@ -166,6 +175,36 @@ export default function PublicEventLanding() {
     };
   }, [eventId]);
 
+  // Returned from Stripe checkout: confirm the order by session ref (idempotent;
+  // the webhook is the backstop) and show a result banner. Then strip the query
+  // params so a refresh does not re-confirm.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const paid = params.get('paid');
+    if (!paid) return;
+    if (paid === 'cancel') {
+      setPayState('cancelled');
+      window.history.replaceState(null, '', window.location.pathname);
+      return;
+    }
+    const sessionRef = params.get('session_ref');
+    if (paid === '1' && sessionRef) {
+      setPayState('confirming');
+      (async () => {
+        try {
+          await apiSend('POST', '/public/event/checkout/confirm', { session_ref: sessionRef });
+          setPayState('paid');
+        } catch {
+          // The synchronous confirm can race the webhook; either way the order
+          // settles. Show a soft success rather than a scary error.
+          setPayState('paid');
+        } finally {
+          window.history.replaceState(null, '', window.location.pathname);
+        }
+      })();
+    }
+  }, []);
+
   async function submitAttend(e: React.FormEvent) {
     e.preventDefault();
     if (!landing) return;
@@ -190,6 +229,11 @@ export default function PublicEventLanding() {
         body.quantity = quantity;
       }
       const r = await apiSend<RegisterResult>('POST', `/public/event/${encodeURIComponent(eventId)}/register`, body);
+      // Paid ticket with Stripe configured: send the buyer to hosted checkout.
+      if (r.checkout?.redirect_url) {
+        window.location.href = r.checkout.redirect_url;
+        return;
+      }
       setResult(r);
     } catch (e: any) {
       setAttendErr(e?.message ?? 'Something went wrong. Please try again.');
@@ -226,6 +270,10 @@ export default function PublicEventLanding() {
       if (packageId) body.package_id = packageId;
       if (boothId) body.booth_id = boothId;
       const r = await apiSend<ApplyResult>('POST', `/public/event/${encodeURIComponent(eventId)}/apply`, body);
+      if (r.checkout?.redirect_url) {
+        window.location.href = r.checkout.redirect_url;
+        return;
+      }
       setApplyResult(r);
     } catch (e: any) {
       setVErr(e?.message ?? 'Something went wrong. Please try again.');
@@ -267,6 +315,15 @@ export default function PublicEventLanding() {
       <div className="el-wrap">
         <div className="el-brand">Divini Partners</div>
         <div className="el-by">by Divini Group</div>
+
+        {payState ? (
+          <div className={`el-paybanner ${payState}`}>
+            {payState === 'confirming' && 'Confirming your payment...'}
+            {payState === 'paid' && 'Payment received. You are all set, and a confirmation is on its way to your email.'}
+            {payState === 'cancelled' && 'Checkout was cancelled. Your spot was not charged. You can try again below.'}
+            {payState === 'failed' && 'We could not confirm that payment. If you were charged, it will still be recorded shortly.'}
+          </div>
+        ) : null}
 
         {loading ? (
           <div className="el-card el-loading">Loading this event...</div>
@@ -583,6 +640,10 @@ const CSS = `
 .el-brand { font-size: 22px; font-weight: 700; letter-spacing: .3px; text-align: center; }
 .el-by { font-size: 12px; opacity: .6; margin-bottom: 20px; text-align: center; }
 .el-card { background: #141821; border: 1px solid #232a37; border-radius: 16px; padding: 24px; margin-bottom: 16px; }
+.el-paybanner { border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; font-size: 14px; border: 1px solid; }
+.el-paybanner.confirming { background: rgba(201,163,91,.12); border-color: rgba(201,163,91,.4); color: #e7cf9c; }
+.el-paybanner.paid { background: rgba(30,93,74,.18); border-color: rgba(52,168,110,.5); color: #a7e8c8; }
+.el-paybanner.cancelled, .el-paybanner.failed { background: rgba(138,58,58,.18); border-color: rgba(200,90,90,.5); color: #f0b8b8; }
 .el-loading { opacity: .8; text-align: center; }
 .el-card h1 { font-size: 26px; margin: 6px 0 8px; }
 .el-card h2 { font-size: 18px; margin: 0 0 14px; }
