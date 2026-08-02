@@ -68,7 +68,7 @@ const NAV: NavItem[] = [
   { label: 'Quote Approvals', icon: 'V', to: '/vendor/quote-approvals' },
   { label: 'Readiness Score', icon: 'C', to: '/vendor-readiness-score' },
   { label: 'Vendor Scorecards', icon: 'S', to: '/vendor-scorecards' },
-  { label: 'Documents', icon: 'D', to: '/vendor-compliance' },
+  { label: 'Documents', icon: 'D', to: '/compliance' },
   { label: 'Discovery', icon: 'V', to: '/recommendations' },
   { label: 'Bid Board', icon: 'B', to: '/bids' },
   { label: 'Search Bids', icon: 'L', to: '/search-bids' },
@@ -251,7 +251,7 @@ export default function VendorDashboard() {
 
   return (
     <DashboardShell title="Vendor Dashboard" navLabel="Vendor Workspace" items={NAV}>
-      <PromptStrip onPrompt={() => nav('/vendor-compliance')} />
+      <PromptStrip onPrompt={() => nav('/compliance')} />
       <FeaturedUpsell />
 
       <div className="dpdash-stats">
@@ -293,7 +293,7 @@ export default function VendorDashboard() {
           <div className="dpdash-empty">
             <span className="dpdash-empty-glyph" aria-hidden="true">D</span>
             <p>No documents uploaded. Add your certificate of insurance and W-9 to unlock awarded jobs.</p>
-            <button type="button" className="dpdash-btn" onClick={() => nav('/vendor-compliance')}>Upload documents</button>
+            <button type="button" className="dpdash-btn" onClick={() => nav('/compliance')}>Upload documents</button>
           </div>
         </div>
 
