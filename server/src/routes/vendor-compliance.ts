@@ -17,6 +17,7 @@ import { Router, type Request, type Response, type NextFunction } from "express"
 import { getAuth, requireUser } from "../auth.js";
 import * as db from "../db.js";
 import * as compliance from "../db/vendor-compliance.js";
+import { q1 } from "../pool.js";
 
 const h =
   (fn: (req: Request, res: Response) => Promise<unknown>) =>
@@ -30,6 +31,35 @@ async function actor(req: Request): Promise<db.Actor> {
 
 const router = Router();
 router.use(requireUser);
+
+/**
+ * Resolve and return the CALLING user's own vendor compliance score, looked up
+ * by their org (vendors.organization_id) rather than requiring the caller to
+ * already know their internal vendors.id. Added so the frontend (Vendor
+ * Compliance dashboard) can auto-load on mount instead of asking the user to
+ * paste their own vendor id. Must be registered before the "/:vendorId" route
+ * below or Express would treat "mine" as a vendorId param.
+ */
+router.get(
+  "/mine",
+  h(async (req, res) => {
+    const a = await actor(req);
+    if (!a.org) return res.status(400).json({ error: "no organization on this account" });
+    const row = await q1<{ id: string }>(
+      `select id from vendors where organization_id = $1`,
+      [a.org.id],
+    );
+    if (!row) return res.status(404).json({ error: "no vendor profile for this organization" });
+    const result = await compliance.getVendorCompliance(a, row.id);
+    res.json({
+      vendor_id: row.id,
+      score: result.score,
+      breakdown: result.breakdown,
+      why: result.why,
+      row: result.row,
+    });
+  }),
+);
 
 /** Get a vendor's compliance score + breakdown + the WHY reasons. */
 router.get(
