@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { apiGet, apiSend } from '../lib/api';
 import PreferredWhy from './components/PreferredWhy';
 
@@ -30,9 +30,34 @@ export default function VendorCompliancePanel() {
   const [vendorId, setVendorId] = useState('');
   const [activeVendor, setActiveVendor] = useState('');
   const [data, setData] = useState<ComplianceResponse | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [noVendorProfile, setNoVendorProfile] = useState(false);
+
+  // Auto-load the signed-in user's own vendor compliance score on mount, so
+  // vendors do not have to know or paste their own internal vendors.id. Falls
+  // back to the manual-id lookup form below (e.g. for an admin checking a
+  // specific vendor) if there is no vendor profile on this account.
+  useEffect(() => {
+    let live = true;
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await apiGet<ComplianceResponse>('/vendor-compliance/mine');
+        if (!live) return;
+        setData(res);
+        setActiveVendor(res.vendor_id);
+        setVendorId(res.vendor_id);
+      } catch {
+        if (live) setNoVendorProfile(true);
+      } finally {
+        if (live) setLoading(false);
+      }
+    })();
+    return () => { live = false; };
+  }, []);
 
   async function load(id: string) {
     if (!id) return;
@@ -82,33 +107,40 @@ export default function VendorCompliancePanel() {
         </div>
       </header>
 
-      <form
-        className="vc-bar"
-        onSubmit={(e) => {
-          e.preventDefault();
-          load(vendorId.trim());
-        }}
-      >
-        <label>
-          Vendor ID
-          <input
-            value={vendorId}
-            placeholder="Paste your vendor id"
-            onChange={(e) => setVendorId(e.target.value)}
-          />
-        </label>
-        <button type="submit" className="vc-btn">Load compliance</button>
-        {activeVendor && (
+      {noVendorProfile && (
+        <form
+          className="vc-bar"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setNoVendorProfile(false);
+            load(vendorId.trim());
+          }}
+        >
+          <label>
+            Vendor ID
+            <input
+              value={vendorId}
+              placeholder="No vendor profile on this account. Paste a vendor id to look one up."
+              onChange={(e) => setVendorId(e.target.value)}
+            />
+          </label>
+          <button type="submit" className="vc-btn">Load compliance</button>
+        </form>
+      )}
+      {activeVendor && (
+        <div className="vc-bar">
           <button type="button" className="vc-btn ghost" disabled={refreshing} onClick={refresh}>
             {refreshing ? 'Refreshing.' : 'Refresh score'}
           </button>
-        )}
-      </form>
+        </div>
+      )}
 
       {error && <div className="vc-error">{error}</div>}
 
       {!activeVendor ? (
-        <div className="vc-empty">Enter a vendor id above to view its compliance score.</div>
+        <div className="vc-empty">
+          {loading ? 'Loading your compliance score.' : 'No vendor profile found on this account. Enter a vendor id above to look one up.'}
+        </div>
       ) : loading ? (
         <div className="vc-empty">Loading compliance.</div>
       ) : data ? (
