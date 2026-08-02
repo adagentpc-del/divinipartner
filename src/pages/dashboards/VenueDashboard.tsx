@@ -93,7 +93,7 @@ const PROMPTS = [
   'Respond to your newest inquiry',
 ];
 
-function PromptStrip() {
+function PromptStrip({ onPrompt }: { onPrompt: () => void }) {
   return (
     <section className="dpdash-nba">
       <div className="dpdash-nba-head">
@@ -102,7 +102,7 @@ function PromptStrip() {
       </div>
       <div className="dpdash-nba-prompts">
         {PROMPTS.map((p, i) => (
-          <button key={i} type="button" className="dpdash-prompt">{p}</button>
+          <button key={i} type="button" className="dpdash-prompt" onClick={onPrompt}>{p}</button>
         ))}
       </div>
     </section>
@@ -128,7 +128,7 @@ export default function VenueDashboard() {
         .vd-network-btn:hover{background:#123c2e}
       `}</style>
 
-      <PromptStrip />
+      <PromptStrip onPrompt={() => nav('/venue-twin')} />
 
       <section className="vd-network">
         <div className="vd-network-txt">
@@ -157,7 +157,7 @@ export default function VenueDashboard() {
           <div className="dpdash-empty">
             <span className="dpdash-empty-glyph" aria-hidden="true">Q</span>
             <p>No inquiries yet. Once your profile is live, requests for dates and walkthroughs will land here.</p>
-            <button type="button" className="dpdash-btn ghost">View inquiries</button>
+            <button type="button" className="dpdash-btn ghost" onClick={() => nav('/leads')}>View inquiries</button>
           </div>
         </div>
 
@@ -167,7 +167,7 @@ export default function VenueDashboard() {
           <div className="dpdash-empty">
             <span className="dpdash-empty-glyph" aria-hidden="true">S</span>
             <p>No spaces added. Add a ballroom, garden, or suite so clients can match their guest count.</p>
-            <button type="button" className="dpdash-btn">Add a space</button>
+            <button type="button" className="dpdash-btn" onClick={() => nav('/venue-twin')}>Add a space</button>
           </div>
         </div>
 
@@ -177,7 +177,7 @@ export default function VenueDashboard() {
           <div className="dpdash-empty">
             <span className="dpdash-empty-glyph" aria-hidden="true">A</span>
             <p>No availability set. Publish open dates and seasonal rates to start receiving qualified inquiries.</p>
-            <button type="button" className="dpdash-btn ghost">Set availability</button>
+            <button type="button" className="dpdash-btn ghost" onClick={() => nav('/venue-twin')}>Set availability</button>
           </div>
         </div>
 

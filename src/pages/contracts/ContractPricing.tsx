@@ -6,9 +6,9 @@
  * date range, with an approval status. When the org is not Premier the page shows
  * an upsell. Self-contained styles. Zero em dashes.
  */
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { apiGet } from '../../lib/api';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { apiGet, apiSend } from '../../lib/api';
 
 type Contract = {
   id: string;
@@ -34,6 +34,14 @@ const PARTNER_TYPE_LABELS: Record<string, string> = {
   preferred_network: 'Preferred network',
 };
 
+const PRICING_TYPE_LABELS: Record<string, string> = {
+  discount: 'Discount %',
+  fixed_rate: 'Fixed rate ($)',
+  volume_tier: 'Volume tier',
+};
+
+type OrgResult = { organization_id: string | null; name: string | null; kind: string | null };
+
 function pricingSummary(c: Contract): string {
   if (c.pricing_type === 'discount' && c.discount_pct != null) return `${(Number(c.discount_pct) * 100).toFixed(1)}% discount`;
   if (c.pricing_type === 'fixed_rate' && c.fixed_rate != null) {
@@ -44,9 +52,22 @@ function pricingSummary(c: Contract): string {
 }
 
 export default function ContractPricing() {
+  const nav = useNavigate();
   const [rows, setRows] = useState<Contract[]>([]);
   const [premier, setPremier] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  const [showForm, setShowForm] = useState(false);
+  const [name, setName] = useState('');
+  const [partnerType, setPartnerType] = useState('venue_vendor');
+  const [pricingType, setPricingType] = useState('discount');
+  const [pricingValue, setPricingValue] = useState('');
+  const [orgQuery, setOrgQuery] = useState('');
+  const [orgResults, setOrgResults] = useState<OrgResult[]>([]);
+  const [selectedOrg, setSelectedOrg] = useState<OrgResult | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveErr, setSaveErr] = useState<string | null>(null);
+  const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let on = true;
@@ -56,6 +77,48 @@ export default function ContractPricing() {
       .finally(() => { if (on) setLoading(false); });
     return () => { on = false; };
   }, []);
+
+  function onOrgQueryChange(v: string) {
+    setOrgQuery(v);
+    setSelectedOrg(null);
+    if (searchDebounce.current) clearTimeout(searchDebounce.current);
+    if (v.trim().length < 2) { setOrgResults([]); return; }
+    searchDebounce.current = setTimeout(() => {
+      apiGet<{ results: OrgResult[] }>(`/marketplace/search?q=${encodeURIComponent(v.trim())}&limit=8`)
+        .then((r) => setOrgResults(r.results ?? []))
+        .catch(() => setOrgResults([]));
+    }, 250);
+  }
+
+  async function createPartnership() {
+    if (!selectedOrg?.organization_id) { setSaveErr('Search for and select the partner organization first.'); return; }
+    setSaving(true);
+    setSaveErr(null);
+    try {
+      const body: Record<string, unknown> = {
+        name: name.trim() || null,
+        partner_b_org: selectedOrg.organization_id,
+        partner_type: partnerType,
+        pricing_type: pricingType,
+      };
+      const val = Number(pricingValue);
+      if (pricingType === 'discount' && Number.isFinite(val)) body.discount_pct = val / 100;
+      if (pricingType === 'fixed_rate' && Number.isFinite(val)) body.fixed_rate = val;
+      if (pricingType === 'volume_tier') body.volume_tier = pricingValue.trim() || null;
+      await apiSend('POST', '/contract-pricing', body);
+      setName(''); setPricingValue(''); setOrgQuery(''); setSelectedOrg(null); setOrgResults([]);
+      setShowForm(false);
+      setLoading(true);
+      const r = await apiGet<{ contracts: Contract[]; premier: boolean }>('/contract-pricing');
+      setRows(r.contracts ?? []);
+      setPremier(!!r.premier);
+    } catch (e) {
+      setSaveErr((e as Error)?.message ?? 'Could not create the partnership.');
+    } finally {
+      setSaving(false);
+      setLoading(false);
+    }
+  }
 
   return (
     <div className="dpcp">
@@ -67,8 +130,65 @@ export default function ContractPricing() {
           <h1 className="dpcp-title">Contract pricing partnerships</h1>
           <p className="dpcp-sub">Lock in preferential pricing with partner organizations.</p>
         </div>
-        {premier ? <button type="button" className="dpcp-btn primary">New partnership</button> : null}
+        {premier ? (
+          <button type="button" className="dpcp-btn primary" onClick={() => setShowForm((s) => !s)}>
+            {showForm ? 'Cancel' : 'New partnership'}
+          </button>
+        ) : null}
       </header>
+
+      {showForm && premier ? (
+        <div className="dpcp-form">
+          <div className="dpcp-form-row">
+            <label>Partner organization
+              <input
+                value={orgQuery}
+                onChange={(e) => onOrgQueryChange(e.target.value)}
+                placeholder="Search by name..."
+              />
+              {orgResults.length > 0 && !selectedOrg ? (
+                <div className="dpcp-org-results">
+                  {orgResults.map((o) => (
+                    <button
+                      type="button"
+                      key={o.organization_id}
+                      className="dpcp-org-result"
+                      onClick={() => { setSelectedOrg(o); setOrgQuery(o.name ?? ''); setOrgResults([]); }}
+                    >
+                      {o.name ?? 'Unnamed'} <span>{o.kind}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              {selectedOrg ? <span className="dpcp-org-selected">Selected: {selectedOrg.name}</span> : null}
+            </label>
+            <label>Partnership name (optional)
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Preferred florist rate" />
+            </label>
+          </div>
+          <div className="dpcp-form-row">
+            <label>Partner type
+              <select value={partnerType} onChange={(e) => setPartnerType(e.target.value)}>
+                {Object.entries(PARTNER_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
+            </label>
+            <label>Pricing type
+              <select value={pricingType} onChange={(e) => setPricingType(e.target.value)}>
+                {Object.entries(PRICING_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
+            </label>
+            <label>{pricingType === 'volume_tier' ? 'Tier label' : pricingType === 'discount' ? 'Discount (%)' : 'Rate ($)'}
+              <input value={pricingValue} onChange={(e) => setPricingValue(e.target.value)} placeholder={pricingType === 'volume_tier' ? 'e.g. tier-1' : '0'} />
+            </label>
+          </div>
+          {saveErr ? <div className="dpcp-err" style={{ marginTop: 8 }}>{saveErr}</div> : null}
+          <div className="dpcp-form-actions">
+            <button type="button" className="dpcp-btn primary" disabled={saving} onClick={createPartnership}>
+              {saving ? 'Creating...' : 'Create partnership'}
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {loading ? (
         <div className="dpcp-empty">Loading partnerships...</div>
@@ -77,7 +197,7 @@ export default function ContractPricing() {
           <span className="dpcp-lock" aria-hidden="true">P</span>
           <h2 className="dpcp-upsell-title">Premier required</h2>
           <p>Contract pricing partnerships let you set discounts, fixed rates, and volume tiers with trusted partners. Upgrade to Premier to create and manage partnerships.</p>
-          <button type="button" className="dpcp-btn primary">Upgrade to Premier</button>
+          <button type="button" className="dpcp-btn primary" onClick={() => nav('/pricing')}>Upgrade to Premier</button>
         </div>
       ) : rows.length === 0 ? (
         <div className="dpcp-empty">
@@ -138,6 +258,18 @@ const CSS = `
 .dpcp-btn.primary:hover { background: var(--dp-emerald-2); }
 
 .dpcp-empty { background: #fff; border: 1px dashed var(--dp-line); border-radius: 14px; padding: 26px; color: var(--dp-muted); font-size: 13.5px; line-height: 1.55; }
+.dpcp-err { color: #9b2c2c; }
+
+.dpcp-form { background: #fff; border: 1px solid var(--dp-line); border-radius: 14px; padding: 18px 20px; margin-bottom: 18px; display: flex; flex-direction: column; gap: 12px; }
+.dpcp-form label { position: relative; display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 600; color: var(--dp-muted); flex: 1; min-width: 200px; }
+.dpcp-form input, .dpcp-form select { font: inherit; font-size: 13px; padding: 8px 10px; border: 1px solid var(--dp-line); border-radius: 8px; color: var(--dp-ink); background: var(--dp-ivory); }
+.dpcp-form-row { display: flex; gap: 14px; flex-wrap: wrap; }
+.dpcp-form-actions { display: flex; justify-content: flex-end; }
+.dpcp-org-results { position: absolute; top: 100%; left: 0; right: 0; z-index: 5; background: #fff; border: 1px solid var(--dp-line); border-radius: 8px; margin-top: 2px; max-height: 180px; overflow-y: auto; box-shadow: 0 6px 18px rgba(0,0,0,.08); }
+.dpcp-org-result { display: flex; justify-content: space-between; width: 100%; text-align: left; font: inherit; font-size: 12.5px; font-weight: 500; color: var(--dp-ink); padding: 8px 10px; border: 0; background: none; cursor: pointer; }
+.dpcp-org-result:hover { background: var(--dp-ivory); }
+.dpcp-org-result span { color: var(--dp-muted); font-size: 11px; text-transform: capitalize; }
+.dpcp-org-selected { font-size: 11.5px; color: var(--dp-emerald-2); font-weight: 600; }
 
 .dpcp-upsell { background: linear-gradient(120deg, var(--dp-emerald), var(--dp-emerald-2)); color: var(--dp-ivory); border: 1px solid rgba(201,163,91,.4); border-radius: 16px; padding: 30px; text-align: center; }
 .dpcp-lock { display: inline-flex; align-items: center; justify-content: center; width: 46px; height: 46px; border-radius: 12px; background: linear-gradient(135deg, var(--dp-gold), #b58e44); color: var(--dp-emerald); font-weight: 800; font-size: 22px; margin-bottom: 12px; }

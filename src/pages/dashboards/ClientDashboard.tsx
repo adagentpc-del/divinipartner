@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import DashboardShell, { useMe, NavItem } from './DashboardShell';
 
 // Nav items carry `to` routes so the client/sponsor sidebar reaches the live
@@ -34,7 +35,7 @@ const PROMPTS = [
   'Start your guest list',
 ];
 
-function PromptStrip() {
+function PromptStrip({ onPrompt }: { onPrompt: () => void }) {
   return (
     <section className="dpdash-nba">
       <div className="dpdash-nba-head">
@@ -43,7 +44,7 @@ function PromptStrip() {
       </div>
       <div className="dpdash-nba-prompts">
         {PROMPTS.map((p, i) => (
-          <button key={i} type="button" className="dpdash-prompt">{p}</button>
+          <button key={i} type="button" className="dpdash-prompt" onClick={onPrompt}>{p}</button>
         ))}
       </div>
     </section>
@@ -52,11 +53,12 @@ function PromptStrip() {
 
 export default function ClientDashboard() {
   const { me } = useMe();
+  const nav = useNavigate();
   const who = me?.name ?? 'there';
 
   return (
     <DashboardShell title="My Events" navLabel="Client Workspace" items={NAV}>
-      <PromptStrip />
+      <PromptStrip onPrompt={() => nav('/events')} />
 
       <div className="dpdash-stats">
         <div className="dpdash-stat"><div className="dpdash-stat-k">Active events</div><div className="dpdash-stat-v">0</div><div className="dpdash-stat-d">in planning</div></div>
@@ -73,7 +75,7 @@ export default function ClientDashboard() {
           <div className="dpdash-empty">
             <span className="dpdash-empty-glyph" aria-hidden="true">E</span>
             <p>You have no events yet, {who}. Create an event to start finding venues and vendors.</p>
-            <button type="button" className="dpdash-btn">Create event</button>
+            <button type="button" className="dpdash-btn" onClick={() => nav('/events')}>Create event</button>
           </div>
         </div>
 
@@ -83,7 +85,7 @@ export default function ClientDashboard() {
           <div className="dpdash-empty">
             <span className="dpdash-empty-glyph" aria-hidden="true">V</span>
             <p>Nothing shortlisted yet. Search venues by capacity and date, then request quotes from vendors.</p>
-            <button type="button" className="dpdash-btn ghost">Start searching</button>
+            <button type="button" className="dpdash-btn ghost" onClick={() => nav('/marketplace')}>Start searching</button>
           </div>
         </div>
 
@@ -93,7 +95,7 @@ export default function ClientDashboard() {
           <div className="dpdash-empty">
             <span className="dpdash-empty-glyph" aria-hidden="true">Q</span>
             <p>No quotes yet. Once you request bids, vendor proposals will appear here for easy comparison.</p>
-            <button type="button" className="dpdash-btn ghost">View quotes</button>
+            <button type="button" className="dpdash-btn ghost" onClick={() => nav('/events')}>View quotes</button>
           </div>
         </div>
 
@@ -103,7 +105,7 @@ export default function ClientDashboard() {
           <div className="dpdash-empty">
             <span className="dpdash-empty-glyph" aria-hidden="true">G</span>
             <p>No guests added. Start a guest list and build seating charts once your venue is confirmed.</p>
-            <button type="button" className="dpdash-btn ghost">Start guest list</button>
+            <button type="button" className="dpdash-btn ghost" onClick={() => nav('/guest-hub')}>Start guest list</button>
           </div>
         </div>
       </div>

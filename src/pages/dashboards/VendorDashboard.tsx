@@ -98,7 +98,7 @@ const PROMPTS = [
   'Send a quote on an active request',
 ];
 
-function PromptStrip() {
+function PromptStrip({ onPrompt }: { onPrompt: () => void }) {
   return (
     <section className="dpdash-nba">
       <div className="dpdash-nba-head">
@@ -107,7 +107,7 @@ function PromptStrip() {
       </div>
       <div className="dpdash-nba-prompts">
         {PROMPTS.map((p, i) => (
-          <button key={i} type="button" className="dpdash-prompt">{p}</button>
+          <button key={i} type="button" className="dpdash-prompt" onClick={onPrompt}>{p}</button>
         ))}
       </div>
     </section>
@@ -246,11 +246,12 @@ const FEATURED_CSS = `
 
 export default function VendorDashboard() {
   const { me } = useMe();
+  const nav = useNavigate();
   const vendor = me?.organization?.name ?? me?.name ?? 'your business';
 
   return (
     <DashboardShell title="Vendor Dashboard" navLabel="Vendor Workspace" items={NAV}>
-      <PromptStrip />
+      <PromptStrip onPrompt={() => nav('/vendor-compliance')} />
       <FeaturedUpsell />
 
       <div className="dpdash-stats">
@@ -272,7 +273,7 @@ export default function VendorDashboard() {
           <div className="dpdash-empty">
             <span className="dpdash-empty-glyph" aria-hidden="true">B</span>
             <p>No matched bids yet. Add your services so we can route relevant event requests to you.</p>
-            <button type="button" className="dpdash-btn">Browse bids</button>
+            <button type="button" className="dpdash-btn" onClick={() => nav('/bids')}>Browse bids</button>
           </div>
         </div>
 
@@ -282,7 +283,7 @@ export default function VendorDashboard() {
           <div className="dpdash-empty">
             <span className="dpdash-empty-glyph" aria-hidden="true">Q</span>
             <p>No quotes sent. Respond to a bid with pricing and packages to start winning work.</p>
-            <button type="button" className="dpdash-btn ghost">View quotes</button>
+            <button type="button" className="dpdash-btn ghost" onClick={() => nav('/quote-drafts')}>View quotes</button>
           </div>
         </div>
 
@@ -292,7 +293,7 @@ export default function VendorDashboard() {
           <div className="dpdash-empty">
             <span className="dpdash-empty-glyph" aria-hidden="true">D</span>
             <p>No documents uploaded. Add your certificate of insurance and W-9 to unlock awarded jobs.</p>
-            <button type="button" className="dpdash-btn">Upload documents</button>
+            <button type="button" className="dpdash-btn" onClick={() => nav('/vendor-compliance')}>Upload documents</button>
           </div>
         </div>
 
@@ -302,7 +303,7 @@ export default function VendorDashboard() {
           <div className="dpdash-empty">
             <span className="dpdash-empty-glyph" aria-hidden="true">S</span>
             <p>No services listed. Add services, rental inventory, and packages so clients can find and book you.</p>
-            <button type="button" className="dpdash-btn ghost">Add services</button>
+            <button type="button" className="dpdash-btn ghost" onClick={() => nav('/profile')}>Add services</button>
           </div>
         </div>
       </div>

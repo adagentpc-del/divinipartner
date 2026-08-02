@@ -8,7 +8,7 @@
  */
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { apiGet } from '../../lib/api';
+import { apiGet, apiSend } from '../../lib/api';
 
 type ChangeOrder = {
   id: string;
@@ -41,6 +41,14 @@ export default function ChangeOrders() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [showForm, setShowForm] = useState(false);
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [reason, setReason] = useState('');
+  const [amount, setAmount] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saveErr, setSaveErr] = useState<string | null>(null);
+
   const load = useCallback(() => {
     if (!eventId) { setLoading(false); return; }
     setLoading(true);
@@ -52,6 +60,31 @@ export default function ChangeOrders() {
 
   useEffect(() => { load(); }, [load]);
 
+  async function createChangeOrder() {
+    if (!eventId) return;
+    setSaving(true);
+    setSaveErr(null);
+    try {
+      const amt = Number(amount);
+      await apiSend('POST', '/change-orders', {
+        event_id: eventId,
+        title: title.trim() || null,
+        description: description.trim() || null,
+        reason: reason.trim() || null,
+        line_items: Number.isFinite(amt) && amt > 0
+          ? [{ description: title.trim() || 'Scope change', amount: amt }]
+          : [],
+      });
+      setTitle(''); setDescription(''); setReason(''); setAmount('');
+      setShowForm(false);
+      load();
+    } catch (e) {
+      setSaveErr((e as Error)?.message ?? 'Could not create the change order.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div className="dpco">
       <style>{CSS}</style>
@@ -62,8 +95,37 @@ export default function ChangeOrders() {
           <h1 className="dpco-title">Change orders</h1>
           <p className="dpco-sub">Track scope changes and price deltas for this event.</p>
         </div>
-        {eventId ? <button type="button" className="dpco-btn primary">New change order</button> : null}
+        {eventId ? (
+          <button type="button" className="dpco-btn primary" onClick={() => setShowForm((s) => !s)}>
+            {showForm ? 'Cancel' : 'New change order'}
+          </button>
+        ) : null}
       </header>
+
+      {showForm && eventId ? (
+        <div className="dpco-form">
+          <div className="dpco-form-row">
+            <label>Title
+              <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Add uplighting package" />
+            </label>
+            <label>Amount ($)
+              <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" placeholder="0.00" />
+            </label>
+          </div>
+          <label>Description
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
+          </label>
+          <label>Reason
+            <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Why is scope changing?" />
+          </label>
+          {saveErr ? <div className="dpco-err" style={{ marginTop: 8 }}>{saveErr}</div> : null}
+          <div className="dpco-form-actions">
+            <button type="button" className="dpco-btn primary" disabled={saving} onClick={createChangeOrder}>
+              {saving ? 'Creating...' : 'Create change order'}
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {!eventId ? (
         <div className="dpco-empty">Select an event to view its change orders. Pass <code>?event_id=</code> in the URL or open this from the Event Workspace.</div>
@@ -127,6 +189,13 @@ const CSS = `
 .dpco-empty { background: #fff; border: 1px dashed var(--dp-line); border-radius: 14px; padding: 26px; color: var(--dp-muted); font-size: 13.5px; line-height: 1.55; }
 .dpco-empty code { background: var(--dp-ivory); border: 1px solid var(--dp-line); border-radius: 5px; padding: 1px 6px; font-size: 12px; }
 .dpco-err { color: #9b2c2c; border-color: rgba(155,44,44,.4); }
+
+.dpco-form { background: #fff; border: 1px solid var(--dp-line); border-radius: 14px; padding: 18px 20px; margin-bottom: 18px; display: flex; flex-direction: column; gap: 12px; }
+.dpco-form label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 600; color: var(--dp-muted); flex: 1; }
+.dpco-form input, .dpco-form textarea { font: inherit; font-size: 13px; padding: 8px 10px; border: 1px solid var(--dp-line); border-radius: 8px; color: var(--dp-ink); background: var(--dp-ivory); }
+.dpco-form-row { display: flex; gap: 14px; flex-wrap: wrap; }
+.dpco-form-row label { min-width: 200px; }
+.dpco-form-actions { display: flex; justify-content: flex-end; }
 
 .dpco-list { display: flex; flex-direction: column; gap: 14px; }
 .dpco-card { background: #fff; border: 1px solid var(--dp-line); border-radius: 14px; padding: 18px 20px; }

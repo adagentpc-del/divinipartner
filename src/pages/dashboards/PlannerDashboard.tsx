@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import DashboardShell, { useMe, NavItem } from './DashboardShell';
 
 // Nav items carry `to` routes so the planner sidebar reaches the live pages
@@ -44,7 +45,7 @@ const PROMPTS = [
   'Track the budget against quotes',
 ];
 
-function PromptStrip() {
+function PromptStrip({ onPrompt }: { onPrompt: () => void }) {
   return (
     <section className="dpdash-nba">
       <div className="dpdash-nba-head">
@@ -53,7 +54,7 @@ function PromptStrip() {
       </div>
       <div className="dpdash-nba-prompts">
         {PROMPTS.map((p, i) => (
-          <button key={i} type="button" className="dpdash-prompt">{p}</button>
+          <button key={i} type="button" className="dpdash-prompt" onClick={onPrompt}>{p}</button>
         ))}
       </div>
     </section>
@@ -62,11 +63,12 @@ function PromptStrip() {
 
 export default function PlannerDashboard() {
   const { me } = useMe();
+  const nav = useNavigate();
   const who = me?.organization?.name ?? me?.name ?? 'your studio';
 
   return (
     <DashboardShell title="Planner Studio" navLabel="Planner Workspace" items={NAV}>
-      <PromptStrip />
+      <PromptStrip onPrompt={() => nav('/events')} />
 
       <div className="dpdash-stats">
         <div className="dpdash-stat"><div className="dpdash-stat-k">Active events</div><div className="dpdash-stat-v">0</div><div className="dpdash-stat-d">in production</div></div>
@@ -83,7 +85,7 @@ export default function PlannerDashboard() {
           <div className="dpdash-empty">
             <span className="dpdash-empty-glyph" aria-hidden="true">E</span>
             <p>No events yet. Create an event to start sourcing venues, vendors, and building timelines.</p>
-            <button type="button" className="dpdash-btn">Create event</button>
+            <button type="button" className="dpdash-btn" onClick={() => nav('/events')}>Create event</button>
           </div>
         </div>
 
@@ -93,7 +95,7 @@ export default function PlannerDashboard() {
           <div className="dpdash-empty">
             <span className="dpdash-empty-glyph" aria-hidden="true">L</span>
             <p>No timelines built. Add an event to lay out the run-of-show and assign tasks to your team.</p>
-            <button type="button" className="dpdash-btn ghost">Open timelines</button>
+            <button type="button" className="dpdash-btn ghost" onClick={() => nav('/events')}>Open timelines</button>
           </div>
         </div>
 
@@ -103,7 +105,7 @@ export default function PlannerDashboard() {
           <div className="dpdash-empty">
             <span className="dpdash-empty-glyph" aria-hidden="true">Q</span>
             <p>No quotes yet. Request bids from venues and vendors to compare and award the work.</p>
-            <button type="button" className="dpdash-btn ghost">View quotes</button>
+            <button type="button" className="dpdash-btn ghost" onClick={() => nav('/events')}>View quotes</button>
           </div>
         </div>
 
@@ -113,7 +115,7 @@ export default function PlannerDashboard() {
           <div className="dpdash-empty">
             <span className="dpdash-empty-glyph" aria-hidden="true">U</span>
             <p>No budgets set. Add an event budget to track quotes, invoices, and remaining spend in real time.</p>
-            <button type="button" className="dpdash-btn ghost">Set up budget</button>
+            <button type="button" className="dpdash-btn ghost" onClick={() => nav('/events')}>Set up budget</button>
           </div>
         </div>
       </div>
