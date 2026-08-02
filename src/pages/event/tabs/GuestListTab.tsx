@@ -39,6 +39,8 @@ export default function GuestListTab({ eventId }: { eventId: string }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [notifyGuestsSchedule, setNotifyGuestsSchedule] = useState(false);
+  const [notifyBusy, setNotifyBusy] = useState(false);
 
   const shareUrl = `${window.location.origin}/e/${eventId}`;
   async function copyShare() {
@@ -53,19 +55,35 @@ export default function GuestListTab({ eventId }: { eventId: string }) {
 
   async function load() {
     try {
-      const [g, m, c] = await Promise.all([
+      const [g, m, c, ev] = await Promise.all([
         apiGet<{ guests: Guest[] }>(`/guests/event/${eventId}`),
         apiGet<Meta>(`/guests/meta`),
         apiGet<{ counts: Counts }>(`/guests/event/${eventId}/counts`),
+        apiGet<{ event: { notify_guests_schedule: boolean } }>(`/events/${eventId}`),
       ]);
       setGuests(g.guests);
       setMeta(m);
       setCounts(c.counts);
+      setNotifyGuestsSchedule(!!ev.event.notify_guests_schedule);
     } catch (e) {
       setErr((e as Error).message);
     }
   }
   useEffect(() => { void load(); /* eslint-disable-next-line */ }, [eventId]);
+
+  async function toggleNotifyGuestsSchedule() {
+    const next = !notifyGuestsSchedule;
+    setNotifyBusy(true);
+    setErr(null);
+    try {
+      await apiSend('PATCH', `/events/${eventId}`, { notify_guests_schedule: next });
+      setNotifyGuestsSchedule(next);
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setNotifyBusy(false);
+    }
+  }
 
   async function refresh() {
     const [g, c] = await Promise.all([
@@ -135,6 +153,11 @@ export default function GuestListTab({ eventId }: { eventId: string }) {
           {copied ? 'Copied' : 'Copy link'}
         </button>
       </div>
+
+      <label style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fff', border: '1px solid #e7e1d6', borderRadius: 10, padding: '10px 12px', marginBottom: 14, fontSize: 13, color: '#4a463e', cursor: notifyBusy ? 'default' : 'pointer' }}>
+        <input type="checkbox" checked={notifyGuestsSchedule} disabled={notifyBusy} onChange={toggleNotifyGuestsSchedule} />
+        <span>Automatically email guests the event schedule the day before (only items you have marked public in the Itinerary tab are shown)</span>
+      </label>
 
       {counts ? (
         <div className="gl-stats">

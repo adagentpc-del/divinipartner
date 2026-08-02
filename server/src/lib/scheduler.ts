@@ -1,9 +1,13 @@
 /**
- * Background scheduler that drives claim-engine automation on its own.
+ * Background scheduler that drives claim-engine automation plus the
+ * automated schedule-of-events distribution, on its own.
  *
- * Two jobs run on the cadence configured by WORKER_INTERVAL_MINUTES:
+ * Three jobs run on the cadence configured by WORKER_INTERVAL_MINUTES:
  *   1. runDueOutreach     send the next due claim outreach email per profile.
  *   2. runMarketExpansion open the next planned geographic market when ready.
+ *   3. runEventScheduleDistribution (lib/scheduleDistribution) send the
+ *      1-week and 24-hour schedule-of-events emails to the venue/vendors/
+ *      host, and the guest-facing agenda link when the host opted in.
  *
  * All cadence, suppression, and 6-send-cap enforcement lives inside the email
  * send() path (lib/claim-emails). This module only decides WHICH profiles are
@@ -15,6 +19,7 @@
 import * as claim from "../db/claim.js";
 import * as emails from "./claim-emails.js";
 import * as discovery from "./discovery.js";
+import { runEventScheduleDistribution, type ScheduleDistributionSummary } from "./scheduleDistribution.js";
 import { WORKER_INTERVAL_MINUTES } from "../config.js";
 
 export type OutreachSummary = {
@@ -31,6 +36,7 @@ export type ExpansionSummary = {
 export type SchedulerSummary = {
   outreach: OutreachSummary & { error?: string };
   expansion: ExpansionSummary & { error?: string };
+  scheduleDistribution: ScheduleDistributionSummary & { error?: string };
   ranAt: string;
 };
 
@@ -127,7 +133,20 @@ export async function runScheduler(): Promise<SchedulerSummary> {
     };
   }
 
-  return { outreach, expansion, ranAt };
+  let scheduleDistribution: ScheduleDistributionSummary & { error?: string };
+  try {
+    scheduleDistribution = await runEventScheduleDistribution();
+  } catch (err) {
+    scheduleDistribution = {
+      candidates: 0,
+      opsSent: 0,
+      guestsSent: 0,
+      failed: 0,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+
+  return { outreach, expansion, scheduleDistribution, ranAt };
 }
 
 let _timer: ReturnType<typeof setInterval> | null = null;

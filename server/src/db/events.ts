@@ -68,6 +68,8 @@ export type EventRow = {
   branding_opportunity_id: string | null;
   status: EventStatus | null;
   itinerary: unknown;
+  /** Host opt-in: automatically email guests the /agenda/:id link before the event. */
+  notify_guests_schedule: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -131,6 +133,7 @@ export type CreateEventInput = {
   required_services?: string[] | null;
   venue_id?: string | null;
   branding_opportunity_id?: string | null;
+  notify_guests_schedule?: boolean | null;
 };
 
 /** Create an event owned by the actor's org; the actor is client or planner by role. */
@@ -195,6 +198,7 @@ export async function updateEvent(
         event_goals = coalesce($7, event_goals),
         required_services = coalesce($8, required_services),
         venue_id = coalesce($9, venue_id),
+        notify_guests_schedule = coalesce($10, notify_guests_schedule),
         updated_at = now()
       where id = $1
       returning *`,
@@ -208,6 +212,7 @@ export async function updateEvent(
       patch.event_goals ?? null,
       patch.required_services ?? null,
       patch.venue_id ?? null,
+      patch.notify_guests_schedule ?? null,
     ],
   );
   return row as EventRow;
