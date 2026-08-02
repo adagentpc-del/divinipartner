@@ -13,6 +13,7 @@ import profiles from "./routes/profiles.js";
 import profileDecksPrograms from "./routes/profile-decks-programs.js";
 // Phase 3
 import events from "./routes/events.js";
+import calendar from "./routes/calendar.js";
 import bids from "./routes/bids.js";
 import bidShares from "./routes/bid-shares.js";
 import publicBids from "./routes/public-bids.js";
@@ -166,6 +167,7 @@ router.use("/", foundation);
 router.use("/profile", profiles);
 router.use("/profile-extras", profileDecksPrograms);
 router.use("/events", events);
+router.use("/calendar", calendar);
 router.use("/bids", bids);
 router.use("/bid-shares", bidShares);
 // Baseline throttle across the whole unauthenticated public surface (must be

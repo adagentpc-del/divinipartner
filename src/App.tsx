@@ -65,6 +65,7 @@ import InvoiceDetail from './pages/invoices/InvoiceDetail';
 import PaymentsDashboard from './pages/payments/PaymentsDashboard';
 import PayReturn from './pages/payments/PayReturn';
 import PayoutSettings from './pages/payments/PayoutSettings';
+import MyCalendar from './pages/calendar/MyCalendar';
 import ContractPricing from './pages/contracts/ContractPricing';
 import SeatSettings from './pages/account/SeatSettings';
 import ChangeOrders from './pages/changeorders/ChangeOrders';
@@ -383,6 +384,7 @@ function Routed() {
       <Route path="/payments" element={<Authed><PaymentsDashboard /></Authed>} />
       <Route path="/pay/return" element={<Authed><PayReturn /></Authed>} />
       <Route path="/payouts/setup" element={<Authed><PayoutSettings /></Authed>} />
+      <Route path="/calendar" element={<Authed><MyCalendar /></Authed>} />
       <Route path="/account/seats" element={<Authed><SeatSettings /></Authed>} />
       <Route path="/contract-pricing" element={<Authed><ContractPricing /></Authed>} />
       <Route path="/change-orders" element={<Authed><ChangeOrders /></Authed>} />

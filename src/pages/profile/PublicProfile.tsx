@@ -118,6 +118,16 @@ export default function PublicProfile() {
   const [brandBusy, setBrandBusy] = useState(false);
   const [brandError, setBrandError] = useState<string | null>(null);
 
+  // Availability calendar + "Request this date" state.
+  const [busy, setBusy] = useState<{ startsAt: string; endsAt: string }[]>([]);
+  const [showRequest, setShowRequest] = useState(false);
+  const [reqStart, setReqStart] = useState('');
+  const [reqEnd, setReqEnd] = useState('');
+  const [reqNote, setReqNote] = useState('');
+  const [reqBusy, setReqBusy] = useState(false);
+  const [reqError, setReqError] = useState<string | null>(null);
+  const [reqDone, setReqDone] = useState(false);
+
   useEffect(() => {
     let mounted = true;
     setLoading(true);
@@ -142,6 +152,76 @@ export default function PublicProfile() {
       .catch(() => { if (mounted) setOpportunities([]); });
     return () => { mounted = false; };
   }, [slug]);
+
+  // Public, unauthenticated read of this org's busy calendar windows, once we
+  // know its organization_id from the profile fetch above.
+  useEffect(() => {
+    let mounted = true;
+    const orgId = profile?.organization_id;
+    if (!orgId) { setBusy([]); return; }
+    apiGet<{ busy: { startsAt: string; endsAt: string }[] }>(`/calendar/${orgId}/availability`)
+      .then((r) => { if (mounted) setBusy(Array.isArray(r.busy) ? r.busy : []); })
+      .catch(() => { if (mounted) setBusy([]); });
+    return () => { mounted = false; };
+  }, [profile?.organization_id]);
+
+  // "Request this date": signed-in users open the request form; guests go to
+  // /login first (returning to this profile afterward, where they continue).
+  function startRequest() {
+    if (!session) {
+      try { sessionStorage.setItem('postLoginRedirect', `/venues/${slug}`); } catch { /* ignore */ }
+      nav('/login');
+      return;
+    }
+    setReqError(null);
+    setReqDone(false);
+    setReqStart('');
+    setReqEnd('');
+    setReqNote('');
+    setShowRequest(true);
+  }
+
+  async function submitRequest() {
+    if (!profile?.organization_id) return;
+    if (!reqStart || !reqEnd) {
+      setReqError('Choose a start and end date.');
+      return;
+    }
+    setReqBusy(true);
+    setReqError(null);
+    try {
+      await apiSend('POST', `/calendar/${profile.organization_id}/request-hold`, {
+        starts_at: new Date(reqStart).toISOString(),
+        ends_at: new Date(reqEnd).toISOString(),
+        title: `Date request from a Divini Partners client`,
+        note: reqNote.trim() || null,
+      });
+      setReqDone(true);
+      setShowRequest(false);
+    } catch (e) {
+      setReqError((e as Error).message);
+    } finally {
+      setReqBusy(false);
+    }
+  }
+
+  // After a date request, the client describes their event so the venue can
+  // review it against the request. Mirrors submitBranding's event-creation
+  // pattern; venue_id is intentionally left unset here (the public profile
+  // does not expose it) - the note carries the venue name and requested dates
+  // so the venue can attach itself from their side.
+  async function describeEventAfterRequest() {
+    const venueName = profile?.organization.name || profile?.hero?.title || 'this venue';
+    try {
+      const res = await apiSend<{ event: { id: string } }>('POST', '/events', {
+        name: `Event at ${venueName}`,
+        event_goals: `Requested date: ${reqStart ? new Date(reqStart).toLocaleDateString() : ''} to ${reqEnd ? new Date(reqEnd).toLocaleDateString() : ''} at ${venueName}. ${reqNote.trim()}`.trim(),
+      });
+      nav(`/events/${res.event.id}`);
+    } catch (e) {
+      setReqError((e as Error).message);
+    }
+  }
 
   // Clicking a tile's CTA: signed-in users open the start form; guests go to
   // /login first (returning to this profile afterward, where they continue).
@@ -301,6 +381,52 @@ export default function PublicProfile() {
                     </div>
                   ))}
                 </div>
+              </section>
+            )}
+
+            {profile.organization_id && (
+              <section className="pp-section">
+                <h2 className="pp-h2">Availability</h2>
+                {busy.length === 0 ? (
+                  <p className="pp-avail-none">No upcoming dates are blocked yet. Request a date below.</p>
+                ) : (
+                  <ul className="pp-avail-list">
+                    {busy.slice(0, 8).map((w, i) => (
+                      <li key={i}>
+                        <span className="pp-avail-dot" aria-hidden="true" />
+                        {new Date(w.startsAt).toLocaleDateString()} - {new Date(w.endsAt).toLocaleDateString()}: booked
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {reqDone ? (
+                  <div className="pp-avail-done">
+                    <p>Your date request has been sent. Next, describe your event so they can review it.</p>
+                    <button type="button" className="pp-btn" onClick={describeEventAfterRequest}>Describe your event</button>
+                  </div>
+                ) : !showRequest ? (
+                  <button type="button" className="pp-btn" onClick={startRequest}>Request this date</button>
+                ) : (
+                  <div className="pp-avail-form">
+                    {reqError && <div className="pp-modalerror">{reqError}</div>}
+                    <div className="pp-avail-formrow">
+                      <label>Start
+                        <input type="date" value={reqStart} onChange={(e) => setReqStart(e.target.value)} />
+                      </label>
+                      <label>End
+                        <input type="date" value={reqEnd} onChange={(e) => setReqEnd(e.target.value)} />
+                      </label>
+                    </div>
+                    <label className="pp-avail-notelabel">Note (optional)
+                      <textarea value={reqNote} onChange={(e) => setReqNote(e.target.value)} rows={2} placeholder="Guest count, event type, anything else useful" />
+                    </label>
+                    <div className="pp-avail-formactions">
+                      <button type="button" className="pp-modalghost" onClick={() => setShowRequest(false)}>Cancel</button>
+                      <button type="button" className="pp-btn" disabled={reqBusy} onClick={submitRequest}>{reqBusy ? 'Sending...' : 'Send request'}</button>
+                    </div>
+                  </div>
+                )}
               </section>
             )}
 
@@ -544,4 +670,14 @@ const CSS = `
 .pp-modalactions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px;}
 .pp-modalghost{background:transparent;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:10px 18px;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;}
 .pp-btn[disabled]{opacity:.6;cursor:default;}
+.pp-avail-none{font-size:13.5px;color:var(--muted);margin:0 0 16px;}
+.pp-avail-list{list-style:none;margin:0 0 16px;padding:0;display:flex;flex-direction:column;gap:8px;}
+.pp-avail-list li{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--ink);}
+.pp-avail-dot{width:8px;height:8px;border-radius:50%;background:var(--pp-accent);flex:0 0 8px;}
+.pp-avail-done p{font-size:13.5px;color:var(--muted);margin:0 0 12px;}
+.pp-avail-form{background:var(--iv, #F7F4EE);border:1px solid var(--line);border-radius:14px;padding:18px;margin-top:6px;}
+.pp-avail-formrow{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;}
+.pp-avail-formrow label,.pp-avail-notelabel{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:600;color:var(--muted);flex:1 1 160px;}
+.pp-avail-formrow input,.pp-avail-notelabel textarea{font:inherit;font-size:13px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);}
+.pp-avail-formactions{display:flex;justify-content:flex-end;gap:10px;margin-top:14px;}
 `;

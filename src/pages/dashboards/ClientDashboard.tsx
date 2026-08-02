@@ -10,6 +10,7 @@ import DashboardShell, { useMe, NavItem } from './DashboardShell';
 const NAV: NavItem[] = [
   { label: 'Overview', icon: 'O', to: '/app' },
   { label: 'My Events', icon: 'E', to: '/events' },
+  { label: 'Calendar', icon: 'c', to: '/calendar' },
   { label: 'Marketplace', icon: 'V', to: '/marketplace' },
   { label: 'Recommendations', icon: 'C', to: '/event-recommendations' },
   { label: 'Event Assistant', icon: 'A', to: '/event-assistant' },
