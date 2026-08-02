@@ -12,11 +12,12 @@ Known debt and cleanup, roughly ordered by value.
 
 ## Documentation drift
 
-- Stale Authentik/OIDC references in `.env.local.example` and `package.json`. Stale port/table-count in `db/SCHEMA-NOTES.md`. Reconcile with the live code and the consolidated schema.
+- RESOLVED: Authentik/OIDC references cleaned up across `.env.local.example`, `package.json`, `server/README.md`, `DIVINI-PARTNERS-DEPLOY.md`, `STAGE-B-CHECKLIST.md` (now a pointer, superseded), `DEPLOY.md`, `GODADDY-DNS.md`, `MOBILE-APP.md`, `RELEASE-RUNBOOK.md`, `EMAIL-TESTING.md`, `VENUE-INTELLIGENCE-ADDENDUM.md`, `READY-TO-SHIP-CHECKLIST.md`. Note `server/src/config.ts` still exports unused `OIDC_ISSUER`/`OIDC_JWKS_URL`/`OIDC_CLIENT_ID` constants (dead code, not referenced anywhere else) — safe cleanup, low priority.
+- Remaining: stale port/table-count in `db/SCHEMA-NOTES.md` (describes 27-table local schema; deployed schema is the consolidated `db/apply-all.sql`, ~133 tables). Reconcile with the live code and the consolidated schema.
 
 ## Repo artifacts
 
-- ~50 `dist_*` directories and dozens of `vite.config.ts.timestamp-*.mjs` files in the repo root. Remove them; add patterns to `.gitignore` if not already ignored.
+- RESOLVED: no `dist_*` or `vite.config.ts.timestamp-*` clutter present in the current tree; `.gitignore` already covers both patterns (`dist*/`, `vite.config.ts.timestamp-*`).
 
 ## Raw SQL surface
 

@@ -78,7 +78,7 @@
 ## Operational go-live gates (config, not code)
 
 Every integration is feature-flagged to fail safe when unset. To transact for real:
-1. **Deploy** — Stage A (preview), Stage B login (Authentik OIDC + HTTPS, see `STAGE-B-CHECKLIST.md`), Stage C cutover. (`DIVINI-PARTNERS-DEPLOY.md`)
+1. **Deploy** — Stage A (preview), Stage B login (native email/password + HTTPS + email provider, see `DIVINI-PARTNERS-DEPLOY.md` Stage B — `STAGE-B-CHECKLIST.md` is superseded), Stage C cutover.
 2. **Payments** — set Stripe + PayPal keys AND their webhook secrets (server refuses to boot in prod without them when a processor is on); enable Connect + Payouts.
 3. **Email** — set `EMAIL_PROVIDER` + key (Resend or self-hosted Postal).
 4. **GeoIP** (layout personalization) — `bash scripts/fetch-geoip.sh` (free, local, no key).

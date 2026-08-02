@@ -1,10 +1,19 @@
 # Divini Partners — Schema Notes
 
+> **This describes the early phase-1 local-validation snapshot (`db/schema.sql`,
+> 27 tables) only. It is NOT what is deployed.** Production and every deploy
+> runbook (`DIVINI-PARTNERS-DEPLOY.md`) apply the consolidated
+> `db/apply-all.sql` instead, which concatenates the base schema + every phase
+> + the claim engine (~133 tables). Do not run `db/schema.sql` against a
+> deploy target — use `db/apply-all.sql`. Kept here for historical reference
+> on the original core-27 design.
+
 Database schema for **Divini Partners by Divini Group**, an event-partnership
 marketplace (venues · vendors · planners · suppliers · clients).
 
-- **Target:** plain PostgreSQL 16 at `localhost:5433`, database `divini_partners`, run by user `aibos`.
-- **Apply:** `psql -h localhost -p 5433 -U aibos -d divini_partners -f db/schema.sql`
+- **Target (historical, this file only):** plain PostgreSQL 16 at `localhost:5433`, database `divini_partners`, run by user `aibos`.
+- **Apply (historical, this file only):** `psql -h localhost -p 5433 -U aibos -d divini_partners -f db/schema.sql`
+- **Apply for real (production):** `db/apply-all.sql` — see `DIVINI-PARTNERS-DEPLOY.md` Stage A.
 - IDs are `uuid` via `gen_random_uuid()`; timestamps are `timestamptz default now()`.
 - Arrays use `text[]`, flexible/nested fields use `jsonb`, money uses `numeric`.
 - Enum-like fields use `text` + `CHECK` constraints.

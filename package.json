@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Divini Partners - procurement marketplace (Vite SPA + Express/Postgres backend, Authentik OIDC, local-disk storage)",
+  "description": "Divini Partners - procurement marketplace (Vite SPA + Express/Postgres backend, native email/password auth, pluggable local-disk/S3 storage)",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",

@@ -12,7 +12,7 @@ Use these, in order of relevance:
 
 - **RELEASE-RUNBOOK.md** — how to ship a normal release to production.
 - **DIVINI-PARTNERS-DEPLOY.md** — the full Stage A/B first-deploy runbook
-  (env, DB, Authentik OIDC, Caddy, DNS).
+  (env, DB, HTTPS/Caddy, DNS, email). Auth is native email/password, not OIDC.
 - **DEPLOY-GAP-CLOSURE.md** — the latest additive schema/deploy notes.
 - **READY-TO-SHIP-CHECKLIST.md** — pre-flight checklist.
 

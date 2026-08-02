@@ -42,10 +42,12 @@ then redeploy:
 cd /root/sites/divini-partners && sed -i 's|^PUBLIC_APP_URL=.*|PUBLIC_APP_URL=https://divinipartners.com|' .env.local && bash deploy.sh
 ```
 
-NOTE on login: registration and the public site work immediately. The OIDC login
-flow needs Authentik updated too — add `https://divinipartners.com/auth/callback`
-to the provider redirect URIs and set matching VITE_OIDC_REDIRECT_URI (see
-DIVINI-PARTNERS-DEPLOY.md Stage C). PKCE requires HTTPS, which Caddy provides.
+NOTE on login: registration and the public site work immediately once
+`PUBLIC_APP_URL` is set above. Login itself needs no third-party redirect URI
+(auth is native email/password) — the only requirement is HTTPS, because the
+session cookie is `Secure` in production, which Caddy provides here. Email
+verification must also be configured (`EMAIL_PROVIDER`/`EMAIL_API_KEY`, see
+DIVINI-PARTNERS-DEPLOY.md Stage B) or nobody can complete registration.
 
 ---
 
