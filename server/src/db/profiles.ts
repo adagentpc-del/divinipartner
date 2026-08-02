@@ -7,15 +7,22 @@
  * cross-org read except getPublicProfileBySlug(), which returns only published,
  * approved, public fields.
  *
- * AI behaviour: we do NOT call any external model and we never invent pricing,
- * capacity, insurance, or certifications. "AI suggestions" are deterministic
- * structuring of what the partner gave us (a website URL, a document reference)
- * into safe, clearly-labelled placeholder fields. Every suggested field is
- * returned as { value, status: 'ai_suggested_pending_verification' } and stored
- * in ai_profile_suggestions until the partner accepts/edits/rejects it.
+ * AI behaviour: we never call an external (cloud) model - only the local-first
+ * LLM (lib/llm.ts), which is never a hard dependency. Two intake paths exist:
+ *   - intakeWebsite / intakeDocument: DETERMINISTIC, always-available
+ *     placeholder structuring (no content is actually read), used when the
+ *     local model is off or as the base record for every intake.
+ *   - intakeExtractedFields: turns a REAL extraction result (lib/extract.ts,
+ *     which reads website/document text and asks the local LLM to restate
+ *     only what is explicitly stated there) into the same suggestion shape.
+ * Both NEVER invent insurance or certification claims. Every suggested field
+ * is returned as { value, status: 'ai_suggested_pending_verification' } and
+ * stored in ai_profile_suggestions until the partner accepts/edits/rejects it;
+ * nothing here writes to the live public profile directly.
  */
 import { q, q1, pool } from "../pool.js";
 import { listBadges, type VerificationBadgeRow } from "./leads.js";
+import type { ExtractedProfile } from "../lib/extract.js";
 
 // ---- Lifecycle ------------------------------------------------------------
 
@@ -571,6 +578,44 @@ export async function intakeDocument(
   return { document: document as { id: string }, suggestion };
 }
 
+/**
+ * Turn a REAL extraction result (lib/extract.ts: extractProfileFromUrl /
+ * extractProfileFromDocumentText) into one pending ai_profile_suggestions row
+ * per populated field, in the same section/field shape ProfileEditor.tsx and
+ * resolveSuggestion already understand. Returns an empty array when nothing
+ * was extracted (never inserts empty/placeholder rows for a real extraction -
+ * that placeholder behavior belongs to intakeWebsite/intakeDocument only).
+ */
+export async function intakeExtractedFields(
+  orgId: string,
+  source: "website" | "document",
+  sourceRef: string,
+  extracted: ExtractedProfile,
+): Promise<AiSuggestion[]> {
+  const drafts: { section: string; field: string; value: unknown }[] = [];
+  if (extracted.name) drafts.push({ section: "basics", field: "name", value: extracted.name });
+  if (extracted.description) drafts.push({ section: "about", field: "body", value: extracted.description });
+  if (extracted.services && extracted.services.length > 0) {
+    drafts.push({
+      section: "services",
+      field: "items",
+      value: extracted.services.map((name) => ({ name, description: "" })),
+    });
+  }
+  if (extracted.hours) drafts.push({ section: "hours", field: "text", value: extracted.hours });
+  if (extracted.capacity) drafts.push({ section: "capacity", field: "text", value: extracted.capacity });
+  if (extracted.startingPrice) drafts.push({ section: "pricing", field: "summary", value: extracted.startingPrice });
+  if (extracted.packages && extracted.packages.length > 0) {
+    drafts.push({ section: "packages", field: "items", value: extracted.packages });
+  }
+
+  const suggestions: AiSuggestion[] = [];
+  for (const d of drafts) {
+    suggestions.push(await insertSuggestion(orgId, { source, sourceRef, section: d.section, field: d.field, value: d.value }));
+  }
+  return suggestions;
+}
+
 // ---- Publish + public read ------------------------------------------------
 
 /**
@@ -678,6 +723,9 @@ function buildPublicSections(sections: Record<string, any>): Record<string, unkn
       city: sections.basics?.city ?? null,
       region: sections.basics?.region ?? null,
     },
+    hours: sections.hours?.text ?? null,
+    capacity: sections.capacity?.text ?? null,
+    pricing: sections.pricing?.summary ?? null,
   };
 }
 

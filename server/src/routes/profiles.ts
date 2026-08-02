@@ -16,12 +16,26 @@
  * All authed routes are organization-scoped via getActor(). The only public
  * route is GET /public/:slug, which returns nothing for unpublished profiles.
  */
+import crypto from "node:crypto";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { Router, type Request, type Response, type NextFunction } from "express";
+import multer from "multer";
 import { getAuth, requireUser } from "../auth.js";
 import * as db from "../db.js";
 import * as profiles from "../db/profiles.js";
-import { extractProfileFromUrl } from "../lib/extract.js";
-import { validateUrlUpload } from "../lib/uploadGuard.js";
+import { extractProfileFromUrl, extractProfileFromDocumentText } from "../lib/extract.js";
+import { extractTextFromDocument } from "../lib/extractDocument.js";
+import { putObjectBytes } from "../storage.js";
+import {
+  validateUrlUpload,
+  validateFileMeta,
+  sniffMagicBytes,
+  scanWithClamAV,
+  extOf,
+  MAX_UPLOAD_BYTES,
+} from "../lib/uploadGuard.js";
 import { sendEmail } from "../lib/email.js";
 import { randomToken } from "../lib/session.js";
 import { PUBLIC_APP_URL, BASE_PATH } from "../config.js";
@@ -32,6 +46,10 @@ const h =
   (fn: (req: Request, res: Response) => Promise<unknown>) =>
   (req: Request, res: Response, next: NextFunction) =>
     fn(req, res).catch(next);
+
+// Multipart in memory for /extract-document; bytes are validated + scanned
+// before being handed to putObjectBytes (same pattern as profile-decks-programs.ts).
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_UPLOAD_BYTES, files: 1 } });
 
 const router = Router();
 
@@ -96,15 +114,31 @@ router.post(
   }),
 );
 
-// ---- POST /extract : local-model website extraction (suggestion only) -----
+// ---- GET /onboarding/suggestions : pending AI suggestions for my org ------
+router.get(
+  "/onboarding/suggestions",
+  requireUser,
+  h(async (req, res) => {
+    const ctx = await requireOrg(req, res);
+    if (!ctx) return;
+    const all = await profiles.listSuggestions(ctx.actor.org!.id);
+    const status = typeof req.query.status === "string" ? req.query.status : undefined;
+    const list = status ? all.filter((s) => s.status === status) : all;
+    res.json({ suggestions: list });
+  }),
+);
+
+// ---- POST /extract : local-model website extraction ------------------------
 // Fetches the supplied public URL server-side and uses the LOCAL LLM to extract
-// suggested public-profile fields. Every field is returned clearly marked
-// "ai_suggested pending owner verification" and NOTHING is written to the draft;
-// the partner must accept each suggestion (existing /onboarding/suggestions flow
-// or the deterministic /onboarding/website intake). When the local model is not
-// available, returns { available: false } so the client falls back to the
-// deterministic intake. Never invents pricing, availability, capacity, or
-// insurance.
+// suggested public-profile fields (name, description, services, tags, hours,
+// capacity, starting price, packages - only what the page explicitly states).
+// Each extracted field is persisted as a pending ai_profile_suggestions row
+// (source: website) so it shows up alongside every other suggestion in
+// GET /onboarding/suggestions and resolves the same way (accept/edit/reject via
+// POST /onboarding/suggestions/:id). NOTHING is written to the live public
+// profile directly. When the local model is not available or nothing could be
+// extracted, returns { available: false } so the client falls back to the
+// deterministic POST /onboarding/website intake.
 router.post(
   "/extract",
   requireUser,
@@ -115,26 +149,89 @@ router.post(
     if (!url || typeof url !== "string" || url.trim().length < 3) {
       return res.status(400).json({ error: "a valid url is required" });
     }
-    const extracted = await extractProfileFromUrl(url.trim());
+    const clean = url.trim();
+    const extracted = await extractProfileFromUrl(clean);
     if (!extracted) {
       // Local model unavailable or extraction failed: client should fall back to
       // POST /onboarding/website (deterministic, always available).
-      return res.json({ available: false, url: url.trim(), suggestion: null });
+      return res.json({ available: false, url: clean, suggestions: [] });
     }
-    // Shape as pending, owner-unconfirmed suggested fields. This does not touch
-    // the draft; owner-entered values are never overwritten.
-    const suggestion = {
-      status: AI_PENDING_NOTE,
-      source: "website",
-      sourceRef: url.trim(),
-      fields: {
-        name: extracted.name ?? null,
-        description: extracted.description ?? null,
-        services: extracted.services ?? null,
-        tags: extracted.tags ?? null,
-      },
-    };
-    res.json({ available: true, url: url.trim(), suggestion });
+    const suggestions = await profiles.intakeExtractedFields(ctx.actor.org!.id, "website", clean, extracted);
+    res.json({ available: true, url: clean, suggestions });
+  }),
+);
+
+// ---- POST /extract-document : upload a document, extract, suggest ---------
+// Accepts a multipart file (field "file": .txt or .pdf). Runs the same
+// validate -> magic-byte sniff -> optional ClamAV scan -> store pipeline as
+// profile-extras deck uploads, records a documents row, then attempts real
+// text extraction + the same local-LLM structuring used for website
+// extraction. When the file type is unsupported, extraction is unavailable,
+// or nothing could be extracted, falls back to the existing safe placeholder
+// suggestion (intakeDocument) - the document is still recorded and on file
+// either way, so this never regresses the base "record it" behavior.
+router.post(
+  "/extract-document",
+  requireUser,
+  upload.single("file"),
+  h(async (req, res) => {
+    const ctx = await requireOrg(req, res);
+    if (!ctx) return;
+    const orgId = ctx.actor.org!.id;
+    const file = (req as Request & { file?: Express.Multer.File }).file;
+    if (!file) return res.status(400).json({ error: "attach a file" });
+
+    const meta = validateFileMeta({
+      filename: file.originalname,
+      mimetype: file.mimetype,
+      sizeBytes: file.size,
+      allow: "documents",
+    });
+    if (!meta.ok) return res.status(400).json({ error: meta.reason });
+    if (!sniffMagicBytes(file.buffer, extOf(file.originalname))) {
+      return res.status(400).json({ error: "file contents do not match its type" });
+    }
+
+    const key = `${orgId}/profile-extract/${Date.now()}-${randomToken(4)}-${file.originalname.replace(/[^\w.\- ]+/g, "_")}`;
+    const tmpPath = path.join(os.tmpdir(), `extract-scan-${crypto.randomUUID()}`);
+    let scan: { clean: boolean; detail?: string };
+    try {
+      fs.writeFileSync(tmpPath, file.buffer);
+      scan = await scanWithClamAV(tmpPath);
+    } finally {
+      try { fs.unlinkSync(tmpPath); } catch { /* ignore */ }
+    }
+    if (!scan.clean) return res.status(400).json({ error: scan.detail || "file failed virus scan" });
+
+    await putObjectBytes(key, file.buffer, file.mimetype);
+    const fileUrl = `storage://${key}`;
+
+    // Attempt real extraction; on any failure fall through to the existing
+    // safe placeholder behavior (never a hard dependency).
+    let suggestions: profiles.AiSuggestion[] = [];
+    let extractedAny = false;
+    try {
+      const text = await extractTextFromDocument(file.buffer, file.mimetype, file.originalname);
+      if (text) {
+        const extracted = await extractProfileFromDocumentText(text, file.originalname);
+        if (extracted) {
+          suggestions = await profiles.intakeExtractedFields(orgId, "document", key, extracted);
+          extractedAny = suggestions.length > 0;
+        }
+      }
+    } catch {
+      // Extraction is best effort; fall through to the placeholder below.
+    }
+
+    if (!extractedAny) {
+      const out = await profiles.intakeDocument(orgId, ctx.actor.user.id, {
+        fileUrl,
+        documentType: "extract",
+      });
+      suggestions = [out.suggestion];
+    }
+
+    res.status(201).json({ available: extractedAny, fileUrl, suggestions });
   }),
 );
 
