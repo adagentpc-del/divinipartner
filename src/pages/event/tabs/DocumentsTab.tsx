@@ -3,9 +3,18 @@ import { apiSend } from '../../../lib/api';
 
 /**
  * Documents tab. The AI bid package generator (POST /events/:id/bid-package)
- * produces a vendor-ready document assembled from the event record. Uploaded
+ * produces a vendor-ready summary assembled from the event record. Uploaded
  * files (COI, contracts, floorplans) are managed by the shared document system
- * in another phase; this tab surfaces the generated package and links out.
+ * in another phase; this tab surfaces the generated package.
+ *
+ * The package used to be a dead-end read-only view: there was no way to edit
+ * it or turn it into anything vendors could actually respond to. It is now a
+ * review step before publishing: "Edit details" reveals the fields a real bid
+ * needs (services -> one bid category per line, scope, budget, tier), and
+ * "Publish to bid board" posts one bid per service via the existing, already-
+ * working POST /api/bids (same call BidsTab.tsx uses), so the AI-drafted
+ * package turns into real, vendor-visible bids instead of just a summary the
+ * user has to manually retype into the Bids tab.
  */
 type BidPackage = {
   generated_at: string;
@@ -15,21 +24,69 @@ type BidPackage = {
   notes: string;
 };
 
+const TIER_OPTIONS = ['premier', 'partner', 'free', 'private'];
+
 export default function DocumentsTab({ eventId }: { eventId: string }) {
   const [pkg, setPkg] = useState<BidPackage | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const [editing, setEditing] = useState(false);
+  const [servicesText, setServicesText] = useState('');
+  const [scopeText, setScopeText] = useState('');
+  const [budgetMin, setBudgetMin] = useState('');
+  const [budgetMax, setBudgetMax] = useState('');
+  const [tierAccess, setTierAccess] = useState('premier');
+  const [publishing, setPublishing] = useState(false);
+  const [publishResult, setPublishResult] = useState<string | null>(null);
+
   async function generate() {
     setBusy(true);
     setErr(null);
+    setPublishResult(null);
     try {
       const r = await apiSend<{ package: BidPackage }>('POST', `/events/${eventId}/bid-package`);
       setPkg(r.package);
+      setServicesText(r.package.scope.required_services.join('\n'));
+      setScopeText(r.package.scope.goals ?? '');
+      setBudgetMax(r.package.event.budget ? String(Math.round(Number(r.package.event.budget))) : '');
+      setBudgetMin('');
+      setEditing(false);
     } catch (e) {
       setErr((e as Error).message);
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function publish() {
+    const services = servicesText.split('\n').map((s) => s.trim()).filter(Boolean);
+    if (services.length === 0) {
+      setErr('Add at least one service category before publishing.');
+      return;
+    }
+    setPublishing(true);
+    setErr(null);
+    setPublishResult(null);
+    try {
+      for (const category of services) {
+        await apiSend('POST', '/bids', {
+          event_id: eventId,
+          category,
+          scope: scopeText || null,
+          budget_min: budgetMin ? Number(budgetMin) : null,
+          budget_max: budgetMax ? Number(budgetMax) : null,
+          tier_access: tierAccess,
+          rush: false,
+          post: true,
+        });
+      }
+      setPublishResult(`Published ${services.length} bid${services.length === 1 ? '' : 's'} to the Bid Board. Switch to the Bids tab to see and share them.`);
+      setEditing(false);
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setPublishing(false);
     }
   }
 
@@ -63,6 +120,50 @@ export default function DocumentsTab({ eventId }: { eventId: string }) {
             <div><dt>Goals</dt><dd>{pkg.scope.goals ?? 'Not captured'}</dd></div>
           </dl>
           <p className="ew-doc-note">{pkg.notes}</p>
+
+          {publishResult ? <p className="ew-doc-success">{publishResult}</p> : null}
+
+          {!editing ? (
+            <div className="ew-doc-actions">
+              <button type="button" className="ew-btn ghost" onClick={() => setEditing(true)}>Edit details</button>
+              <button type="button" className="ew-btn" disabled={publishing} onClick={publish}>
+                {publishing ? 'Publishing...' : 'Publish to bid board'}
+              </button>
+            </div>
+          ) : (
+            <div className="ew-doc-edit">
+              <label>Service categories (one per line - each becomes a separate bid)
+                <textarea
+                  value={servicesText}
+                  onChange={(e) => setServicesText(e.target.value)}
+                  rows={Math.max(3, servicesText.split('\n').length)}
+                  placeholder="e.g. Catering&#10;Florals&#10;DJ"
+                />
+              </label>
+              <label>Scope / goals (applied to every published bid)
+                <textarea value={scopeText} onChange={(e) => setScopeText(e.target.value)} rows={3} />
+              </label>
+              <div className="ew-doc-editrow">
+                <label>Budget min ($)
+                  <input value={budgetMin} onChange={(e) => setBudgetMin(e.target.value)} placeholder="optional" />
+                </label>
+                <label>Budget max ($)
+                  <input value={budgetMax} onChange={(e) => setBudgetMax(e.target.value)} placeholder="optional" />
+                </label>
+                <label>Tier access
+                  <select value={tierAccess} onChange={(e) => setTierAccess(e.target.value)}>
+                    {TIER_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </label>
+              </div>
+              <div className="ew-doc-actions">
+                <button type="button" className="ew-btn ghost" onClick={() => setEditing(false)}>Cancel</button>
+                <button type="button" className="ew-btn" disabled={publishing} onClick={publish}>
+                  {publishing ? 'Publishing...' : 'Publish to bid board'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="ew-empty">
@@ -85,5 +186,12 @@ const D_CSS = `
 .ew-doc-dl dt { font-size: 10.5px; letter-spacing: .4px; text-transform: uppercase; color: #9a8a5e; font-weight: 600; }
 .ew-doc-dl dd { margin: 0; font-size: 13.5px; color: #2c2a26; }
 .ew-doc-note { margin: 14px 0 0; font-size: 12px; color: #7d776c; font-style: italic; }
+.ew-doc-success { margin: 14px 0 0; font-size: 12.5px; color: #1E5D4A; font-weight: 600; background: rgba(30,93,74,.08); border: 1px solid rgba(30,93,74,.25); border-radius: 9px; padding: 10px 12px; }
+.ew-doc-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+.ew-doc-edit { margin-top: 16px; padding-top: 16px; border-top: 1px solid #e7e1d6; display: flex; flex-direction: column; gap: 12px; }
+.ew-doc-edit label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 600; color: #7d776c; }
+.ew-doc-edit input, .ew-doc-edit select, .ew-doc-edit textarea { font: inherit; font-size: 13px; padding: 8px 10px; border: 1px solid #e7e1d6; border-radius: 8px; background: #fff; color: #2c2a26; }
+.ew-doc-editrow { display: flex; gap: 14px; flex-wrap: wrap; }
+.ew-doc-editrow label { flex: 1 1 160px; }
 @media (max-width: 720px) { .ew-doc-dl { grid-template-columns: 1fr; } }
 `;

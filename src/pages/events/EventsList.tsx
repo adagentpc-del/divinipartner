@@ -28,7 +28,7 @@ export default function EventsList() {
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({ name: '', type: '', date_time: '', guest_count: '', budget: '' });
+  const [form, setForm] = useState({ name: '', type: '', date_time: '', guest_count: '', budget: '', event_goals: '', required_services: '' });
   const [busy, setBusy] = useState(false);
 
   async function load() {
@@ -60,6 +60,8 @@ export default function EventsList() {
         date_time: form.date_time || null,
         guest_count: form.guest_count ? Number(form.guest_count) : null,
         budget: form.budget ? Number(form.budget) : null,
+        event_goals: form.event_goals.trim() || null,
+        required_services: form.required_services.split('\n').map((s) => s.trim()).filter(Boolean),
       });
       nav(`/events/${r.event.id}`);
     } catch (e) {
@@ -92,6 +94,20 @@ export default function EventsList() {
           <input type="datetime-local" value={form.date_time} onChange={(e) => setForm({ ...form, date_time: e.target.value })} />
           <input placeholder="Guests" value={form.guest_count} onChange={(e) => setForm({ ...form, guest_count: e.target.value })} />
           <input placeholder="Budget" value={form.budget} onChange={(e) => setForm({ ...form, budget: e.target.value })} />
+          <textarea
+            className="evl-form-goals"
+            placeholder="Event goals / description (optional)"
+            value={form.event_goals}
+            onChange={(e) => setForm({ ...form, event_goals: e.target.value })}
+            rows={2}
+          />
+          <textarea
+            className="evl-form-services"
+            placeholder={'Services you need, one per line (optional) e.g.\nCatering\nFlorals\nDJ'}
+            value={form.required_services}
+            onChange={(e) => setForm({ ...form, required_services: e.target.value })}
+            rows={2}
+          />
           <button type="submit" className="evl-btn" disabled={busy}>Create and open</button>
         </form>
       ) : null}
@@ -144,6 +160,7 @@ const EVL_CSS = `
 .evl-muted { color: var(--dp-muted); font-size: 13px; }
 .evl-form { display: flex; flex-wrap: wrap; gap: 9px; background: #fff; border: 1px solid var(--dp-line); border-radius: 12px; padding: 16px; margin-bottom: 22px; }
 .evl-form input { font: inherit; padding: 9px 12px; border: 1px solid var(--dp-line); border-radius: 8px; background: #fff; flex: 1 1 160px; min-width: 130px; }
+.evl-form-goals, .evl-form-services { font: inherit; font-size: 13px; padding: 9px 12px; border: 1px solid var(--dp-line); border-radius: 8px; background: #fff; flex: 1 1 260px; min-width: 220px; resize: vertical; }
 .evl-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
 .evl-card { text-align: left; background: #fff; border: 1px solid var(--dp-line); border-radius: 14px; padding: 18px; cursor: pointer; display: flex; flex-direction: column; gap: 10px; transition: border-color .15s ease, box-shadow .15s ease; font: inherit; }
 .evl-card:hover { border-color: var(--dp-gold); box-shadow: 0 4px 16px rgba(18,60,46,.07); }
