@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { apiGet } from '../../lib/api';
 import VerifiedBadges, {
   fetchBadgesBatch,
@@ -30,6 +31,7 @@ type Result = {
 type Facets = { kinds: string[]; categories: string[]; regions: string[] };
 
 export default function MarketplaceSearch() {
+  const [urlParams] = useSearchParams();
   const [facets, setFacets] = useState<Facets>({ kinds: [], categories: [], regions: [] });
   const [sorts, setSorts] = useState<string[]>(['relevance', 'rating', 'newest', 'name']);
   const [rows, setRows] = useState<Result[]>([]);
@@ -39,10 +41,13 @@ export default function MarketplaceSearch() {
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const [q, setQ] = useState('');
-  const [kind, setKind] = useState('');
-  const [category, setCategory] = useState('');
-  const [region, setRegion] = useState('');
+  // Seeded from the URL (e.g. ?q=...&kind=...&region=... carried over from the
+  // public marketplace landing page's search bar) so a deep link actually
+  // pre-fills and runs a search instead of landing on an empty form.
+  const [q, setQ] = useState(() => urlParams.get('q') ?? '');
+  const [kind, setKind] = useState(() => urlParams.get('kind') ?? urlParams.get('type') ?? '');
+  const [category, setCategory] = useState(() => urlParams.get('category') ?? '');
+  const [region, setRegion] = useState(() => urlParams.get('region') ?? urlParams.get('location') ?? '');
   const [capacityMin, setCapacityMin] = useState('');
   const [ratingMin, setRatingMin] = useState('');
   const [premierOnly, setPremierOnly] = useState(false);
