@@ -4,14 +4,14 @@ import DashboardShell, { useMe, NavItem } from './DashboardShell';
 
 // Nav items carry `to` routes so the installer sidebar reaches the live pages
 // (DashboardShell navigates when `to` is set, matching the other dashboards).
-// Installer-specific surfaces (Skills & Certs, Availability, Tasks, Messages,
-// Completion Photos) have no dedicated route yet, so those stay inert rather
-// than linking to a 404.
+// Installer-specific surfaces (Skills & Certs, Tasks, Messages, Completion
+// Photos) have no dedicated route yet, so those stay inert rather than linking
+// to a 404. Availability now points at the real availability calendar.
 const NAV: NavItem[] = [
   { label: 'Overview', icon: 'O', to: '/app' },
   { label: 'My Profile', icon: 'P', to: '/profile' },
   { label: 'Skills & Certs', icon: 'S' },
-  { label: 'Availability', icon: 'A' },
+  { label: 'Availability', icon: 'A', to: '/calendar' },
   { label: 'Assigned Jobs', icon: 'J', to: '/installations' },
   { label: 'Installations', icon: 'L', to: '/installations' },
   { label: 'Events', icon: 'E', to: '/events' },

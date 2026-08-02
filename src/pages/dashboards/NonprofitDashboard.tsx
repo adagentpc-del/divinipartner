@@ -20,6 +20,7 @@ import { apiGet } from '../../lib/api';
 
 const NAV: NavItem[] = [
   { label: 'Overview', icon: 'O', to: '/app' },
+  { label: 'Calendar', icon: 'c', to: '/calendar' },
   { label: 'Fundraising Events', icon: 'F', to: '/fundraising-builder' },
   { label: 'Sponsorship Packages', icon: 'S', to: '/sponsorship-packages' },
   { label: 'Ticket and Tables', icon: 'T', to: '/ticket-table' },
