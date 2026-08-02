@@ -1,32 +1,52 @@
 /**
  * Local-model-first onboarding extraction.
  *
- * Given a public website or document link the partner pasted during onboarding,
- * this fetches the page server-side, strips it to plain text, and asks a LOCAL
- * LLM to structure the PUBLIC profile fields it can see (description, services,
- * tags, name). Every returned field is a suggestion the owner must verify; we
- * never overwrite owner-entered values and never invent pricing, availability,
- * capacity, insurance, or certifications.
+ * Given a public website URL or an uploaded document (rate sheet, floor plan,
+ * menu, etc.), this reads the text server-side and asks a LOCAL LLM to
+ * structure the profile fields it can see: name, description, services,
+ * tags, hours, capacity/size, a starting-price summary, and packages.
  *
- * The LLM is never a hard dependency: any failure (fetch error, timeout, model
- * off, bad JSON) returns null and the caller falls back to the existing
- * deterministic intake behavior.
+ * Safety model: the model may ONLY restate facts explicitly present in the
+ * source text - it must OMIT any field it cannot support, never estimate or
+ * imply a number. Insurance, certifications, awards, and ratings claims stay
+ * completely out of scope for extraction (those require real verification,
+ * not text-scraping, regardless of what a website claims about itself).
+ *
+ * Every returned field is a SUGGESTION the owner must verify (see
+ * db/profiles.ts ai_profile_suggestions); nothing here writes to a live
+ * profile directly, and owner-entered values are never overwritten.
+ *
+ * The LLM is never a hard dependency: any failure (fetch error, timeout,
+ * model off, bad JSON) returns null and the caller falls back to the
+ * existing deterministic intake behavior.
  *
  * ZERO em dashes in this file (hard rule).
  */
 import { llmEnabled, llmJson } from "./llm.js";
 import { safeFetch } from "./safe-fetch.js";
+import { htmlToText } from "./htmlText.js";
+
+export { htmlToText };
+
+export type ExtractedPackage = { name: string; description?: string; priceNote?: string };
 
 export type ExtractedProfile = {
+  name?: string;
   description?: string;
   services?: string[];
   tags?: string[];
-  name?: string;
+  /** Operating/business hours, verbatim-ish as stated (e.g. "Mon-Fri 9am-5pm"). */
+  hours?: string;
+  /** Capacity or size, as stated (e.g. "up to 300 guests", "5,000 sq ft"). */
+  capacity?: string;
+  /** A starting-price or price-range summary, as stated (e.g. "Starting at $2,500"). */
+  startingPrice?: string;
+  /** Named packages with what's included and a pricing note, as stated. */
+  packages?: ExtractedPackage[];
 };
 
 const FETCH_TIMEOUT_MS = 12000;
 const MAX_BODY_BYTES = 600_000; // cap to keep memory + token use bounded
-const MAX_TEXT_CHARS = 12_000; // text handed to the model
 
 function normalizeUrl(url: string): string | null {
   const s = (url || "").trim();
@@ -90,70 +110,77 @@ async function fetchTextCapped(url: string): Promise<string | null> {
   }
 }
 
-/** Strip HTML to readable text. Drops scripts, styles, and tags; collapses space. */
-export function htmlToText(html: string): string {
-  const noScript = html
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
-    .replace(/<!--[\s\S]*?-->/g, " ");
-  const text = noScript
-    .replace(/<\/(p|div|li|h[1-6]|br|tr|section|article)>/gi, "\n")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'")
-    .replace(/[ \t\f\v]+/g, " ")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-  return text.slice(0, MAX_TEXT_CHARS);
+type RawExtraction = {
+  name?: unknown;
+  description?: unknown;
+  services?: unknown;
+  tags?: unknown;
+  hours?: unknown;
+  capacity?: unknown;
+  starting_price?: unknown;
+  packages?: unknown;
+};
+
+/** Sanitize + bound a single package entry from the model's JSON. Returns null
+ *  when the entry has no usable name. */
+function sanitizePackage(p: unknown): ExtractedPackage | null {
+  if (!p || typeof p !== "object") return null;
+  const obj = p as Record<string, unknown>;
+  const name = typeof obj.name === "string" ? obj.name.trim().slice(0, 120) : "";
+  if (!name) return null;
+  const out: ExtractedPackage = { name };
+  if (typeof obj.description === "string" && obj.description.trim()) {
+    out.description = obj.description.trim().slice(0, 400);
+  }
+  if (typeof obj.priceNote === "string" && obj.priceNote.trim()) {
+    out.priceNote = obj.priceNote.trim().slice(0, 120);
+  }
+  return out;
 }
 
 /**
- * Fetch a public URL and use the local LLM to extract structured public-profile
- * fields. Returns null on any failure so the caller can fall back to the
- * deterministic onboarding intake. Returned fields are SUGGESTIONS pending owner
- * verification and contain no fabricated pricing/availability/capacity/insurance.
+ * Shared structuring core: given already-extracted plain text (from a website
+ * or a document) and a short label describing its source, asks the local LLM
+ * to extract only what is explicitly stated. Returns null on any failure, on
+ * an unusably short input, or when nothing could be extracted.
  */
-export async function extractProfileFromUrl(url: string): Promise<ExtractedProfile | null> {
+export async function extractProfileFromText(text: string, sourceLabel: string): Promise<ExtractedProfile | null> {
   if (!llmEnabled()) return null;
-  const clean = normalizeUrl(url);
-  if (!clean) return null;
-
-  const raw = await fetchTextCapped(clean);
-  if (!raw) return null;
-  const text = htmlToText(raw);
-  if (text.length < 40) return null;
+  const trimmed = (text || "").trim();
+  if (trimmed.length < 40) return null;
 
   const system =
-    "You extract a public business profile from website text. You only restate " +
-    "information that is clearly present in the text. You NEVER invent or imply " +
-    "pricing, availability, capacity, insurance, certifications, awards, or " +
-    "ratings. If a field is not clearly stated, omit it. Reply with JSON only.";
+    "You extract a public business profile from text. You only restate " +
+    "information that is clearly and explicitly present in the text. You " +
+    "NEVER estimate, infer, or imply a number, date, or fact that is not " +
+    "written there. You never output insurance, certification, award, or " +
+    "rating claims under any circumstance, even if the text mentions them - " +
+    "those require separate verification and are permanently out of scope. " +
+    "If a field is not clearly stated, omit it entirely rather than guessing. " +
+    "Reply with JSON only.";
 
   const prompt =
-    "Source URL: " +
-    clean +
-    "\n\nPage text (truncated):\n" +
-    text +
-    "\n\nExtract ONLY public profile fields that are clearly stated." +
+    `Source: ${sourceLabel}` +
+    "\n\nText (truncated):\n" +
+    trimmed +
+    "\n\nExtract ONLY fields that are clearly and explicitly stated in the text." +
     ' Return JSON exactly as: {"name": string, "description": string,' +
-    ' "services": string[], "tags": string[]}.' +
+    ' "services": string[], "tags": string[], "hours": string, "capacity": string,' +
+    ' "starting_price": string, "packages": [{"name": string, "description": string, "priceNote": string}]}.' +
     " name is the business name. description is 2 to 4 neutral factual sentences" +
-    " using only what the page states. services is a short list of named offerings" +
-    " mentioned on the page. tags is 3 to 10 short lowercase labels. Omit any field" +
-    " you cannot support from the text. Never output pricing, availability," +
-    " capacity, insurance, or certification claims.";
+    " using only what the text states. services is a short list of named" +
+    " offerings mentioned. tags is 3 to 10 short lowercase labels. hours is the" +
+    " stated operating/business hours, verbatim or close to it. capacity is a" +
+    " stated size or guest/attendee capacity (e.g. \"up to 300 guests\" or" +
+    " \"5,000 sq ft\") - ONLY if a specific figure is written in the text." +
+    " starting_price is a stated starting price or price range (e.g. \"Starting" +
+    " at $2,500\") - ONLY if a specific figure is written in the text. packages" +
+    " is a list of named packages/tiers with what is included and their stated" +
+    " price, ONLY when the text lists actual packages with actual prices." +
+    " Omit any field you cannot directly support with text that is actually" +
+    " there. Never output insurance, certification, award, or rating claims.";
 
-  const out = await llmJson<{
-    name?: unknown;
-    description?: unknown;
-    services?: unknown;
-    tags?: unknown;
-  }>(prompt, { system, timeoutMs: 20000 });
+  const out = await llmJson<RawExtraction>(prompt, { system, timeoutMs: 25000 });
   if (!out) return null;
 
   const result: ExtractedProfile = {};
@@ -183,14 +210,49 @@ export async function extractProfileFromUrl(url: string): Promise<ExtractedProfi
     ).slice(0, 12);
     if (tags.length > 0) result.tags = tags;
   }
-
-  if (
-    result.name === undefined &&
-    result.description === undefined &&
-    result.services === undefined &&
-    result.tags === undefined
-  ) {
-    return null;
+  if (typeof out.hours === "string" && out.hours.trim().length > 2) {
+    result.hours = out.hours.trim().slice(0, 300);
   }
-  return result;
+  if (typeof out.capacity === "string" && out.capacity.trim().length > 1) {
+    result.capacity = out.capacity.trim().slice(0, 160);
+  }
+  if (typeof out.starting_price === "string" && out.starting_price.trim().length > 1) {
+    result.startingPrice = out.starting_price.trim().slice(0, 160);
+  }
+  if (Array.isArray(out.packages)) {
+    const packages = out.packages
+      .map(sanitizePackage)
+      .filter((p): p is ExtractedPackage => p !== null)
+      .slice(0, 12);
+    if (packages.length > 0) result.packages = packages;
+  }
+
+  const hasAnyField = Object.keys(result).length > 0;
+  return hasAnyField ? result : null;
+}
+
+/**
+ * Fetch a public URL and use the local LLM to extract structured public-profile
+ * fields. Returns null on any failure so the caller can fall back to the
+ * deterministic onboarding intake.
+ */
+export async function extractProfileFromUrl(url: string): Promise<ExtractedProfile | null> {
+  if (!llmEnabled()) return null;
+  const clean = normalizeUrl(url);
+  if (!clean) return null;
+  const raw = await fetchTextCapped(clean);
+  if (!raw) return null;
+  const text = htmlToText(raw);
+  return extractProfileFromText(text, `website ${clean}`);
+}
+
+/**
+ * Structure an already-extracted document text (see lib/extractDocument.ts
+ * for turning an uploaded file's bytes into text) using the same shared core.
+ */
+export async function extractProfileFromDocumentText(
+  text: string,
+  fileName: string,
+): Promise<ExtractedProfile | null> {
+  return extractProfileFromText(text, `uploaded document "${fileName}"`);
 }

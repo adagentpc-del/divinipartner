@@ -33,6 +33,9 @@ type PublicProfile = {
     gallery?: ({ url?: string; caption?: string } | string)[];
     links?: Record<string, string>;
     location?: { city?: string | null; region?: string | null };
+    hours?: string | null;
+    capacity?: string | null;
+    pricing?: string | null;
   } | null;
   verified: boolean;
   // U5 verified badges embedded in the PUBLIC payload (company + venue). Present
@@ -384,6 +387,23 @@ export default function PublicProfile() {
               </section>
             )}
 
+            {(profile.sections?.hours || profile.sections?.capacity || profile.sections?.pricing) && (
+              <section className="pp-section">
+                <h2 className="pp-h2">Details</h2>
+                <dl className="pp-facts">
+                  {profile.sections?.hours && (
+                    <div><dt>Hours</dt><dd>{profile.sections.hours}</dd></div>
+                  )}
+                  {profile.sections?.capacity && (
+                    <div><dt>Capacity</dt><dd>{profile.sections.capacity}</dd></div>
+                  )}
+                  {profile.sections?.pricing && (
+                    <div><dt>Pricing</dt><dd>{profile.sections.pricing}</dd></div>
+                  )}
+                </dl>
+              </section>
+            )}
+
             {profile.organization_id && (
               <section className="pp-section">
                 <h2 className="pp-h2">Availability</h2>
@@ -680,4 +700,9 @@ const CSS = `
 .pp-avail-formrow label,.pp-avail-notelabel{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:600;color:var(--muted);flex:1 1 160px;}
 .pp-avail-formrow input,.pp-avail-notelabel textarea{font:inherit;font-size:13px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);}
 .pp-avail-formactions{display:flex;justify-content:flex-end;gap:10px;margin-top:14px;}
+.pp-facts{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:0;}
+.pp-facts div{display:flex;flex-direction:column;gap:3px;}
+.pp-facts dt{font-size:11px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted);font-weight:600;}
+.pp-facts dd{margin:0;font-size:14px;color:var(--ink);}
+@media(max-width:680px){.pp-facts{grid-template-columns:1fr;}}
 `;

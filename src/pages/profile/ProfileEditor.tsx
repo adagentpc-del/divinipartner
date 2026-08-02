@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
-import { apiGet, apiSend } from '../../lib/api';
+import { apiGet, apiSend, apiUpload } from '../../lib/api';
 
 /**
  * Divini Partners - Profile editor (blueprint section 9).
@@ -27,6 +27,43 @@ type State = {
   theme: Theme | null;
   slug: string | null;
 };
+
+type Suggestion = {
+  id: string;
+  source: string | null;
+  source_ref: string | null;
+  section: string | null;
+  field: string | null;
+  suggested_value: { value?: unknown } | null;
+  status: string;
+};
+
+const SECTION_LABELS: Record<string, string> = {
+  basics: 'Basics', about: 'About', services: 'Services', hours: 'Hours',
+  capacity: 'Capacity & size', pricing: 'Pricing', packages: 'Packages',
+  links: 'Links', documents: 'Documents',
+};
+const FIELD_LABELS: Record<string, string> = {
+  name: 'Name', tagline: 'Tagline', website: 'Website', body: 'Description',
+  items: 'List', text: 'Details', summary: 'Summary', primaryLink: 'Link', uploaded: 'Document',
+};
+
+function suggestionLabel(s: Suggestion): string {
+  const sec = SECTION_LABELS[s.section ?? ''] ?? s.section ?? 'Field';
+  const fld = FIELD_LABELS[s.field ?? ''] ?? s.field ?? '';
+  return fld ? `${sec} - ${fld}` : sec;
+}
+
+/** Short, readable preview of a suggestion's value for the review list. */
+function suggestionPreview(s: Suggestion): string {
+  const v = s.suggested_value?.value;
+  if (v == null) return '';
+  if (typeof v === 'string') return v.length > 220 ? `${v.slice(0, 220)}...` : v;
+  if (Array.isArray(v)) {
+    return v.map((it) => (typeof it === 'string' ? it : it?.name ?? JSON.stringify(it))).join(', ');
+  }
+  return JSON.stringify(v);
+}
 
 // Blueprint 9.5 - the ten co-branded profile templates.
 const TEMPLATES: { key: string; name: string; blurb: string }[] = [
@@ -63,6 +100,19 @@ export default function ProfileEditor() {
   const [transferMsg, setTransferMsg] = useState('');
   const [transferErr, setTransferErr] = useState('');
 
+  // AI profile assist: extract from a website URL or an uploaded document,
+  // then review each suggested field (accept / edit / reject) before it
+  // touches the draft. See server routes/profiles.ts POST /extract and
+  // /extract-document.
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [aiUrl, setAiUrl] = useState('');
+  const [aiFile, setAiFile] = useState<File | null>(null);
+  const [aiBusy, setAiBusy] = useState<'url' | 'file' | null>(null);
+  const [aiMsg, setAiMsg] = useState('');
+  const [aiErr, setAiErr] = useState('');
+  const [editingSuggestionId, setEditingSuggestionId] = useState<string | null>(null);
+  const [editingValue, setEditingValue] = useState('');
+
   async function load() {
     try {
       const s = await apiGet<State>('/profile');
@@ -72,6 +122,76 @@ export default function ProfileEditor() {
     } catch (e: any) {
       setErr(e?.message ?? 'Could not load your profile.');
     }
+    void loadSuggestions();
+  }
+
+  async function loadSuggestions() {
+    try {
+      const r = await apiGet<{ suggestions: Suggestion[] }>('/profile/onboarding/suggestions?status=ai_suggested_pending_verification');
+      setSuggestions(r.suggestions);
+    } catch {
+      // Non-fatal: the review panel just stays empty.
+    }
+  }
+
+  async function extractFromWebsite() {
+    if (!aiUrl.trim()) { setAiErr('Enter a website URL first.'); return; }
+    setAiBusy('url'); setAiErr(''); setAiMsg('');
+    try {
+      const r = await apiSend<{ available: boolean; suggestions: Suggestion[] }>('POST', '/profile/extract', { url: aiUrl.trim() });
+      if (!r.available) {
+        setAiMsg('Could not read that site automatically right now. You can still add fields manually below.');
+      } else if (r.suggestions.length === 0) {
+        setAiMsg('Nothing usable was found on that page.');
+      } else {
+        setAiMsg(`Found ${r.suggestions.length} suggested field${r.suggestions.length === 1 ? '' : 's'}. Review them below.`);
+        await loadSuggestions();
+      }
+    } catch (e: any) {
+      setAiErr(e?.message ?? 'Could not extract from that URL.');
+    } finally {
+      setAiBusy(null);
+    }
+  }
+
+  async function extractFromDocument() {
+    if (!aiFile) { setAiErr('Choose a file first.'); return; }
+    setAiBusy('file'); setAiErr(''); setAiMsg('');
+    try {
+      const fd = new FormData();
+      fd.append('file', aiFile);
+      const r = await apiUpload<{ available: boolean; suggestions: Suggestion[] }>('/profile/extract-document', fd);
+      if (!r.available) {
+        setAiMsg('The document is on file. We could not automatically read structured fields from it (unsupported format or the reader is unavailable) - add anything relevant manually below.');
+      } else {
+        setAiMsg(`Found ${r.suggestions.length} suggested field${r.suggestions.length === 1 ? '' : 's'} from the document. Review them below.`);
+      }
+      setAiFile(null);
+      await loadSuggestions();
+    } catch (e: any) {
+      setAiErr(e?.message ?? 'Could not upload that document.');
+    } finally {
+      setAiBusy(null);
+    }
+  }
+
+  async function resolveSuggestion(id: string, action: 'accepted' | 'edited' | 'rejected', value?: unknown) {
+    setAiErr('');
+    try {
+      await apiSend('POST', `/profile/onboarding/suggestions/${id}`, { action, value });
+      setSuggestions((prev) => prev.filter((s) => s.id !== id));
+      setEditingSuggestionId(null);
+      await load();
+      flash(action === 'rejected' ? 'Suggestion dismissed' : 'Suggestion applied to your draft');
+    } catch (e: any) {
+      setAiErr(e?.message ?? 'Could not resolve that suggestion.');
+    }
+  }
+
+  function startEditSuggestion(s: Suggestion) {
+    setEditingSuggestionId(s.id);
+    const v = s.suggested_value?.value;
+    setEditingValue(typeof v === 'string' ? v : JSON.stringify(v ?? '', null, 2));
   }
   useEffect(() => { if (session) load(); /* eslint-disable-line */ }, [session]);
 
@@ -162,6 +282,70 @@ export default function ProfileEditor() {
 
         {tab === 'content' && (
           <div className="dppe-panel">
+            <Section title="AI profile assist">
+              <p className="dppe-help">
+                Paste your website or upload a document (rate sheet, floor plan, menu). We read what
+                is actually written there and suggest fields below - name, description, services,
+                hours, capacity, pricing, and packages. Nothing is added to your profile until you
+                accept, edit, or reject each suggestion.
+              </p>
+              {aiErr && <div className="dppe-err">{aiErr}</div>}
+              {aiMsg && <div className="dppe-ok">{aiMsg}</div>}
+              <Row>
+                <Field label="Website URL">
+                  <input value={aiUrl} onChange={(e) => setAiUrl(e.target.value)} placeholder="https://yourbusiness.com" />
+                </Field>
+                <div className="dppe-field">
+                  <span className="dppe-lbl">&nbsp;</span>
+                  <button className="dppe-btn ghost" onClick={extractFromWebsite} disabled={aiBusy !== null}>
+                    {aiBusy === 'url' ? 'Reading...' : 'Extract from website'}
+                  </button>
+                </div>
+              </Row>
+              <Row>
+                <Field label="Upload a document (.txt or .pdf)">
+                  <input type="file" accept=".txt,.pdf,text/plain,application/pdf" onChange={(e) => setAiFile(e.target.files?.[0] ?? null)} />
+                </Field>
+                <div className="dppe-field">
+                  <span className="dppe-lbl">&nbsp;</span>
+                  <button className="dppe-btn ghost" onClick={extractFromDocument} disabled={aiBusy !== null || !aiFile}>
+                    {aiBusy === 'file' ? 'Reading...' : 'Extract from document'}
+                  </button>
+                </div>
+              </Row>
+
+              {suggestions.length > 0 && (
+                <div className="dppe-suggestions">
+                  {suggestions.map((s) => (
+                    <div className="dppe-suggestion" key={s.id}>
+                      <div className="dppe-suggestion-head">
+                        <span className="dppe-suggestion-label">{suggestionLabel(s)}</span>
+                        <span className="dppe-suggestion-source">from {s.source === 'document' ? 'uploaded document' : s.source ?? 'AI'}</span>
+                      </div>
+                      {editingSuggestionId === s.id ? (
+                        <>
+                          <textarea rows={3} value={editingValue} onChange={(e) => setEditingValue(e.target.value)} />
+                          <div className="dppe-suggestion-actions">
+                            <button className="dppe-mini" onClick={() => resolveSuggestion(s.id, 'edited', editingValue)}>Save edit</button>
+                            <button className="dppe-mini reject" onClick={() => setEditingSuggestionId(null)}>Cancel</button>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <p className="dppe-suggestion-preview">{suggestionPreview(s) || '(no preview)'}</p>
+                          <div className="dppe-suggestion-actions">
+                            <button className="dppe-mini" onClick={() => resolveSuggestion(s.id, 'accepted')}>Accept</button>
+                            <button className="dppe-mini" onClick={() => startEditSuggestion(s)}>Edit</button>
+                            <button className="dppe-mini reject" onClick={() => resolveSuggestion(s.id, 'rejected')}>Reject</button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Section>
+
             <Section title="Hero">
               <Row>
                 <Field label="Profile name"><input value={sections.basics?.name ?? ''} onChange={(e) => setField('basics', 'name', e.target.value)} /></Field>
@@ -175,6 +359,18 @@ export default function ProfileEditor() {
 
             <Section title="About">
               <Field label="About"><textarea rows={6} value={sections.about?.body ?? ''} onChange={(e) => setField('about', 'body', e.target.value)} /></Field>
+            </Section>
+
+            <Section title="Hours">
+              <Field label="Operating hours"><input value={sections.hours?.text ?? ''} onChange={(e) => setField('hours', 'text', e.target.value)} placeholder="e.g. Mon-Fri 9am-5pm" /></Field>
+            </Section>
+
+            <Section title="Capacity & size">
+              <Field label="Capacity or size"><input value={sections.capacity?.text ?? ''} onChange={(e) => setField('capacity', 'text', e.target.value)} placeholder="e.g. up to 300 guests, 5,000 sq ft" /></Field>
+            </Section>
+
+            <Section title="Pricing">
+              <Field label="Starting price / summary"><input value={sections.pricing?.summary ?? ''} onChange={(e) => setField('pricing', 'summary', e.target.value)} placeholder="e.g. Starting at $2,500" /></Field>
             </Section>
 
             <Section title="Services">
@@ -369,5 +565,13 @@ const CSS = `
 .dppe-mini.reject{background:transparent;color:#a3382f;border:1px solid #f0cfca;}
 .dppe-err{background:#fbe9e7;color:#a3382f;border-radius:10px;padding:10px 13px;font-size:13px;margin-bottom:14px;}
 .dppe-ok{background:rgba(31,122,77,.12);color:#1f7a4d;border-radius:10px;padding:10px 13px;font-size:13px;margin-bottom:14px;}
+.dppe-suggestions{display:flex;flex-direction:column;gap:10px;margin-top:16px;}
+.dppe-suggestion{border:1px solid var(--line);border-radius:11px;padding:12px 14px;background:var(--ivory);}
+.dppe-suggestion-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:6px;}
+.dppe-suggestion-label{font-weight:700;color:var(--e);font-size:13px;}
+.dppe-suggestion-source{font-size:11px;color:var(--muted);}
+.dppe-suggestion-preview{font-size:13px;color:var(--ink);margin:0 0 10px;line-height:1.5;}
+.dppe-suggestion textarea{margin-bottom:10px;}
+.dppe-suggestion-actions{display:flex;gap:8px;}
 @media(max-width:680px){.dppe-row,.dppe-colors{grid-template-columns:1fr;}}
 `;
