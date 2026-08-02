@@ -239,6 +239,35 @@ function Authed({ children }: { children: JSX.Element }) {
 // Picks the right dashboard for the signed-in account.
 function AppHome() {
   const { session, company, isAdmin, loading } = useAuth();
+  const nav = useNavigate();
+
+  // Honor a search a visitor started on the public marketplace page before
+  // they registered (stashed in Marketplace.tsx's runSearch, since the
+  // register -> verify email -> onboarding gap means it cannot just be
+  // carried in a single redirect). Runs once, after onboarding is complete,
+  // then clears the stash so it never re-fires on a later /app visit.
+  useEffect(() => {
+    if (loading || !session || !company) return;
+    let pending: string | null = null;
+    try {
+      pending = window.localStorage.getItem('divini_pending_marketplace_search');
+    } catch {
+      return;
+    }
+    if (!pending) return;
+    window.localStorage.removeItem('divini_pending_marketplace_search');
+    try {
+      const intent = JSON.parse(pending) as { q?: string; kind?: string; region?: string };
+      const p = new URLSearchParams();
+      if (intent.q) p.set('q', intent.q);
+      if (intent.kind) p.set('kind', intent.kind);
+      if (intent.region) p.set('region', intent.region);
+      if (p.toString()) nav(`/marketplace/search?${p.toString()}`, { replace: true });
+    } catch {
+      // malformed stash, nothing to redirect to - just drop it
+    }
+  }, [loading, session, company, nav]);
+
   if (loading) return <Loading />;
   if (!session) return <Navigate to="/login" replace />;
   if (isAdmin) return <SuperAdminDashboard />;

@@ -133,6 +133,23 @@ export default function Marketplace() {
     if (budget !== BUDGETS[0]) params.set('budget', budget);
     if (eventType !== EVENT_TYPES[0]) params.set('eventType', eventType);
     if (availability !== AVAILABILITY[0]) params.set('availability', availability);
+    // Stash the fields that actually map onto the real marketplace search
+    // (q, kind, region) so the visitor's search survives the register ->
+    // verify email -> onboarding gap and is honored once they land on /app,
+    // instead of silently discarding everything they just typed. Capacity,
+    // budget, event type, and availability have no equivalent facet on the
+    // real search yet, so they're not stashed here.
+    try {
+      window.localStorage.setItem(
+        'divini_pending_marketplace_search',
+        JSON.stringify({ q: keyword.trim(), kind: ptype.toLowerCase(), region: location.trim() }),
+      );
+    } catch {
+      // localStorage unavailable (private browsing etc.) - the search intent
+      // is still carried in the ?q=/?type=/?location= query string below for
+      // the immediate register page prefill; only the post-onboarding
+      // redirect is lost, which is a minor degrade, not a broken flow.
+    }
     nav(`/register?${params.toString()}`);
   };
 
