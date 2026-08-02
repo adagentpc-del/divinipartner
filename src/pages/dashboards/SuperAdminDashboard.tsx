@@ -141,7 +141,7 @@ const PROMPTS = [
   'Surface payments stuck in escrow',
 ];
 
-function PromptStrip() {
+function PromptStrip({ onPrompt }: { onPrompt: () => void }) {
   return (
     <section className="dpdash-nba">
       <div className="dpdash-nba-head">
@@ -150,7 +150,7 @@ function PromptStrip() {
       </div>
       <div className="dpdash-nba-prompts">
         {PROMPTS.map((p, i) => (
-          <button key={i} type="button" className="dpdash-prompt">{p}</button>
+          <button key={i} type="button" className="dpdash-prompt" onClick={onPrompt}>{p}</button>
         ))}
       </div>
     </section>
@@ -164,7 +164,7 @@ export default function SuperAdminDashboard() {
 
   return (
     <DashboardShell title="Platform Console" navLabel="Administration" items={NAV}>
-      <PromptStrip />
+      <PromptStrip onPrompt={() => nav('/admin/accounts')} />
 
       <div className="dpdash-stats">
         <div className="dpdash-stat"><div className="dpdash-stat-k">Total accounts</div><div className="dpdash-stat-v">0</div><div className="dpdash-stat-d">venues, vendors, clients</div></div>
@@ -183,7 +183,7 @@ export default function SuperAdminDashboard() {
           <div className="dpdash-empty">
             <span className="dpdash-empty-glyph" aria-hidden="true">A</span>
             <p>No accounts are waiting for review. New sign-ups and claim requests will appear here for {who} to action.</p>
-            <button type="button" className="dpdash-btn ghost">Open queue</button>
+            <button type="button" className="dpdash-btn ghost" onClick={() => nav('/admin/accounts')}>Open queue</button>
           </div>
         </div>
 
@@ -193,7 +193,7 @@ export default function SuperAdminDashboard() {
           <div className="dpdash-empty">
             <span className="dpdash-empty-glyph" aria-hidden="true">S</span>
             <p>No open cases. Disputes, refund requests, and flagged reviews will surface here in priority order.</p>
-            <button type="button" className="dpdash-btn ghost">View case board</button>
+            <button type="button" className="dpdash-btn ghost" onClick={() => nav('/disputes')}>View case board</button>
           </div>
         </div>
 
@@ -203,7 +203,7 @@ export default function SuperAdminDashboard() {
           <div className="dpdash-empty">
             <span className="dpdash-empty-glyph" aria-hidden="true">K</span>
             <p>No active claim campaigns yet. Seed unclaimed venue and vendor profiles to start converting listings.</p>
-            <button type="button" className="dpdash-btn">Configure engine</button>
+            <button type="button" className="dpdash-btn" onClick={() => nav('/admin/claim-engine')}>Configure engine</button>
           </div>
         </div>
 
@@ -214,7 +214,7 @@ export default function SuperAdminDashboard() {
             <span className="dpdash-empty-glyph" aria-hidden="true">N</span>
             <p>Insights populate once events, bids, and payments start flowing through the platform.</p>
             <button type="button" className="dpdash-btn" onClick={() => nav('/admin/win-loss')}>Win / Loss scorecard</button>
-            <button type="button" className="dpdash-btn ghost">Open reports</button>
+            <button type="button" className="dpdash-btn ghost" onClick={() => nav('/admin/intelligence')}>Open reports</button>
           </div>
         </div>
       </div>

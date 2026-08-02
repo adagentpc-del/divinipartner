@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import DashboardShell, { useMe, NavItem } from './DashboardShell';
 
 // Nav items carry `to` routes so the installer sidebar reaches the live pages
@@ -33,7 +34,7 @@ const PROMPTS = [
   'Upload completion photos for a job',
 ];
 
-function PromptStrip() {
+function PromptStrip({ onPrompt }: { onPrompt: () => void }) {
   return (
     <section className="dpdash-nba">
       <div className="dpdash-nba-head">
@@ -42,7 +43,7 @@ function PromptStrip() {
       </div>
       <div className="dpdash-nba-prompts">
         {PROMPTS.map((p, i) => (
-          <button key={i} type="button" className="dpdash-prompt">{p}</button>
+          <button key={i} type="button" className="dpdash-prompt" onClick={onPrompt}>{p}</button>
         ))}
       </div>
     </section>
@@ -51,11 +52,12 @@ function PromptStrip() {
 
 export default function InstallerDashboard() {
   const { me } = useMe();
+  const nav = useNavigate();
   const who = me?.name ?? 'there';
 
   return (
     <DashboardShell title="Installer Dashboard" navLabel="Installer Workspace" items={NAV}>
-      <PromptStrip />
+      <PromptStrip onPrompt={() => nav('/installations')} />
 
       <div className="dpdash-stats">
         <div className="dpdash-stat"><div className="dpdash-stat-k">Assigned jobs</div><div className="dpdash-stat-v">0</div><div className="dpdash-stat-d">upcoming</div></div>
@@ -72,7 +74,7 @@ export default function InstallerDashboard() {
           <div className="dpdash-empty">
             <span className="dpdash-empty-glyph" aria-hidden="true">J</span>
             <p>No jobs assigned yet, {who}. Set your availability and complete your profile to get scheduled.</p>
-            <button type="button" className="dpdash-btn ghost">View jobs</button>
+            <button type="button" className="dpdash-btn ghost" onClick={() => nav('/installations')}>View jobs</button>
           </div>
         </div>
 
@@ -82,7 +84,7 @@ export default function InstallerDashboard() {
           <div className="dpdash-empty">
             <span className="dpdash-empty-glyph" aria-hidden="true">S</span>
             <p>No skills or certs added. List your capabilities and upload certifications to qualify for more jobs.</p>
-            <button type="button" className="dpdash-btn">Add skills</button>
+            <button type="button" className="dpdash-btn" disabled title="Skills and certifications management is not built yet.">Add skills (coming soon)</button>
           </div>
         </div>
 
@@ -92,7 +94,7 @@ export default function InstallerDashboard() {
           <div className="dpdash-empty">
             <span className="dpdash-empty-glyph" aria-hidden="true">A</span>
             <p>No availability set. Add your working days and hours so jobs can be routed to you.</p>
-            <button type="button" className="dpdash-btn ghost">Set availability</button>
+            <button type="button" className="dpdash-btn ghost" disabled title="Availability scheduling is not built yet.">Set availability (coming soon)</button>
           </div>
         </div>
 
@@ -102,7 +104,7 @@ export default function InstallerDashboard() {
           <div className="dpdash-empty">
             <span className="dpdash-empty-glyph" aria-hidden="true">C</span>
             <p>No photos uploaded. Once you finish a job, add completion photos to confirm and trigger invoicing.</p>
-            <button type="button" className="dpdash-btn ghost">Upload photos</button>
+            <button type="button" className="dpdash-btn ghost" disabled title="Completion-photo upload is not built yet.">Upload photos (coming soon)</button>
           </div>
         </div>
       </div>
