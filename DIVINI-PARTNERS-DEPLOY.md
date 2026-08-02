@@ -1,7 +1,9 @@
 # Divini Partners — Phase 1 Deploy Runbook
 
-Fresh marketplace app. Reuses your live stack: Authentik (auth), local Postgres
-(:5433), Caddy (HTTPS), and the divinipartners.com domain. Runs on **port 3011**
+Fresh marketplace app. Reuses your live stack: local Postgres (:5433), Caddy
+(HTTPS), and the divinipartners.com domain. Auth is native email + password
+(server/src/auth.ts, HS256 session JWT signed with `SESSION_SECRET`) — Authentik/OIDC
+has been fully retired from this app; do not reintroduce OIDC_* env vars. Runs on **port 3011**
 as its own pm2 process `divini-partners`, alongside the old A3 app (port 3010)
 until you approve cutover.
 
@@ -27,9 +29,9 @@ docker exec -i aibos_postgres psql -U aibos -d divini_partners < /root/sites/div
 docker exec aibos_postgres psql -U aibos -d divini_partners -c "select count(*) from information_schema.tables where table_schema='public';"
 ```
 
-### A3. Server web console — write env (single line; preview values, OIDC added in Stage B)
+### A3. Server web console — write env (single line; preview values, HTTPS added in Stage B)
 ```
-cd /root/sites/divini-partners && PGPW=$(grep -oP '(?<=postgres://aibos:)[^@]+' /root/sites/divinipartner/.env.local | head -1) && mkdir -p /root/partners-files && printf 'DATABASE_URL=postgres://aibos:%s@localhost:5433/divini_partners\nPORT=3011\nPUBLIC_APP_URL=http://167.172.135.196:3011\nBASE_PATH=/\nADMIN_ALLOWED_EMAILS=adagentpc@gmail.com\nFILE_STORAGE_DIR=/root/partners-files\nDOWNLOAD_URL_SECRET=%s\nSESSION_SECRET=%s\nOIDC_ISSUER=\nOIDC_JWKS_URL=\nOIDC_CLIENT_ID=\nVITE_OIDC_ISSUER=\nVITE_OIDC_CLIENT_ID=\n' "$PGPW" "$(openssl rand -hex 32)" "$(openssl rand -hex 32)" > .env.local && echo "env written pgpw=${#PGPW}"
+cd /root/sites/divini-partners && PGPW=$(grep -oP '(?<=postgres://aibos:)[^@]+' /root/sites/divinipartner/.env.local | head -1) && mkdir -p /root/partners-files && printf 'DATABASE_URL=postgres://aibos:%s@localhost:5433/divini_partners\nPORT=3011\nPUBLIC_APP_URL=http://167.172.135.196:3011\nBASE_PATH=/\nADMIN_ALLOWED_EMAILS=adagentpc@gmail.com\nFILE_STORAGE_DIR=/root/partners-files\nDOWNLOAD_URL_SECRET=%s\nSESSION_SECRET=%s\n' "$PGPW" "$(openssl rand -hex 32)" "$(openssl rand -hex 32)" > .env.local && echo "env written pgpw=${#PGPW}"
 ```
 
 ### A4. Server web console — install, build, start, open firewall
@@ -38,7 +40,10 @@ cd /root/sites/divini-partners && export COREPACK_ENABLE_DOWNLOAD_PROMPT=0 NODE_
 ```
 Want `partners :3011 HTTP 200`. Then open **http://167.172.135.196:3011** to preview
 the full public site (hero, all sections, For Venues/Vendors/Planners/Clients,
-Marketplace, How It Works, Pricing). Login/register will not work yet (Stage B).
+Marketplace, How It Works, Pricing). Register/login will technically respond over
+plain HTTP, but the session cookie is `Secure` in production (`IS_PROD` gates it in
+`server/src/routes/auth-native.ts`), so the browser will silently refuse to store it
+until HTTPS is live in Stage B — treat login as blocked until then.
 
 After the first start, every future deploy is just:
 ```
@@ -50,30 +55,41 @@ bash /root/sites/divini-partners/deploy.sh
 
 ---
 
-## STAGE B — Turn on login + registration (Authentik + HTTPS)
+## STAGE B — Turn on login + registration (HTTPS + email)
+
+Auth itself needs no third-party app config (it is native email/password), but
+two things gate it working end to end: (1) the `Secure` session cookie needs
+HTTPS, and (2) `POST /api/auth/register` requires email verification before
+first login, so the email provider must be configured or nobody can complete
+registration.
 
 ### B1. DNS (GoDaddy) — add A record
 `app.divinipartners.com  ->  167.172.135.196`  (so we do not disturb the live
 divinipartners.com until cutover).
 
-### B2. Authentik — create the OIDC app
-In Authentik admin (auth.divinipartners.com): create an OAuth2/OpenID provider
-+ application, slug **divini-partners**, client type **Public**, redirect URI
-`https://app.divinipartners.com/auth/callback` (strict), signing key = the
-self-signed cert. Copy the **Client ID**.
-
-### B3. Server — fill OIDC into env (replace CLIENT_ID), then redeploy
+### B2. Server — point PUBLIC_APP_URL at the HTTPS host, then redeploy
 ```
-cd /root/sites/divini-partners && CID=PASTE_CLIENT_ID && sed -i "s|^OIDC_ISSUER=.*|OIDC_ISSUER=https://auth.divinipartners.com/application/o/divini-partners/|; s|^OIDC_JWKS_URL=.*|OIDC_JWKS_URL=https://auth.divinipartners.com/application/o/divini-partners/jwks/|; s|^OIDC_CLIENT_ID=.*|OIDC_CLIENT_ID=$CID|; s|^VITE_OIDC_ISSUER=.*|VITE_OIDC_ISSUER=https://auth.divinipartners.com/application/o/divini-partners/|; s|^VITE_OIDC_CLIENT_ID=.*|VITE_OIDC_CLIENT_ID=$CID|; s|^PUBLIC_APP_URL=.*|PUBLIC_APP_URL=https://app.divinipartners.com|" .env.local && bash deploy.sh
+cd /root/sites/divini-partners && sed -i "s|^PUBLIC_APP_URL=.*|PUBLIC_APP_URL=https://app.divinipartners.com|" .env.local && bash deploy.sh
 ```
 
-### B4. Caddy — add the preview host
+### B3. Caddy — add the preview host
 ```
 printf '\napp.divinipartners.com {\n    reverse_proxy localhost:3011\n}\n' >> /root/Caddyfile && docker exec caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile && sleep 18 && echo "https: $(curl -s -o /dev/null -w '%{http_code}' https://app.divinipartners.com/api/healthz)"
 ```
+
+### B4. Email — required for register -> verify -> login to actually complete
+Without `EMAIL_PROVIDER` + `EMAIL_API_KEY` set, verification emails are logged
+and skipped (`server/src/lib/email.ts`), so nobody can pass email verification
+and login will silently never work even though HTTPS is up. Set (Resend shown):
+```
+cd /root/sites/divini-partners && printf 'EMAIL_PROVIDER=resend\nEMAIL_API_KEY=re_YOUR_RESEND_API_KEY\nEMAIL_FROM=Divini Partners <partners@divinipartners.com>\n' >> .env.local && bash deploy.sh
+```
+The `EMAIL_FROM` domain must be DKIM/SPF-verified in Resend or sends will fail/land in spam.
+
 Open **https://app.divinipartners.com**, click Get started, register (pick a role,
-tier, accept terms), land on your role dashboard. `adagentpc@gmail.com` lands on
-the Super Admin dashboard.
+tier, accept terms), check the inbox for the verify-email link, then log in and
+land on your role dashboard. `adagentpc@gmail.com` lands on the Super Admin
+dashboard (matches `ADMIN_ALLOWED_EMAILS`).
 
 ---
 
@@ -84,10 +100,9 @@ Point the apex domain at the new app:
 sed -i 's#reverse_proxy localhost:3010#reverse_proxy localhost:3011#' /root/Caddyfile   # if divinipartners.com block points at the old app
 docker exec caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
 ```
-Add `https://divinipartners.com/auth/callback` to the Authentik redirect URIs, set
-`PUBLIC_APP_URL=https://divinipartners.com` + matching VITE_OIDC_REDIRECT_URI, and
-redeploy. The old A3 app keeps running on 3010 (reachable internally) until you
-retire it.
+Set `PUBLIC_APP_URL=https://divinipartners.com` in `.env.local` and redeploy
+(`sed -i "s|^PUBLIC_APP_URL=.*|PUBLIC_APP_URL=https://divinipartners.com|" .env.local && bash deploy.sh`).
+The old A3 app keeps running on 3010 (reachable internally) until you retire it.
 
 ---
 

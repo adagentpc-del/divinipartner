@@ -62,7 +62,7 @@ Public / auth:
 - https://divinipartners.com loads the event marketplace; title says "The Premium
   Event Partnership Marketplace"; canonical is divinipartners.com.
 - /login shows Sign in / Create an account / Forgot password.
-- Sign in via Authentik returns to the app.
+- Sign in with email/password (native auth) lands on the role dashboard.
 - Admin console: every tab in the tab bar navigates (Overview ... Feature Flags).
 
 New API health (server console; expect 200/JSON, 401 if unauthenticated is fine):
@@ -95,7 +95,6 @@ End-to-end (signed in, against real DB):
   .env.local.bak.* and /root/Caddyfile.bak.*.
 
 ## Known follow-ups (not blockers)
-- Authentik password-recovery flow URL is a TODO in src/lib/auth.tsx (no slug guessed).
 - events table has no branding_opportunity_id; the "Brand event here" CTA stores the
   opportunity in event_goals + required_services. Add a column later if desired.
 - Some role-based nav only defines buyer/vendor keys; planner/client see the default.

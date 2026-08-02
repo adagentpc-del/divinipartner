@@ -10,7 +10,7 @@ Acceleration Engine. Every venue profile, vendor profile, quote, sponsorship
 opportunity, and completed project strengthens the platform.
 
 This addendum also subsumes three earlier requests:
-- Login page with Sign in / Create account / Reset password (Authentik flows).
+- Login page with Sign in / Create account / Reset password (native email/password flows).
 - Venue "Brand event here" tiles that auto-populate vendors to bid on a space.
 - Client event pages + guest invites + guest-list changes that auto-sync to the
   vendors who opted in (and gate on deposits/payments per vendor config).
@@ -102,7 +102,7 @@ manual-triggered, feature-flagged, cached by content hash, rate-limited.
 - Draft Quote review screen (vendor edits/approves → client delivery).
 - Revenue Inventory + Sponsorship marketplace pages.
 - Event page customization + guest invites + guest-list manager (auto-syncs to opted-in vendors).
-- Login page: Sign in / Create account / Reset password wired to Authentik flows.
+- Login page: Sign in / Create account / Reset password wired to native auth flows.
 
 ---
 

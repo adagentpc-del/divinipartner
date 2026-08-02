@@ -1,17 +1,21 @@
-# Divini Partners — backend (Express + Postgres + Authentik OIDC)
+# Divini Partners — backend (Express + Postgres + native auth)
 
 This is the API + static-SPA server for Divini Partners. It mirrors the
-divinipartner `api-server` patterns (Authentik OIDC verification via `jose`,
+divinipartner `api-server` patterns (session verification via `jose`,
 `ADMIN_ALLOWED_EMAILS` admin gate, one Node process serving the built SPA + the
 `/api` router) but is a lean, self-contained service that talks to a plain
-Postgres database with the `pg` driver and stores files on local disk.
+Postgres database with the `pg` driver and stores files on local disk (or S3,
+via `STORAGE_PROVIDER`). Auth is native email/password (scrypt password
+hashing + an HS256 session JWT signed with `SESSION_SECRET`); Authentik/OIDC
+has been fully retired.
 
 ## Layout
 
-- `src/config.ts` — env contract (DATABASE_URL, OIDC_*, FILE_STORAGE_DIR, …).
+- `src/config.ts` — env contract (DATABASE_URL, SESSION_SECRET, FILE_STORAGE_DIR, …).
 - `src/pool.ts` — `pg` connection pool + `q`/`q1` helpers.
-- `src/auth.ts` — Authentik OIDC token verification (`createRemoteJWKSet` +
-  `jwtVerify`), `getAuth(req)`, `requireUser`/`requireAdmin` guards.
+- `src/auth.ts` — session verification (`getAuth(req)` reads the cookie or
+  bearer token, verifies via `lib/session.ts`), `requireUser`/`requireAdmin` guards.
+- `src/routes/auth-native.ts` — register/login/verify-email/forgot/reset password.
 - `src/db.ts` — data access **and authorization** (reimplements the Supabase RLS
   intent: company-membership scoping + the admin-email gate).
 - `src/storage.ts` — local-disk uploads + HMAC short-lived signed download URLs

@@ -86,8 +86,11 @@ That is 13 email types, one sample of each.
 
 ## Notes
 
-- Password reset and login are handled by Authentik (OIDC), not by Divini
-  Partners email. They are intentionally NOT part of this suite.
+- Email verification (register) and password reset are native, sent via
+  `sendEmail()` in `server/src/routes/auth-native.ts` — same email pipeline as
+  everything else in this suite, not Authentik. They are NOT currently covered
+  by this test suite; add "Verify your email" and "Reset your password" samples
+  here if you want full coverage.
 - The claim outreach sample is the ONLY type that carries open/click tracking in
   production. In a real claim send the tracking reference is the
   `claim_outreach` row id, which weaves in the open pixel and tracked links; the

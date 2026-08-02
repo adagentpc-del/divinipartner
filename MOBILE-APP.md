@@ -15,9 +15,10 @@ server.url = https://app.divinipartners.com   (see capacitor.config.ts)
 
 Why this approach:
 
-- **Login just works.** Authentik OIDC uses a browser redirect flow. Because the
-  webview loads the real hosted origin, login behaves exactly as it does on the
-  web. No native deep-link / custom-scheme callback plumbing is required.
+- **Login just works.** Auth is native email/password (a plain form POST to
+  `/api/auth`, not an OAuth redirect flow). Because the webview loads the real
+  hosted origin, login behaves exactly as it does on the web. No native
+  deep-link / custom-scheme callback plumbing is required.
 - **Fastest path to a working app** for a research preview. You ship the shell,
   and every web deploy updates the app instantly (no app-store resubmission for
   content changes).
@@ -28,9 +29,10 @@ Why this approach:
 ### Hard dependency: Stage B must be live
 
 Because the app loads `https://app.divinipartners.com`, the app only works once
-that HTTPS domain is live (the hosting / Caddy / Authentik stage). Until then the
-shell will show a connection error. Bring the domain up first (Stage B of the
-deploy runbook), confirm web login works in a desktop browser, THEN build the app.
+that HTTPS domain is live (the hosting / Caddy stage, plus email configured for
+verification — see DIVINI-PARTNERS-DEPLOY.md Stage B). Until then the shell will
+show a connection error. Bring the domain up first, confirm web login works in a
+desktop browser, THEN build the app.
 
 If you want an app that works **before** the domain is live, or works offline, see
 "Bundled / offline alternative" near the bottom.
@@ -222,14 +224,19 @@ this WITHOUT touching the normal web build:
 2. In `capacitor.config.ts`, switch to the commented "ALTERNATIVE" block at the
    bottom of that file: remove `server.url` and set `webDir: 'dist-native'`.
 
-3. **Login plumbing required.** Because there is no hosted origin, OIDC redirects
-   must come back to a native custom-scheme deep link (for example
-   `divinipartners://callback`). You must:
-   - register that redirect URI in Authentik for the app client,
-   - configure the iOS URL scheme / Android intent filter for `divinipartners`,
-   - handle the callback in the app (Capacitor App `appUrlOpen` listener) and
-     hand the code to `oidc-client-ts`.
-   Do not enable offline mode until this is done, or login will not complete.
+3. **Login plumbing required.** Auth is a plain email/password POST to
+   `/api/auth`, so there is no OAuth redirect/deep-link to wire up. What
+   changes is the request origin: a bundled app talks to the API from
+   `capacitor://localhost` (iOS) / `https://localhost` (Android) instead of
+   `https://app.divinipartners.com`, so you must:
+   - add that origin to `ALLOWED_ORIGINS` on the server (`server/src/config.ts`
+     CORS allowlist; deny-by-default in prod),
+   - confirm the `Secure` session cookie is actually sent cross-origin from the
+     webview (may require `sameSite: "none"` for this origin, or switching the
+     bundled app to the `Authorization: Bearer` token path already returned by
+     `/api/auth` instead of relying on the cookie).
+   Do not enable offline mode until this is verified end to end, or login will
+   not complete.
 
 4. `npx cap sync` and rebuild.
 

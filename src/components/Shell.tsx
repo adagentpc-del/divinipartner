@@ -61,6 +61,8 @@ export default function Shell({ children }: { children: ReactNode }) {
   if (isAdmin) items.push(['/admin', 'Admin Console', '◆']);
   if (company) items.push(...NAV[role]);
   if (isAdmin) items.push(['/admin/features', 'Features', '✦']);
+  const navLabel = isAdmin && !company ? 'Admin' : role === 'vendor' ? 'Vendor' : 'Buyer Workspace';
+  const onboardingItems = items.map(([to, label, icon]) => ({ to, label, icon }));
 
   return (
     <div className="app">
@@ -72,7 +74,7 @@ export default function Shell({ children }: { children: ReactNode }) {
             <div className="tg">Event Partnership</div>
           </div>
         </div>
-        <div className="nav-label">{isAdmin && !company ? 'Admin' : role === 'vendor' ? 'Vendor' : 'Buyer Workspace'}</div>
+        <div className="nav-label">{navLabel}</div>
         <nav className="nav">
           {items.map(([path, label, icon]) => (
             <a key={path} className={loc.pathname === path ? 'active' : ''} onClick={() => nav(path)}>
@@ -95,7 +97,7 @@ export default function Shell({ children }: { children: ReactNode }) {
           <a onClick={signOut} style={{ color: '#fff', cursor: 'pointer', fontSize: 13 }}>Sign out</a>
         </div>
         <div className="content">
-          {company && <OnboardingGuide role={role} />}
+          {company && <OnboardingGuide items={onboardingItems} navLabel={navLabel} onNavigate={(to) => nav(to)} />}
           {children}
         </div>
         <nav className="mbottom">
