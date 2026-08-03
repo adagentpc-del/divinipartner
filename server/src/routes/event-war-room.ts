@@ -17,12 +17,18 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { getAuth, requireUser } from "../auth.js";
 import * as db from "../db.js";
-import { runScan, setAlertState, type AlertStatus } from "../db/warroom.js";
+import { runScan, setAlertState, FeatureLockedError, type AlertStatus } from "../db/warroom.js";
 
 const h =
   (fn: (req: Request, res: Response) => Promise<unknown>) =>
   (req: Request, res: Response, next: NextFunction) =>
-    fn(req, res).catch(next);
+    fn(req, res).catch((err: unknown) => {
+      if (err instanceof FeatureLockedError) {
+        res.status(403).json(err.payload);
+        return;
+      }
+      next(err);
+    });
 
 async function getActor(req: Request): Promise<db.Actor> {
   const auth = getAuth(req);

@@ -332,4 +332,32 @@ The complete section-by-section specification (Divini Concierge, Proposal Studio
 
 ---
 
+## Shipped: Divini Event Command (slice 10, 2026-08-03)
+
+**Business problem solved.** A booked event's coordination was already scattered across many real, working tabs in one workspace -- but its live risk-alert monitor (a genuinely strong pre-existing "Event War Room" feature) lived on a separate page outside that workspace, and its heading used the "AI ___" naming the spec's binding rule forbids. Divini Event Command closes both gaps: one place, correctly branded, with the advanced tier the spec actually calls for.
+
+**Users served.** Every role that opens an event workspace (Venue, Vendor, Planner, Client, and anyone else who can reach `/events/:id`) gets the base workspace; the live risk scan is Pro-gated, per spec section 18's explicit "advanced Event Command" (Pro) vs. "basic Event Command access" (Free) split.
+
+**Workflow completed.** Open an event -> the same 22-tab workspace as before (Overview, Vendors, Bids, Quotes, Guest List, Timeline, Tasks, Documents, Invoices, Change Orders, and more) -> a new "Risk & Alerts" tab runs the same live, deterministic per-event health scan that previously required navigating away to a separate page -> critical/warning/info alerts, each with a concrete recommendation, snooze/resolve/reopen inline, no page change. Free-tier orgs see every other tab in full; the Risk & Alerts tab shows a clean upgrade prompt instead of the scan.
+
+**Deterministic logic.** Zero LLM, unchanged from the original build: `scanEvent()` is a pure rules function over real signals (missing contracts, missing insurance, no vendors attached, no run-of-show with the event days away, an incomplete guest list, and more) gathered live from the event's actual rows -- no fabricated risk score, just real gaps stated plainly with a real recommendation.
+
+**Data model.** No new tables -- reuses `event_alert_states` (the existing snooze/resolve persistence) unchanged. This slice's only structural change is where the feature is reachable, not what it stores.
+
+**Integrations.** `EventWarRoom` (already explicitly built to be embeddable -- its own comment said "Drop in with an eventId") is now imported directly into `EventWorkspace.tsx`'s tab list, alongside the standalone `/event-war-room/:eventId` route which still works unchanged for any existing deep links.
+
+**Permissions.** New: both `runScan` and `setAlertState` in `db/warroom.ts` now require Pro (`isTopTier`), returning the standard `feature_locked` 403 shape via a new `FeatureLockedError`, translated in `routes/event-war-room.ts`. Event ownership (`getEvent`, IDOR-safe) is unchanged and still enforced underneath the tier gate.
+
+**Analytics captured.** Unchanged -- every snooze/resolve/reopen is already a real persisted state change with a timestamp and the acting user.
+
+**Subscription entitlements.** This slice adds the one Event Command distinction the spec's section 18 explicitly calls for: "basic Event Command access" (Free -- the full per-event workspace, all 22 tabs) vs. "advanced Event Command" (Pro -- the live risk-alert scan). Verified live: blocked (403, upgrade target "Pro") at Free, unlocked at Pro, re-blocked immediately on downgrade.
+
+**Tests completed.** Live end-to-end against a running server + Postgres: a Free-tier org blocked on both the scan (GET) and the state-change (POST) endpoints with the correct `feature_locked` payload and "premier" upgrade target; unlocked at Pro with a real 5-alert scan (4 critical, 1 warning) against a genuinely under-built test event; snoozing an alert persists its status and note, verified on a fresh re-fetch; downgrading back to Free re-blocks both endpoints immediately; cross-org IDOR blocked (403) on a second org's scan attempt, unchanged pre-existing behavior reverified. Browser-verified at iPhone width: the workspace kicker now reads "Divini Event Command," the new "Risk & Alerts" tab sits alongside every other coordination tab in the same shell, and the heading inside it now reads "Divini Event Command: Risk & Alerts" instead of the former "AI Event War Room."
+
+**Business value delivered.** A booked event's status, risk, and every coordination surface are now genuinely in one place, at the Free tier for day-to-day operations and a real Pro-tier advanced capability (live monitoring) for orgs that need it -- closing both the literal "one place" promise in the tool's own name and a real branding-rule violation ("AI Event War Room") that had been shipping to users.
+
+**Deferred enhancements (optional intelligence layer, per spec section 16 -- not started, no LLM dependency added).** Model-suggested alert prioritization or auto-drafted vendor outreach for an unresolved risk. The deterministic engine above remains fully functional and complete without any of it. Also not built in this slice: filling the remaining "Support" tab placeholder (a pre-existing, unrelated Phase todo, not part of this slice's mandate to close), and adding new alert rules that read Divini Pipeline/Proposal Studio/Change Desk data (e.g., "no accepted proposal yet with the event N days out") -- a natural, real extension of the same deterministic pattern, left for a future increment rather than expanding this slice's change surface further.
+
+---
+
 *This document is updated as each slice ships, with a "shipped" section per tool matching the required implementation report format (section 20): business problem solved, users served, workflow, deterministic logic, data model, integrations, permissions, analytics captured, subscription entitlements, tests completed, business value delivered, deferred enhancements.*

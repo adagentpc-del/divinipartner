@@ -1,17 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { apiGet, apiSend } from '../lib/api';
+import { isFeatureLockedError, UpgradePrompt, type FeatureLockedError } from '../lib/entitlements';
 
 /**
- * Intelligence Moat - F3 AI Event War Room.
+ * Divini Event Command: Risk & Alerts (docs/DIVINI_DETERMINISTIC_TOOLS_SPEC.md,
+ * build-order slice 10; originally built pre-spec as "Event War Room").
  *
- * A proactive, per-event health monitor. Renders the live scan from
+ * A proactive, per-event health monitor -- the "advanced Event Command" half
+ * of the spec (Pro-gated). Renders the live scan from
  * /event-war-room/:eventId as a severity-grouped list of alerts, each with its
  * recommended next action and snooze / resolve controls. Snoozing or resolving
  * posts to /event-war-room/:eventId/state and re-runs the scan.
  *
- * Uses src/lib/api.ts (apiGet / apiSend). Route wiring (src/App.tsx) and the
- * Shell nav are owned by the integration lead and are intentionally not edited
- * here. Drop in with an eventId, e.g. <EventWarRoom eventId={id} />.
+ * Drop in with an eventId, e.g. <EventWarRoom eventId={id} /> -- embedded as a
+ * tab inside src/pages/event/EventWorkspace.tsx, and also reachable standalone
+ * at /event-war-room/:eventId.
  */
 
 type Severity = 'critical' | 'warning' | 'info';
@@ -46,17 +49,20 @@ export default function EventWarRoom({ eventId }: { eventId: string }) {
   const [data, setData] = useState<WarRoomResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  const [lockError, setLockError] = useState<FeatureLockedError | null>(null);
   const [busyCode, setBusyCode] = useState<string | null>(null);
 
   async function load() {
     if (!eventId) return;
     setLoading(true);
     setErr(null);
+    setLockError(null);
     try {
       const r = await apiGet<WarRoomResult>(`/event-war-room/${eventId}`);
       setData(r);
     } catch (e) {
-      setErr((e as Error).message);
+      if (isFeatureLockedError(e)) setLockError(e.body);
+      else setErr((e as Error).message);
       setData(null);
     } finally {
       setLoading(false);
@@ -80,6 +86,8 @@ export default function EventWarRoom({ eventId }: { eventId: string }) {
     }
   }
 
+  if (lockError) return <UpgradePrompt error={lockError} />;
+
   if (loading && !data) {
     return (
       <div className="card">
@@ -102,7 +110,7 @@ export default function EventWarRoom({ eventId }: { eventId: string }) {
       <div className="card" style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
           <div>
-            <h3 style={{ margin: '0 0 4px' }}>AI Event War Room</h3>
+            <h3 style={{ margin: '0 0 4px' }}>Divini Event Command: Risk & Alerts</h3>
             <div className="note" style={{ lineHeight: 1.6 }}>
               {open.length === 0
                 ? 'No open alerts. This event is healthy.'

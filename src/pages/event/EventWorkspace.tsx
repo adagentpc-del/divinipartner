@@ -23,13 +23,19 @@ import PaymentsTab from './tabs/PaymentsTab';
 import ChangeOrdersTab from './tabs/ChangeOrdersTab';
 import ReviewsTab from './tabs/ReviewsTab';
 import EventReadinessPanel from '../EventReadinessPanel';
+import EventWarRoom from '../EventWarRoom';
 
 /**
- * Per-event command center. The tab bar covers every blueprint 13.1 tab.
- * Phase 3 renders Overview, Vendors, Bids, Quotes, Messages, Documents and
- * Notes in full. The rest render a graceful placeholder so later phases
- * (Phase 6: Guest List / Seating / Floorplans / Timeline / Tasks / Itinerary;
- * Phase 5: Invoices / Payments / Change Orders) can fill them in.
+ * Divini Event Command (docs/DIVINI_DETERMINISTIC_TOOLS_SPEC.md, build-order
+ * slice 10): the per-event workspace that coordinates a booked event in one
+ * place. The tab bar covers every blueprint 13.1 tab, plus a "Risk & Alerts"
+ * tab (the pre-existing Event War Room, now embedded here rather than living
+ * only as a separate page -- spec section 18's "advanced Event Command,"
+ * Pro-gated server-side). Phase 3 renders Overview, Vendors, Bids, Quotes,
+ * Messages, Documents and Notes in full. The rest render a graceful
+ * placeholder so later phases (Phase 6: Guest List / Seating / Floorplans /
+ * Timeline / Tasks / Itinerary; Phase 5: Invoices / Payments / Change
+ * Orders) can fill them in.
  */
 
 type Tab = { key: string; label: string; element: React.ReactNode };
@@ -64,6 +70,7 @@ export default function EventWorkspace() {
     { key: 'public_page', label: 'Public Page', element: <PublicPageTab eventId={id} /> },
     { key: 'exhibitors', label: 'Exhibitors', element: <ExhibitorsTab eventId={id} /> },
     { key: 'readiness', label: 'Readiness', element: <EventReadinessPanel eventId={id} /> },
+    { key: 'risk_alerts', label: 'Risk & Alerts', element: <EventWarRoom eventId={id} /> },
     { key: 'venue', label: 'Venue', element: <VenueTab eventId={id} /> },
     { key: 'vendors', label: 'Vendors', element: <VendorsTab eventId={id} /> },
     { key: 'bids', label: 'Bids', element: <BidsTab eventId={id} /> },
@@ -94,7 +101,7 @@ export default function EventWorkspace() {
       <header className="ew-top">
         <button type="button" className="ew-back" onClick={() => nav('/events')}>Back to events</button>
         <div className="ew-titlewrap">
-          <span className="ew-kicker">Event workspace</span>
+          <span className="ew-kicker">Divini Event Command</span>
           <h1 className="ew-title">{head?.name ?? (err ? 'Event' : 'Loading...')}</h1>
         </div>
         {head?.status ? <span className="ew-statuspill">{head.status.replace(/_/g, ' ')}</span> : null}
