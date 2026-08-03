@@ -5553,3 +5553,14 @@ alter table users add constraint users_role_check check (role in (
   'volunteer', 'exhibitor', 'viewer'
 ));
 
+-- ====== db/schema-account-deletion.sql ======
+-- ---------------------------------------------------------------------------
+-- Apple Guideline 5.1.1(v): reachable in-app account deletion. Deletion is
+-- anonymize + deactivate (see server/src/db.ts's deleteAccount), not a hard
+-- delete, so audit_logs / quotes / invoices / other members' shared org
+-- records that reference the user stay intact. `status` already exists on
+-- `users` with no check constraint; `deleted_at` records when it happened.
+-- ---------------------------------------------------------------------------
+alter table users add column if not exists deleted_at timestamptz;
+create index if not exists idx_users_deleted_at on users(deleted_at) where deleted_at is not null;
+

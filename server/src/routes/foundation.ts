@@ -8,6 +8,9 @@ import { TIERS, ROLES } from "../db.js";
 import * as invites from "../db/invites.js";
 import { notify } from "../lib/notify.js";
 import { PRICING_V2 } from "../config.js";
+import { clearSessionCookie } from "./auth-native.js";
+import { clearCsrfCookie } from "../lib/csrf.js";
+import { logAction } from "../lib/audit.js";
 
 const h =
   (fn: (req: Request, res: Response) => Promise<unknown>) =>
@@ -110,6 +113,38 @@ router.post(
     }
 
     res.status(201).json({ id: org.id, kind: org.type, name: org.name, tier: org.tier });
+  }),
+);
+
+// ---- Account deletion (Apple Guideline 5.1.1(v)) ---------------------------
+// Anonymize + deactivate, not a hard delete -- see db.deleteAccount for why.
+// Requires the caller's current password as a re-confirmation speed bump.
+router.post(
+  "/account/delete",
+  requireUser,
+  h(async (req, res) => {
+    const auth = getAuth(req);
+    const password = typeof req.body?.password === "string" ? req.body.password : "";
+    if (!password) {
+      return res.status(400).json({ error: "password required" });
+    }
+    const ip =
+      (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() ||
+      req.socket.remoteAddress ||
+      null;
+    await db.deleteAccount(auth.userId!, password);
+    await logAction(
+      { id: auth.userId!, email: auth.email },
+      "account.deleted",
+      "user",
+      auth.userId!,
+      null,
+      null,
+      { summary: "User deleted their own account (anonymized + deactivated).", ip },
+    );
+    clearSessionCookie(res);
+    clearCsrfCookie(res);
+    res.json({ ok: true });
   }),
 );
 

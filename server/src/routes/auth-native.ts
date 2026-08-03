@@ -61,7 +61,7 @@ function setSessionCookie(res: Response, token: string): void {
   });
 }
 
-function clearSessionCookie(res: Response): void {
+export function clearSessionCookie(res: Response): void {
   res.clearCookie(SESSION_COOKIE, { httpOnly: true, secure: IS_PROD, sameSite: "lax", path: "/" });
 }
 

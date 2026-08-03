@@ -11,6 +11,7 @@
 import { q, q1, pool } from "./pool.js";
 import { planTierFor } from "./lib/planCatalog.js";
 import { getAdminAllowedEmails } from "./config.js";
+import { hashPassword, verifyPassword, randomToken } from "./lib/session.js";
 
 export class ForbiddenError extends Error {
   status = 403;
@@ -24,6 +25,16 @@ export class NotFoundError extends Error {
   constructor(msg = "not found") {
     super(msg);
     this.name = "NotFoundError";
+  }
+}
+/** Thrown by ensureUser/getActor when the session's user row is a deleted
+ *  (anonymized + deactivated) account -- see deleteAccount below. Routes
+ *  should treat this like an expired session. */
+export class AccountDeletedError extends Error {
+  status = 401;
+  constructor(msg = "account deleted") {
+    super(msg);
+    this.name = "AccountDeletedError";
   }
 }
 
@@ -51,6 +62,7 @@ export type DbUser = {
   name: string | null;
   role: string | null;
   organization_id: string | null;
+  status: string | null;
 };
 export type DbOrg = {
   id: string;
@@ -69,7 +81,7 @@ export type DbOrg = {
  *  view: is it the org currently active on their session (users.organization_id)? */
 export type MyOrganization = DbOrg & { membership_role: string | null; active: boolean };
 
-const USER_COLS = "id, oidc_sub, email, name, role, organization_id";
+const USER_COLS = "id, oidc_sub, email, name, role, organization_id, status";
 
 /**
  * Resolve the signed-in user from the session subject.
@@ -88,6 +100,14 @@ export async function ensureUser(idOrSub: string, email: string | null): Promise
     [idOrSub],
   );
   if (row) {
+    // A deleted account's row is kept (anonymized) but must never be usable
+    // again, including via a still-valid session token issued before the
+    // deletion. Check this BEFORE the email-sync below: otherwise a stale
+    // token still carrying the user's ORIGINAL email would overwrite the
+    // anonymized placeholder email back to the real one on their next request.
+    if (row.status === "deleted") {
+      throw new AccountDeletedError();
+    }
     if (email && email !== row.email) {
       await q1(`update users set email = $2, updated_at = now() where id = $1`, [row.id, email]);
       row.email = email;
@@ -586,6 +606,70 @@ export async function applyPasswordReset(userId: string, passwordHash: string): 
        email_verified = true, updated_at = now() where id = $1`,
     [userId, passwordHash],
   );
+}
+
+/**
+ * Delete (anonymize + deactivate) the caller's own account, requiring their
+ * current password as a re-confirmation. Apple Guideline 5.1.1(v).
+ *
+ * This is deliberately NOT a hard delete: the users row, and everything that
+ * references it (audit_logs, quotes, invoices, ledger entries, other org
+ * members' shared records) stays intact for financial/audit-record
+ * integrity. What gets destroyed is the ability to sign in as this person
+ * and their personally identifying data:
+ *   - email is overwritten with a unique, non-routable placeholder (frees
+ *     the original address for reuse -- the deleted person can register a
+ *     new account with the same email later if they want to).
+ *   - name/phone are cleared, notification_preferences dropped.
+ *   - password_hash is replaced with a hash of a random, never-communicated
+ *     32-byte token: a validly-formatted hash that can never be produced by
+ *     any real password, permanently locking the account out.
+ *   - any live verify/reset tokens are cleared so an in-flight email link
+ *     cannot be used post-deletion.
+ *   - status is set to 'deleted' (checked by ensureUser -- see there for why
+ *     that check must run before the email-sync it guards) and deleted_at
+ *     is stamped.
+ *   - the user's org memberships and the org-scoped team_seats rows keyed by
+ *     their (pre-anonymization) email are removed, so they no longer appear
+ *     as an active member/seat anywhere; the organizations themselves and
+ *     their financial history are untouched.
+ */
+export async function deleteAccount(userId: string, password: string): Promise<void> {
+  const row = await q1<{ id: string; email: string | null; password_hash: string | null; status: string | null }>(
+    `select id, email, password_hash, status from users where id = $1 limit 1`,
+    [userId],
+  );
+  if (!row || row.status === "deleted") {
+    throw new NotFoundError("account not found");
+  }
+  if (!verifyPassword(password, row.password_hash)) {
+    throw new ForbiddenError("incorrect password");
+  }
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    const placeholderEmail = `deleted+${row.id}@deleted.invalid`;
+    const lockHash = hashPassword(randomToken(32));
+    await client.query(
+      `update users set
+         email = $2, name = 'Deleted user', phone = null,
+         password_hash = $3, verify_token = null, verify_expires = null,
+         reset_token = null, reset_expires = null, notification_preferences = null,
+         organization_id = null, status = 'deleted', deleted_at = now(), updated_at = now()
+       where id = $1`,
+      [row.id, placeholderEmail, lockHash],
+    );
+    await client.query(`delete from organization_memberships where user_id = $1`, [row.id]);
+    if (row.email) {
+      await client.query(`delete from team_seats where lower(member_email) = lower($1)`, [row.email]);
+    }
+    await client.query("commit");
+  } catch (e) {
+    await client.query("rollback");
+    throw e;
+  } finally {
+    client.release();
+  }
 }
 
 /**

@@ -7,9 +7,9 @@ Known debt and cleanup, roughly ordered by value.
 - RESOLVED (2026-08-03): upgraded `react-router-dom` from `^6.26.0` (6.30.4) to `^7.18.2`, clearing the two originally-flagged moderate CVEs (open-redirect bypass, arbitrary constructor injection via SSR hydration). This app uses only the classic declarative API (`<BrowserRouter>`/`<Routes>`/`<Route>`, `src/App.tsx`), which v7 kept fully backward-compatible with v6 — the upgrade required zero code changes. Verified with a full live re-crawl of all 271 nav destinations across all 9 roles (271/271 clean) plus the login/logout/register/create-flow interaction tests, all passing.
 - One further advisory remains open against 7.18.2 ("RSC Mode CSRF Bypass Allows Action Execution Before 400 Response," GHSA-qwww-vcr4-c8h2) with no non-vulnerable `react-router-dom` release published yet (7.18.2 is the current tip of the line; `npm audit fix --force` would downgrade to 7.11.0, which reintroduces the original, actually-applicable CVEs). Checked applicability: this advisory is specific to React Router's "RSC Mode" (React Server Components / server actions under `createBrowserRouter`), a feature this app does not use at all — no SSR, no server actions, plain client-rendered SPA. Left as-is rather than downgrading into a worse, equally-inapplicable-but-broader vulnerability range; re-run `npm audit` on future `npm install`s and take the next `react-router-dom` patch release when one ships.
 
-## App Store account deletion (new, 2026-08-03)
+## App Store account deletion (RESOLVED 2026-08-03)
 
-- Apple Guideline 5.1.1(v) requires reachable in-app account deletion. It does not exist: `src/lib/db.ts`'s `deleteMyAccount()` stub has no UI caller and `POST /account/delete` has no server route. Needs a real design decision (hard delete vs. anonymize, cascade scope across ~130 tables touching an account) before building — a hard blocker for App Store submission, independent of the native build itself. See `15_KNOWN_ISSUES.md`.
+- Apple Guideline 5.1.1(v) requires reachable in-app account deletion. Built: anonymize + deactivate (not hard delete), password-reconfirmed, reachable from Profile -> Account. See `15_KNOWN_ISSUES.md` for the full design and live-verify notes.
 
 ## Bundle size / code-splitting (new, 2026-08-03)
 

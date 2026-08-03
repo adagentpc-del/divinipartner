@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
 import { apiGet, apiSend, apiUpload } from '../../lib/api';
+import { deleteMyAccount } from '../../lib/db';
 
 /**
  * Divini Partners - Profile editor (blueprint section 9).
@@ -83,7 +84,7 @@ const BUTTON_STYLES = ['rounded', 'pill', 'square'];
 
 export default function ProfileEditor() {
   const nav = useNavigate();
-  const { session } = useAuth();
+  const { session, signOut } = useAuth();
   const [state, setState] = useState<State | null>(null);
   const [sections, setSections] = useState<Record<string, any>>({});
   const [theme, setTheme] = useState<Theme>({
@@ -99,6 +100,10 @@ export default function ProfileEditor() {
   const [transferBusy, setTransferBusy] = useState(false);
   const [transferMsg, setTransferMsg] = useState('');
   const [transferErr, setTransferErr] = useState('');
+  // Delete account (danger zone).
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteErr, setDeleteErr] = useState('');
 
   // AI profile assist: extract from a website URL or an uploaded document,
   // then review each suggested field (accept / edit / reject) before it
@@ -248,6 +253,30 @@ export default function ProfileEditor() {
       setTransferErr(e?.message ?? 'Could not transfer ownership.');
     } finally {
       setTransferBusy(false);
+    }
+  }
+
+  async function deleteAccount() {
+    setDeleteErr('');
+    if (!deletePassword) {
+      setDeleteErr('Enter your password to confirm.');
+      return;
+    }
+    const ok = window.confirm(
+      'Delete your account? This signs you out permanently and removes your personal ' +
+        'information (name, email, login). It cannot be undone from here. Your organization\'s ' +
+        'quotes, invoices, and other business records are kept for other members and for legal ' +
+        'record-keeping, but you will no longer have access to them.',
+    );
+    if (!ok) return;
+    setDeleteBusy(true);
+    try {
+      await deleteMyAccount(deletePassword);
+      await signOut();
+      nav('/');
+    } catch (e: any) {
+      setDeleteErr(e?.message ?? 'Could not delete your account.');
+      setDeleteBusy(false);
     }
   }
 
@@ -462,6 +491,31 @@ export default function ProfileEditor() {
                 </button>
               </div>
             </Section>
+
+            <Section title="Delete account">
+              <p className="dppe-help">
+                Permanently delete your Divini Partners account. This signs you out and removes
+                your personal information (name, email, login credentials). It does not delete
+                your organization's quotes, invoices, or other business records - those are kept
+                for other members of your organization and for legal record-keeping, but you will
+                lose access to them. This cannot be undone from here.
+              </p>
+              <Field label="Confirm your password">
+                <input
+                  type="password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  placeholder="Current password"
+                  autoComplete="current-password"
+                />
+              </Field>
+              {deleteErr && <div className="dppe-err" style={{ marginTop: 10 }}>{deleteErr}</div>}
+              <div className="dppe-actions">
+                <button className="dppe-btn danger" onClick={deleteAccount} disabled={deleteBusy}>
+                  {deleteBusy ? 'Deleting...' : 'Delete my account'}
+                </button>
+              </div>
+            </Section>
           </div>
         )}
       </div>
@@ -558,6 +612,8 @@ const CSS = `
 .dppe-btn{background:var(--e);color:#fff;border:0;border-radius:10px;font:inherit;font-size:13.5px;font-weight:600;padding:11px 20px;cursor:pointer;}
 .dppe-btn:hover{background:var(--e2);}
 .dppe-btn.ghost{background:transparent;color:var(--e);border:1px solid var(--line);align-self:flex-start;}
+.dppe-btn.danger{background:#a3382f;}
+.dppe-btn.danger:hover{background:#8a2e26;}
 .dppe-btn:disabled{opacity:.5;cursor:default;}
 .dppe-ghost{background:transparent;border:1px solid var(--line);border-radius:10px;color:var(--e);font:inherit;font-size:13px;font-weight:600;padding:9px 15px;cursor:pointer;}
 .dppe-ghost:hover{border-color:var(--e2);}

@@ -13,16 +13,16 @@
  * from src/components/Shell.tsx, a nav component imported nowhere). All
  * four files were removed alongside this cleanup.
  *
- * deleteMyAccount() is deliberately KEPT despite having no live caller or
- * backend route either: Apple Guideline 5.1.1(v) requires reachable in-app
- * account deletion (see AI_PROJECT_OS/52_COMPLIANCE.md), and this is the
- * one stub in the removed family that represents a real, still-needed
- * requirement rather than abandoned product direction. It is not wired to
- * any UI and POST /account/delete does not exist server-side -- flagged
- * separately as an open gap, not fixed here.
+ * deleteMyAccount() is wired to a real backend as of 2026-08-03: Apple
+ * Guideline 5.1.1(v) requires reachable in-app account deletion (see
+ * AI_PROJECT_OS/52_COMPLIANCE.md). POST /account/delete re-confirms the
+ * caller's password, then anonymizes + deactivates their account (see
+ * server/src/db.ts's deleteAccount) -- never a hard delete, so financial and
+ * audit records tied to their id stay intact. Called from the "Delete
+ * account" danger zone in src/pages/profile/ProfileEditor.tsx.
  */
 import { apiSend } from './api';
 
-export async function deleteMyAccount() {
-  await apiSend('POST', '/account/delete');
+export async function deleteMyAccount(password: string): Promise<void> {
+  await apiSend('POST', '/account/delete', { password });
 }

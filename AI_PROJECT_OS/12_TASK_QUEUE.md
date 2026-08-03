@@ -99,6 +99,7 @@ Prioritized backlog, seeded from the Go-Live runbook remaining items and the V2 
 - Effort: L
 - Acceptance: `npm run build`, `npx cap add ios`, `npx cap sync`; icons/splash generated; `PrivacyInfo.xcprivacy` added; in-app account deletion reachable; signed, uploaded to TestFlight, submitted.
 - Related files: `capacitor.config.ts`, `mobile/PrivacyInfo.xcprivacy`, `IOS-APP-STORE-RUNBOOK.md`
+- Note (2026-08-03): in-app account deletion is now built and live-verified (Profile -> Account -> "Delete account"; see `15_KNOWN_ISSUES.md`) -- that acceptance criterion is met. The rest of this task (native build, TestFlight, submission) still requires a Mac.
 
 ## T10 - Repo cleanup (cosmetic)
 

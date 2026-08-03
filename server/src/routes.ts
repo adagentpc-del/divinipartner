@@ -2,7 +2,7 @@
  * API router index. Mounts the foundation routes plus every domain router.
  */
 import { Router, type Request, type Response, type NextFunction } from "express";
-import { ForbiddenError, NotFoundError } from "./db.js";
+import { ForbiddenError, NotFoundError, AccountDeletedError } from "./db.js";
 
 import foundation from "./routes/foundation.js";
 // Native email/password auth (replaces Authentik OIDC)
@@ -324,6 +324,7 @@ router.use("/follow-up-desk", followUpDesk);
 router.use("/price-guide", priceGuide);
 
 export function errorHandler(err: any, _req: Request, res: Response, _next: NextFunction) {
+  if (err instanceof AccountDeletedError) return res.status(401).json({ error: "unauthorized" });
   if (err instanceof ForbiddenError) return res.status(403).json({ error: err.message });
   if (err instanceof NotFoundError) return res.status(404).json({ error: err.message });
   // eslint-disable-next-line no-console
