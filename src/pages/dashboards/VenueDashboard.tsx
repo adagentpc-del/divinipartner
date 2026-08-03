@@ -48,6 +48,7 @@ const NAV: NavItem[] = [
   { label: 'Overview', icon: 'O', to: '/app' },
   { label: 'Divini Pipeline', icon: '◈', to: '/pipeline' },
   { label: 'Divini Scope Builder', icon: '▤', to: '/divini-scope-builder' },
+  { label: 'Divini Proposal Studio', icon: '✎', to: '/proposal-studio' },
   { label: 'Calendar', icon: 'c', to: '/calendar' },
   { label: 'Venue Twin', icon: 'P', to: '/venue-twin' },
   { label: 'Recommendations', icon: 'C', to: '/event-recommendations' },

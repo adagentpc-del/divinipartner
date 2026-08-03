@@ -329,6 +329,18 @@ async function logActivity(
   );
 }
 
+/** Log a system-authored activity with no acting user -- for cross-tool
+ *  integrations that have already verified org ownership themselves (e.g.
+ *  Proposal Studio recording "Proposal sent" against a linked opportunity, or
+ *  a public accept/decline response with no signed-in actor at all). */
+export async function logSystemEvent(orgId: string, opportunityId: string, body: string): Promise<void> {
+  await q1(
+    `insert into crm_activities (opportunity_id, organization_id, actor_user_id, activity_type, body)
+     values ($1,$2,null,'system',$3)`,
+    [opportunityId, orgId, body],
+  );
+}
+
 export async function addActivity(
   actor: Actor,
   opportunityId: string,

@@ -100,6 +100,7 @@ import VendorReadiness from './pages/VendorReadiness';
 import VendorNetwork from './pages/network/VendorNetwork';
 import JoinInvite from './pages/join/JoinInvite';
 import PublicBid from './pages/public/PublicBid';
+import PublicProposal from './pages/public/PublicProposal';
 import PublicAgenda from './pages/public/PublicAgenda';
 import PublicEventLanding from './pages/public/PublicEventLanding';
 import PublicTour from './pages/public/PublicTour';
@@ -182,6 +183,7 @@ import Profitability from './pages/Profitability';
 import Warehouses from './pages/Warehouses';
 import Pipeline from './pages/Pipeline';
 import ScopeBuilder from './pages/ScopeBuilder';
+import ProposalStudio from './pages/ProposalStudio';
 import BusinessHealth from './pages/BusinessHealth';
 import PricingIntelligence from './pages/PricingIntelligence';
 import MarketplaceIntelligence from './pages/MarketplaceIntelligence';
@@ -335,6 +337,7 @@ function Routed() {
       {/* public invite landing */}
       <Route path="/join/:token" element={<JoinInvite />} />
       <Route path="/b/:token" element={<PublicBid />} />
+      <Route path="/p/:token" element={<PublicProposal />} />
       <Route path="/agenda/:eventId" element={<PublicAgenda />} />
       <Route path="/event/:eventId" element={<PublicEventLanding />} />
       <Route path="/tour/:tourId" element={<PublicTour />} />
@@ -448,6 +451,7 @@ function Routed() {
       <Route path="/warehouses" element={<Authed><Warehouses /></Authed>} />
       <Route path="/pipeline" element={<Authed><Pipeline /></Authed>} />
       <Route path="/divini-scope-builder" element={<Authed><ScopeBuilder /></Authed>} />
+      <Route path="/proposal-studio" element={<Authed><ProposalStudio /></Authed>} />
       <Route path="/business-health" element={<Authed><BusinessHealth /></Authed>} />
       <Route path="/pricing-intelligence" element={<Authed><PricingIntelligence /></Authed>} />
       <Route path="/marketplace-intelligence" element={<Authed><MarketplaceIntelligence /></Authed>} />

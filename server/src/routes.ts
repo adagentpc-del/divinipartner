@@ -169,6 +169,8 @@ import vendorProfitability from "./routes/vendor-profitability.js";
 import warehouses from "./routes/warehouses.js";
 import pipeline from "./routes/pipeline.js";
 import scopeBuilder from "./routes/scope-builder.js";
+import proposalStudio from "./routes/proposal-studio.js";
+import publicProposals from "./routes/public-proposals.js";
 
 const router = Router();
 
@@ -201,6 +203,7 @@ router.use("/event-landing", eventLanding);
 router.use("/public/event", publicEvent);
 router.use("/tours", tours);
 router.use("/public/tour", publicTour);
+router.use("/public/proposals", publicProposals);
 router.use("/compare", compare);
 router.use("/tasks", tasks);
 router.use("/reviews", reviews);
@@ -314,6 +317,7 @@ router.use("/vendor-profitability", vendorProfitability);
 router.use("/warehouses", warehouses);
 router.use("/pipeline", pipeline);
 router.use("/scope-builder", scopeBuilder);
+router.use("/proposal-studio", proposalStudio);
 
 export function errorHandler(err: any, _req: Request, res: Response, _next: NextFunction) {
   if (err instanceof ForbiddenError) return res.status(403).json({ error: err.message });
