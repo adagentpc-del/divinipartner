@@ -1,16 +1,28 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useFeatures } from '../lib/features';
+import { useAuth } from '../lib/auth';
 import { apiGet } from '../lib/api';
 
-type Counts = {
-  companies: number; buyers: number; vendors: number; buildings: number;
-  packages: number; open_packages: number; awards: number; bids: number;
+/**
+ * Overview previously called GET /admin/overview, which was never a real
+ * route -- it was written against an abandoned companies/buildings/packages
+ * data model the app moved away from. Rebuilt against the two real, already-
+ * working admin endpoints instead: GET /admin/metrics (server/src/db/admin.ts
+ * getMetrics(), the same aggregate AdminIntelligence.tsx already renders in
+ * full depth) for top-line numbers, and GET /admin/accounts for a recently-
+ * joined companies list. No new backend surface, no duplicated query logic.
+ */
+type Metrics = {
+  generated_at: string;
+  money: { gmv: number; platform_fee_revenue: number; mrr: number; paid_invoices: number };
+  marketplace: { bid_volume: number; quotes_submitted: number; quotes_accepted: number; quote_conversion_rate: number };
+  accounts: { total: number; incomplete_onboarding: number; churn_risk: number };
+  attention: { open_disputes: number; open_tickets: number; pending_verification: number };
 };
-type Company = { id: string; kind: string; name: string; city?: string; region?: string; created_at: string };
-type Pkg = { id: string; category: string; status: string; deadline?: string; building: string; bid_count: number };
-type Bid = { id: string; price: number; days: number; status: string; vendor: string; category: string; building: string; created_at: string };
-type Overview = { counts: Counts; companies: Company[]; packages: Pkg[]; bids: Bid[] };
+type Account = {
+  id: string; name: string; type: string | null; tier: string | null;
+  verification_status: string | null; created_at: string;
+};
 
 const money = (n?: number) => (n == null ? '-' : '$' + Number(n).toLocaleString());
 const date = (s?: string) => (s ? new Date(s).toLocaleDateString() : '-');
@@ -29,39 +41,56 @@ const ADMIN_TABS: [string, string][] = [
 ];
 
 export default function AdminConsole() {
-  const { isAdmin } = useFeatures();
+  // useAuth() directly, not useFeatures() -- FeaturesProvider is never
+  // mounted anywhere in App.tsx, so useFeatures() always reads its context's
+  // default {} and isAdmin was always undefined here regardless of real
+  // admin status. useAuth() is the same source every other working admin
+  // page (AdminAccounts.tsx, AdminIntelligence.tsx) already uses correctly.
+  const { isAdmin } = useAuth();
   const nav = useNavigate();
-  const [data, setData] = useState<Overview | null>(null);
+  const [metrics, setMetrics] = useState<Metrics | null>(null);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    apiGet<Overview>('/admin/overview')
-      .then(setData)
+    Promise.all([
+      apiGet<{ metrics: Metrics }>('/admin/metrics'),
+      apiGet<{ accounts: Account[] }>('/admin/accounts'),
+    ])
+      .then(([m, a]) => {
+        setMetrics(m.metrics);
+        setAccounts(a.accounts.slice(0, 10));
+      })
       .catch((e) => setErr(e.message ?? 'Could not load admin data.'))
       .finally(() => setLoading(false));
   }, []);
 
   if (!isAdmin) return <div className="card">Admins only.</div>;
 
-  const c = data?.counts;
-  const cards: [string, number | undefined][] = [
-    ['Companies', c?.companies],
-    ['Clients', c?.buyers],
-    ['Vendors', c?.vendors],
-    ['Venues', c?.buildings],
-    ['Events', c?.packages],
-    ['Open Events', c?.open_packages],
-    ['Quotes', c?.bids],
-    ['Booked', c?.awards],
+  const cards: [string, string | number | undefined][] = [
+    ['GMV', metrics ? money(metrics.money.gmv) : undefined],
+    ['Platform fee revenue', metrics ? money(metrics.money.platform_fee_revenue) : undefined],
+    ['MRR', metrics ? money(metrics.money.mrr) : undefined],
+    ['Total accounts', metrics?.accounts.total],
+    ['Bid volume', metrics?.marketplace.bid_volume],
+    ['Quote conversion', metrics ? `${metrics.marketplace.quote_conversion_rate}%` : undefined],
   ];
+  const attention = metrics
+    ? [
+        ['Open disputes', metrics.attention.open_disputes],
+        ['Open support tickets', metrics.attention.open_tickets],
+        ['Pending verification', metrics.attention.pending_verification],
+      ] as const
+    : [];
+  const needsAttention = attention.some(([, n]) => n > 0);
 
   return (
     <>
       <div className="page-head">
         <div>
           <h1>Admin Console</h1>
-          <div className="sub">Platform-wide view of every company, event, and quote on Divini Partners.</div>
+          <div className="sub">Platform-wide view of accounts, marketplace activity, and revenue on Divini Partners.</div>
         </div>
       </div>
 
@@ -87,73 +116,46 @@ export default function AdminConsole() {
       {err && <div className="err">{err}</div>}
       {loading && <div className="note">Loading…</div>}
 
-      <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(130px,1fr))', gap: 12, marginBottom: 20 }}>
+      <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 12, marginBottom: 20 }}>
         {cards.map(([label, n]) => (
           <div className="card" key={label} style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 28, fontWeight: 700 }}>{n ?? '-'}</div>
+            <div style={{ fontSize: 24, fontWeight: 700 }}>{n ?? '-'}</div>
             <div className="note">{label}</div>
           </div>
         ))}
       </div>
 
-      <div className="sectitle">Companies</div>
-      <div className="card" style={{ padding: 0 }}>
-        <table>
-          <thead><tr><th>Name</th><th>Type</th><th>Location</th><th>Joined</th></tr></thead>
-          <tbody>
-            {(data?.companies ?? []).map((co) => (
-              <tr key={co.id}>
-                <td><strong>{co.name}</strong></td>
-                <td>{co.kind === 'buyer' ? 'Client' : 'Vendor'}</td>
-                <td>{[co.city, co.region].filter(Boolean).join(', ') || '-'}</td>
-                <td>{date(co.created_at)}</td>
-              </tr>
+      {!loading && metrics && (
+        <>
+          <div className="sectitle">Needs attention</div>
+          <div className="card" style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+            {attention.map(([label, n]) => (
+              <div key={label} style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                <span style={{ fontSize: 20, fontWeight: 700, color: n > 0 ? '#9a3a28' : undefined }}>{n}</span>
+                <span className="note">{label}</span>
+              </div>
             ))}
-            {!loading && (data?.companies ?? []).length === 0 && (
-              <tr><td colSpan={4} className="note">No companies yet.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            {!needsAttention && <span className="note">Nothing outstanding right now.</span>}
+          </div>
+        </>
+      )}
 
-      <div className="sectitle">Events</div>
+      <div className="sectitle">Recently joined</div>
       <div className="card" style={{ padding: 0 }}>
         <table>
-          <thead><tr><th>Venue</th><th>Category</th><th>Status</th><th>Quotes</th><th>Deadline</th></tr></thead>
+          <thead><tr><th>Name</th><th>Type</th><th>Tier</th><th>Verification</th><th>Joined</th></tr></thead>
           <tbody>
-            {(data?.packages ?? []).map((p) => (
-              <tr key={p.id} style={{ cursor: 'pointer' }} onClick={() => nav(`/events/${p.id}`)}>
-                <td>{p.building}</td>
-                <td>{p.category}</td>
-                <td><span className="chip">{p.status}</span></td>
-                <td>{p.bid_count}</td>
-                <td>{date(p.deadline)}</td>
+            {accounts.map((a) => (
+              <tr key={a.id} style={{ cursor: 'pointer' }} onClick={() => nav('/admin/accounts')}>
+                <td><strong>{a.name}</strong></td>
+                <td>{a.type ?? '-'}</td>
+                <td>{a.tier ?? '-'}</td>
+                <td><span className="chip">{a.verification_status ?? 'draft'}</span></td>
+                <td>{date(a.created_at)}</td>
               </tr>
             ))}
-            {!loading && (data?.packages ?? []).length === 0 && (
-              <tr><td colSpan={5} className="note">No events yet.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="sectitle">Recent Quotes</div>
-      <div className="card" style={{ padding: 0 }}>
-        <table>
-          <thead><tr><th>Vendor</th><th>Event</th><th>Price</th><th>Days</th><th>Status</th><th>Submitted</th></tr></thead>
-          <tbody>
-            {(data?.bids ?? []).map((b) => (
-              <tr key={b.id}>
-                <td><strong>{b.vendor}</strong></td>
-                <td>{b.category} · {b.building}</td>
-                <td>{money(b.price)}</td>
-                <td>{b.days}</td>
-                <td><span className="chip">{b.status}</span></td>
-                <td>{date(b.created_at)}</td>
-              </tr>
-            ))}
-            {!loading && (data?.bids ?? []).length === 0 && (
-              <tr><td colSpan={6} className="note">No quotes yet.</td></tr>
+            {!loading && accounts.length === 0 && (
+              <tr><td colSpan={5} className="note">No accounts yet.</td></tr>
             )}
           </tbody>
         </table>

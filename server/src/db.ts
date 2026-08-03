@@ -10,6 +10,7 @@
  */
 import { q, q1, pool } from "./pool.js";
 import { planTierFor } from "./lib/planCatalog.js";
+import { getAdminAllowedEmails } from "./config.js";
 
 export class ForbiddenError extends Error {
   status = 403;
@@ -118,12 +119,35 @@ export async function ensureUser(idOrSub: string, email: string | null): Promise
   return row as DbUser;
 }
 
-/** Resolve the signed-in actor: their user row + organization (or null). */
+/**
+ * Resolve the signed-in actor: their user row + organization (or null).
+ *
+ * Real admin status comes from ADMIN_ALLOWED_EMAILS (server/src/auth.ts's
+ * getAuth().isAdmin), a separate mechanism from the users.role column --
+ * nothing ever writes "admin"/"super_admin" into that column, since it is
+ * set once at registration to the org role the user picked (venue, vendor,
+ * client, ...) and stays that way for their own account. But ~48 call sites
+ * across the codebase (server/src/db/*.ts) grant elevated access by checking
+ * `actor.user.role === "admin" || actor.user.role === "super_admin"` --
+ * a real admin logged in via ADMIN_ALLOWED_EMAILS was silently failing every
+ * one of those checks, since their own users.role is whatever org role they
+ * registered under (or null). In server/src/db/whitelabel.ts specifically
+ * this was the ONLY check on the White Label admin pipeline, making it
+ * unreachable even for the actual site owner.
+ *
+ * Fix: override role to "super_admin" on the Actor RETURNED here (in memory
+ * only, never persisted) when the email matches the allowlist. This makes
+ * all ~48 existing checks correct in one place, with no schema change and no
+ * per-file edits, and never touches the user's real stored org role.
+ */
 export type Actor = { user: DbUser; org: DbOrg | null };
 export async function getActor(idOrSub: string, email: string | null): Promise<Actor> {
   const user = await ensureUser(idOrSub, email);
   const org = await getMyOrg(user.id);
-  return { user, org };
+  const isPlatformAdmin =
+    !!user.email && getAdminAllowedEmails().includes(user.email.toLowerCase());
+  const effectiveUser = isPlatformAdmin ? { ...user, role: "super_admin" } : user;
+  return { user: effectiveUser, org };
 }
 
 const ORG_COLS =
