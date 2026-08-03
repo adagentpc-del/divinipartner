@@ -2,9 +2,10 @@
 
 Known debt and cleanup, roughly ordered by value.
 
-## react-router major-version upgrade (new, 2026-08-03)
+## react-router major-version upgrade
 
-- `react-router-dom` is pinned to the 6.x line (`^6.26.0`, currently resolving to 6.30.4) and has two moderate CVEs (open-redirect bypass, arbitrary constructor injection via SSR hydration) that only a major-version bump to 7.x fixes. Deliberately NOT bundled into the 2026-08-03 dependency-patch pass — a router upgrade in a ~170-route SPA needs its own dedicated testing pass (the full nav-crawl harness used for the QA/audit work this session is the right tool to re-run against it). Tracked here so it doesn't get lost, not urgent enough to block launch on its own.
+- RESOLVED (2026-08-03): upgraded `react-router-dom` from `^6.26.0` (6.30.4) to `^7.18.2`, clearing the two originally-flagged moderate CVEs (open-redirect bypass, arbitrary constructor injection via SSR hydration). This app uses only the classic declarative API (`<BrowserRouter>`/`<Routes>`/`<Route>`, `src/App.tsx`), which v7 kept fully backward-compatible with v6 — the upgrade required zero code changes. Verified with a full live re-crawl of all 271 nav destinations across all 9 roles (271/271 clean) plus the login/logout/register/create-flow interaction tests, all passing.
+- One further advisory remains open against 7.18.2 ("RSC Mode CSRF Bypass Allows Action Execution Before 400 Response," GHSA-qwww-vcr4-c8h2) with no non-vulnerable `react-router-dom` release published yet (7.18.2 is the current tip of the line; `npm audit fix --force` would downgrade to 7.11.0, which reintroduces the original, actually-applicable CVEs). Checked applicability: this advisory is specific to React Router's "RSC Mode" (React Server Components / server actions under `createBrowserRouter`), a feature this app does not use at all — no SSR, no server actions, plain client-rendered SPA. Left as-is rather than downgrading into a worse, equally-inapplicable-but-broader vulnerability range; re-run `npm audit` on future `npm install`s and take the next `react-router-dom` patch release when one ships.
 
 ## App Store account deletion (new, 2026-08-03)
 
