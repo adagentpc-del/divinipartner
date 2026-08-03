@@ -45,7 +45,7 @@ Prioritized backlog, seeded from the Go-Live runbook remaining items and the V2 
 - Dependencies: T1, T3
 - Effort: S
 - Acceptance: `PRICING_V2=true` and `VITE_PRICING_V2=true` in `.env.local`; `bash deploy.sh`; `pm2 restart divini-partners --update-env`; `/api/healthz` 200; `/api/payments/processors` shows `pricing_v2:true`; public Pricing page shows free roles + $49 Featured; no tier picker at signup.
-- Related files: `deploy.sh`, `server/src/lib/features.tsx`, `src/pages/public/Pricing.tsx`
+- Related files: `deploy.sh`, `server/src/config.ts` (`PRICING_V2`/`VITE_PRICING_V2` flags), `src/pages/public/Pricing.tsx`
 - Notes: `VITE_PRICING_V2` must be present at BUILD time.
 
 ## T5 - Verify V2 money flow end-to-end on live
