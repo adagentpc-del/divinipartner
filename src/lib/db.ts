@@ -21,17 +21,8 @@ export async function createBuilding(payload: { company_id: string; name: string
   return apiSend('POST', '/buildings', payload);
 }
 
-export async function getOpenPackages(filter?: { categories?: string[] }) {
-  const qs = filter?.categories?.length ? `?categories=${encodeURIComponent(filter.categories.join(','))}` : '';
-  return apiGet<any[]>(`/packages/open${qs}`);
-}
-
 export async function getMyBids(companyId: string) {
   return apiGet<any[]>(`/bids/mine?companyId=${encodeURIComponent(companyId)}`);
-}
-
-export async function getVendorProfile(companyId: string) {
-  return apiGet<any>(`/vendor-profiles/${encodeURIComponent(companyId)}`);
 }
 
 export async function getBuilding(id: string) {
