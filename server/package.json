@@ -8,7 +8,9 @@
     "build": "tsc -p tsconfig.json",
     "start": "node --enable-source-maps dist/index.js",
     "dev": "tsc -p tsconfig.json && node --enable-source-maps dist/index.js",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "backup-db": "node --enable-source-maps dist/scripts/backup-db.js",
+    "restore-db": "node --enable-source-maps dist/scripts/restore-db.js"
   },
   "dependencies": {
     "@types/pdfkit": "^0.17.6",

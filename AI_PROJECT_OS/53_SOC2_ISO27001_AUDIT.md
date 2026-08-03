@@ -173,19 +173,43 @@ and enforcement (not just availability) for `ADMIN_ALLOWED_EMAILS`
 accounts via `requireAdmin` in `server/src/auth.ts`: an unenrolled admin
 can still log in, but every actual admin action is refused with
 `mfa_required_for_admin` until they enroll. Live-verified end to end
-including the real browser UI. Session-management gap #4 below (no general
+including the real browser UI. Session-management gap #2 below (no general
 revocation) is UNCHANGED by this work -- MFA and session revocation are
 different controls.
+
+## Update 2026-08-03 (later same day): automated backup mechanism built
+
+The backup gap below (originally #1) is MOSTLY resolved -- the mechanism
+is built and live-verified, but a real cron job on the production server is
+still an operator step, not something this repo can install by itself:
+`server/src/scripts/backup-db.ts` (pg_dump `--clean --if-exists` -> gzip ->
+the app's own pluggable object storage -- local disk by default, S3-
+compatible when configured -- encrypted at rest when
+`STORAGE_ENCRYPTION_KEY` is set, retention-pruned via a manifest since
+neither storage provider exposes a list operation) and `restore-db.ts`
+(interactive confirmation guard, or `--yes` for scripted/tested use). A
+real race condition was caught and fixed while building this: when pg_dump
+fails immediately (e.g. the database is unreachable), its stdout closes
+with zero bytes, which makes the gzip stream emit its own `'end'` event
+BEFORE pg_dump's `'close'` event carries the real exit code -- resolving on
+gzip's `'end'` alone would have silently "succeeded" with an empty,
+useless backup on every such failure. Fixed to wait for both signals and
+treat the exit code as authoritative, plus a minimum-compressed-size sanity
+check as defense in depth. Live-verified end to end: a real ~95KB backup of
+this app's 170-table schema, retention pruning of an artificially-aged
+manifest entry, and a full restore into a scratch database with matching
+table count (170/170) and row counts, verified idempotent on a second
+restore into the same target. See `23_DEPLOYMENT.md`'s "Automated database
+backups" section for the remaining cron-install step.
 
 ## Open gaps (not fixed here -- need a dedicated build or an operator decision)
 
 Ranked by how commonly an auditor would flag them first.
 
-1. **No automated, scheduled, tested backups.** HIGH for availability
-   criteria. Current state is a single manual `pg_dump` run immediately
-   before migrations. Needs an operator/infra decision (managed Postgres
-   with automated snapshots, or a cron + off-site retention policy) --
-   outside what application code can fix.
+1. **Automated backups are built but not yet SCHEDULED anywhere.** MEDIUM
+   (downgraded from HIGH now that the mechanism exists -- see the update
+   above). Installing the cron line and choosing retention/S3 is a single
+   operator action (`23_DEPLOYMENT.md`), not a code change.
 2. **No structured logging / error monitoring.** MEDIUM-HIGH. Carried over
    from `16_TECH_DEBT.md`, unchanged by this audit. Needed for CC7.2
    ("the entity monitors ... for anomalies") to be more than an audit-log
@@ -222,7 +246,7 @@ Ranked by how commonly an auditor would flag them first.
 | Audit logging | CC7.2, CC7.3 | A.8.15 | Implemented, unmonitored |
 | Change management (this repo's own dev process) | CC8.1 | A.8.32 | Out of scope for code audit |
 | Vulnerability management | CC7.1 | A.8.8 | Partial (`npm audit` pass done 2026-08-03; no recurring schedule) |
-| Backup / recovery | A1.2 | A.8.13 | **Gap** (manual only) |
+| Backup / recovery | A1.2 | A.8.13 | Mechanism built + verified (backup + restore); scheduling is the one remaining operator step |
 | Monitoring / logging review | CC7.2 | A.8.16 | **Gap** (no alerting/SIEM) |
 | Data subject rights | Privacy (if in scope) | A.5.34 | Implemented, stronger than expected |
 | Incident response | CC7.4, CC7.5 | A.5.24-A.5.28 | Policy-only, not yet drafted (next task) |
@@ -234,7 +258,9 @@ Ranked by how commonly an auditor would flag them first.
    (Information Security Policy, Access Control Policy, Data Retention &
    Deletion Policy, Incident Response Plan, Subprocessor list), all DRAFT
    pending real ownership and sign-off.
-2. Decide and implement an automated backup policy (operator decision).
+2. ~~Decide and implement an automated backup policy~~ MECHANISM DONE
+   2026-08-03: see the update above. Remaining: install the cron line
+   (`23_DEPLOYMENT.md`) and choose retention/S3 (operator decision).
 3. ~~Scope and build MFA~~ DONE 2026-08-03: see the update above.
 4. Add structured logging / error monitoring (already tracked in
    `16_TECH_DEBT.md`).

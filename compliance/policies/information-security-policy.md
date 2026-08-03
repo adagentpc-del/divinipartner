@@ -71,12 +71,14 @@ hashed passwords, role-based + allowlist-based access control, CSRF
 protection, rate limiting, security response headers, parameterized SQL
 throughout, optional encryption at rest for stored objects, TLS in transit
 (edge-terminated), and audit logging on 45+ sensitive-action call sites.
-TOTP-based MFA is available to every user and required for admin access
-(built 2026-08-03; see `AI_PROJECT_OS/53_SOC2_ISO27001_AUDIT.md`). Known,
-currently-open gaps: no automated/scheduled backups, no structured logging
-or error-monitoring service, and no general session-revocation mechanism.
-See the audit document for the full, ranked list -- do not let this policy
-imply those gaps are closed.
+TOTP-based MFA is available to every user and required for admin access,
+and an automated backup mechanism (backup + verified restore) is built
+(both 2026-08-03; see `AI_PROJECT_OS/53_SOC2_ISO27001_AUDIT.md`) -- though
+the backup mechanism still needs an operator to install the cron schedule
+before it runs automatically (`AI_PROJECT_OS/23_DEPLOYMENT.md`). Known,
+currently-open gaps: no structured logging or error-monitoring service, and
+no general session-revocation mechanism. See the audit document for the
+full, ranked list -- do not let this policy imply those gaps are closed.
 
 ## 6. Enforcement and exceptions
 

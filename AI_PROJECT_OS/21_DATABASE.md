@@ -19,6 +19,12 @@
   ```
   docker exec divini_partners_db pg_dump -U aibos divini_partners > ~/divini_partners_preV2.sql
   ```
+- Separately, scheduled/automated backups (not just the manual pre-migration
+  snapshot above) are built (`server/src/scripts/backup-db.ts`,
+  `restore-db.ts` -- pg_dump -> gzip -> the app's own object storage,
+  encrypted at rest when configured, with retention pruning) but require a
+  cron job installed on the server to actually run on a schedule. See
+  `23_DEPLOYMENT.md`'s "Automated database backups" section.
 
 Note: `db/SCHEMA-NOTES.md` documents an earlier local-validation setup (Postgres on port 5433, `db/schema.sql`, original 27-table core). For deployment use `apply-all.sql` against the Docker container. Trust `apply-all.sql`.
 

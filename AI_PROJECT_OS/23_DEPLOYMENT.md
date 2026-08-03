@@ -61,6 +61,60 @@ Run exactly per `Divini-Partners-PricingV2-Flip-Runbook.md`:
 
 - Set `PRICING_V2=false` and `VITE_PRICING_V2=false`, `bash deploy.sh`, `pm2 restart divini-partners --update-env`. The new schema is additive and the legacy logic is intact. To restore legacy tier/fee values, restore from the pre-migration snapshot taken in step 2.
 
+## Automated database backups
+
+The mechanism (`server/src/scripts/backup-db.ts` / `restore-db.ts`) is
+built and live-verified (2026-08-03, closing the "no automated backups" gap
+from `AI_PROJECT_OS/53_SOC2_ISO27001_AUDIT.md`, task T12), but nothing runs
+it on a schedule until the cron job below is installed on the server --
+this is the one remaining operator action.
+
+Prerequisite: the SERVER host (where pm2 runs the Node process) needs the
+`postgresql-client` package installed (`apt-get install postgresql-client`)
+so the `pg_dump`/`psql` binaries are on PATH for the Node script to shell
+out to -- the DB itself running inside the `divini_partners_db` Docker
+container does not make these binaries reachable from the host process.
+
+1. SERVER - confirm `pg_dump`/`psql` are reachable and `DATABASE_URL` in
+   `.env.local` points at the DB (over the container's exposed port, same
+   value used everywhere else in this app):
+   ```
+   which pg_dump psql
+   ```
+2. SERVER - decide retention and (strongly recommended before real user
+   data accumulates) off-site storage: set `BACKUP_RETENTION_DAYS` and, for
+   real off-site backups rather than local-disk-only, `STORAGE_PROVIDER=s3`
+   + the `S3_*` vars + `STORAGE_ENCRYPTION_KEY` in `.env.local` (the same
+   vars already used for uploaded-document storage -- backups reuse that
+   same object storage under a `backups/db/` prefix, so if S3 + encryption
+   are already configured for uploads, backups get both automatically).
+3. SERVER - build once (`bash deploy.sh` already does this), then install
+   the cron job (daily at 3am server time is a reasonable default; adjust
+   for your traffic pattern and the retention window):
+   ```
+   crontab -e
+   # add:
+   0 3 * * * cd /root/sites/divini-partners/server && /usr/bin/node --enable-source-maps dist/scripts/backup-db.js >> /var/log/divini-backup.log 2>&1
+   ```
+   Cron does not source `.env.local` automatically -- either `cd` into the
+   server directory and rely on the app's own env-loading if it has one, or
+   prefix the command with `env $(cat /root/sites/divini-partners/server/.env.local | xargs)` (mind values containing spaces), or (cleaner) run via a
+   small wrapper shell script that sources `.env.local` before exec'ing
+   node. Verify the exact working env once with `crontab -l` and a manual
+   dry run before trusting the schedule.
+4. SERVER - verify it actually ran: check `/var/log/divini-backup.log` the
+   next morning for `[backup-db] done.` and a non-trivial byte count, not
+   just that cron fired.
+5. **Test the restore, at least once, before you need it for real.** Into a
+   throwaway database, never the live one:
+   ```
+   createdb divini_restore_test
+   DATABASE_URL="postgres://aibos:PASS@127.0.0.1:PORT/divini_restore_test" \
+     node dist/scripts/restore-db.js latest --yes
+   ```
+   An untested backup is not a verified control -- see
+   `compliance/policies/incident-response-plan.md`.
+
 ## Procure (sibling app)
 
 - Divini Procure deploys with the same loop into `divini_procure_db` / `/root/sites/divini-procure`. Out of scope for this OS; do not deploy it from this repo. See its own `FIRST-DEPLOY-RUNBOOK.md`.

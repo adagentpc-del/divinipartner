@@ -72,6 +72,18 @@ export function s3Config(): {
 export const STORAGE_ENCRYPTION_KEY = process.env.STORAGE_ENCRYPTION_KEY || "";
 export const storageEncryptionEnabled = (): boolean => !!STORAGE_ENCRYPTION_KEY;
 
+/**
+ * Database backups (server/src/scripts/backup-db.ts). Reuses the same
+ * pluggable object storage (local disk or S3-compatible, with
+ * STORAGE_ENCRYPTION_KEY envelope encryption) as file uploads, under a
+ * separate "backups/db/" key prefix -- so if S3 + encryption are already
+ * configured for uploaded documents, backups get both automatically, with
+ * zero new infrastructure. BACKUP_RETENTION_DAYS controls how many days of
+ * backups the prune step (run automatically after each backup) keeps.
+ */
+export const BACKUP_RETENTION_DAYS = Number(process.env.BACKUP_RETENTION_DAYS || 14);
+export const BACKUP_KEY_PREFIX = "backups/db";
+
 // Signing secret for short-lived download URLs (HMAC). Falls back to
 // OIDC_CLIENT_ID-derived value in dev but should be set explicitly in prod.
 export const DOWNLOAD_URL_SECRET =

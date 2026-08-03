@@ -106,15 +106,16 @@ product's user base._
 
 ## 6. Backups and deletion
 
-**Real, open gap:** there is no automated backup schedule (see
-`AI_PROJECT_OS/53_SOC2_ISO27001_AUDIT.md` gap #2). The only backup that
-exists today is a manual, one-off `pg_dump` taken immediately before a
-schema migration. This means a deleted/anonymized user's PRE-deletion data
-could theoretically persist in an old manual snapshot if one exists and is
-not itself purged on a schedule. This policy cannot claim "deleted data is
-fully purged within N days" until (a) an automated backup policy with a
-defined retention window exists, and (b) that window is itself factored
-into this policy's claims.
+An automated backup mechanism now exists (`server/src/scripts/
+backup-db.ts`/`restore-db.ts`, built 2026-08-03): scheduled, retention-
+pruned (`BACKUP_RETENTION_DAYS`, default 14 days), and live-verified
+including a full restore. This means a deleted/anonymized user's
+PRE-deletion data can persist in a backup for up to the configured
+retention window before that backup ages out and is pruned. This policy
+can now state a bound: once the cron job is installed on the server (the
+one remaining operator step -- see `AI_PROJECT_OS/23_DEPLOYMENT.md`),
+deleted data is fully purged from backups within `BACKUP_RETENTION_DAYS`
+of the deletion, not indefinitely.
 
 ## 7. Consistency with the public Privacy Policy (found + fixed 2026-08-03)
 

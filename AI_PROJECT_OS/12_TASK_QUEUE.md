@@ -120,11 +120,11 @@ Prioritized backlog, seeded from the Go-Live runbook remaining items and the V2 
 ## T12 - Automated, scheduled, tested backups (SOC 2 / ISO 27001, found 2026-08-03)
 
 - Priority: P1
-- Status: TODO
-- Owner: operator
+- Status: MECHANISM DONE (2026-08-03) / SCHEDULING TODO
+- Owner: operator (for the remaining step)
 - Dependencies: none
-- Effort: S-M (infra/ops, not application code)
-- Acceptance: a scheduled backup job (managed Postgres automated snapshots, or cron + off-site retention) with a documented, periodically-tested restore procedure -- replacing the current manual, pre-migration-only `pg_dump`.
-- Related files: `21_DATABASE.md`, `23_DEPLOYMENT.md`
+- Effort: S (remaining step is installing one cron line + choosing S3 vs local; the mechanism itself is built)
+- Acceptance: DONE -- `server/src/scripts/backup-db.ts` (pg_dump --clean --if-exists -> gzip -> the app's own object storage, encrypted at rest when `STORAGE_ENCRYPTION_KEY` is set, retention-pruned via a manifest) and `restore-db.ts` (with a real confirmation guard), live-verified end to end including a full restore into a scratch database with matching table/row counts and an idempotent second restore. REMAINING: install the cron job on the server (see `23_DEPLOYMENT.md`'s "Automated database backups" section) and decide retention days / S3 vs local-disk -- nothing runs this on a schedule until that cron line is added.
+- Related files: `server/src/scripts/backup-db.ts`, `server/src/scripts/restore-db.ts`, `server/src/config.ts` (`BACKUP_RETENTION_DAYS`), `21_DATABASE.md`, `23_DEPLOYMENT.md`
 
 > TODO(owner): Add any product feature tasks beyond go-live as they are defined.

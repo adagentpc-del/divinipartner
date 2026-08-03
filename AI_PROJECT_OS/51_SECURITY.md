@@ -64,6 +64,7 @@ Source: `server/src/config.ts`, `server/src/app.ts`, `server/src/lib/{session,ra
 - Set `SESSION_SECRET`, `DOWNLOAD_URL_SECRET`, `PUBLIC_APP_URL`, `ALLOWED_ORIGINS`.
 - Optionally enable storage encryption (`STORAGE_ENCRYPTION_KEY`) and S3.
 - Set `sslmode=require` on `DATABASE_URL` for any managed/remote Postgres instance.
+- Install the automated-backup cron job (`23_DEPLOYMENT.md`) -- the backup/restore mechanism is built, but nothing runs it on a schedule until this cron line is added.
 - Keep `STRIPE_SECRET_KEY` unset until ready (no money moves; see `52_COMPLIANCE.md`).
 
 ## MFA / 2FA
@@ -72,6 +73,6 @@ Source: `server/src/config.ts`, `server/src/app.ts`, `server/src/lib/{session,ra
 
 ## SOC 2 / ISO 27001
 
-- See `53_SOC2_ISO27001_AUDIT.md` for a full code-level control audit mapped to SOC 2 Trust Services Criteria and ISO 27001 Annex A, including what was fixed 2026-08-03 (stale MFA claims, password-reset notification + audit logging, account-deletion notification) and the ranked list of open gaps (MFA, automated backups, structured logging/monitoring, session revocation, default-on encryption at rest).
+- See `53_SOC2_ISO27001_AUDIT.md` for a full code-level control audit mapped to SOC 2 Trust Services Criteria and ISO 27001 Annex A, including what was fixed 2026-08-03 (stale MFA claims, password-reset notification + audit logging, account-deletion notification, MFA itself, and the automated-backup mechanism) and the ranked list of open gaps that remain (installing the backup cron schedule, structured logging/monitoring, session revocation, default-on encryption at rest).
 
 > TODO(owner): Add error monitoring / structured logging (Sentry-style) before or shortly after taking real money.
