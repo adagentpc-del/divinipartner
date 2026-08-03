@@ -171,6 +171,7 @@ import pipeline from "./routes/pipeline.js";
 import scopeBuilder from "./routes/scope-builder.js";
 import proposalStudio from "./routes/proposal-studio.js";
 import publicProposals from "./routes/public-proposals.js";
+import followUpDesk from "./routes/follow-up-desk.js";
 
 const router = Router();
 
@@ -318,6 +319,7 @@ router.use("/warehouses", warehouses);
 router.use("/pipeline", pipeline);
 router.use("/scope-builder", scopeBuilder);
 router.use("/proposal-studio", proposalStudio);
+router.use("/follow-up-desk", followUpDesk);
 
 export function errorHandler(err: any, _req: Request, res: Response, _next: NextFunction) {
   if (err instanceof ForbiddenError) return res.status(403).json({ error: err.message });

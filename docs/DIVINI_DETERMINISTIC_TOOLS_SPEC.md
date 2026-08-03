@@ -164,4 +164,32 @@ The complete section-by-section specification (Divini Concierge, Proposal Studio
 
 ---
 
+## Shipped: Divini Follow-Up Desk (slice 4, 2026-08-03)
+
+**Business problem solved.** A qualified lead or a sent proposal is easy to lose track of once the next task isn't in front of you -- an overdue next action sits quietly in Pipeline, a sent proposal sits unopened, and nobody notices until the deal is cold. Divini Follow-Up Desk surfaces exactly what needs a reply today, generated from real Pipeline and Proposal Studio data plus whatever the user adds by hand.
+
+**Users served.** Same primary-user set as Pipeline, Scope Builder, and Proposal Studio: Venue, Vendor, Supplier, Planner, Sponsor -- every role that owns opportunities and sends proposals needs this list.
+
+**Workflow completed.** Open the desk -> four fixed rules reconcile live against the org's real data (no cron, no background job): an open opportunity with an overdue next action, an open opportunity with no activity in 10+ days, a sent/viewed proposal unanswered for 5+ days, a sent/viewed proposal expiring within 3 days -> each match creates (or refreshes) exactly one open system task; the moment the underlying condition stops matching (the next action gets rescheduled, a proposal gets a response, the opportunity closes), that task is automatically dismissed on the next reconciliation, not left stale -> a user can also add a fully manual task at any time (title, note, due date) and mark any task done, snooze it for N days (auto-reopens once the snooze passes), or dismiss it -> manual tasks can be deleted; system tasks can only be resolved (their existence is a live read of real data, not something to delete out from under it).
+
+**Deterministic logic.** Zero LLM, zero fabricated urgency. Every system task traces to one exact SQL condition against a real column (`next_action_at`, `crm_activities.created_at`, `proposals.sent_at`, `proposals.valid_until`), stated in this report and visible in `db/followUpDesk.ts`'s four fixed rule blocks. Reconciliation is idempotent by construction: a partial unique index (`organization_id, opportunity_id/proposal_id, rule_key` where `status = 'open'`) means re-running the scan on every list call upserts the same row instead of creating duplicates, and once resolved a fresh occurrence can be re-created without ever colliding with the resolved row.
+
+**Data model.** `follow_up_tasks` -- one table for both manual and system-sourced tasks, distinguished by `source` and (for system rows) `rule_key`, optionally linked to `crm_opportunities.id` or `proposals.id`. Two partial unique indexes enforce "one open system task per rule per record." See `db/schema-follow-up-desk.sql`.
+
+**Integrations.** Reads directly from `crm_opportunities`, `crm_activities`, and `proposals` -- no duplicated or cached copies of their state, so a task's presence is always a live fact, never a stale snapshot. This is the shared-engine follow-through the spec's build order describes: Follow-Up Desk uses CRM and proposal data it did not have to define itself (spec constraint 10).
+
+**Permissions.** Every read/write is org-scoped through the existing `Actor` pattern; linking a manual task to an opportunity or proposal is verified against the org before the task is created. Verified live: a second org gets 404 attempting to resolve or delete the first org's task.
+
+**Analytics captured.** Every task carries `created_at`, `resolved_at`, and `status`, and system tasks are additionally keyed by `rule_key` -- a real, queryable record of what kept getting flagged and how it got resolved (done vs. auto-dismissed vs. manually dismissed), ready for Business Review later.
+
+**Subscription entitlements.** Free tier per spec section 18 ("manual follow-up tasks" for everyone) -- shipped with the full rule-based system task generation included for every plan too, no numeric gating; "limited workflow automation" (Plus, per section 18) is a natural home for configurable rule thresholds later, explicitly deferred rather than guessed at now.
+
+**Tests completed.** Live end-to-end against a running server + Postgres: manual task create/list; system task generated the moment an opportunity's `next_action_at` is set in the past; re-listing does not duplicate the task (same row ID both times, verified against the partial unique index); fixing the condition auto-dismisses the task, verified via a direct database status check; manual task done/snooze/delete, including a past-dated snooze auto-reopening on the next list; both proposal rules (unresponded, expiring) firing simultaneously off one proposal and both auto-dismissing the moment the client responds through the real public accept endpoint; cross-org IDOR blocked (404) on resolving and on deleting another org's task. Browser-verified at iPhone width: a real system task (with its rule tag and "was due" date) and a manual task both rendering with working Done/Snooze/Dismiss actions.
+
+**Business value delivered.** Nothing that should get a reply falls through silently -- the list is always exactly right-now-true because it is a live read of real data, not a cached reminder that can drift out of sync with reality. This is the fourth slice of structured activity data (after Pipeline, Scope Builder, and Proposal Studio) that Profit Map and Business Review are built to consume next, per the spec's build-order rationale.
+
+**Deferred enhancements (optional intelligence layer, per spec section 16 -- not started, no LLM dependency added).** Model-suggested follow-up message drafts, or a "best time to follow up" prediction. The deterministic engine above remains fully functional and complete without any of it. Configurable per-org rule thresholds (currently fixed at 10/5/3 days) and payment-related rules (invoices/payments overdue) were also not built in this slice -- both are additive follow-ons once the entitlement shape for Plus-level automation is decided, not a redesign of what shipped here.
+
+---
+
 *This document is updated as each slice ships, with a "shipped" section per tool matching the required implementation report format (section 20): business problem solved, users served, workflow, deterministic logic, data model, integrations, permissions, analytics captured, subscription entitlements, tests completed, business value delivered, deferred enhancements.*

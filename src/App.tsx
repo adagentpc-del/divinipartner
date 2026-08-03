@@ -184,6 +184,7 @@ import Warehouses from './pages/Warehouses';
 import Pipeline from './pages/Pipeline';
 import ScopeBuilder from './pages/ScopeBuilder';
 import ProposalStudio from './pages/ProposalStudio';
+import FollowUpDesk from './pages/FollowUpDesk';
 import BusinessHealth from './pages/BusinessHealth';
 import PricingIntelligence from './pages/PricingIntelligence';
 import MarketplaceIntelligence from './pages/MarketplaceIntelligence';
@@ -452,6 +453,7 @@ function Routed() {
       <Route path="/pipeline" element={<Authed><Pipeline /></Authed>} />
       <Route path="/divini-scope-builder" element={<Authed><ScopeBuilder /></Authed>} />
       <Route path="/proposal-studio" element={<Authed><ProposalStudio /></Authed>} />
+      <Route path="/follow-up-desk" element={<Authed><FollowUpDesk /></Authed>} />
       <Route path="/business-health" element={<Authed><BusinessHealth /></Authed>} />
       <Route path="/pricing-intelligence" element={<Authed><PricingIntelligence /></Authed>} />
       <Route path="/marketplace-intelligence" element={<Authed><MarketplaceIntelligence /></Authed>} />
