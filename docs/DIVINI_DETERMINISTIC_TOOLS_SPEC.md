@@ -360,4 +360,32 @@ The complete section-by-section specification (Divini Concierge, Proposal Studio
 
 ---
 
+## Shipped: Divini Forecast (slice 11, 2026-08-03)
+
+**Business problem solved.** A solid, pre-spec "Forecasting" page already produced a real deterministic projection (moving average + linear trend + month-of-year seasonality) over revenue, bookings, vendor/sponsor demand, venue occupancy, and a pipeline-health read -- but that pipeline-health signal only looked at `events.budget` on open-status events. Any org running its deal flow through Divini Pipeline (this session's own CRM, shipped in slice 1) had its real open opportunities invisible to its own forecast. Divini Forecast closes that blind spot and renames the tool to match the spec.
+
+**Users served.** Every Pro-tier org with `/forecasting` access (unchanged Pro gate, pre-existing and reverified) -- Venue, Vendor, Planner, and any other role with revenue-intel enabled.
+
+**Workflow completed.** Open Divini Forecast -> the same five projected figures and seasonality profile as before -> Pipeline health now blends two real sources into one number: historical `events.budget` on open events (unchanged) plus the live sum of `crm_opportunities.estimated_value_cents` for every `status = 'open'` opportunity in Divini Pipeline, added into the current month as "open pipeline as of right now" (Pipeline has no historical time series to distribute across months -- it is current CRM state, not a monthly series like the other five sources).
+
+**Deterministic logic.** Zero LLM, unchanged pure math in `forecasting.ts`. The only new logic is in `gatherMonthly()` in `revenue-intel.ts`: one additional SQL aggregate (`sum(estimated_value_cents) where status = 'open' and estimated_value_cents is not null`, org-scoped) added to the latest month's `pipelineValue` bucket before the existing `computePipelineHealth()` consumes it -- no change to the scoring function itself, just a more complete input.
+
+**Data model.** No new tables -- reuses `crm_opportunities` (Divini Pipeline, slice 1) and the existing `events.budget`/`pipelineValue` aggregation unchanged.
+
+**Integrations.** First slice in the build order to blend Divini Pipeline data into a tool that predates Pipeline's existence, following the same "blend two real sources, reuse the same computed totals" pattern established in Profit Map and Vendor Scorecard.
+
+**Permissions.** No entitlement change -- `/revenue-intel/forecast` and `/revenue-intel/trends` were already correctly Pro-gated (`isTopTier`) prior to this slice; reverified unchanged, blocked at Free, unlocked at Pro.
+
+**Analytics captured.** Unchanged -- forecast is computed live on each request, nothing new persisted.
+
+**Subscription entitlements.** No change to the entitlement model; this slice is a data-completeness fix to an already-correctly-gated Pro feature.
+
+**Tests completed.** Live end-to-end against a running server + Postgres: Free-tier org blocked (403) on `/revenue-intel/forecast`, unchanged; upgraded to Pro; seeded a signal event with no `events.budget` pipeline value, confirmed pipeline health started thin (score 18, "No open pipeline value detected"); created one OPEN Divini Pipeline opportunity ($5,000) and one WON opportunity ($9,999.99, moved via a real stage transition to the closed-won stage); confirmed the WON opportunity was correctly excluded and the forecast's pipeline health became "steady" (score 63, "Open pipeline ~$5,000 against $0 recent monthly revenue"); cross-org isolation verified -- a second org's forecast showed no trace of the first org's pipeline value. Browser-verified at iPhone width against a fresh seeded org: heading reads "Divini Forecast," sub-copy references the Pipeline blend, and the Pipeline health card rendered live at "63/100 Steady -- Open pipeline ~$7,500 against $0 recent monthly revenue" from a real `POST /pipeline/opportunities` call, matching the backend smoke test's behavior end-to-end in the UI.
+
+**Business value delivered.** Orgs that have moved their deal flow into Divini Pipeline now get an accurate, forward-looking pipeline-health signal in their forecast instead of one that silently ignored their most current data -- the same "single source of truth across tools" value delivered by every prior blending slice this build order.
+
+**Deferred enhancements (optional intelligence layer, per spec section 16 -- not started, no LLM dependency added).** Distributing Pipeline value across its own expected-close-date months (rather than always the latest month) once opportunities in this codebase commonly carry a close-date field with real data; a model-suggested read on which stalled deals are dragging the health score down. The deterministic engine above remains fully functional and complete without either.
+
+---
+
 *This document is updated as each slice ships, with a "shipped" section per tool matching the required implementation report format (section 20): business problem solved, users served, workflow, deterministic logic, data model, integrations, permissions, analytics captured, subscription entitlements, tests completed, business value delivered, deferred enhancements.*

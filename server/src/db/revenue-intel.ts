@@ -24,7 +24,7 @@
  * the pure engines see a dense, gap-filled series (months with no activity are
  * zero-filled) which keeps the moving-average / seasonality math stable.
  */
-import { q } from "../pool.js";
+import { q, q1 } from "../pool.js";
 import { type Actor } from "../db.js";
 import {
   computeTrends,
@@ -253,6 +253,26 @@ async function gatherMonthly(orgId: string, months: number): Promise<MonthAgg[]>
     if (!m) continue;
     m.occBooked = Number(r.booked) || 0;
     m.occTotal = totalVenues;
+  }
+
+  // 6. Divini Pipeline: real, live open-opportunity value. Unlike the sources
+  // above (each a monthly time series), Pipeline has no historical snapshot
+  // -- it is a current CRM state -- so its value is added into the LATEST
+  // month only, representing "open pipeline as of right now." This is the
+  // real forward-looking signal computePipelineHealth() needs and previously
+  // only had access to via events.budget on open-status events, which misses
+  // any org running its pipeline through Divini Pipeline instead.
+  const pipelineRow = await q1<{ total: string }>(
+    `select coalesce(sum(estimated_value_cents), 0) as total
+       from crm_opportunities
+      where organization_id = $1 and status = 'open' and estimated_value_cents is not null`,
+    [orgId],
+  );
+  const openPipelineValue = Number(pipelineRow?.total ?? 0) / 100;
+  if (openPipelineValue > 0) {
+    const latestKey = keys[keys.length - 1];
+    const latest = byMonth.get(latestKey);
+    if (latest) latest.pipelineValue += openPipelineValue;
   }
 
   return keys.map((k) => byMonth.get(k) as MonthAgg);

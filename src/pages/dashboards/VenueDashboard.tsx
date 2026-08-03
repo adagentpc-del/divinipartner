@@ -76,7 +76,7 @@ const NAV: NavItem[] = [
   { label: 'Daily Briefing', icon: 'D', to: '/daily-briefing' },
   { label: 'Business Health', icon: 'B', to: '/business-health' },
   { label: 'Revenue Intelligence', icon: 'I', to: '/revenue-intelligence' },
-  { label: 'Forecasting', icon: 'F', to: '/forecasting' },
+  { label: 'Divini Forecast', icon: 'F', to: '/forecasting' },
   { label: 'Pricing Intelligence', icon: 'P', to: '/pricing-intelligence' },
   { label: 'Marketplace Intelligence', icon: 'K', to: '/marketplace-intelligence' },
   { label: 'Partnership Matches', icon: 'H', to: '/partnership-matches' },

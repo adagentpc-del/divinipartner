@@ -3,14 +3,18 @@ import { apiGet } from '../lib/api';
 import { isFeatureLockedError, UpgradePrompt, type FeatureLockedError } from '../lib/entitlements';
 
 /**
- * Divini AI COO V2 - Forecasting page.
+ * Divini Forecast (docs/DIVINI_DETERMINISTIC_TOOLS_SPEC.md, build-order
+ * slice 11; originally built pre-spec as "Forecasting").
  *
  * Calls GET /revenue-intel/forecast and renders the deterministic projection for
  * the next period: revenue, bookings, vendor demand, sponsor demand, venue
- * occupancy, the month-of-year seasonality profile, and a pipeline-health read.
+ * occupancy, the month-of-year seasonality profile, and a pipeline-health read
+ * that now blends in real, live Divini Pipeline open-opportunity value
+ * alongside the existing events-based pipeline signal.
  *
- * Org-scoped + IDOR-safe at the API layer. Degrades gracefully: an empty history
- * yields hasData=false and an honest empty state instead of fabricated numbers.
+ * Org-scoped + IDOR-safe at the API layer, Pro-gated. Degrades gracefully: an
+ * empty history yields hasData=false and an honest empty state instead of
+ * fabricated numbers.
  */
 
 type ForecastPoint = {
@@ -98,12 +102,13 @@ export default function Forecasting() {
       <style>{CSS}</style>
 
       <header className="fcast-head">
-        <h1>Forecasting</h1>
+        <h1>Divini Forecast</h1>
         <p className="fcast-sub">
           A deterministic projection of the next period built from a trailing
           moving average, a linear trend, and month-of-year seasonality. Covers
           revenue, bookings, vendor and sponsor demand, venue occupancy, and
-          pipeline health.
+          pipeline health, blending your real Divini Pipeline open opportunities
+          alongside your booked events.
         </p>
         {ready && forecast!.horizon && (
           <p className="fcast-muted">
