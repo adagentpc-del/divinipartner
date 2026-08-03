@@ -46,4 +46,12 @@ Known debt and cleanup, roughly ordered by value.
 
 - No structured logging or error monitoring (Sentry-style). Add before or shortly after taking real money. Still true as of the 2026-08-03 audit — the highest-value item on this list that hasn't moved.
 
+## No MFA / 2FA (found 2026-08-03, SOC 2 / ISO 27001 audit)
+
+- There is no second factor anywhere in the app, including for `ADMIN_ALLOWED_EMAILS`. Two stale comments (`securityHeaders.ts`, `rateLimit.ts`) falsely claimed Authentik still provided this -- fixed to state the gap plainly. Building real TOTP-based MFA (enrollment, recovery codes, at minimum enforced for admin accounts) is scoped as its own dedicated task, not a quick patch. See `53_SOC2_ISO27001_AUDIT.md`.
+
+## No automated backups (found 2026-08-03, SOC 2 / ISO 27001 audit)
+
+- The only documented backup procedure anywhere in the repo is a manual, one-off `pg_dump` taken immediately before a schema migration (`21_DATABASE.md`, `23_DEPLOYMENT.md`). No scheduled, retained, tested backup policy exists. This is an operator/infra decision (managed Postgres automated snapshots, or a cron + off-site retention policy), not something application code can fix. See `53_SOC2_ISO27001_AUDIT.md`.
+
 > TODO(owner): Prioritize and assign owners to the above as capacity allows.

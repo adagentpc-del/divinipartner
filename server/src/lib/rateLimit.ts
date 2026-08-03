@@ -20,7 +20,8 @@
  *     edge (Caddy / Cloudflare / load balancer). A Map-based limiter in one
  *     Node process cannot absorb a distributed flood and is not shared across
  *     replicas. This is a courtesy throttle and abuse-dampener only.
- *   - MFA / 2FA: provided by the Authentik IdP, not by this limiter.
+ *   - MFA / 2FA: NOT provided anywhere in this app (see securityHeaders.ts's
+ *     equivalent note -- Authentik, which used to provide it, was retired).
  * ----------------------------------------------------------------------------
  */
 import type { Request, Response, NextFunction, RequestHandler } from "express";

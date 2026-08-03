@@ -26,7 +26,13 @@
  *   - Virus / malware scanning of uploaded files: requires an external scanner
  *     service (e.g. ClamAV / a cloud AV API) wired into the upload path; headers
  *     do nothing for file content safety.
- *   - MFA / 2FA: provided by the Authentik IdP.
+ *   - MFA / 2FA: NOT implemented. This comment used to say "provided by the
+ *     Authentik IdP" -- true when this app delegated auth to Authentik, but
+ *     Authentik was fully retired in favor of native email/password auth
+ *     (see auth.ts, routes/auth-native.ts) and nothing replaced the MFA it
+ *     used to provide. There is no second factor anywhere in this app today.
+ *     Real gap for SOC 2 / ISO 27001 (both expect MFA, at minimum for
+ *     privileged/admin access) -- see AI_PROJECT_OS/51_SECURITY.md.
  * ----------------------------------------------------------------------------
  */
 import type { Request, Response, NextFunction, RequestHandler } from "express";

@@ -142,6 +142,16 @@ router.post(
       null,
       { summary: "User deleted their own account (anonymized + deactivated).", ip },
     );
+    // Confirmation to the ORIGINAL address, captured from the session before
+    // db.deleteAccount overwrote it with the anonymized placeholder. Sent
+    // after the deletion succeeds so it never blocks the deletion itself.
+    if (auth.email) {
+      await notify.securityEvent(auth.email, "Account deleted", {
+        message:
+          "Your Divini Partners account was deleted, as you requested. Your login and personal " +
+          "information have been removed. If this was not you, contact support immediately.",
+      });
+    }
     clearSessionCookie(res);
     clearCsrfCookie(res);
     res.json({ ok: true });

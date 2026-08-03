@@ -24,6 +24,8 @@ import {
   SESSION_MAX_AGE_SECONDS,
 } from "../lib/session.js";
 import { sendEmail } from "../lib/email.js";
+import { notify } from "../lib/notify.js";
+import { logAction } from "../lib/audit.js";
 import { issueCsrfCookie, clearCsrfCookie } from "../lib/csrf.js";
 import { PUBLIC_APP_URL, BASE_PATH, IS_PROD, getAdminAllowedEmails } from "../config.js";
 
@@ -273,6 +275,25 @@ router.post(
       return res.status(400).json({ error: "This reset link is invalid or has expired." });
     }
     await db.applyPasswordReset(user.id, hashPassword(password));
+    // Detection control: tell the account owner their password changed, so a
+    // reset they did not request (e.g. via a compromised inbox) is visible to
+    // them immediately, not just recoverable after the fact via audit_logs.
+    // Best-effort (notify.securityEvent swallows send failures) and never
+    // blocks the reset itself.
+    if (user.email) {
+      await notify.securityEvent(user.email, "Password changed", {
+        message: "Your Divini Partners password was just changed. If this was not you, contact support immediately.",
+      });
+    }
+    await logAction(
+      { id: user.id, email: user.email },
+      "account.password_reset",
+      "user",
+      user.id,
+      null,
+      null,
+      { summary: "Password reset via emailed reset link." },
+    );
     const { token: session } = await issueSession(res, { id: user.id, email: user.email });
     return res.json({
       ok: true,

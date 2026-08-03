@@ -63,6 +63,15 @@ Source: `server/src/config.ts`, `server/src/app.ts`, `server/src/lib/{session,ra
 
 - Set `SESSION_SECRET`, `DOWNLOAD_URL_SECRET`, `PUBLIC_APP_URL`, `ALLOWED_ORIGINS`.
 - Optionally enable storage encryption (`STORAGE_ENCRYPTION_KEY`) and S3.
+- Set `sslmode=require` on `DATABASE_URL` for any managed/remote Postgres instance.
 - Keep `STRIPE_SECRET_KEY` unset until ready (no money moves; see `52_COMPLIANCE.md`).
+
+## No MFA / 2FA
+
+- There is no second factor anywhere in this app, including for the `ADMIN_ALLOWED_EMAILS` allowlist. This app used to inherit MFA from the Authentik IdP; Authentik has been fully retired in favor of native email/password auth, and nothing replaced the MFA it provided. Real, open gap -- see `53_SOC2_ISO27001_AUDIT.md` for the full writeup and recommended next step (a dedicated TOTP build, not a same-turn patch).
+
+## SOC 2 / ISO 27001
+
+- See `53_SOC2_ISO27001_AUDIT.md` for a full code-level control audit mapped to SOC 2 Trust Services Criteria and ISO 27001 Annex A, including what was fixed 2026-08-03 (stale MFA claims, password-reset notification + audit logging, account-deletion notification) and the ranked list of open gaps (MFA, automated backups, structured logging/monitoring, session revocation, default-on encryption at rest).
 
 > TODO(owner): Add error monitoring / structured logging (Sentry-style) before or shortly after taking real money.

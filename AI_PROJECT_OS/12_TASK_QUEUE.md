@@ -112,4 +112,24 @@ Prioritized backlog, seeded from the Go-Live runbook remaining items and the V2 
 - Related files: repo root
 - Notes: Cosmetic only; does not affect runtime.
 
+## T11 - Build MFA / 2FA (SOC 2 / ISO 27001, found 2026-08-03)
+
+- Priority: P1
+- Status: TODO
+- Owner: unassigned
+- Dependencies: none
+- Effort: M
+- Acceptance: TOTP enrollment + verification flow; recovery/backup codes; at minimum, enforced for `ADMIN_ALLOWED_EMAILS` accounts. No second factor exists anywhere today -- see `53_SOC2_ISO27001_AUDIT.md`.
+- Related files: `server/src/auth.ts`, `server/src/lib/session.ts`, `server/src/routes/auth-native.ts`
+
+## T12 - Automated, scheduled, tested backups (SOC 2 / ISO 27001, found 2026-08-03)
+
+- Priority: P1
+- Status: TODO
+- Owner: operator
+- Dependencies: none
+- Effort: S-M (infra/ops, not application code)
+- Acceptance: a scheduled backup job (managed Postgres automated snapshots, or cron + off-site retention) with a documented, periodically-tested restore procedure -- replacing the current manual, pre-migration-only `pg_dump`.
+- Related files: `21_DATABASE.md`, `23_DEPLOYMENT.md`
+
 > TODO(owner): Add any product feature tasks beyond go-live as they are defined.
