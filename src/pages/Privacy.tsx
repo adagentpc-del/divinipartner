@@ -66,9 +66,13 @@ export default function Privacy() {
 
       <h2 style={h2}>Data retention &amp; deletion</h2>
       <p>
-        You can permanently delete your account at any time from <strong>Profile → Delete account</strong> in the app.
-        Deleting your account removes your login and, if your company has no other members, its associated
-        data (projects, packages, bids, files). You may also email us to request deletion.
+        You can delete your account at any time from <strong>Profile → Delete account</strong> in the app
+        (password re-confirmation required). This immediately and permanently removes your login and personal
+        information (name, email, phone) and any team memberships tied to your account. Your organization's
+        business records - quotes, invoices, events, bids, and files - are kept even after your own account is
+        deleted, so that counterparties you transacted with and any other members of your organization are not
+        left with broken records. You may also email us to request deletion of specific records or to ask
+        questions about what is retained.
       </p>
 
       <h2 style={h2}>Security</h2>

@@ -28,7 +28,7 @@ Source: Divini-Go-Live-Runbook.md, Divini-Security-and-iOS-Hardening-Summary.md,
 
 ## App Store / iOS compliance
 
-- Account deletion (Apple Guideline 5.1.1(v)): in-app account deletion must be reachable (not deactivation, not "email us"). The deletion UI lives in the hosted web app and must be reachable from the native shell; verify end-to-end and note the path for App Review.
+- Account deletion (Apple Guideline 5.1.1(v)): RESOLVED 2026-08-03. In-app account deletion is built and reachable at Profile -> Account -> "Delete account" (password re-confirmed), calling `POST /account/delete`. Anonymizes + deactivates rather than hard-deletes (financial/audit records persist); live-verified end to end including the UI. Since the deletion UI lives in the hosted web app that the native Capacitor shell wraps, it is reachable from the native shell automatically -- no separate native-only implementation needed. Note this path for App Review. See `AI_PROJECT_OS/15_KNOWN_ISSUES.md` and `AI_PROJECT_OS/53_SOC2_ISO27001_AUDIT.md` for the full technical detail.
 - Payments (IAP vs external): Apple requires IAP for digital goods/subscriptions consumed in-app, but B2B marketplace transactions for real-world services are generally not required to use IAP (case-by-case). Items to classify and document rationale for in App Review notes: paid placements, listing fees, subscriptions, the Featured Vendor $49/mo upgrade. If borderline, gate paid flows behind the web app; no deceptive external-purchase links.
 - Privacy manifest: `mobile/PrivacyInfo.xcprivacy` declares data types (name, email, payment info, user content, identifiers, usage data) all with `NSPrivacyTracking = false`, and required-reason APIs (UserDefaults CA92.1, File timestamp C617.1). The App Store Connect privacy nutrition label must match exactly.
 - ATS: stays strict (no `NSAllowsArbitraryLoads`); both sites are HTTPS-only, `cleartext false`.
@@ -38,8 +38,16 @@ Source: Divini-Go-Live-Runbook.md, Divini-Security-and-iOS-Hardening-Summary.md,
 - Sensitive vendor documents: recommended S3 + encryption at rest + bucket versioning + backups before scaling. Encryption key backed up separately. (See `51_SECURITY.md`, OBJECT-STORAGE.md.)
 - Email domain authentication: SPF/DKIM/DMARC for the `EMAIL_FROM` domain.
 
+## SOC 2 / ISO 27001
+
+- `AI_PROJECT_OS/53_SOC2_ISO27001_AUDIT.md`: a code-level technical-controls audit mapped to SOC 2 Trust Services Criteria and ISO 27001 Annex A (2026-08-03). Documents what is actually implemented (access control, session management, encryption, audit logging, data-subject rights, input/output safety, availability) and ranks the real open gaps (no MFA anywhere, no automated backups, no structured logging/monitoring, no general session revocation, encryption at rest is opt-in).
+- `compliance/policies/` (repo root): DRAFT policy documents an auditor would expect -- Information Security Policy, Access Control Policy, Data Retention & Deletion Policy, Incident Response Plan, and a Subprocessor list. Every document is explicitly marked DRAFT, unsigned, and not yet effective; each needs a named owner and, for the retention/deletion policy, counsel review before it can be relied on. See `compliance/policies/README.md` for what remains before these are real.
+- Formal SOC 2 / ISO 27001 certification requires, beyond this repo's contents: a named ISMS owner, organizational policy adoption (board/exec sign-off on the drafts above), employee security training, vendor risk assessments with the subprocessors listed, a tested incident response process, and an independent third-party audit (SOC 2) or accredited certification body (ISO 27001). None of that exists yet; this repo only prepares the technical and documentary groundwork for it.
+
 ## Status
 
 - Legal pages exist in product. Counsel review is outstanding (Task T8). Real money (Stripe) is intentionally deferred until the above clears.
+- Account deletion (Apple 5.1.1(v)) is built; see above.
+- SOC 2 / ISO 27001 technical audit and draft policies exist (see above); formal certification work has not started.
 
-> TODO(owner): Record completion of counsel review and any redlines, and confirm the final governing-law / arbitration terms once signed off.
+> TODO(owner): Record completion of counsel review and any redlines, and confirm the final governing-law / arbitration terms once signed off. Assign a named ISMS owner and review/approve the drafts in `compliance/policies/`.
