@@ -3,15 +3,18 @@ import { apiGet, apiSend } from '../lib/api';
 import { isFeatureLockedError, UpgradePrompt, type FeatureLockedError } from '../lib/entitlements';
 
 /**
- * Vendor Pro - Profitability (margin tracking + job costing). Calls
- * GET /vendor-profitability/report for the revenue/cost/margin roll-up
- * across won jobs, and lets the vendor record their true cost per job
- * inline (POST /vendor-profitability/quotes/:id/cost). Pro-gated at the API
- * layer; this page only renders the lock state, never enforces anything.
+ * Divini Profit Map (docs/DIVINI_DETERMINISTIC_TOOLS_SPEC.md) - real profit
+ * by job, merged from marketplace quotes and accepted Divini Proposal Studio
+ * proposals. Calls GET /profit-map/report and lets the org record its true
+ * cost per job inline. Plus-gated at the API layer; this page only renders
+ * the lock state, never enforces anything.
  */
 
 type Job = {
-  quote_id: string;
+  job_id: string;
+  source: 'quote' | 'proposal';
+  label: string;
+  client_name: string | null;
   event_id: string | null;
   status: string | null;
   revenue: number;
@@ -35,7 +38,7 @@ const fmtMoney = (n: number) => `$${Math.round(n).toLocaleString()}`;
 const fmtPct = (n: number | null) => (n == null ? '-' : `${Math.round(n * 100)}%`);
 const fmtDate = (s: string) => new Date(s).toLocaleDateString();
 
-function CostForm({ quoteId, onSaved }: { quoteId: string; onSaved: (cost: number) => void }) {
+function CostForm({ job, onSaved }: { job: Job; onSaved: (cost: number) => void }) {
   const [amount, setAmount] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -50,7 +53,8 @@ function CostForm({ quoteId, onSaved }: { quoteId: string; onSaved: (cost: numbe
     setBusy(true);
     setErr('');
     try {
-      await apiSend('POST', `/vendor-profitability/quotes/${quoteId}/cost`, { cost_amount: n });
+      const path = job.source === 'quote' ? `/profit-map/quotes/${job.job_id}/cost` : `/profit-map/proposals/${job.job_id}/cost`;
+      await apiSend('POST', path, { cost_amount: n });
       onSaved(n);
     } catch (e2) {
       setErr((e2 as Error).message);
@@ -75,7 +79,7 @@ function CostForm({ quoteId, onSaved }: { quoteId: string; onSaved: (cost: numbe
   );
 }
 
-export default function Profitability() {
+export default function ProfitMap() {
   const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -86,7 +90,7 @@ export default function Profitability() {
     setError(null);
     setLockError(null);
     try {
-      const res = await apiGet<{ report: Report }>('/vendor-profitability/report');
+      const res = await apiGet<{ report: Report }>('/profit-map/report');
       setReport(res.report);
     } catch (e) {
       if (isFeatureLockedError(e)) setLockError(e.body);
@@ -99,11 +103,11 @@ export default function Profitability() {
 
   useEffect(() => { void load(); }, []);
 
-  function applyCostLocally(quoteId: string, cost: number) {
+  function applyCostLocally(jobId: string, cost: number) {
     setReport((r) => {
       if (!r) return r;
       const jobs = r.jobs.map((j) =>
-        j.quote_id === quoteId
+        j.job_id === jobId
           ? { ...j, cost, margin: j.revenue - cost, margin_pct: j.revenue > 0 ? (j.revenue - cost) / j.revenue : null }
           : j,
       );
@@ -127,10 +131,11 @@ export default function Profitability() {
       <style>{CSS}</style>
 
       <header className="prof-head">
-        <h1>Profitability</h1>
+        <h1>Divini Profit Map</h1>
         <p className="prof-sub">
           What each won job actually earned, after your real costs -- not just the platform fee.
-          Record a job's true cost once and its margin tracks automatically.
+          Record a job's true cost once and its margin tracks automatically, across both marketplace
+          quotes and Divini Proposal Studio proposals.
         </p>
       </header>
 
@@ -170,7 +175,8 @@ export default function Profitability() {
             <section className="prof-card prof-empty">
               <h2>No won jobs yet</h2>
               <p className="prof-muted">
-                Once a quote is accepted or converted, it shows up here so you can track its margin.
+                Once a marketplace quote is accepted, or a Divini Proposal Studio proposal is accepted,
+                it shows up here so you can track its margin.
               </p>
             </section>
           ) : (
@@ -178,11 +184,12 @@ export default function Profitability() {
               <h2>Jobs</h2>
               <div className="prof-jobs">
                 {report.jobs.map((j) => (
-                  <div className="prof-job" key={j.quote_id}>
+                  <div className="prof-job" key={j.job_id}>
                     <div className="prof-job-top">
                       <span className="prof-job-date">{fmtDate(j.created_at)}</span>
-                      <span className="prof-job-status">{j.status}</span>
+                      <span className="prof-job-source">{j.source === 'quote' ? 'Marketplace quote' : 'Proposal'}</span>
                     </div>
+                    <div className="prof-job-name">{j.label}{j.client_name ? ` — ${j.client_name}` : ''}</div>
                     <div className="prof-job-figures">
                       <span>Revenue <strong>{fmtMoney(j.revenue)}</strong></span>
                       {j.cost != null && <span>Cost <strong>{fmtMoney(j.cost)}</strong></span>}
@@ -193,7 +200,7 @@ export default function Profitability() {
                       )}
                     </div>
                     {j.cost == null && (
-                      <CostForm quoteId={j.quote_id} onSaved={(cost) => applyCostLocally(j.quote_id, cost)} />
+                      <CostForm job={j} onSaved={(cost) => applyCostLocally(j.job_id, cost)} />
                     )}
                   </div>
                 ))}
@@ -231,7 +238,8 @@ const CSS = `
 .prof-jobs { display:flex; flex-direction:column; gap:12px; }
 .prof-job { border:1px solid var(--ln); border-radius:12px; padding:12px 14px; }
 .prof-job-top { display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--mut); }
-.prof-job-status { text-transform:capitalize; font-weight:700; color:var(--e2); }
+.prof-job-source { text-transform:uppercase; font-weight:700; color:var(--e2); font-size:10px; letter-spacing:.3px; }
+.prof-job-name { font-size:13.5px; font-weight:700; color:var(--ink); margin-top:4px; }
 .prof-job-figures { display:flex; flex-wrap:wrap; gap:14px; margin-top:8px; font-size:13px; color:var(--mut); }
 .prof-job-figures strong { color:var(--ink); }
 .prof-margin-pos strong { color:#1E5D4A; }

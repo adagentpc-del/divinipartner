@@ -20,6 +20,7 @@ const NAV: NavItem[] = [
   { label: 'Divini Scope Builder', icon: '▤', to: '/divini-scope-builder' },
   { label: 'Divini Proposal Studio', icon: '✎', to: '/proposal-studio' },
   { label: 'Divini Follow-Up Desk', icon: '⏰', to: '/follow-up-desk' },
+  { label: 'Divini Profit Map', icon: '$', to: '/profit-map' },
   { label: 'Calendar', icon: 'c', to: '/calendar' },
   { label: 'Sponsor Matching', icon: 'M', to: '/sponsor-matching' },
   { label: 'Sponsorships', icon: 'H', to: '/sponsorships' },

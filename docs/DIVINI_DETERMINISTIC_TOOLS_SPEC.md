@@ -22,7 +22,7 @@ Source: provided by the user (2026-08-03), verbatim. This is the authoritative r
 | Business forecasting | **Divini Forecast** | Projects revenue, cash, staffing, and inventory |
 | Performance reporting | **Divini Business Review** | Shows what is working and what needs attention |
 
-**Note:** `server/src/db/vendorProfitability.ts` + `src/pages/Profitability.tsx` (built earlier this session, before this spec arrived) is a first-pass, single-role (Vendor) implementation of what this spec calls **Divini Profit Map**. It should be relabeled to that branding and is the seed to generalize once Pipeline/Scope Builder/Proposal Studio exist to feed it real transaction data, per the recommended build order below.
+**Note (resolved 2026-08-03, slice 5):** the original `vendorProfitability.ts` + `Profitability.tsx` (built before this spec arrived) has been relabeled and generalized into **Divini Profit Map** -- see the "Shipped" section below.
 
 ## Recommended build order (binding sequence)
 
@@ -189,6 +189,34 @@ The complete section-by-section specification (Divini Concierge, Proposal Studio
 **Business value delivered.** Nothing that should get a reply falls through silently -- the list is always exactly right-now-true because it is a live read of real data, not a cached reminder that can drift out of sync with reality. This is the fourth slice of structured activity data (after Pipeline, Scope Builder, and Proposal Studio) that Profit Map and Business Review are built to consume next, per the spec's build-order rationale.
 
 **Deferred enhancements (optional intelligence layer, per spec section 16 -- not started, no LLM dependency added).** Model-suggested follow-up message drafts, or a "best time to follow up" prediction. The deterministic engine above remains fully functional and complete without any of it. Configurable per-org rule thresholds (currently fixed at 10/5/3 days) and payment-related rules (invoices/payments overdue) were also not built in this slice -- both are additive follow-ons once the entitlement shape for Plus-level automation is decided, not a redesign of what shipped here.
+
+---
+
+## Shipped: Divini Profit Map (slice 5, 2026-08-03)
+
+**Business problem solved.** Revenue without knowing the real cost behind it is not profit -- it is just a number. The earlier, pre-spec build already solved this for one revenue stream (marketplace quotes, Vendor only). This slice generalizes it to a second, larger revenue stream -- accepted Divini Proposal Studio proposals -- and to every role that runs Proposal Studio, in one merged report, exactly per this spec's own build-order note.
+
+**Users served.** Venue, Vendor, Supplier (shares Vendor's dashboard), Planner, Sponsor -- the same role set as Pipeline, Scope Builder, Proposal Studio, and Follow-Up Desk. Vendor/Supplier additionally see their pre-existing marketplace-quote revenue in the same report; every role sees their accepted-proposal revenue.
+
+**Workflow completed.** Open the map -> every won job (an accepted/converted marketplace quote, or an accepted Proposal Studio proposal) from the last 12 months (adjustable) appears with its real revenue -> record the true cost once, inline, per job -> margin and margin % compute and display immediately, both per job and as an org-wide total -> jobs with no recorded cost still count toward revenue but are excluded from cost/margin totals and called out in a coverage note ("cost recorded for X of Y jobs"), so an unentered cost is never silently treated as zero profit.
+
+**Deterministic logic.** Zero LLM. `margin = revenue - cost`, `margin_pct = margin / revenue`, both undefined (not zero, not guessed) until a real cost is entered. A proposal's revenue is computed the same deterministic way Proposal Studio itself computes it (`sum(quantity x unit_price) - discount + tax`), read fresh from `proposal_line_items` at report time rather than cached, so it can never drift from what the client actually saw and accepted.
+
+**Data model.** Unchanged `quote_costs` (marketplace quotes, from the original build) plus a new `proposal_costs` table (accepted proposals), both deliberately separate from `quotes`/`proposals` so a client-facing read path can never leak the org's private cost data. See `db/schema-profit-map.sql`. The db module (`server/src/db/profitMap.ts`, renamed from `vendorProfitability.ts`) and route (`server/src/routes/profit-map.ts`, mounted at `/api/profit-map`, renamed from `/api/vendor-profitability`) merge both sources into one report rather than exposing two separate features -- spec constraint 10, one shared engine.
+
+**Integrations.** Reads `proposals` + `proposal_line_items` directly (no duplicated totals) for the proposal-sourced half of the report, and `quotes` + `vendors` for the marketplace-quote half, unchanged from the original build.
+
+**Permissions.** Every read/write is org-scoped: the quote-cost path via ownership of the quote's `vendors` row (unchanged), the new proposal-cost path via direct `proposals.organization_id` match. Verified live: a second org gets 403/404 attempting to record a cost against the first org's quote or proposal.
+
+**Analytics captured.** Every cost entry is a real stored row with a timestamp; the report itself surfaces real coverage (jobs costed vs. total), not a fabricated confidence number.
+
+**Subscription entitlements.** Corrected in this slice to match spec section 18 exactly: the original pre-spec build gated the entire feature behind Pro (`isTopTier`); the spec actually places "basic Profit Map" at **Plus** and only "advanced Profit Map" at Pro. A new `isPlusTier()` helper was added alongside the existing `isTopTier()` in `lib/entitlements.ts`, and this feature now unlocks at Plus for both revenue sources. `lib/planCatalog.ts`'s Vendor and Planner catalogs were updated to list "Divini Profit Map" at Plus and "Advanced Divini Profit Map" at Pro (the advanced tier itself -- grouping/breakdown by client or category -- is not yet built; see deferred enhancements). Verified live: blocked with a structured `feature_locked` (403, upgrade target "Plus") on a free-tier org, unlocked once the org is Plus.
+
+**Tests completed.** Live end-to-end against a running server + Postgres: free-tier org blocked (403, upgrade target "partner"/Plus, not "premier"/Pro as the old gate required); unlocked at Plus; a seeded marketplace-quote job and a real accepted Proposal Studio proposal both appear in one merged report with correct revenue (quote's `subtotal`, proposal's computed total from real line items) and the proposal job's real `client_name`; cost recorded independently on each source via its own endpoint; org-wide totals (revenue, cost, margin) correctly sum across both sources; cross-org IDOR blocked (403/404) on recording a cost against either source. Browser-verified at iPhone width: both a costed marketplace-quote job and an uncosted proposal job (with its client name and a working inline cost form) rendering side by side in one list, with correct aggregate stat tiles.
+
+**Business value delivered.** Every role that runs Proposal Studio -- not only Vendor -- can now see whether the work they are winning is actually profitable, from a single, trustworthy, real-cost-based number, with the entitlement tier corrected to what the spec actually promises (Plus, not Pro). This is the fifth slice of structured transaction data (after Pipeline, Scope Builder, Proposal Studio, Follow-Up Desk) that Price Guide and Business Review are built to consume next.
+
+**Deferred enhancements (optional intelligence layer, per spec section 16 -- not started, no LLM dependency added).** Model-suggested pricing adjustments based on margin history. The deterministic engine above remains fully functional and complete without any of it. Also explicitly deferred, and not faked as already built: the "advanced Profit Map" breakdown by event, client, package, or item that section 18 reserves for Pro (the data needed -- `client_name`, `opportunity_id` -- is already captured on every proposal-sourced job; this is a grouping/filtering view on top of data that already exists, not a redesign) and a Pro-exclusive multi-month trend chart.
 
 ---
 

@@ -179,7 +179,7 @@ import CooDashboard from './pages/CooDashboard';
 import DailyBriefing from './pages/DailyBriefing';
 import RevenueIntelligence from './pages/RevenueIntelligence';
 import Forecasting from './pages/Forecasting';
-import Profitability from './pages/Profitability';
+import ProfitMap from './pages/ProfitMap';
 import Warehouses from './pages/Warehouses';
 import Pipeline from './pages/Pipeline';
 import ScopeBuilder from './pages/ScopeBuilder';
@@ -448,7 +448,7 @@ function Routed() {
       <Route path="/daily-briefing" element={<Authed><DailyBriefing /></Authed>} />
       <Route path="/revenue-intelligence" element={<Authed><RevenueIntelligence /></Authed>} />
       <Route path="/forecasting" element={<Authed><Forecasting /></Authed>} />
-      <Route path="/profitability" element={<Authed><Profitability /></Authed>} />
+      <Route path="/profit-map" element={<Authed><ProfitMap /></Authed>} />
       <Route path="/warehouses" element={<Authed><Warehouses /></Authed>} />
       <Route path="/pipeline" element={<Authed><Pipeline /></Authed>} />
       <Route path="/divini-scope-builder" element={<Authed><ScopeBuilder /></Authed>} />

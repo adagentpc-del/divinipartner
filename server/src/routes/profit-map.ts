@@ -1,12 +1,15 @@
 /**
- * Vendor Pro - job costing / margin tracking. Mounted at /api/vendor-profitability.
+ * Divini Profit Map. Mounted at /api/profit-map.
  *
- *   GET  /report              revenue/cost/margin across won jobs
- *   GET  /quotes/:id/cost     the recorded cost for one quote (or null)
- *   POST /quotes/:id/cost     record/update the cost for a won job
+ *   GET  /report                 revenue/cost/margin across won jobs, merged
+ *                                  from marketplace quotes and accepted proposals
+ *   GET  /quotes/:id/cost        the recorded cost for one marketplace quote (or null)
+ *   POST /quotes/:id/cost        record/update the cost for a marketplace-quote job
+ *   GET  /proposals/:id/cost     the recorded cost for one proposal (or null)
+ *   POST /proposals/:id/cost     record/update the cost for a Proposal Studio job
  *
- * Every route is Pro-gated (403 feature_locked below Pro) via
- * lib/entitlements.ts's isTopTier -- see db/vendorProfitability.ts for the
+ * Every route is Plus-gated (403 feature_locked below Plus, per spec section
+ * 18) via lib/entitlements.ts's isPlusTier -- see db/profitMap.ts for the
  * IDOR + gating logic itself; this file just translates FeatureLockedError
  * into the shared 403 shape the SPA's <UpgradePrompt> understands.
  */
@@ -14,11 +17,13 @@ import { Router, type Request, type Response, type NextFunction } from "express"
 import { getAuth, requireUser } from "../auth.js";
 import * as db from "../db.js";
 import {
-  getProfitabilityReport,
+  getProfitMapReport,
   getQuoteCost,
   setQuoteCost,
+  getProposalCost,
+  setProposalCost,
   FeatureLockedError,
-} from "../db/vendorProfitability.js";
+} from "../db/profitMap.js";
 
 const h =
   (fn: (req: Request, res: Response) => Promise<unknown>) =>
@@ -44,7 +49,7 @@ router.get(
   h(async (req, res) => {
     const a = await actor(req);
     const months = Number(req.query.months);
-    res.json({ report: await getProfitabilityReport(a, Number.isFinite(months) ? months : 12) });
+    res.json({ report: await getProfitMapReport(a, Number.isFinite(months) ? months : 12) });
   }),
 );
 
@@ -66,6 +71,28 @@ router.post(
     }
     const notes = typeof req.body?.notes === "string" ? req.body.notes : null;
     const cost = await setQuoteCost(a, req.params.id, costAmount, notes);
+    res.status(201).json({ cost });
+  }),
+);
+
+router.get(
+  "/proposals/:id/cost",
+  h(async (req, res) => {
+    const a = await actor(req);
+    res.json({ cost: await getProposalCost(a, req.params.id) });
+  }),
+);
+
+router.post(
+  "/proposals/:id/cost",
+  h(async (req, res) => {
+    const a = await actor(req);
+    const costAmount = Number(req.body?.cost_amount);
+    if (!Number.isFinite(costAmount) || costAmount < 0) {
+      return res.status(400).json({ error: "cost_amount must be a non-negative number" });
+    }
+    const notes = typeof req.body?.notes === "string" ? req.body.notes : null;
+    const cost = await setProposalCost(a, req.params.id, costAmount, notes);
     res.status(201).json({ cost });
   }),
 );

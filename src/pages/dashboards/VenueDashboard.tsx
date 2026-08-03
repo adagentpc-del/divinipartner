@@ -50,6 +50,7 @@ const NAV: NavItem[] = [
   { label: 'Divini Scope Builder', icon: '▤', to: '/divini-scope-builder' },
   { label: 'Divini Proposal Studio', icon: '✎', to: '/proposal-studio' },
   { label: 'Divini Follow-Up Desk', icon: '⏰', to: '/follow-up-desk' },
+  { label: 'Divini Profit Map', icon: '$', to: '/profit-map' },
   { label: 'Calendar', icon: 'c', to: '/calendar' },
   { label: 'Venue Twin', icon: 'P', to: '/venue-twin' },
   { label: 'Recommendations', icon: 'C', to: '/event-recommendations' },
