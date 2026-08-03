@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
+import { jsonLdSafe } from '../../lib/jsonLd';
 
 /**
  * Auto-generated marketplace SEO landing page (public, no login).
@@ -274,7 +275,7 @@ export default function CategoryLanding() {
   return (
     <div className="dcl">
       <CategoryStyles />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJson) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdSafe(itemListJson) }} />
       <Header nav={nav} login={login} join={join} />
 
       <section className="hero">

@@ -25,6 +25,7 @@
 import { llmEnabled, llmJson } from "./llm.js";
 import { safeFetch } from "./safe-fetch.js";
 import { htmlToText } from "./htmlText.js";
+import { wrapUntrustedContent, UNTRUSTED_CONTENT_SYSTEM_SUFFIX } from "./promptSafety.js";
 
 export { htmlToText };
 
@@ -157,12 +158,12 @@ export async function extractProfileFromText(text: string, sourceLabel: string):
     "rating claims under any circumstance, even if the text mentions them - " +
     "those require separate verification and are permanently out of scope. " +
     "If a field is not clearly stated, omit it entirely rather than guessing. " +
-    "Reply with JSON only.";
+    "Reply with JSON only." +
+    UNTRUSTED_CONTENT_SYSTEM_SUFFIX;
 
   const prompt =
-    `Source: ${sourceLabel}` +
-    "\n\nText (truncated):\n" +
-    trimmed +
+    `Source: ${sourceLabel}\n\n` +
+    wrapUntrustedContent("Source text", trimmed) +
     "\n\nExtract ONLY fields that are clearly and explicitly stated in the text." +
     ' Return JSON exactly as: {"name": string, "description": string,' +
     ' "services": string[], "tags": string[], "hours": string, "capacity": string,' +

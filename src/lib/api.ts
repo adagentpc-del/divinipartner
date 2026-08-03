@@ -9,6 +9,8 @@
 const BASE = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
 
 const TOKEN_KEY = 'divini_session_token';
+const CSRF_COOKIE = 'divini_csrf';
+const CSRF_HEADER = 'X-CSRF-Token';
 
 export function getToken(): string | null {
   try {
@@ -30,6 +32,24 @@ export function setToken(token: string | null): void {
 function authHeader(): Record<string, string> {
   const token = getToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+/**
+ * Read the (non-httpOnly) divini_csrf cookie the server issues alongside the
+ * session cookie (server/src/lib/csrf.ts) and echo it back as a header on
+ * every mutating request -- the double-submit half of CSRF protection. A
+ * cross-site page can trick the browser into attaching the session cookie,
+ * but cannot read this cookie's value to also set the header.
+ */
+function csrfHeader(): Record<string, string> {
+  const re = new RegExp(`(?:^|;\\s*)${CSRF_COOKIE}=([^;]+)`);
+  const match = document.cookie.match(re);
+  if (!match) return {};
+  try {
+    return { [CSRF_HEADER]: decodeURIComponent(match[1]) };
+  } catch {
+    return { [CSRF_HEADER]: match[1] };
+  }
 }
 
 /**
@@ -85,6 +105,7 @@ export async function apiSend<T>(
     headers: {
       'Content-Type': 'application/json',
       ...authHeader(),
+      ...csrfHeader(),
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
@@ -109,7 +130,7 @@ export async function apiUpload<T>(path: string, form: FormData): Promise<T> {
   const res = await fetch(`${BASE}/api${path}`, {
     method: 'POST',
     credentials: 'include',
-    headers: { ...authHeader() }, // do NOT set Content-Type; browser sets boundary
+    headers: { ...authHeader(), ...csrfHeader() }, // do NOT set Content-Type; browser sets boundary
     body: form,
   });
   return handle<T>(res);

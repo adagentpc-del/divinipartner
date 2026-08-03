@@ -24,6 +24,7 @@ import {
   SESSION_MAX_AGE_SECONDS,
 } from "../lib/session.js";
 import { sendEmail } from "../lib/email.js";
+import { issueCsrfCookie, clearCsrfCookie } from "../lib/csrf.js";
 import { PUBLIC_APP_URL, BASE_PATH, IS_PROD, getAdminAllowedEmails } from "../config.js";
 
 const h =
@@ -64,13 +65,14 @@ function clearSessionCookie(res: Response): void {
   res.clearCookie(SESSION_COOKIE, { httpOnly: true, secure: IS_PROD, sameSite: "lax", path: "/" });
 }
 
-/** Issue a session for a user: set cookie + return the token + user. */
+/** Issue a session for a user: set cookie + CSRF cookie + return the token + user. */
 async function issueSession(
   res: Response,
   user: { id: string; email: string | null },
 ): Promise<{ token: string }> {
   const token = await signSession(user.id, user.email);
   setSessionCookie(res, token);
+  issueCsrfCookie(res); // must accompany the session cookie -- see lib/csrf.ts
   return { token };
 }
 
@@ -200,6 +202,7 @@ router.post(
 // ---- Logout ----------------------------------------------------------------
 router.post("/logout", (_req, res) => {
   clearSessionCookie(res);
+  clearCsrfCookie(res);
   res.json({ ok: true });
 });
 
