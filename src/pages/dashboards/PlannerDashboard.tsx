@@ -7,6 +7,7 @@ import DashboardShell, { useMe, NavItem } from './DashboardShell';
 // Labels with no real route stay inert rather than linking to a 404.
 const NAV: NavItem[] = [
   { label: 'Overview', icon: 'O', to: '/app' },
+  { label: 'Divini Pipeline', icon: '◈', to: '/pipeline' },
   { label: 'Events', icon: 'E', to: '/events' },
   { label: 'Calendar', icon: 'c', to: '/calendar' },
   { label: 'Recommendations', icon: 'C', to: '/event-recommendations' },

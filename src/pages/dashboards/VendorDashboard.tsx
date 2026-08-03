@@ -55,6 +55,7 @@ function VendorMetricTiles() {
 // reach them from their own dashboard, not only via a deep link.
 const NAV: NavItem[] = [
   { label: 'Overview', icon: 'O', to: '/app' },
+  { label: 'Divini Pipeline', icon: '◈', to: '/pipeline' },
   { label: 'Calendar', icon: 'c', to: '/calendar' },
   { label: 'Vendor Profile', icon: 'P', to: '/profile' },
   { label: 'Decks & Programs', icon: 'K', to: '/profile/decks-programs' },

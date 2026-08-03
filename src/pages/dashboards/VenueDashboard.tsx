@@ -46,6 +46,7 @@ function VenueMetricTiles() {
 // and VendorDashboard). Labels with no real route stay inert rather than 404.
 const NAV: NavItem[] = [
   { label: 'Overview', icon: 'O', to: '/app' },
+  { label: 'Divini Pipeline', icon: '◈', to: '/pipeline' },
   { label: 'Calendar', icon: 'c', to: '/calendar' },
   { label: 'Venue Twin', icon: 'P', to: '/venue-twin' },
   { label: 'Recommendations', icon: 'C', to: '/event-recommendations' },
