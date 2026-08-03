@@ -81,6 +81,7 @@ const NAV: NavItem[] = [
   { label: 'Pricing Intelligence', icon: 'C', to: '/pricing-intelligence' },
   { label: 'Revenue Intelligence', icon: 'I', to: '/revenue-intelligence' },
   { label: 'Forecasting', icon: 'F', to: '/forecasting' },
+  { label: 'Profitability', icon: '$', to: '/profitability' },
   { label: 'AI COO', icon: 'A', to: '/coo' },
   { label: 'Command Center', icon: 'M', to: '/command-center' },
   { label: 'Business Health', icon: 'H', to: '/business-health' },
