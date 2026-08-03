@@ -90,7 +90,7 @@ const NAV: NavItem[] = [
   { label: 'Divini Price Guide', icon: '£', to: '/price-guide' },
   { label: 'AI COO', icon: 'A', to: '/coo' },
   { label: 'Command Center', icon: 'M', to: '/command-center' },
-  { label: 'Business Health', icon: 'H', to: '/business-health' },
+  { label: 'Divini Business Review', icon: 'H', to: '/business-review' },
   { label: 'Referrals', icon: 'r', to: '/referral-dashboard' },
   { label: 'Preferred Partners', icon: 'P', to: '/preferred-partners' },
   { label: 'Campaigns', icon: 'C', to: '/relationship-campaigns' },

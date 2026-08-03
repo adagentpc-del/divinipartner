@@ -1,13 +1,16 @@
 /**
- * Divini AI COO V2 - Business Health + Event Risk data-access layer
- * (AI-COO-V2-ROADMAP.md section 3).
+ * Divini Business Review (docs/DIVINI_DETERMINISTIC_TOOLS_SPEC.md, build-order
+ * slice 12 -- the final slice, "summarizes the whole system"). Originally
+ * built pre-spec as the AI COO V2 Business Health Score (AI-COO-V2-ROADMAP.md
+ * section 3); generalized here rather than rebuilt, per this build order's
+ * established pattern.
  *
- * Org-scoped, IDOR-safe aggregation behind the org-level executive Business
- * Health Score and the portfolio Event Risk rollup. The score is an AGGREGATE:
- * this repo gathers signals from the tables the platform already maintains for
- * the ACTOR'S OWN ORG, hands them to the pure computeBusinessHealth
- * (server/src/lib/businessHealth.ts), and persists the result in
- * business_health_scores so reads are a single cached lookup.
+ * Org-scoped, IDOR-safe aggregation behind the org-level executive score, the
+ * portfolio Event Risk rollup, and (Pro only) a cross-tool Systems Summary.
+ * The score is an AGGREGATE: this repo gathers signals from the tables the
+ * platform already maintains for the ACTOR'S OWN ORG, hands them to the pure
+ * computeBusinessHealth (server/src/lib/businessReview.ts), and persists the
+ * result in business_health_scores so reads are a single cached lookup.
  *
  * Tables aggregated (all scoped to the actor's organization):
  *   - events     : throughput, live pipeline, won/total bookings, repeat clients
@@ -31,6 +34,17 @@
  * (which is itself IDOR-safe via the events repo getEvent), and hands the
  * resulting alert arrays to the pure lib/eventRiskRollup.rollupEventRisk.
  *
+ * The Systems Summary (Pro only, new this slice) reads a live snapshot
+ * straight from every prior slice's own tables -- Divini Pipeline, Scope
+ * Builder, Proposal Studio, Follow-Up Desk, and Change Desk -- so the "whole
+ * system" summary a Business Review promises is a real read of each tool's
+ * current state, not a re-derived or cached approximation.
+ *
+ * Subscription entitlements (spec section 18): Free gets a "basic business
+ * summary" (score only, no breakdown), Plus gets "standard business reviews"
+ * (score + components + recommendations + event risk), Pro gets the "full
+ * Business Review" (everything above plus the Systems Summary).
+ *
  * Authorization: every entry point requires the actor to belong to an org and
  * operates only on that org's id, so a forged id cannot widen the tenant
  * boundary. runScan additionally re-checks access per event.
@@ -39,11 +53,12 @@ import { q, q1 } from "../pool.js";
 import { ForbiddenError, type Actor } from "../db.js";
 import { listMyEvents } from "./events.js";
 import { runScan } from "./warroom.js";
+import { isPlusTier, isTopTier } from "../lib/entitlements.js";
 import {
   computeBusinessHealth,
   type BusinessHealthSignals,
   type BusinessHealthResult,
-} from "../lib/businessHealth.js";
+} from "../lib/businessReview.js";
 import {
   rollupEventRisk,
   type PerEventScan,
@@ -61,14 +76,39 @@ export type BusinessHealthRow = {
   updated_at: string;
 };
 
+/** The three Business Review depths, per spec section 18. */
+export type BusinessReviewDepth = "basic" | "standard" | "full";
+
+export type SystemsSummaryItem = {
+  key: string;
+  label: string;
+  detail: string;
+  href: string;
+};
+
+export type SystemsSummary = { items: SystemsSummaryItem[] };
+
 export type BusinessHealthView = {
   org_id: string;
+  depth: BusinessReviewDepth;
   score: number;
-  components: BusinessHealthResult["components"];
-  recommendations: BusinessHealthResult["recommendations"];
+  /** null at "basic" depth -- Free sees the score only, no breakdown. */
+  components: BusinessHealthResult["components"] | null;
+  /** null at "basic" depth. */
+  recommendations: BusinessHealthResult["recommendations"] | null;
   signals: BusinessHealthSignals;
+  /** Populated only at "full" depth (Pro) -- the cross-tool snapshot. */
+  systemsSummary: SystemsSummary | null;
   updated_at: string | null;
 };
+
+/** Free = basic (score only), Plus = standard (+ breakdown/recommendations), Pro = full (+ Systems Summary). */
+export function reviewDepthFor(actor: Actor): BusinessReviewDepth {
+  const org = actor.org;
+  if (org && isTopTier(org)) return "full";
+  if (org && isPlusTier(org)) return "standard";
+  return "basic";
+}
 
 // ---- Numeric helpers --------------------------------------------------------
 
@@ -263,6 +303,104 @@ export async function gatherOrgSignals(actor: Actor): Promise<BusinessHealthSign
   };
 }
 
+// ---- Systems Summary (Pro / "full" depth only) ------------------------------
+
+/**
+ * A live, org-scoped snapshot of every prior slice's own current state --
+ * Divini Pipeline, Scope Builder, Proposal Studio, Follow-Up Desk, and Change
+ * Desk -- read directly from each tool's tables. This is the "summarizes the
+ * whole system" promise the build order makes for the final slice: real
+ * counts read fresh on every call, never a fabricated or stale rollup.
+ * Reserved for "full" depth (Pro) per spec section 18.
+ */
+export async function gatherSystemsSummary(actor: Actor): Promise<SystemsSummary> {
+  const orgId = requireOrgId(actor);
+
+  const pipeline = await q1<{ open_count: string | null; open_value: string | null }>(
+    `select count(*) as open_count, coalesce(sum(estimated_value_cents), 0) as open_value
+       from crm_opportunities where organization_id = $1 and status = 'open'`,
+    [orgId],
+  );
+
+  const proposals = await q1<{ sent: string | null; accepted: string | null }>(
+    `select
+        count(*) filter (where status in ('sent', 'viewed')) as sent,
+        count(*) filter (where status = 'accepted')          as accepted
+       from proposals where organization_id = $1`,
+    [orgId],
+  );
+
+  const scope = await q1<{ published: string | null }>(
+    `select count(*) filter (where status = 'published') as published
+       from scope_instances where organization_id = $1`,
+    [orgId],
+  );
+
+  const followUps = await q1<{ open_count: string | null }>(
+    `select count(*) as open_count
+       from follow_up_tasks where organization_id = $1 and status = 'open'`,
+    [orgId],
+  );
+
+  const changeOrders = await q1<{ open_count: string | null }>(
+    `select count(*) as open_count
+       from change_orders co
+       join events e on e.id = co.event_id
+      where e.organization_id = $1
+        and co.status in ('draft', 'sent', 'revision_requested')`,
+    [orgId],
+  );
+
+  const pipelineOpenCount = num(pipeline?.open_count);
+  const pipelineOpenValue = num(pipeline?.open_value) / 100;
+  const proposalsSent = num(proposals?.sent);
+  const proposalsAccepted = num(proposals?.accepted);
+  const scopePublished = num(scope?.published);
+  const followUpsOpen = num(followUps?.open_count);
+  const changeOrdersOpen = num(changeOrders?.open_count);
+
+  const items: SystemsSummaryItem[] = [
+    {
+      key: "pipeline",
+      label: "Divini Pipeline",
+      detail:
+        pipelineOpenCount > 0
+          ? `${pipelineOpenCount} open opportunit${pipelineOpenCount === 1 ? "y" : "ies"} worth $${pipelineOpenValue.toLocaleString()}`
+          : "No open opportunities",
+      href: "/pipeline",
+    },
+    {
+      key: "proposal_studio",
+      label: "Divini Proposal Studio",
+      detail:
+        proposalsSent > 0 || proposalsAccepted > 0
+          ? `${proposalsSent} awaiting a response, ${proposalsAccepted} accepted`
+          : "No proposals sent yet",
+      href: "/proposal-studio",
+    },
+    {
+      key: "scope_builder",
+      label: "Divini Scope Builder",
+      detail: scopePublished > 0 ? `${scopePublished} published scope${scopePublished === 1 ? "" : "s"}` : "No published scopes yet",
+      href: "/divini-scope-builder",
+    },
+    {
+      key: "follow_up_desk",
+      label: "Divini Follow-Up Desk",
+      detail: followUpsOpen > 0 ? `${followUpsOpen} open task${followUpsOpen === 1 ? "" : "s"} need attention` : "Nothing outstanding",
+      href: "/follow-up-desk",
+    },
+    {
+      key: "change_desk",
+      label: "Divini Change Desk",
+      detail: changeOrdersOpen > 0 ? `${changeOrdersOpen} change order${changeOrdersOpen === 1 ? "" : "s"} awaiting a decision` : "No change orders in motion",
+      href: "/changeorders",
+    },
+  ];
+
+  return { items };
+}
+
 // ---- Cache read / write -----------------------------------------------------
 
 function parseJson<T>(raw: unknown, fallback: T): T {
@@ -278,46 +416,46 @@ function parseJson<T>(raw: unknown, fallback: T): T {
 }
 
 /**
- * Get the cached Business Health Score for the actor's org, computing (without
- * persisting) a fresh value when no cached row exists yet so a first read never
- * returns null. Org-scoped + IDOR-safe (operates only on the actor's own org).
+ * Get the Business Review for the actor's org at the depth their tier earns
+ * (Free: basic score only; Plus: standard breakdown + recommendations; Pro:
+ * full, plus the cross-tool Systems Summary). Computes (without persisting) a
+ * fresh value when no cached row exists yet so a first read never returns
+ * null. Org-scoped + IDOR-safe (operates only on the actor's own org).
  */
 export async function getHealth(actor: Actor): Promise<BusinessHealthView> {
   const orgId = requireOrgId(actor);
+  const depth = reviewDepthFor(actor);
   const signals = await gatherOrgSignals(actor);
   const row = await q1<BusinessHealthRow>(
     `select * from business_health_scores where org_id = $1`,
     [orgId],
   );
-  if (row) {
-    const fresh = computeBusinessHealth(signals);
-    return {
-      org_id: orgId,
-      score: row.score,
-      components: parseJson(row.components, fresh.components),
-      recommendations: parseJson(row.recommendations, fresh.recommendations),
-      signals,
-      updated_at: row.updated_at,
-    };
-  }
   const fresh = computeBusinessHealth(signals);
+  const score = row ? row.score : fresh.score;
+  const components = row ? parseJson(row.components, fresh.components) : fresh.components;
+  const recommendations = row ? parseJson(row.recommendations, fresh.recommendations) : fresh.recommendations;
+  const systemsSummary = depth === "full" ? await gatherSystemsSummary(actor) : null;
+
   return {
     org_id: orgId,
-    score: fresh.score,
-    components: fresh.components,
-    recommendations: fresh.recommendations,
+    depth,
+    score,
+    components: depth === "basic" ? null : components,
+    recommendations: depth === "basic" ? null : recommendations,
     signals,
-    updated_at: null,
+    systemsSummary,
+    updated_at: row ? row.updated_at : null,
   };
 }
 
 /**
  * Recompute the Business Health Score for the actor's org from freshly-gathered
  * signals and persist it (upsert on org_id). Org-scoped + IDOR-safe. Returns
- * the stored view.
+ * the stored view at the depth the actor's tier earns.
  */
 export async function upsertHealth(actor: Actor): Promise<BusinessHealthView> {
   const orgId = requireOrgId(actor);
+  const depth = reviewDepthFor(actor);
   const signals = await gatherOrgSignals(actor);
   const result = computeBusinessHealth(signals);
 
@@ -333,12 +471,18 @@ export async function upsertHealth(actor: Actor): Promise<BusinessHealthView> {
     [orgId, result.score, JSON.stringify(result.components), JSON.stringify(result.recommendations)],
   );
 
+  const components = parseJson(row?.components, result.components);
+  const recommendations = parseJson(row?.recommendations, result.recommendations);
+  const systemsSummary = depth === "full" ? await gatherSystemsSummary(actor) : null;
+
   return {
     org_id: orgId,
+    depth,
     score: row?.score ?? result.score,
-    components: parseJson(row?.components, result.components),
-    recommendations: parseJson(row?.recommendations, result.recommendations),
+    components: depth === "basic" ? null : components,
+    recommendations: depth === "basic" ? null : recommendations,
     signals,
+    systemsSummary,
     updated_at: row?.updated_at ?? null,
   };
 }

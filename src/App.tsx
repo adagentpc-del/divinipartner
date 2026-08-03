@@ -186,7 +186,7 @@ import ScopeBuilder from './pages/ScopeBuilder';
 import ProposalStudio from './pages/ProposalStudio';
 import FollowUpDesk from './pages/FollowUpDesk';
 import PriceGuide from './pages/PriceGuide';
-import BusinessHealth from './pages/BusinessHealth';
+import BusinessReview from './pages/BusinessReview';
 import PricingIntelligence from './pages/PricingIntelligence';
 import MarketplaceIntelligence from './pages/MarketplaceIntelligence';
 import CommandCenter from './pages/CommandCenter';
@@ -456,7 +456,8 @@ function Routed() {
       <Route path="/proposal-studio" element={<Authed><ProposalStudio /></Authed>} />
       <Route path="/follow-up-desk" element={<Authed><FollowUpDesk /></Authed>} />
       <Route path="/price-guide" element={<Authed><PriceGuide /></Authed>} />
-      <Route path="/business-health" element={<Authed><BusinessHealth /></Authed>} />
+      <Route path="/business-review" element={<Authed><BusinessReview /></Authed>} />
+      <Route path="/business-health" element={<Authed><BusinessReview /></Authed>} />
       <Route path="/pricing-intelligence" element={<Authed><PricingIntelligence /></Authed>} />
       <Route path="/marketplace-intelligence" element={<Authed><MarketplaceIntelligence /></Authed>} />
       <Route path="/command-center" element={<Authed><CommandCenter /></Authed>} />

@@ -74,7 +74,7 @@ const NAV: NavItem[] = [
   { label: 'AI COO', icon: 'A', to: '/coo' },
   { label: 'Command Center', icon: 'M', to: '/command-center' },
   { label: 'Daily Briefing', icon: 'D', to: '/daily-briefing' },
-  { label: 'Business Health', icon: 'B', to: '/business-health' },
+  { label: 'Divini Business Review', icon: 'B', to: '/business-review' },
   { label: 'Revenue Intelligence', icon: 'I', to: '/revenue-intelligence' },
   { label: 'Divini Forecast', icon: 'F', to: '/forecasting' },
   { label: 'Pricing Intelligence', icon: 'P', to: '/pricing-intelligence' },

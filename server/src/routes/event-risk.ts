@@ -3,8 +3,8 @@
  *
  * The portfolio-level event risk picture (AI-COO-V2-ROADMAP.md section 3),
  * built by REUSING the existing per-event war-room scanner across the org's
- * active events. Org-scoped and IDOR-safe via the business-health repo
- * (server/src/db/business-health.ts -> rollupOrgEventRisk), which lists only the
+ * active events. Org-scoped and IDOR-safe via the business-review repo
+ * (server/src/db/business-review.ts -> rollupOrgEventRisk), which lists only the
  * actor's accessible events and re-checks access per event through
  * server/src/db/warroom.runScan. Mirrors server/src/routes/event-war-room.ts:
  * requireUser, getActor, the h() async wrapper.
@@ -14,7 +14,7 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { getAuth, requireUser } from "../auth.js";
 import * as db from "../db.js";
-import { rollupOrgEventRisk } from "../db/business-health.js";
+import { rollupOrgEventRisk } from "../db/business-review.js";
 
 const h =
   (fn: (req: Request, res: Response) => Promise<unknown>) =>

@@ -109,7 +109,7 @@ import attendeeIntel from "./routes/attendee-intel.js";
 // AI COO V2 layer
 import coo from "./routes/coo.js";
 import revenueIntel from "./routes/revenue-intel.js";
-import businessHealth from "./routes/business-health.js";
+import businessReview from "./routes/business-review.js";
 import eventRisk from "./routes/event-risk.js";
 import pricingIntel from "./routes/pricing-intel.js";
 import marketplaceIntel from "./routes/marketplace-intel.js";
@@ -265,7 +265,7 @@ router.use("/attendee-intel", attendeeIntel);
 // AI COO V2 layer
 router.use("/coo", coo);
 router.use("/revenue-intel", revenueIntel);
-router.use("/business-health", businessHealth);
+router.use("/business-review", businessReview);
 router.use("/event-risk", eventRisk);
 router.use("/pricing-intel", pricingIntel);
 router.use("/marketplace-intel", marketplaceIntel);

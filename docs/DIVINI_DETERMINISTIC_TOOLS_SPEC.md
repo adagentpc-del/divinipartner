@@ -388,4 +388,36 @@ The complete section-by-section specification (Divini Concierge, Proposal Studio
 
 ---
 
+## Shipped: Divini Business Review (slice 12, 2026-08-03) -- final slice
+
+**Business problem solved.** The final tool in the build order needed to "summarize the whole system" -- but a real, solid pre-spec "Business Health Score" already computed exactly the "what is working / what needs attention" shape the spec calls for: an org-level 0-100 score, a nine-dimension weighted breakdown, and prioritized recommendations. What it lacked was any awareness of the eleven Divini-branded tools shipped earlier in this same build order, and any tiered depth matching the spec's explicit Free/Plus/Pro split for this specific tool. Divini Business Review closes both gaps by generalizing, not rebuilding.
+
+**Users served.** Every org, at every tier -- this is the one tool in the build order the spec explicitly gives every tier a real (if smaller) version of: Free gets a basic score, Plus gets the full breakdown, Pro gets the complete picture plus a live cross-tool snapshot.
+
+**Workflow completed.** Open Divini Business Review -> see the 0-100 business score (every tier) -> Plus and above see the nine-dimension breakdown (revenue, activity, pipeline, contracts, referrals, bookings, retention, response speed, compliance) and a prioritized "what needs attention" list -> Pro additionally sees a "what is working -- systems summary" panel reading a live snapshot straight from Divini Pipeline, Proposal Studio, Scope Builder, Follow-Up Desk, and Change Desk, plus the existing portfolio Event Risk rollup (itself naturally Pro-only, since it is built on the Pro-gated Divini Event Command scan).
+
+**Deterministic logic.** Zero LLM, unchanged pure math in `computeBusinessHealth()` (server/src/lib/businessReview.ts, renamed from businessHealth.ts, symbols unchanged): nine normalized-to-[0,1] signals times fixed weights summing to 100, recommendations surfaced for any dimension below 85% of its earned weight, ranked by biggest opportunity first. The new Systems Summary (`gatherSystemsSummary()`) is five straightforward, org-scoped SQL counts/sums against each prior slice's own tables -- no scoring, no fabrication, just a live read.
+
+**Data model.** No new tables. Reuses `business_health_scores` (the existing cache table, renamed nothing at the schema level) and reads five prior slices' own tables directly: `crm_opportunities`, `proposals`, `scope_instances`, `follow_up_tasks`, `change_orders` (joined through `events` for org scope, matching the join pattern already used for `quotes`).
+
+**Integrations.** The first slice to read from every earlier slice in the build order at once: Pipeline, Proposal Studio, Scope Builder, Follow-Up Desk, and Change Desk are each queried live rather than through a shared cache, so the Systems Summary can never drift from what those tools' own pages show. The portfolio Event Risk panel is unchanged, still reusing `warroom.runScan()` without re-implementing any alert math.
+
+**Permissions.** New: `reviewDepthFor(actor)` in `db/business-review.ts` maps the org's tier to `"basic" | "standard" | "full"` using the existing `isPlusTier`/`isTopTier` primitives from `lib/entitlements.ts` -- the first slice in this build order to use a three-way depth gate rather than a binary lock, matching spec section 18's explicit three-tier language for this one tool ("basic business summary" / "standard business reviews" / "full Business Review"). The route itself never 403s; `getHealth`/`upsertHealth` shape the response body to the earned depth instead, so every tier gets a real, working page.
+
+**Analytics captured.** Unchanged -- the score is computed live and cached on `business_health_scores` on recompute, exactly as before.
+
+**Subscription entitlements.** Spec section 18, verified live at all three tiers: Free returns `depth: "basic"` with `components`, `recommendations`, and `systemsSummary` all null; Plus (`partner`) returns `depth: "standard"` with the full 9-item breakdown and recommendations but `systemsSummary` still null; Pro (`premier`) returns `depth: "full"` with everything, including the five-item Systems Summary. Downgrading back to Free immediately re-collapses the response to basic depth.
+
+**Tests completed.** Live end-to-end against a running server + Postgres: a fresh vendor org confirmed basic depth at Free (score only); upgraded to Plus, confirmed standard depth (9 components + recommendations, no systems summary); upgraded to Pro, confirmed full depth including all five expected Systems Summary keys; created a real Divini Pipeline opportunity ($2,500) and confirmed the Systems Summary's pipeline item updated live to reflect it on the next read; `POST /business-review/recompute` verified to persist and return the same depth-shaped response; downgraded back to Free and confirmed immediate re-collapse to basic depth; cross-org isolation confirmed -- a second org's Systems Summary never showed the first org's opportunity data, and correctly read "No open opportunities" for its own empty pipeline. Browser-verified at iPhone width against a fresh Pro-tier org seeded with two real Pipeline opportunities ($17,300 combined): the page renders "Divini Business Review," the "Full Business Review (Pro)" depth badge, the full 9-dimension breakdown, nine ranked recommendations (a fresh org naturally scores 0 on every dimension), and the Systems Summary panel showing "Divini Pipeline: 2 open opportunities worth $17,300" alongside the other four tools correctly reading their real empty states.
+
+**Business value delivered.** This is the capstone the build order promised: a single page that actually reflects the state of every other Divini tool an org uses, gated at exactly the depth the pricing page already promises for each tier -- not a new dashboard bolted on top, but the same trustworthy, real-signal engine every other slice in this build order was built to feed.
+
+**Deferred enhancements (optional intelligence layer, per spec section 16 -- not started, no LLM dependency added).** Folding Profit Map margin data and Vendor Scorecard results into the Systems Summary as two more live items (deferred only for scope, not difficulty -- the same query pattern applies directly); a model-suggested narrative summarizing the systems summary and recommendations into one paragraph. The deterministic engine above remains fully functional and complete without either.
+
+---
+
 *This document is updated as each slice ships, with a "shipped" section per tool matching the required implementation report format (section 20): business problem solved, users served, workflow, deterministic logic, data model, integrations, permissions, analytics captured, subscription entitlements, tests completed, business value delivered, deferred enhancements.*
+
+## Build order: complete
+
+All 12 slices in the binding build order (Pipeline, Scope Builder, Proposal Studio, Follow-Up Desk, Profit Map, Price Guide, Quote Compare, Change Desk, Vendor Scorecard, Event Command, Forecast, Business Review) have shipped, live-verified, and are documented above. Divini Concierge was added progressively across every slice per the spec's own build-order note, never as an isolated chatbot.

@@ -34,7 +34,7 @@ const NAV: NavItem[] = [
   { label: 'Command Center', icon: 'M', to: '/command-center' },
   { label: 'Daily Briefing', icon: 'D', to: '/daily-briefing' },
   { label: 'Marketplace Intelligence', icon: 'K', to: '/marketplace-intelligence' },
-  { label: 'Business Health', icon: 'B', to: '/business-health' },
+  { label: 'Divini Business Review', icon: 'B', to: '/business-review' },
   { label: 'Profile', icon: 'R', to: '/profile' },
   { label: 'Referrals', icon: 'r', to: '/referral-dashboard' },
   { label: 'Tours', icon: 'T', to: '/tours' },

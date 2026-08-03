@@ -1,5 +1,7 @@
 /**
- * Divini AI COO V2 - Business Health Score (AI-COO-V2-ROADMAP.md section 3).
+ * Divini Business Review - Business Health Score engine (build-order slice
+ * 12; originally built pre-spec as AI COO V2's Business Health Score,
+ * AI-COO-V2-ROADMAP.md section 3).
  *
  * `computeBusinessHealth(signals)` is PURE: no DB work, no network, no AI. It
  * takes a bag of already-gathered, pre-normalized org-level signals and returns
