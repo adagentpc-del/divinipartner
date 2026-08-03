@@ -60,7 +60,7 @@ export default function QuotesTab({ eventId }: { eventId: string }) {
         setCapNote(false);
         return prev.filter((x) => x !== id);
       }
-      if (prev.length >= 5) {
+      if (prev.length >= 10) {
         setCapNote(true);
         return prev;
       }
@@ -70,7 +70,7 @@ export default function QuotesTab({ eventId }: { eventId: string }) {
   }
 
   function compareSelected() {
-    if (selected.length < 2 || selected.length > 5) return;
+    if (selected.length < 2 || selected.length > 10) return;
     window.open(`/compare/quotes?ids=${selected.join(',')}`, '_blank');
   }
 
@@ -150,8 +150,8 @@ export default function QuotesTab({ eventId }: { eventId: string }) {
       ) : (
         <>
         <div className="ew-cmp-bar">
-          <button type="button" className="ew-btn sm" disabled={selected.length < 2 || selected.length > 5} onClick={compareSelected}>Compare ({selected.length})</button>
-          <span className="ew-cmp-hint">Select 2 to 5 quotes to compare side by side.</span>
+          <button type="button" className="ew-btn sm" disabled={selected.length < 2 || selected.length > 10} onClick={compareSelected}>Compare ({selected.length})</button>
+          <span className="ew-cmp-hint">Select 2 or more quotes to compare side by side (your plan's limit applies).</span>
           {capNote ? <span className="ew-cmp-cap">Select up to 5</span> : null}
         </div>
         <table className="ew-table">

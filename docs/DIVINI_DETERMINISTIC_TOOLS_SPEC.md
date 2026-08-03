@@ -248,4 +248,32 @@ The complete section-by-section specification (Divini Concierge, Proposal Studio
 
 ---
 
+## Shipped: Divini Quote Compare (slice 7, 2026-08-03)
+
+**Business problem solved.** Comparing quotes by eyeballing separate PDFs or emails hides the real trade-offs -- a lower total is not always the better deal once scaled to the same guest count, and a "no cost" comparison tool was already promised on the Client pricing page but never actually built. Divini Quote Compare normalizes quotes into one transparent table and enforces the real limit that was already being sold.
+
+**Users served.** Client and Planner -- the buyer side of the marketplace, the two roles that own an event and receive competing quotes on it. This is the buyer-facing counterpart to the seller tools (Pipeline, Scope Builder, Proposal Studio, Follow-Up Desk, Profit Map, Price Guide all serve the seller side); Quote Compare was already built pre-spec as a generic `db/compare.ts` engine (also handling venues and vendors, which stay outside this spec) and needed generalizing into the actual Divini Quote Compare tool, not a rewrite.
+
+**Workflow completed.** Select 2 or more quotes on an owned event's Quotes tab -> open the comparison in a new tab -> see every quote normalized into one row-level table (subtotal, platform fee, total, cost per guest, line-item count, status, expiration) -> deterministic pros and cons per quote, computed from the same numbers (the lowest total earns "Lowest total cost," the best per-guest value earns "Best value per guest," an already-accepted quote earns "Already accepted"). Selecting more quotes than the plan allows is blocked with a specific, actionable upgrade prompt rather than silently truncating the selection.
+
+**Deterministic logic.** Zero LLM. Every pro/con is derived by comparing real numeric fields across the selected set (best value on a metric earns a pro, worst earns a con; ties earn neither) -- never a generated opinion. The new normalization -- cost per guest -- is `total / event.guest_count`, left undefined (not guessed at zero) when the event has no recorded guest count, matching the same "never fabricate" discipline used throughout every other slice.
+
+**Data model.** No new tables. Reads directly from `quotes`, `vendors`, `organizations`, and (new this slice) `events.guest_count` for the normalization row -- no duplicated or cached comparison state.
+
+**Integrations.** None beyond the existing `quotes`/`events` tables; this slice deliberately did not attempt to also compare Divini Proposal Studio proposals, because proposals are a one-to-one seller-to-client artifact with no natural "multiple competing options for one decision" shape the way marketplace quotes on one event already have -- forcing that fit would be exactly the kind of fabricated cross-tool linkage the spec's constraints warn against, so it was not built.
+
+**Permissions.** Unchanged from the pre-existing implementation: quote comparison is gated on real event ownership (`organization_id`, `client_id`, or `planner_id` match), not mere read access, so an attached vendor cannot compare a competitor's quotes on someone else's event. Verified live: a second client org gets 403 attempting to compare quotes on an event they do not own.
+
+**Analytics captured.** Unchanged -- the comparison is computed live from real stored quote/event data on every request; there is nothing to separately log since no new record is created by comparing.
+
+**Subscription entitlements.** This is the one correction in this slice worth calling out explicitly: `lib/planCatalog.ts` already declared a real `quotes.compare` limit (Client Free: 3, Client Plus: 10) and the SPA's entitlements library already had a label for it ("quotes you can compare") -- but the limit was never actually enforced anywhere in the compare route, a dead entitlement exactly like the Supplier `warehouses` gap found and fixed earlier this build. This slice wires it up for real via the existing `plan_limit_reached` shape (`limitExceededPayload`), not a new gate, so it reuses the SPA's existing `<UpgradePrompt>` without any new frontend plumbing. The technical selection ceiling was raised from a flat 5 to 10 (Client Plus's real declared limit); Planner has no declared cap and remains unlimited, unchanged.
+
+**Tests completed.** Live end-to-end against a running server + Postgres: a Client Free-tier org compares 2 quotes successfully with correct cost-per-guest normalization and correctly assigned pros/cons; comparing 4 quotes on the same org is blocked with a precise 402 `plan_limit_reached` response (`capability: "quotes.compare"`, `limit: 3`, `used: 4`, upgrade target "Plus"); upgrading the org's tier to Plus unlocks comparing all 4; cross-org access blocked (403) on an event the caller does not own, unchanged pre-existing behavior reverified after the change. Browser-verified at iPhone width: the renamed "Divini Quote Compare" page, the real cost-per-guest row, and correct pros/cons including "Best value per guest" and "Already accepted."
+
+**Business value delivered.** A buyer can now trust that "lowest price" and "best value" are shown as the two different things they actually are, transparently, with the exact plan limit the pricing page already promised finally being real instead of a UI-only cap that any signed-in user could exceed. This closes a genuine pricing-integrity gap (a paid-tier feature that was actually free for everyone) the same way the Supplier warehouse gap was closed earlier in this build.
+
+**Deferred enhancements (optional intelligence layer, per spec section 16 -- not started, no LLM dependency added).** Model-suggested "which quote is the best overall fit" scoring. The deterministic engine above remains fully functional and complete without any of it. Comparing Proposal Studio proposals (rather than only marketplace quotes) remains explicitly out of scope for the reason given above -- a real design decision for the user to make about whether/how a buyer could ever see multiple sellers' proposals side by side, not a default to guess at.
+
+---
+
 *This document is updated as each slice ships, with a "shipped" section per tool matching the required implementation report format (section 20): business problem solved, users served, workflow, deterministic logic, data model, integrations, permissions, analytics captured, subscription entitlements, tests completed, business value delivered, deferred enhancements.*

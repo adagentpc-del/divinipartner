@@ -84,7 +84,7 @@ export const PLAN_CATALOG: RolePlanCatalog[] = [
           "Contracts",
           "Favorites",
           "10 quote requests/event",
-          "Compare 3 quotes",
+          "Divini Quote Compare (up to 3)",
         ],
         limits: { "events.active": 2, "quotes.per_event": 10, "quotes.compare": 3 },
       },
@@ -97,7 +97,7 @@ export const PLAN_CATALOG: RolePlanCatalog[] = [
         features: [
           "10 active events",
           "Unlimited quote requests",
-          "Compare 10 quotes",
+          "Divini Quote Compare (up to 10)",
           "Divini Builder for budgets",
           "Divini Concierge vendor matching",
           "Divini Builder for timelines",

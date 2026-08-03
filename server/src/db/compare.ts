@@ -1,16 +1,41 @@
 /**
- * Comparison engine - venues, vendors, and quotes, up to 5 at a time.
+ * Comparison engine - venues, vendors, and quotes, up to 10 at a time.
  *
  * Each comparator loads the selected rows, builds a generic row-level table
  * (attributes down the side, options across the top) plus deterministic pros and
  * cons per option, derived from the same numbers (best on a metric earns a pro,
  * worst earns a con; flags add categorical pros/cons). No AI. Zero em dashes.
+ *
+ * compareQuotes is docs/DIVINI_DETERMINISTIC_TOOLS_SPEC.md's Divini Quote
+ * Compare (build-order slice 7): the buyer-side counterpart to the seller
+ * tools (Pipeline, Scope Builder, Proposal Studio) -- a client or planner
+ * normalizing and comparing quotes they received on their own event,
+ * transparently, before deciding. Already had a real, sold entitlement
+ * shape before this slice (`quotes.compare`: Client Free 3, Client Plus 10,
+ * unlimited for roles with no declared limit) -- that pre-existing numeric
+ * cap was defined in lib/planCatalog.ts but never actually enforced
+ * anywhere; this slice wires it up rather than inventing a new gate.
  */
 import { q, q1 } from "../pool.js";
 import { ForbiddenError, type Actor } from "../db.js";
 import { assertOwnsEvent } from "./eventLanding.js";
+import { getEntitlements, limitExceededPayload } from "../lib/entitlements.js";
 
-export const MAX_COMPARE = 5;
+export const MAX_COMPARE = 10;
+
+export class QuoteCompareLimitError extends Error {
+  status = 402;
+  payload: ReturnType<typeof limitExceededPayload>;
+  constructor(actor: Actor, limit: number, used: number) {
+    super("Your plan's quote comparison limit was reached");
+    this.name = "QuoteCompareLimitError";
+    this.payload = limitExceededPayload(
+      actor.org ?? { tier: null, platform_fee_rate: null, type: null },
+      "quotes.compare",
+      { allowed: false, limit, used },
+    );
+  }
+}
 
 export interface CompareResult {
   type: "venues" | "vendors" | "quotes";
@@ -95,6 +120,10 @@ function clampIds(ids: unknown): string[] {
 export async function compareQuotes(actor: Actor, idsIn: unknown): Promise<CompareResult> {
   const ids = clampIds(idsIn);
   if (ids.length < 2) throw new ForbiddenError("pick at least 2 quotes to compare");
+  const limit = getEntitlements(actor.org ?? { tier: null, platform_fee_rate: null, type: null }).limits["quotes.compare"] ?? null;
+  if (limit != null && ids.length > limit) {
+    throw new QuoteCompareLimitError(actor, limit, ids.length);
+  }
   const rows = await q<{
     id: string;
     event_id: string | null;
@@ -105,12 +134,14 @@ export async function compareQuotes(actor: Actor, idsIn: unknown): Promise<Compa
     expiration_date: string | null;
     line_items: unknown;
     vendor_name: string | null;
+    guest_count: number | null;
   }>(
     `select qt.id, qt.event_id, qt.subtotal, qt.platform_fee, qt.total, qt.status,
-            qt.expiration_date, qt.line_items, o.name as vendor_name
+            qt.expiration_date, qt.line_items, o.name as vendor_name, ev.guest_count
        from quotes qt
        left join vendors v on v.id = qt.vendor_id
        left join organizations o on o.id = v.organization_id
+       left join events ev on ev.id = qt.event_id
       where qt.id = any($1::uuid[])`,
     [ids],
   );
@@ -138,6 +169,17 @@ export async function compareQuotes(actor: Actor, idsIn: unknown): Promise<Compa
     .filter((r): r is NonNullable<typeof r> => !!r)
     .map((r) => ({ id: r.id, label: r.vendor_name ?? "Vendor quote", data: r as unknown as Record<string, unknown> }));
 
+  // Normalized cost per guest -- the literal "normalizes ... transparently"
+  // half of Divini Quote Compare: a lower total is not always the better
+  // deal once scaled to the same guest count. Undefined (never guessed at 0
+  // or the raw total) when the event has no recorded guest count.
+  const perGuest = (d: Record<string, unknown>): number | null => {
+    const total = num(d.total);
+    const guests = num(d.guest_count);
+    if (total == null || guests == null || guests <= 0) return null;
+    return total / guests;
+  };
+
   return build(
     "quotes",
     opts,
@@ -146,6 +188,7 @@ export async function compareQuotes(actor: Actor, idsIn: unknown): Promise<Compa
       { label: "Subtotal", value: (d) => money(d.subtotal), metric: { num: (d) => num(d.subtotal), better: "low", pro: "Lowest subtotal", con: "Highest subtotal" } },
       { label: "Platform fee", value: (d) => money(d.platform_fee) },
       { label: "Total", value: (d) => money(d.total), highlight: true, metric: { num: (d) => num(d.total), better: "low", pro: "Lowest total cost", con: "Most expensive" } },
+      { label: "Cost per guest", value: (d) => (perGuest(d) == null ? "-" : `$${perGuest(d)!.toFixed(2)}`), metric: { num: perGuest, better: "low", pro: "Best value per guest", con: "Worst value per guest" } },
       { label: "Line items", value: (d) => String(lineCount(d.line_items)), metric: { num: (d) => lineCount(d.line_items), better: "high", pro: "Most detailed scope", con: "Least detailed scope" } },
       { label: "Status", value: (d) => ((d.status as string) ?? "-").replace(/_/g, " ") },
       { label: "Expires", value: (d) => (d.expiration_date ? new Date(d.expiration_date as string).toLocaleDateString("en-US") : "-") },
