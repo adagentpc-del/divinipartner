@@ -56,6 +56,7 @@ function VendorMetricTiles() {
 const NAV: NavItem[] = [
   { label: 'Overview', icon: 'O', to: '/app' },
   { label: 'Divini Pipeline', icon: '◈', to: '/pipeline' },
+  { label: 'Divini Scope Builder', icon: '▤', to: '/divini-scope-builder' },
   { label: 'Calendar', icon: 'c', to: '/calendar' },
   { label: 'Vendor Profile', icon: 'P', to: '/profile' },
   { label: 'Decks & Programs', icon: 'K', to: '/profile/decks-programs' },

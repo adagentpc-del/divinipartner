@@ -168,6 +168,7 @@ import plans from "./routes/plans.js";
 import vendorProfitability from "./routes/vendor-profitability.js";
 import warehouses from "./routes/warehouses.js";
 import pipeline from "./routes/pipeline.js";
+import scopeBuilder from "./routes/scope-builder.js";
 
 const router = Router();
 
@@ -312,6 +313,7 @@ router.use("/plans", plans);
 router.use("/vendor-profitability", vendorProfitability);
 router.use("/warehouses", warehouses);
 router.use("/pipeline", pipeline);
+router.use("/scope-builder", scopeBuilder);
 
 export function errorHandler(err: any, _req: Request, res: Response, _next: NextFunction) {
   if (err instanceof ForbiddenError) return res.status(403).json({ error: err.message });

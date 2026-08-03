@@ -118,6 +118,16 @@ export function isTopTier(org: Pick<DbOrg, "tier">): boolean {
 }
 
 /**
+ * True when the org is on its role's Plus tier or above (partner/premier).
+ * The gate for Plus-included features that Free does not get but are not
+ * Pro-exclusive -- e.g. Divini Scope Builder's custom templates (spec
+ * section 18: "Plus: ... custom scope templates").
+ */
+export function isPlusTier(org: Pick<DbOrg, "tier">): boolean {
+  return org.tier === "partner" || org.tier === "premier";
+}
+
+/**
  * Would using one more unit of `key` still be within the org's plan limit?
  * `null` limit means unlimited (either the plan has no cap on this key, or
  * the role has no catalog entry yet).
@@ -152,12 +162,16 @@ const NEXT_TIER: Record<Tier, Tier | null> = {
  * limitExceededPayload, distinct error code (this is not a usage cap, it is
  * a feature the plan does not include at all).
  */
-export function featureLockedPayload(org: Pick<DbOrg, "tier" | "type">, feature: string) {
-  const roleTier = planTierFor(org.type as Role, "premier");
+export function featureLockedPayload(
+  org: Pick<DbOrg, "tier" | "type">,
+  feature: string,
+  minTier: Extract<Tier, "partner" | "premier"> = "premier",
+) {
+  const roleTier = planTierFor(org.type as Role, minTier);
   return {
     error: "feature_locked" as const,
     feature,
-    upgrade: roleTier ? { tier: "premier" as const, label: roleTier.label, monthlyUsd: roleTier.monthlyUsd } : null,
+    upgrade: roleTier ? { tier: minTier, label: roleTier.label, monthlyUsd: roleTier.monthlyUsd } : null,
   };
 }
 
