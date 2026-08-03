@@ -42,12 +42,13 @@ and how access is granted, reviewed, and revoked.
   never trusted from client input. There is no in-product "make this user
   an admin" button; granting admin access requires editing server
   configuration and restarting the process.
-- **Real, open gap (see `AI_PROJECT_OS/53_SOC2_ISO27001_AUDIT.md`): admin
-  accounts have no MFA requirement.** A compromised password for an
-  allowlisted email is sufficient for full admin access today. This policy
-  cannot claim MFA-gated admin access is in effect until the MFA gap
-  tracked as task T11 in `AI_PROJECT_OS/12_TASK_QUEUE.md` is actually
-  built.
+- **MFA is REQUIRED for admin access** (built 2026-08-03; see
+  `AI_PROJECT_OS/53_SOC2_ISO27001_AUDIT.md`). `requireAdmin`
+  (`server/src/auth.ts`) checks TOTP enrollment on every admin action and
+  refuses with `mfa_required_for_admin` until the account has enrolled at
+  Profile -> Account -> Two-factor authentication. Logging in itself is not
+  blocked for an unenrolled admin (to avoid a lockout with no path to
+  enroll), but no actual admin action is reachable without it.
 - Database/infrastructure access (direct Postgres access, server SSH,
   hosting-provider console access) is outside the application's own access
   control and is currently managed manually by whoever operates the

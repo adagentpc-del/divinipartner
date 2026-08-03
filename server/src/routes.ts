@@ -7,6 +7,7 @@ import { ForbiddenError, NotFoundError, AccountDeletedError } from "./db.js";
 import foundation from "./routes/foundation.js";
 // Native email/password auth (replaces Authentik OIDC)
 import authNative from "./routes/auth-native.js";
+import mfa from "./routes/mfa.js";
 // Phase 2
 import profiles from "./routes/profiles.js";
 // Profile decks (pitch decks / collateral) + custom programs / offerings
@@ -177,6 +178,7 @@ import priceGuide from "./routes/price-guide.js";
 const router = Router();
 
 router.use("/auth", authNative);
+router.use("/mfa", mfa);
 router.use("/", foundation);
 router.use("/profile", profiles);
 router.use("/profile-extras", profileDecksPrograms);

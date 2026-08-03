@@ -46,9 +46,9 @@ Known debt and cleanup, roughly ordered by value.
 
 - No structured logging or error monitoring (Sentry-style). Add before or shortly after taking real money. Still true as of the 2026-08-03 audit — the highest-value item on this list that hasn't moved.
 
-## No MFA / 2FA (found 2026-08-03, SOC 2 / ISO 27001 audit)
+## MFA / 2FA (RESOLVED 2026-08-03)
 
-- There is no second factor anywhere in the app, including for `ADMIN_ALLOWED_EMAILS`. Two stale comments (`securityHeaders.ts`, `rateLimit.ts`) falsely claimed Authentik still provided this -- fixed to state the gap plainly. Building real TOTP-based MFA (enrollment, recovery codes, at minimum enforced for admin accounts) is scoped as its own dedicated task, not a quick patch. See `53_SOC2_ISO27001_AUDIT.md`.
+- Built: real TOTP-based MFA. Self-service enrollment (`GET /profile` -> Account -> "Two-factor authentication"), QR code + manual-entry secret, 10 single-use backup codes, login-time challenge step (`POST /auth/mfa-verify`, a distinctly-typed 5-minute JWT that cannot be replayed as a real session), and ENFORCED (not merely offered) for `ADMIN_ALLOWED_EMAILS` accounts via `requireAdmin` in `server/src/auth.ts` -- an admin who has not enrolled can still log in, but every actual admin action is refused with a clear `mfa_required_for_admin` error until they do. Dependency-free RFC 6238 TOTP implementation (`server/src/lib/totp.ts`, verified against the official RFC test vector) plus the small `qrcode` package for the enrollment QR image. Live-verified end to end including the real browser UI: enrollment, wrong/correct code, backup-code single-use, admin block-then-unblock, and disable. See `53_SOC2_ISO27001_AUDIT.md`.
 
 ## No automated backups (found 2026-08-03, SOC 2 / ISO 27001 audit)
 

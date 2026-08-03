@@ -157,42 +157,54 @@ yet exist.
    records every deletion, and the account owner's ORIGINAL email (captured
    before anonymization) gets a confirmation.
 
+## Update 2026-08-03: MFA built
+
+The MFA gap below (originally #1) is RESOLVED. TOTP-based two-factor
+authentication is built: self-service enrollment with a QR code and 10
+single-use backup codes (`server/src/routes/mfa.ts`, `server/src/lib/
+totp.ts` -- a dependency-free RFC 6238 implementation verified against the
+official RFC test vector), a login-time challenge step using a distinctly
+-typed 5-minute JWT that cannot be replayed as a real session
+(`signMfaChallenge`/`verifyMfaChallenge` in `lib/session.ts`, with an
+explicit `verifySession` check that rejects any token carrying a `typ`
+claim -- closing a real vulnerability caught during this same build, where
+a leaked challenge token would otherwise have passed as a full session),
+and enforcement (not just availability) for `ADMIN_ALLOWED_EMAILS`
+accounts via `requireAdmin` in `server/src/auth.ts`: an unenrolled admin
+can still log in, but every actual admin action is refused with
+`mfa_required_for_admin` until they enroll. Live-verified end to end
+including the real browser UI. Session-management gap #4 below (no general
+revocation) is UNCHANGED by this work -- MFA and session revocation are
+different controls.
+
 ## Open gaps (not fixed here -- need a dedicated build or an operator decision)
 
 Ranked by how commonly an auditor would flag them first.
 
-1. **No MFA anywhere.** HIGH. Both SOC 2 (CC6.1/CC6.6) and ISO 27001
-   (A.8.5, "secure authentication") expect a second factor, at minimum for
-   privileged (admin) accounts. This app has none -- not even for the
-   platform admin allowlist. Recommend a dedicated TOTP-based 2FA build
-   (enrollment, recovery codes, and at minimum an ENFORCED requirement for
-   `ADMIN_ALLOWED_EMAILS` accounts) as its own future task, sized similarly
-   to the account-deletion or react-router-upgrade work: real, tested, not
-   rushed into this pass.
-2. **No automated, scheduled, tested backups.** HIGH for availability
+1. **No automated, scheduled, tested backups.** HIGH for availability
    criteria. Current state is a single manual `pg_dump` run immediately
    before migrations. Needs an operator/infra decision (managed Postgres
    with automated snapshots, or a cron + off-site retention policy) --
    outside what application code can fix.
-3. **No structured logging / error monitoring.** MEDIUM-HIGH. Carried over
+2. **No structured logging / error monitoring.** MEDIUM-HIGH. Carried over
    from `16_TECH_DEBT.md`, unchanged by this audit. Needed for CC7.2
    ("the entity monitors ... for anomalies") to be more than an audit-log
    table nobody watches.
-4. **Session revocation.** MEDIUM. A password reset or account deletion does
+3. **Session revocation.** MEDIUM. A password reset or account deletion does
    not invalidate OTHER already-issued session tokens for the same user
-   (except the deleted-account case, fixed above). A 30-day JWT stolen
-   before a legitimate password reset stays valid until it expires. Fixing
-   this generally would need a session-version or denylist mechanism (e.g. a
-   `users.session_epoch` column bumped on password change, checked in
-   `verifySession`) -- a real, scoped, code-fixable improvement, but a
+   (except the deleted-account case, fixed earlier this pass). A 30-day JWT
+   stolen before a legitimate password reset stays valid until it expires.
+   Fixing this generally would need a session-version or denylist mechanism
+   (e.g. a `users.session_epoch` column bumped on password change, checked
+   in `verifySession`) -- a real, scoped, code-fixable improvement, but a
    separate change from this audit given the JWT-verification code path is
    security-critical and deserves its own careful, tested pass rather than
    a same-turn edit.
-5. **Encryption at rest is opt-in, not default.** MEDIUM. `storageCrypto.ts`
+4. **Encryption at rest is opt-in, not default.** MEDIUM. `storageCrypto.ts`
    only encrypts objects when `STORAGE_ENCRYPTION_KEY` is set. Recommend the
    go-live runbook (`T1`/`T3` in `12_TASK_QUEUE.md`) require setting it
    before any real vendor documents are uploaded in production.
-6. **DB TLS is operator-configured, not enforced.** LOW-MEDIUM.
+5. **DB TLS is operator-configured, not enforced.** LOW-MEDIUM.
    `sslmode=require` works if set in `DATABASE_URL` but nothing in the app
    requires it. Document as a required production `DATABASE_URL` parameter
    for a managed/remote Postgres instance (a local same-host DB, as used in
@@ -203,8 +215,8 @@ Ranked by how commonly an auditor would flag them first.
 | Area | SOC 2 (Security / CC) | ISO/IEC 27001:2022 Annex A | Status |
 |---|---|---|---|
 | Access control / RBAC | CC6.1-CC6.3 | A.5.15-A.5.18, A.8.2-A.8.5 | Implemented |
-| MFA | CC6.1, CC6.6 | A.8.5 | **Gap** |
-| Session management | CC6.1 | A.8.5 | Partial (no revocation) |
+| MFA | CC6.1, CC6.6 | A.8.5 | Implemented (self-service TOTP; enforced for admin accounts) |
+| Session management | CC6.1 | A.8.5 | Partial (no general revocation) |
 | Encryption in transit | CC6.1, CC6.7 | A.8.24 | Implemented (edge TLS + HSTS) |
 | Encryption at rest | CC6.1, CC6.7 | A.8.24 | Opt-in, not default |
 | Audit logging | CC7.2, CC7.3 | A.8.15 | Implemented, unmonitored |
@@ -218,15 +230,16 @@ Ranked by how commonly an auditor would flag them first.
 
 ## Recommended next steps (ranked)
 
-1. Draft the policy documents (Information Security Policy, Access Control
-   Policy, Data Retention & Deletion Policy, Incident Response Plan,
-   Subprocessor list) -- tracked as the next task, will reference this
-   audit's control inventory directly so policy claims match real code.
+1. ~~Draft the policy documents~~ DONE 2026-08-03: `compliance/policies/`
+   (Information Security Policy, Access Control Policy, Data Retention &
+   Deletion Policy, Incident Response Plan, Subprocessor list), all DRAFT
+   pending real ownership and sign-off.
 2. Decide and implement an automated backup policy (operator decision).
-3. Scope and build MFA as its own dedicated pass (real feature, not a
-   same-turn patch).
+3. ~~Scope and build MFA~~ DONE 2026-08-03: see the update above.
 4. Add structured logging / error monitoring (already tracked in
    `16_TECH_DEBT.md`).
-5. When ready to pursue actual certification: engage counsel/a SOC 2 auditor
+5. Build general session revocation (gap #3 above) as its own scoped,
+   carefully-tested pass.
+6. When ready to pursue actual certification: engage counsel/a SOC 2 auditor
    or ISO 27001 certification body -- this document is preparation for that
    engagement, not a substitute for it.

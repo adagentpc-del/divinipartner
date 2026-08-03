@@ -19,6 +19,7 @@
 import type { Request, Response, NextFunction, RequestHandler } from "express";
 import { getAdminAllowedEmails } from "./config.js";
 import { verifySession, SESSION_COOKIE } from "./lib/session.js";
+import { getMfaUser } from "./db/mfa.js";
 
 export interface AuthResult {
   userId: string | null;
@@ -107,8 +108,19 @@ export function requireUser(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-/** Guard: require an admin (ADMIN_ALLOWED_EMAILS). 403 otherwise. */
-export function requireAdmin(req: Request, res: Response, next: NextFunction) {
+/**
+ * Guard: require an admin (ADMIN_ALLOWED_EMAILS). 403 otherwise.
+ *
+ * Also enforces MFA for admin access (SOC 2 / ISO 27001 audit finding,
+ * 2026-08-03: this is the platform's single highest-privilege access point,
+ * so it is the one place MFA is REQUIRED rather than merely offered). An
+ * admin-allowlisted account that has not enrolled TOTP yet can still log in
+ * normally -- blocking login entirely would risk locking an admin out with
+ * no path to enroll -- but is refused every actual admin action here with a
+ * distinct `mfa_required_for_admin` error until they enroll at
+ * Profile -> Account -> Two-factor authentication.
+ */
+export async function requireAdmin(req: Request, res: Response, next: NextFunction) {
   const auth = getAuth(req);
   if (!auth.userId) {
     res.status(401).json({ error: "unauthorized" });
@@ -116,6 +128,25 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
   }
   if (!auth.isAdmin) {
     res.status(403).json({ error: "forbidden" });
+    return;
+  }
+  try {
+    const user = await getMfaUser(auth.userId);
+    if (!user?.totp_enabled) {
+      // `error` is the human-readable message on purpose: src/lib/api.ts's
+      // ApiError surfaces `body.error` as `.message`, and most pages just do
+      // `catch (e) { setErr(e.message) }` with no special-casing -- putting
+      // the friendly text there means every admin page reads well without
+      // each one needing its own handler. `code` is for pages (AdminConsole)
+      // that want to render something richer, like a direct enroll link.
+      res.status(403).json({
+        error: "Two-factor authentication is required for admin access. Enroll at Profile -> Account.",
+        code: "mfa_required_for_admin",
+      });
+      return;
+    }
+  } catch (e) {
+    next(e);
     return;
   }
   next();

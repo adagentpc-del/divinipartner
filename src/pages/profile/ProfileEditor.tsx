@@ -3,6 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
 import { apiGet, apiSend, apiUpload } from '../../lib/api';
 import { deleteMyAccount } from '../../lib/db';
+import {
+  mfaStatus, mfaEnrollStart, mfaEnrollVerify, mfaRegenerateBackupCodes, mfaDisable,
+  type MfaStatus, type MfaEnrollStart,
+} from '../../lib/mfa';
 
 /**
  * Divini Partners - Profile editor (blueprint section 9).
@@ -104,6 +108,16 @@ export default function ProfileEditor() {
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteErr, setDeleteErr] = useState('');
+  // Two-factor authentication (TOTP).
+  const [mfa, setMfa] = useState<MfaStatus | null>(null);
+  const [mfaBusy, setMfaBusy] = useState(false);
+  const [mfaErr, setMfaErr] = useState('');
+  const [mfaMsg, setMfaMsg] = useState('');
+  const [mfaEnroll, setMfaEnroll] = useState<MfaEnrollStart | null>(null);
+  const [mfaVerifyCode, setMfaVerifyCode] = useState('');
+  const [backupCodesReveal, setBackupCodesReveal] = useState<string[] | null>(null);
+  const [regenerateCode, setRegenerateCode] = useState('');
+  const [disableMfaPassword, setDisableMfaPassword] = useState('');
 
   // AI profile assist: extract from a website URL or an uploaded document,
   // then review each suggested field (accept / edit / reject) before it
@@ -277,6 +291,78 @@ export default function ProfileEditor() {
     } catch (e: any) {
       setDeleteErr(e?.message ?? 'Could not delete your account.');
       setDeleteBusy(false);
+    }
+  }
+
+  async function loadMfaStatus() {
+    try {
+      setMfa(await mfaStatus());
+    } catch {
+      // Non-fatal: the section just stays in its loading state.
+    }
+  }
+  useEffect(() => { if (session) loadMfaStatus(); /* eslint-disable-line */ }, [session]);
+
+  async function startMfaEnroll() {
+    setMfaErr(''); setMfaMsg('');
+    setMfaBusy(true);
+    try {
+      setMfaEnroll(await mfaEnrollStart());
+    } catch (e: any) {
+      setMfaErr(e?.message ?? 'Could not start enrollment.');
+    } finally {
+      setMfaBusy(false);
+    }
+  }
+
+  async function confirmMfaEnroll() {
+    setMfaErr('');
+    if (!mfaVerifyCode.trim()) { setMfaErr('Enter the 6-digit code from your authenticator app.'); return; }
+    setMfaBusy(true);
+    try {
+      const r = await mfaEnrollVerify(mfaVerifyCode.trim());
+      setBackupCodesReveal(r.backupCodes);
+      setMfaEnroll(null);
+      setMfaVerifyCode('');
+      await loadMfaStatus();
+    } catch (e: any) {
+      setMfaErr(e?.message ?? 'Incorrect code.');
+    } finally {
+      setMfaBusy(false);
+    }
+  }
+
+  async function doRegenerateBackupCodes() {
+    setMfaErr(''); setMfaMsg('');
+    if (!regenerateCode.trim()) { setMfaErr('Enter your current 6-digit code to confirm.'); return; }
+    setMfaBusy(true);
+    try {
+      const r = await mfaRegenerateBackupCodes(regenerateCode.trim());
+      setBackupCodesReveal(r.backupCodes);
+      setRegenerateCode('');
+      await loadMfaStatus();
+    } catch (e: any) {
+      setMfaErr(e?.message ?? 'Incorrect code.');
+    } finally {
+      setMfaBusy(false);
+    }
+  }
+
+  async function doDisableMfa() {
+    setMfaErr(''); setMfaMsg('');
+    if (!disableMfaPassword) { setMfaErr('Enter your password to confirm.'); return; }
+    const ok = window.confirm('Turn off two-factor authentication for your account?');
+    if (!ok) return;
+    setMfaBusy(true);
+    try {
+      await mfaDisable(disableMfaPassword);
+      setDisableMfaPassword('');
+      setMfaMsg('Two-factor authentication is now off.');
+      await loadMfaStatus();
+    } catch (e: any) {
+      setMfaErr(e?.message ?? 'Could not disable two-factor authentication.');
+    } finally {
+      setMfaBusy(false);
     }
   }
 
@@ -468,6 +554,74 @@ export default function ProfileEditor() {
 
         {tab === 'account' && (
           <div className="dppe-panel">
+            <Section title="Two-factor authentication">
+              {mfaErr && <div className="dppe-err" style={{ marginTop: 4 }}>{mfaErr}</div>}
+              {mfaMsg && <div className="dppe-ok" style={{ marginTop: 4 }}>{mfaMsg}</div>}
+
+              {backupCodesReveal ? (
+                <>
+                  <p className="dppe-help">
+                    Save these backup codes somewhere safe - each one works once, if you lose access
+                    to your authenticator app. They will not be shown again.
+                  </p>
+                  <div style={{ background: '#f7f4ec', border: '1px solid #e7e1d6', borderRadius: 10, padding: 14, fontFamily: 'monospace', fontSize: 14, lineHeight: 1.9, marginBottom: 12 }}>
+                    {backupCodesReveal.map((c) => <div key={c}>{c}</div>)}
+                  </div>
+                  <div className="dppe-actions">
+                    <button className="dppe-btn" onClick={() => setBackupCodesReveal(null)}>I have saved these codes</button>
+                  </div>
+                </>
+              ) : mfaEnroll ? (
+                <>
+                  <p className="dppe-help">
+                    Scan this code with an authenticator app (Google Authenticator, Authy, 1Password,
+                    Apple Passwords), then enter the 6-digit code it shows to finish turning on
+                    two-factor authentication.
+                  </p>
+                  <img src={mfaEnroll.qrCodeDataUrl} alt="Two-factor authentication QR code" style={{ width: 180, height: 180, marginBottom: 10 }} />
+                  <p className="dppe-help">Or enter this code manually: <code>{mfaEnroll.secret}</code></p>
+                  <Field label="6-digit code">
+                    <input value={mfaVerifyCode} onChange={(e) => setMfaVerifyCode(e.target.value)} placeholder="123456" autoFocus />
+                  </Field>
+                  <div className="dppe-actions">
+                    <button className="dppe-btn ghost" onClick={() => { setMfaEnroll(null); setMfaVerifyCode(''); setMfaErr(''); }}>Cancel</button>
+                    <button className="dppe-btn" onClick={confirmMfaEnroll} disabled={mfaBusy}>{mfaBusy ? 'Verifying...' : 'Turn on'}</button>
+                  </div>
+                </>
+              ) : mfa?.enabled ? (
+                <>
+                  <p className="dppe-help">
+                    Two-factor authentication is <strong>on</strong>. You have {mfa.remainingBackupCodes} unused
+                    backup code{mfa.remainingBackupCodes === 1 ? '' : 's'} left.
+                  </p>
+                  <Field label="Regenerate backup codes (enter your current 6-digit code)">
+                    <input value={regenerateCode} onChange={(e) => setRegenerateCode(e.target.value)} placeholder="123456" />
+                  </Field>
+                  <div className="dppe-actions" style={{ marginBottom: 18 }}>
+                    <button className="dppe-btn ghost" onClick={doRegenerateBackupCodes} disabled={mfaBusy}>Regenerate backup codes</button>
+                  </div>
+                  <Field label="Turn off two-factor authentication (enter your password)">
+                    <input type="password" value={disableMfaPassword} onChange={(e) => setDisableMfaPassword(e.target.value)} placeholder="Current password" autoComplete="current-password" />
+                  </Field>
+                  <div className="dppe-actions">
+                    <button className="dppe-btn danger" onClick={doDisableMfa} disabled={mfaBusy}>Turn off</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="dppe-help">
+                    Two-factor authentication is <strong>off</strong>. Turning it on requires a code
+                    from an authenticator app in addition to your password when you sign in.
+                  </p>
+                  <div className="dppe-actions">
+                    <button className="dppe-btn" onClick={startMfaEnroll} disabled={mfaBusy}>
+                      {mfaBusy ? 'Starting...' : 'Turn on two-factor authentication'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </Section>
+
             <Section title="Profile owner email">
               <p className="dppe-help">
                 Signed in as <strong>{session?.user?.email ?? 'your account'}</strong>. Transfer

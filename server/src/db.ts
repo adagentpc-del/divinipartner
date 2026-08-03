@@ -502,10 +502,11 @@ export type AuthUser = {
   reset_token: string | null;
   reset_expires: string | null;
   organization_id: string | null;
+  totp_enabled: boolean;
 };
 
 const AUTH_USER_COLS =
-  "id, email, name, password_hash, email_verified, verify_token, verify_expires, reset_token, reset_expires, organization_id";
+  "id, email, name, password_hash, email_verified, verify_token, verify_expires, reset_token, reset_expires, organization_id, totp_enabled";
 
 /** Find a user by (case-insensitive) email. */
 export async function findUserByEmail(email: string): Promise<AuthUser | null> {

@@ -22,7 +22,11 @@ import {
   randomToken,
   SESSION_COOKIE,
   SESSION_MAX_AGE_SECONDS,
+  signMfaChallenge,
+  verifyMfaChallenge,
 } from "../lib/session.js";
+import { verifyTotp } from "../lib/totp.js";
+import * as mfaDb from "../db/mfa.js";
 import { sendEmail } from "../lib/email.js";
 import { notify } from "../lib/notify.js";
 import { logAction } from "../lib/audit.js";
@@ -190,6 +194,47 @@ router.post(
         error: "Please verify your email before signing in.",
         needsVerification: true,
       });
+    }
+    if (user.totp_enabled) {
+      // Password is correct, but do not issue a real session yet: return a
+      // short-lived challenge token instead. Only /auth/mfa-verify accepts
+      // it, and only to exchange a correct TOTP/backup code for a real
+      // session -- see lib/session.ts's signMfaChallenge for why a leaked
+      // challenge token cannot be replayed as full API access.
+      const challengeToken = await signMfaChallenge(user.id);
+      return res.json({ ok: true, mfaRequired: true, challengeToken });
+    }
+    const { token } = await issueSession(res, { id: user.id, email: user.email });
+    return res.json({
+      ok: true,
+      token,
+      user: { id: user.id, email: user.email },
+      isAdmin: isAdminEmail(user.email),
+    });
+  }),
+);
+
+// ---- MFA challenge verification (second step of login when TOTP is on) ----
+router.post(
+  "/mfa-verify",
+  h(async (req, res) => {
+    const { challengeToken, code } = req.body ?? {};
+    const generic = { error: "Incorrect code." };
+    if (typeof challengeToken !== "string" || typeof code !== "string" || !code) {
+      return res.status(400).json(generic);
+    }
+    const userId = await verifyMfaChallenge(challengeToken);
+    if (!userId) {
+      return res.status(401).json({ error: "This sign-in attempt has expired. Sign in again." });
+    }
+    const user = await mfaDb.getMfaUser(userId);
+    if (!user || !user.totp_enabled || !user.totp_secret) {
+      return res.status(400).json({ error: "Two-factor authentication is not enabled on this account." });
+    }
+    const ok =
+      verifyTotp(user.totp_secret, code) || (await mfaDb.consumeBackupCode(userId, code.trim()));
+    if (!ok) {
+      return res.status(401).json(generic);
     }
     const { token } = await issueSession(res, { id: user.id, email: user.email });
     return res.json({

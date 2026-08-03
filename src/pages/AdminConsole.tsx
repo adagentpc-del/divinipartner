@@ -50,6 +50,7 @@ export default function AdminConsole() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [err, setErr] = useState('');
+  const [mfaRequired, setMfaRequired] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -61,11 +62,35 @@ export default function AdminConsole() {
         setMetrics(m.metrics);
         setAccounts(a.accounts.slice(0, 10));
       })
-      .catch((e) => setErr(e.message ?? 'Could not load admin data.'))
+      .catch((e) => {
+        // requireAdmin (server/src/auth.ts) also enforces two-factor
+        // authentication for admin access -- a real allowlisted admin who
+        // has not enrolled yet gets this specific error on every admin
+        // call, not a generic failure, so show them exactly what to do.
+        if (e?.body?.code === 'mfa_required_for_admin') {
+          setMfaRequired(true);
+        } else {
+          setErr(e.message ?? 'Could not load admin data.');
+        }
+      })
       .finally(() => setLoading(false));
   }, []);
 
   if (!isAdmin) return <div className="card">Admins only.</div>;
+  if (mfaRequired) {
+    return (
+      <div className="card">
+        <h2 style={{ marginTop: 0 }}>Two-factor authentication required</h2>
+        <p>
+          Admin access requires two-factor authentication on your account. Turn it on at{' '}
+          <a href="/profile" onClick={(e) => { e.preventDefault(); nav('/profile'); }}>
+            Profile -&gt; Account -&gt; Two-factor authentication
+          </a>
+          , then come back here.
+        </p>
+      </div>
+    );
+  }
 
   const cards: [string, string | number | undefined][] = [
     ['GMV', metrics ? money(metrics.money.gmv) : undefined],

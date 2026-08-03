@@ -66,9 +66,9 @@ Source: `server/src/config.ts`, `server/src/app.ts`, `server/src/lib/{session,ra
 - Set `sslmode=require` on `DATABASE_URL` for any managed/remote Postgres instance.
 - Keep `STRIPE_SECRET_KEY` unset until ready (no money moves; see `52_COMPLIANCE.md`).
 
-## No MFA / 2FA
+## MFA / 2FA
 
-- There is no second factor anywhere in this app, including for the `ADMIN_ALLOWED_EMAILS` allowlist. This app used to inherit MFA from the Authentik IdP; Authentik has been fully retired in favor of native email/password auth, and nothing replaced the MFA it provided. Real, open gap -- see `53_SOC2_ISO27001_AUDIT.md` for the full writeup and recommended next step (a dedicated TOTP build, not a same-turn patch).
+- RESOLVED 2026-08-03: TOTP-based two-factor authentication, self-service (Profile -> Account), with QR enrollment, 10 single-use backup codes, and a login-time challenge step. A distinctly-typed 5-minute JWT (`signMfaChallenge`/`verifyMfaChallenge` in `lib/session.ts`) proves a correct password was entered without granting session access -- `verifySession` explicitly rejects any token carrying a `typ` claim, so this challenge token can never be replayed as full API access even though it is signed with the same `SESSION_SECRET`. ENFORCED for `ADMIN_ALLOWED_EMAILS` accounts: `requireAdmin` (`auth.ts`) checks enrollment and refuses admin actions with `mfa_required_for_admin` until the admin enrolls (login itself still succeeds, so an admin is never locked out with no path to enroll). See `53_SOC2_ISO27001_AUDIT.md` for the full detail.
 
 ## SOC 2 / ISO 27001
 

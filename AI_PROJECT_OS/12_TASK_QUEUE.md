@@ -112,15 +112,10 @@ Prioritized backlog, seeded from the Go-Live runbook remaining items and the V2 
 - Related files: repo root
 - Notes: Cosmetic only; does not affect runtime.
 
-## T11 - Build MFA / 2FA (SOC 2 / ISO 27001, found 2026-08-03)
+## T11 - Build MFA / 2FA (SOC 2 / ISO 27001, found 2026-08-03) - RESOLVED
 
-- Priority: P1
-- Status: TODO
-- Owner: unassigned
-- Dependencies: none
-- Effort: M
-- Acceptance: TOTP enrollment + verification flow; recovery/backup codes; at minimum, enforced for `ADMIN_ALLOWED_EMAILS` accounts. No second factor exists anywhere today -- see `53_SOC2_ISO27001_AUDIT.md`.
-- Related files: `server/src/auth.ts`, `server/src/lib/session.ts`, `server/src/routes/auth-native.ts`
+- Status: DONE (2026-08-03). TOTP enrollment + verification flow, 10 single-use backup codes, and enforcement (not just availability) for `ADMIN_ALLOWED_EMAILS` accounts. Live-verified end to end including the real browser UI. See `53_SOC2_ISO27001_AUDIT.md`.
+- Related files: `server/src/lib/totp.ts`, `server/src/db/mfa.ts`, `server/src/routes/mfa.ts`, `server/src/routes/auth-native.ts`, `server/src/auth.ts`, `server/src/lib/session.ts`, `src/lib/mfa.ts`, `src/pages/Login.tsx`, `src/pages/profile/ProfileEditor.tsx`, `db/schema-mfa.sql`
 
 ## T12 - Automated, scheduled, tested backups (SOC 2 / ISO 27001, found 2026-08-03)
 

@@ -19,8 +19,17 @@ export type Session = {
 
 type MeResponse = { user: { id: string; email: string | null }; isAdmin: boolean; company: Company | null };
 
-// Login / register-verify / reset responses share this shape.
-type AuthResponse = { ok: boolean; token: string; user: { id: string; email: string | null }; isAdmin: boolean };
+// Login / register-verify / reset responses share this shape. A login for an
+// MFA-enabled account instead returns { ok, mfaRequired: true, challengeToken }
+// with no session yet -- see verifyMfa below.
+type AuthResponse = {
+  ok: boolean;
+  token?: string;
+  user?: { id: string; email: string | null };
+  isAdmin?: boolean;
+  mfaRequired?: boolean;
+  challengeToken?: string;
+};
 
 // One organization the signed-in user belongs to (multi-org switcher).
 export type MyOrganization = Company & { active: boolean; membership_role?: string | null };
@@ -34,8 +43,11 @@ type AuthState = {
   // Multi-org: every org this user belongs to, and switching the active one.
   organizations: MyOrganization[];
   switchOrg: (organizationId: string) => Promise<void>;
-  // Native email/password auth.
-  signIn: (email: string, password: string) => Promise<void>;
+  // Native email/password auth. signIn returns the raw response so the
+  // caller can detect { mfaRequired: true, challengeToken } and show the
+  // second-factor step instead of assuming a session was issued.
+  signIn: (email: string, password: string) => Promise<AuthResponse>;
+  verifyMfa: (challengeToken: string, code: string) => Promise<void>;
   createAccount: (email: string, password: string, passwordConfirm: string) => Promise<void>;
   resendVerification: (email: string) => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
@@ -129,6 +141,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     const resp = await apiSend<AuthResponse>('POST', '/auth/login', { email, password });
+    if (!resp.mfaRequired) await applySessionResponse(resp);
+    return resp;
+  };
+
+  const verifyMfa = async (challengeToken: string, code: string) => {
+    const resp = await apiSend<AuthResponse>('POST', '/auth/mfa-verify', { challengeToken, code });
     await applySessionResponse(resp);
   };
 
@@ -173,6 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         organizations,
         switchOrg,
         signIn,
+        verifyMfa,
         createAccount,
         resendVerification,
         forgotPassword,

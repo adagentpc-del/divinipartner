@@ -12,7 +12,7 @@ import { useAuth } from '../lib/auth';
  * Zero em dashes.
  */
 export default function Login() {
-  const { signIn, resendVerification } = useAuth();
+  const { signIn, verifyMfa, resendVerification } = useAuth();
   const nav = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -20,6 +20,9 @@ export default function Login() {
   const [err, setErr] = useState('');
   const [needsVerify, setNeedsVerify] = useState(false);
   const [resent, setResent] = useState(false);
+  // Second step: shown when the account has two-factor authentication on.
+  const [challengeToken, setChallengeToken] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState('');
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -32,8 +35,12 @@ export default function Login() {
     }
     setBusy(true);
     try {
-      await signIn(email.trim(), password);
-      nav('/app', { replace: true });
+      const resp = await signIn(email.trim(), password);
+      if (resp.mfaRequired && resp.challengeToken) {
+        setChallengeToken(resp.challengeToken);
+      } else {
+        nav('/app', { replace: true });
+      }
     } catch (e: any) {
       const msg = e?.message ?? 'Could not sign you in.';
       if (/verify/i.test(msg)) setNeedsVerify(true);
@@ -41,6 +48,67 @@ export default function Login() {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function submitMfa(e: React.FormEvent) {
+    e.preventDefault();
+    setErr('');
+    if (!challengeToken || !mfaCode.trim()) return;
+    setBusy(true);
+    try {
+      await verifyMfa(challengeToken, mfaCode.trim());
+      nav('/app', { replace: true });
+    } catch (e: any) {
+      setErr(e?.message ?? 'Incorrect code.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (challengeToken) {
+    return (
+      <div className="center">
+        <div className="auth-card">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+            <img src="/brand/mark-emerald.png" alt="Divini Partners" style={{ width: 46, height: 46, objectFit: 'contain' }} />
+            <div>
+              <h1 style={{ fontSize: 24 }}>Two-factor authentication</h1>
+              <div className="note">Enter the code from your authenticator app</div>
+            </div>
+          </div>
+          {err && (
+            <div style={{ background: '#fbe9e7', color: '#a3382f', borderRadius: 10, padding: '10px 12px', fontSize: 13, marginBottom: 14 }}>
+              {err}
+            </div>
+          )}
+          <form onSubmit={submitMfa}>
+            <label className="note" style={{ display: 'block', marginBottom: 6 }}>6-digit code, or a backup code</label>
+            <input
+              type="text"
+              value={mfaCode}
+              onChange={(e) => setMfaCode(e.target.value)}
+              placeholder="123456"
+              autoComplete="one-time-code"
+              autoFocus
+              style={{ width: '100%', padding: 12, border: '1px solid #e7e1d6', borderRadius: 10, fontSize: 15, marginBottom: 16, boxSizing: 'border-box' }}
+            />
+            <button className="btn primary block lg" disabled={busy}>
+              {busy ? 'Verifying...' : 'Verify and sign in'}
+            </button>
+          </form>
+          <p className="note" style={{ margin: '14px 0 0', lineHeight: 1.6 }}>
+            <button
+              type="button"
+              className="btn ghost"
+              style={{ padding: 0, border: 0, background: 'none', color: '#1E5D4A', cursor: 'pointer' }}
+              onClick={() => { setChallengeToken(null); setMfaCode(''); setErr(''); }}
+            >
+              Back to sign in
+            </button>
+          </p>
+        </div>
+      </div>
+    );
   }
 
   async function resend() {
