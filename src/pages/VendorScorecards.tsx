@@ -99,12 +99,13 @@ export default function VendorScorecards() {
 
       <header className="vsc-head">
         <span className="vsc-kicker">Vendor Intelligence</span>
-        <h1 className="vsc-title">Vendor Scorecard</h1>
+        <h1 className="vsc-title">Divini Vendor Scorecard</h1>
         <p className="vsc-sub">
           A composite view of vendor performance: the readiness score plus response
           time, quote turnaround, win rate, on-time delivery, change orders, client
-          satisfaction, issues, rework, and revenue generated. Fields with no data
-          yet are shown honestly rather than guessed.
+          satisfaction, issues, rework, and revenue generated (blended across
+          marketplace quotes and Divini Proposal Studio proposals). Fields with no
+          data yet are shown honestly rather than guessed.
         </p>
       </header>
 

@@ -1,6 +1,7 @@
 /**
- * Phase 3 Intelligence - Composite Vendor Scorecard routes.
- * Mount base: /vendor-scorecard (the lead wires the mount in routes.ts).
+ * Divini Vendor Scorecard (docs/DIVINI_DETERMINISTIC_TOOLS_SPEC.md,
+ * build-order slice 9; originally built pre-spec as "Composite Vendor
+ * Scorecard," Phase 3 Intelligence). Mount base: /vendor-scorecard.
  *
  *   GET /mine          the signed-in vendor's own composite scorecard
  *   GET /:vendorId     a vendor's composite scorecard (org-scoped, IDOR-safe)
@@ -15,6 +16,14 @@
  * orders, satisfaction, issues, rework, revenue) are pulled from the live tables
  * (quotes, invoices, change_orders, tasks, reviews) BY NAME, each probed with
  * to_regclass so an absent table degrades to null (unknown) rather than failing.
+ *
+ * This slice adds a second, additive transaction source: win rate, jobs
+ * completed, and revenue now also blend in Divini Proposal Studio's
+ * accepted/declined proposals (organization-scoped, alongside the existing
+ * vendor_id-scoped marketplace quotes) -- so a vendor whose real activity is
+ * mostly through Proposal Studio, not the older bid/quote marketplace flow,
+ * is not scored as "not enough data" when they have real, credible
+ * transaction history the tool simply was not reading yet.
  *
  * IDOR posture: mirrors server/src/db/vendor-readiness.ts. getVendorReadiness
  * already asserts the actor's org owns the vendor (or admin); /mine resolves the
@@ -73,6 +82,17 @@ function hoursBetween(a: string | null, b: string | null): number | null {
 async function gatherMetrics(vendorId: string): Promise<VendorScorecardMetrics> {
   const m: VendorScorecardMetrics = {};
 
+  // Blended win-rate accumulators: marketplace quotes (vendor_id-scoped) and
+  // Divini Proposal Studio proposals (organization-scoped) are two real,
+  // independent transaction sources for the same vendor -- combined into one
+  // rate rather than picking whichever happens to be non-empty, so a vendor
+  // active only through Proposal Studio is not scored as "not enough data."
+  let winTotal = 0;
+  let winAccepted = 0;
+  let jobsCompleted = 0;
+  let revenueGenerated = 0;
+  let hasRevenue = false;
+
   // --- quotes: win rate + quote turnaround (request -> sent) ---
   if (await tableExists("quotes")) {
     const won = await q1<{ total: string; accepted: string }>(
@@ -81,8 +101,8 @@ async function gatherMetrics(vendorId: string): Promise<VendorScorecardMetrics> 
          from quotes where vendor_id = $1`,
       [vendorId],
     );
-    const total = num(won?.total);
-    if (total > 0) m.win_rate = num(won?.accepted) / total;
+    winTotal += num(won?.total);
+    winAccepted += num(won?.accepted);
 
     // Quote turnaround: from the parent bid's created_at to the quote created_at,
     // when a bids table links them. Best-effort; null when unavailable.
@@ -107,10 +127,54 @@ async function gatherMetrics(vendorId: string): Promise<VendorScorecardMetrics> 
          from invoices where vendor_id = $1`,
       [vendorId],
     );
-    m.revenue_generated = num(inv?.revenue);
-    const jobs = num(inv?.jobs);
-    if (jobs > 0) m.jobs_completed = jobs;
+    revenueGenerated += num(inv?.revenue);
+    hasRevenue = true;
+    jobsCompleted += num(inv?.jobs);
   }
+
+  // --- Divini Proposal Studio: a second real transaction source, blended in
+  // (organization-scoped, since proposals have no vendors.id FK). ---
+  if ((await tableExists("proposals")) && (await tableExists("vendors"))) {
+    const org = await q1<{ organization_id: string | null }>(`select organization_id from vendors where id = $1`, [vendorId]);
+    if (org?.organization_id) {
+      const resolved = await q1<{ total: string; accepted: string }>(
+        `select count(*) as total, count(*) filter (where status = 'accepted') as accepted
+           from proposals where organization_id = $1 and status in ('accepted','declined')`,
+        [org.organization_id],
+      );
+      winTotal += num(resolved?.total);
+      winAccepted += num(resolved?.accepted);
+
+      const accepted = await q1<{ jobs: string }>(
+        `select count(*) as jobs from proposals where organization_id = $1 and status = 'accepted'`,
+        [org.organization_id],
+      );
+      jobsCompleted += num(accepted?.jobs);
+
+      if (await tableExists("proposal_line_items")) {
+        // Same total formula Proposal Studio and Divini Profit Map use:
+        // subtotal (sum of line items) minus discount plus tax, floored at 0.
+        const rev = await q1<{ cents: string }>(
+          `select coalesce(sum(
+                    greatest(0, coalesce(sub.subtotal_cents, 0) - p.discount_cents + p.tax_cents)
+                  ), 0) as cents
+             from proposals p
+             join lateral (
+               select coalesce(sum(li.quantity * li.unit_price_cents), 0) as subtotal_cents
+                 from proposal_line_items li where li.proposal_id = p.id
+             ) sub on true
+            where p.organization_id = $1 and p.status = 'accepted'`,
+          [org.organization_id],
+        );
+        revenueGenerated += num(rev?.cents) / 100;
+        hasRevenue = true;
+      }
+    }
+  }
+
+  if (winTotal > 0) m.win_rate = winAccepted / winTotal;
+  if (hasRevenue) m.revenue_generated = revenueGenerated;
+  if (jobsCompleted > 0) m.jobs_completed = jobsCompleted;
 
   // --- change_orders: count against this vendor's quotes/invoices/events ---
   if (await tableExists("change_orders")) {

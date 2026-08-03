@@ -73,7 +73,7 @@ const NAV: NavItem[] = [
   { label: 'Account Assignments', icon: 'A', to: '/vendor/accounts' },
   { label: 'Quote Approvals', icon: 'V', to: '/vendor/quote-approvals' },
   { label: 'Readiness Score', icon: 'C', to: '/vendor-readiness-score' },
-  { label: 'Vendor Scorecards', icon: 'S', to: '/vendor-scorecards' },
+  { label: 'Divini Vendor Scorecard', icon: 'S', to: '/vendor-scorecards' },
   { label: 'Documents', icon: 'D', to: '/compliance' },
   { label: 'Discovery', icon: 'V', to: '/recommendations' },
   { label: 'Bid Board', icon: 'B', to: '/bids' },

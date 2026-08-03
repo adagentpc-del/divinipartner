@@ -304,4 +304,32 @@ The complete section-by-section specification (Divini Concierge, Proposal Studio
 
 ---
 
+## Shipped: Divini Vendor Scorecard (slice 9, 2026-08-03)
+
+**Business problem solved.** A vendor's real delivery quality needs enough completed transactions to be credible, per this spec's own build-order rationale for this slice -- and a genuinely well-built pre-existing scorecard (Phase 3 Intelligence: composite score, honest "not enough data" fields, no fabrication) was reading only the older marketplace quote/bid/invoice flow. Every transaction this build has generated all session -- Proposal Studio proposals, now Vendor Scorecard's biggest real gap -- was invisible to it. A vendor active only through the newer tools would score as "not enough data" despite having real, credible history.
+
+**Users served.** Vendor (and Supplier, which shares Vendor's dashboard) -- self-service via `/mine`, or looked up by id for admin/cross-vendor views, unchanged from the original build.
+
+**Workflow completed.** Open the scorecard -> see the composite grade (readiness score blended 50/50 with the average health of every known performance field) -> see the field-by-field breakdown: response time, quote turnaround, win rate, on-time delivery, change orders, client satisfaction, issues, rework, revenue generated -> win rate, jobs completed, and revenue generated now blend two real transaction sources instead of one, added together before computing the rate/sum, not chosen from whichever happens to be non-empty.
+
+**Deterministic logic.** Unchanged pure scoring engine (`lib/vendorScorecard.ts`): fixed health curves per field type (time -> health, rate -> health, a count-per-job penalty curve for change orders/issues/rework, log-scaled revenue), composite blended from only the KNOWN fields so an absent metric neither helps nor hurts. The one new calculation this slice adds is accounting, not opinion: proposal revenue uses the exact same `subtotal - discount + tax` formula Proposal Studio and Divini Profit Map already use, so the number matches what those tools show elsewhere -- never a second, drifting computation of the same fact.
+
+**Data model.** No new tables. `gatherMetrics()` in `routes/vendor-scorecard.ts` now also reads `proposals` and `proposal_line_items` (organization-scoped, resolved from the vendor's `vendors.organization_id`), guarded by the same `to_regclass` existence probe as every other source, so an environment without Proposal Studio degrades gracefully rather than failing.
+
+**Integrations.** Reuses Divini Proposal Studio's and Divini Profit Map's exact revenue formula rather than re-deriving it -- the shared-engine principle applied across tools, not just within one (spec constraint 10).
+
+**Permissions.** Unchanged: `getVendorReadiness` still asserts org ownership (or admin) before any cross-vendor lookup; `/mine` still resolves the actor's own vendor id, IDOR-safe by construction.
+
+**Analytics captured.** No new capture -- this slice reads existing structured data (proposals, line items) that Proposal Studio and Profit Map already record; nothing new needed logging.
+
+**Subscription entitlements.** Unchanged (no explicit Vendor Scorecard tier requirement found in the spec's section 18 excerpt available to this build) -- shipped free-tier-inclusive, matching Pipeline, Follow-Up Desk, and Change Desk's "basic" free inclusion.
+
+**Tests completed.** Live end-to-end against a running server + Postgres: a fresh vendor org with zero marketplace-quote activity shows `win_rate` as genuinely unknown ("not enough data") before any transactions exist; after creating 3 accepted and 1 declined Proposal Studio proposal (zero quotes/bids/invoices at all), the scorecard correctly shows a 75% win rate and $3,000 revenue generated, sourced entirely from Proposal Studio -- exactly the gap this slice closes. Browser-verified at iPhone width: the renamed "Divini Vendor Scorecard" page showing a real composite grade, win rate, and revenue generated, all driven by real Proposal Studio activity with no marketplace quotes present at all.
+
+**Business value delivered.** A vendor's delivery-quality signal is now honest across BOTH ways a deal can be won on the platform, not just the older one -- closing exactly the credibility gap the spec's own build-order note called out ("needs enough completed transactions to be credible") now that Proposal Studio has real transaction volume to draw from.
+
+**Deferred enhancements (optional intelligence layer, per spec section 16 -- not started, no LLM dependency added).** Model-suggested performance narratives or trend detection. The deterministic engine above remains fully functional and complete without any of it. Also not built in this slice: blending Divini Change Desk's newer append-only status-history data into the existing `change_orders` count field (the count itself is already correct and unchanged; a richer signal -- e.g., time-to-resolution per change order -- is a natural additive follow-on, not required to close this slice's real gap), and extending on-time-delivery/response-time metrics to read Pipeline/Proposal Studio activity timestamps as a second source the way win-rate and revenue now do -- a reasonable next increment, not attempted here to keep this slice's change surface honest and reviewable.
+
+---
+
 *This document is updated as each slice ships, with a "shipped" section per tool matching the required implementation report format (section 20): business problem solved, users served, workflow, deterministic logic, data model, integrations, permissions, analytics captured, subscription entitlements, tests completed, business value delivered, deferred enhancements.*
