@@ -13,6 +13,7 @@ import { Router, type Request, type Response, type NextFunction } from "express"
 import { getAuth, requireUser } from "../auth.js";
 import * as db from "../db.js";
 import { getTrendsForActor, getForecastForActor } from "../db/revenue-intel.js";
+import { isTopTier, featureLockedPayload } from "../lib/entitlements.js";
 
 const h =
   (fn: (req: Request, res: Response) => Promise<unknown>) =>
@@ -34,20 +35,28 @@ function windowMonths(req: Request): number {
 const router = Router();
 router.use(requireUser);
 
-/** Revenue trend insights (revenue, quote volume, conversion, win rate, deal size, categories). */
+/** Revenue trend insights (revenue, quote volume, conversion, win rate, deal size, categories).
+ *  Pro-exclusive: no role's Free/Plus plan includes advanced reporting/analytics. */
 router.get(
   "/trends",
   h(async (req, res) => {
     const a = await actor(req);
+    if (!a.org || !isTopTier(a.org)) {
+      return res.status(403).json(featureLockedPayload(a.org ?? { tier: null, type: null }, "Advanced reporting"));
+    }
     res.json({ trends: await getTrendsForActor(a, windowMonths(req)) });
   }),
 );
 
-/** Deterministic forecast (revenue, bookings, vendor + sponsor demand, occupancy, seasonality, pipeline). */
+/** Deterministic forecast (revenue, bookings, vendor + sponsor demand, occupancy, seasonality, pipeline).
+ *  Pro-exclusive: Forecasting only ever appears on a role's top tier. */
 router.get(
   "/forecast",
   h(async (req, res) => {
     const a = await actor(req);
+    if (!a.org || !isTopTier(a.org)) {
+      return res.status(403).json(featureLockedPayload(a.org ?? { tier: null, type: null }, "Forecasting"));
+    }
     res.json({ forecast: await getForecastForActor(a, windowMonths(req)) });
   }),
 );

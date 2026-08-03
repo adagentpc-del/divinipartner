@@ -25,6 +25,12 @@ export type PlanLimitError = {
   upgrade: { tier: string; label: string; monthlyUsd: number | null } | null;
 };
 
+export type FeatureLockedError = {
+  error: 'feature_locked';
+  feature: string;
+  upgrade: { tier: string; label: string; monthlyUsd: number | null } | null;
+};
+
 /** True when a caught error is the structured "plan_limit_reached" response a
  *  checkLimit-gated route sends (server/src/lib/entitlements.ts). Use this in
  *  a create-form's catch block to show <UpgradePrompt> instead of a generic
@@ -36,6 +42,19 @@ export function isPlanLimitError(e: unknown): e is ApiError & { body: PlanLimitE
     typeof e.body === 'object' &&
     e.body !== null &&
     (e.body as { error?: string }).error === 'plan_limit_reached'
+  );
+}
+
+/** True when a caught error is the structured "feature_locked" response an
+ *  isTopTier-gated route sends (a whole feature the plan does not include at
+ *  all, not a usage cap). */
+export function isFeatureLockedError(e: unknown): e is ApiError & { body: FeatureLockedError } {
+  return (
+    e instanceof ApiError &&
+    e.status === 403 &&
+    typeof e.body === 'object' &&
+    e.body !== null &&
+    (e.body as { error?: string }).error === 'feature_locked'
   );
 }
 
@@ -75,14 +94,35 @@ const CAPABILITY_LABEL: Partial<Record<CapabilityKey, string>> = {
 };
 
 /**
- * The upgrade prompt every checkLimit-gated create form shows on a 402
- * plan_limit_reached response. One shared component so every limit reads the
- * same, on-brand way, instead of a generic error toast.
+ * The upgrade prompt every checkLimit/isTopTier-gated route shows on a
+ * blocked response -- either a usage cap (plan_limit_reached) or a whole
+ * feature the plan does not include (feature_locked). One shared component
+ * so every block reads the same, on-brand way, instead of a generic error
+ * toast.
  */
-export function UpgradePrompt({ error, onDismiss }: { error: PlanLimitError; onDismiss?: () => void }) {
+export function UpgradePrompt({
+  error,
+  onDismiss,
+}: {
+  error: PlanLimitError | FeatureLockedError;
+  onDismiss?: () => void;
+}) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
-  const label = CAPABILITY_LABEL[error.capability] ?? error.capability;
+  const isFeature = error.error === 'feature_locked';
+  const head = isFeature ? `${error.feature} is a Pro feature` : "You have reached your plan's limit";
+  const body = isFeature
+    ? error.upgrade
+      ? `Upgrade to ${error.upgrade.label}${error.upgrade.monthlyUsd != null ? ` ($${error.upgrade.monthlyUsd}/mo)` : ''} to unlock ${error.feature}.`
+      : 'Contact us to talk about a custom plan.'
+    : (() => {
+        const label = CAPABILITY_LABEL[error.capability] ?? error.capability;
+        return `Your current plan includes ${error.limit ?? 0} ${label}${
+          error.upgrade
+            ? `. Upgrade to ${error.upgrade.label}${error.upgrade.monthlyUsd != null ? ` ($${error.upgrade.monthlyUsd}/mo)` : ''} for more room to grow.`
+            : '. Contact us to talk about a custom plan.'
+        }`;
+      })();
 
   async function upgrade() {
     if (!error.upgrade) return;
@@ -111,13 +151,8 @@ export function UpgradePrompt({ error, onDismiss }: { error: PlanLimitError; onD
         .upgrade-prompt .up-dismiss{background:transparent;border:none;color:#7d776c;font-size:13px;cursor:pointer;text-decoration:underline}
         .upgrade-prompt .up-err{color:#a3382f;font-size:12.5px}
       `}</style>
-      <div className="up-head">You have reached your plan's limit</div>
-      <div className="up-body">
-        Your current plan includes {error.limit ?? 0} {label}
-        {error.upgrade
-          ? `. Upgrade to ${error.upgrade.label}${error.upgrade.monthlyUsd != null ? ` ($${error.upgrade.monthlyUsd}/mo)` : ''} for more room to grow.`
-          : '. Contact us to talk about a custom plan.'}
-      </div>
+      <div className="up-head">{head}</div>
+      <div className="up-body">{body}</div>
       {err && <div className="up-err">{err}</div>}
       <div className="up-actions">
         {error.upgrade && (

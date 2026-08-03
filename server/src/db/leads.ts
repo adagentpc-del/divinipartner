@@ -19,6 +19,7 @@
 import { q, q1 } from "../pool.js";
 import { NotFoundError, ForbiddenError, type Actor } from "../db.js";
 import { computeLeadQuality, type LeadInquiry } from "../lib/leadQuality.js";
+import { isTopTier } from "../lib/entitlements.js";
 
 // ---- Row types --------------------------------------------------------------
 
@@ -209,19 +210,26 @@ export async function createInquiry(
  * List the inquiries addressed to a venue, ranked by lead_quality_score desc
  * (newest first on ties). Org-scoped and IDOR-safe: only the owning org (or an
  * admin) may read a venue's inbox.
+ *
+ * Lead scoring itself (the score/intent VALUES) is a Pro-exclusive bullet --
+ * receiving leads is not tier-gated (Free/Plus both list lead volume, never
+ * scoring), so a Free/Plus venue still gets its full inbox, just with
+ * lead_quality_score/intent masked to null on each row.
  */
 export async function listInquiriesForVenue(
   actor: Actor,
   venueId: string,
 ): Promise<EventInquiryRow[]> {
   await assertVenueAccess(actor, venueId);
-  return q<EventInquiryRow>(
+  const rows = await q<EventInquiryRow>(
     `select * from event_inquiries
       where venue_id = $1
       order by lead_quality_score desc nulls last, created_at desc
       limit 500`,
     [venueId],
   );
+  if (actor.org && isTopTier(actor.org)) return rows;
+  return rows.map((r) => ({ ...r, lead_quality_score: null, intent: null }));
 }
 
 // ---- verification_badges: get / list / setVerified -------------------------

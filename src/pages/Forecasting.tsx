@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { apiGet } from '../lib/api';
+import { isFeatureLockedError, UpgradePrompt, type FeatureLockedError } from '../lib/entitlements';
 
 /**
  * Divini AI COO V2 - Forecasting page.
@@ -65,20 +66,22 @@ export default function Forecasting() {
   const [forecast, setForecast] = useState<Forecast | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lockError, setLockError] = useState<FeatureLockedError | null>(null);
 
   useEffect(() => {
     let alive = true;
     setLoading(true);
     setError(null);
+    setLockError(null);
     apiGet<{ forecast: Forecast }>('/revenue-intel/forecast')
       .then((res) => {
         if (alive) setForecast(res.forecast);
       })
       .catch((e) => {
-        if (alive) {
-          setError((e as Error).message);
-          setForecast(null);
-        }
+        if (!alive) return;
+        if (isFeatureLockedError(e)) setLockError(e.body);
+        else setError((e as Error).message);
+        setForecast(null);
       })
       .finally(() => {
         if (alive) setLoading(false);
@@ -112,8 +115,9 @@ export default function Forecasting() {
 
       {loading && <p className="fcast-muted">Loading forecast.</p>}
       {error && <p className="fcast-error">{error}</p>}
+      {lockError && <UpgradePrompt error={lockError} />}
 
-      {!loading && !error && !ready && (
+      {!loading && !error && !lockError && !ready && (
         <section className="fcast-card fcast-empty">
           <h2>Not enough data to forecast</h2>
           <p className="fcast-muted">

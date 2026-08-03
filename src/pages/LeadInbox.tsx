@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { apiGet, apiSend } from '../lib/api';
+import { useEntitlements } from '../lib/entitlements';
 
 /**
  * Friction Elimination - Lead Quality Engine (U4) + Verified Lead Program (U5).
@@ -107,7 +108,20 @@ const INTENT_META: Record<Intent, { label: string; bg: string; fg: string }> = {
   low: { label: 'Low', bg: 'rgba(120,120,120,0.14)', fg: '#666' },
 };
 
-function IntentChip({ intent }: { intent: Intent | null }) {
+/** `intent === null` on a lead means one of two things: this row was submitted
+ *  before scoring existed, or (far more commonly now) lead scoring is a Pro
+ *  feature and this venue is on Free/Plus (server/src/db/leads.ts masks the
+ *  score/intent fields for non-Pro orgs). We cannot tell those apart from the
+ *  row alone, so `locked` (passed by the caller, which knows the org's plan)
+ *  decides which explanation to show. */
+function IntentChip({ intent, locked }: { intent: Intent | null; locked?: boolean }) {
+  if (intent == null && locked) {
+    return (
+      <span className="chip" title="Lead scoring is a Pro feature" style={{ background: 'rgba(201,163,91,.18)', color: '#8a6d2f', fontWeight: 700 }}>
+        Pro feature
+      </span>
+    );
+  }
   const meta = intent ? INTENT_META[intent] : INTENT_META.low;
   return (
     <span
@@ -269,6 +283,9 @@ export default function LeadInbox({ venueId: venueIdProp }: { venueId?: string }
   const [badges, setBadges] = useState<Record<string, Badge[]>>({});
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
+  const { entitlements } = useEntitlements();
+  const isPro = entitlements?.planKey === 'premier';
+  const scoringMasked = inquiries.length > 0 && !isPro && inquiries.every((q) => q.intent == null);
 
   useEffect(() => {
     if (!venueId) {
@@ -322,6 +339,17 @@ export default function LeadInbox({ venueId: venueIdProp }: { venueId?: string }
 
       {err && <div className="err">{err}</div>}
       {loading && <div className="note">Loading...</div>}
+      {scoringMasked && (
+        <div
+          style={{
+            background: '#fbf7ee', border: '1px solid #C9A35B', borderRadius: 12,
+            padding: '12px 16px', margin: '0 0 14px', fontSize: 13.5, color: '#5b564c',
+          }}
+        >
+          Lead scoring and intent are a Pro feature. Upgrade to see which of these leads are
+          worth calling first.
+        </div>
+      )}
 
       <div className="card" style={{ padding: 0 }}>
         <table>
@@ -344,8 +372,8 @@ export default function LeadInbox({ venueId: venueIdProp }: { venueId?: string }
               const verified = (badges[q.id] ?? []).filter((b) => b.verified);
               return (
                 <tr key={q.id}>
-                  <td><IntentChip intent={q.intent} /></td>
-                  <td><strong>{q.lead_quality_score ?? 0}</strong></td>
+                  <td><IntentChip intent={q.intent} locked={!isPro} /></td>
+                  <td>{q.lead_quality_score != null ? <strong>{q.lead_quality_score}</strong> : <span className="note">-</span>}</td>
                   <td>{q.event_type ?? '-'}</td>
                   <td>{q.company ?? '-'}</td>
                   <td>{q.decision_maker_name ?? '-'}</td>

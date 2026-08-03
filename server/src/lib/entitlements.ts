@@ -106,6 +106,18 @@ export interface LimitCheck {
 }
 
 /**
+ * True when the org is on its role's TOP tier (Pro/premier). The single,
+ * centralized gate for the Pro-exclusive feature bullets that are never
+ * included at any lower tier for any role that has them at all --
+ * Forecasting, Advanced reporting/analytics/CRM, Lead scoring, White label,
+ * API, Automation (see lib/planCatalog.ts). Replaces per-route ad hoc
+ * `tier === "premier"` checks (spec rule 5: one service, never scattered).
+ */
+export function isTopTier(org: Pick<DbOrg, "tier">): boolean {
+  return org.tier === "premier";
+}
+
+/**
  * Would using one more unit of `key` still be within the org's plan limit?
  * `null` limit means unlimited (either the plan has no cap on this key, or
  * the role has no catalog entry yet).
@@ -134,6 +146,21 @@ const NEXT_TIER: Record<Tier, Tier | null> = {
  * the same shape regardless of which capability tripped. Not a 4xx the
  * client should retry -- it is a real "upgrade to continue" signal.
  */
+/**
+ * The response body every isTopTier-gated route sends when a Pro-exclusive
+ * feature is used below Pro. Same "upgrade to X" shape as
+ * limitExceededPayload, distinct error code (this is not a usage cap, it is
+ * a feature the plan does not include at all).
+ */
+export function featureLockedPayload(org: Pick<DbOrg, "tier" | "type">, feature: string) {
+  const roleTier = planTierFor(org.type as Role, "premier");
+  return {
+    error: "feature_locked" as const,
+    feature,
+    upgrade: roleTier ? { tier: "premier" as const, label: roleTier.label, monthlyUsd: roleTier.monthlyUsd } : null,
+  };
+}
+
 export function limitExceededPayload(
   org: Pick<DbOrg, "tier" | "platform_fee_rate" | "type">,
   key: CapabilityKey,
