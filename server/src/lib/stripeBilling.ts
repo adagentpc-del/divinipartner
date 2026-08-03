@@ -13,7 +13,8 @@
  * Zero em dashes.
  */
 import { q1 } from "../pool.js";
-import { TIERS, type Tier, type DbOrg } from "../db.js";
+import { TIERS, type Tier, type DbOrg, type Role } from "../db.js";
+import { planTierFor, type PlanTier } from "./planCatalog.js";
 
 const STRIPE_API = "https://api.stripe.com";
 
@@ -68,9 +69,10 @@ async function stripePost<T = any>(path: string, body: Record<string, unknown>):
 }
 
 /**
- * Only tiers with a real monthly price go through Stripe; TIERS itself is the
- * single source of truth for the dollar figures (spec section 2), never
- * duplicated here.
+ * Only tiers with a real monthly price go through Stripe. Vendor pricing
+ * ($45/$99) still comes straight from db.ts's TIERS (unchanged, matches the
+ * pre-existing figures); every other role's real dollar figure comes from
+ * lib/planCatalog.ts, keyed off the org's role -- never duplicated here.
  */
 export const SUBSCRIBABLE_TIERS: Tier[] = (Object.keys(TIERS) as Tier[]).filter(
   (t) => TIERS[t].monthly > 0,
@@ -78,6 +80,24 @@ export const SUBSCRIBABLE_TIERS: Tier[] = (Object.keys(TIERS) as Tier[]).filter(
 
 export function isSubscribableTier(tier: string): tier is Tier {
   return (SUBSCRIBABLE_TIERS as string[]).includes(tier);
+}
+
+/** Resolve the real, role-aware plan for a Stripe subscription checkout.
+ *  Prefers lib/planCatalog.ts (real per-role pricing); falls back to the flat
+ *  db.ts TIERS table for roles with no catalog entry (e.g. "billing"). Null
+ *  when the tier has no flat monthly price to subscribe to (e.g. Client's
+ *  Concierge, which is priced per-event, not a recurring subscription). */
+export function resolveSubscriptionPlan(
+  role: Role | string | null | undefined,
+  tier: Tier,
+): { monthlyUsd: number; label: string; catalogTier: PlanTier | null } | null {
+  const roleTier = planTierFor(role as Role, tier);
+  if (roleTier) {
+    if (roleTier.monthlyUsd == null) return null; // variable/per-event pricing, not a subscription
+    return { monthlyUsd: roleTier.monthlyUsd, label: roleTier.label, catalogTier: roleTier };
+  }
+  if (!isSubscribableTier(tier)) return null;
+  return { monthlyUsd: TIERS[tier].monthly, label: TIERS[tier].label, catalogTier: null };
 }
 
 /** Get-or-create the org's Stripe Customer, persisting the id once created. */
@@ -103,17 +123,17 @@ export async function ensureStripeCustomer(
  * paid tier by hitting cancel on the Stripe-hosted page.
  */
 export async function createSubscriptionCheckout(args: {
-  org: Pick<DbOrg, "id" | "name" | "stripe_customer_id">;
+  org: Pick<DbOrg, "id" | "name" | "stripe_customer_id" | "type">;
   email?: string | null;
   tier: Tier;
   successUrl: string;
   cancelUrl: string;
 }): Promise<{ redirect_url: string; session_ref: string }> {
   if (!isConfigured()) throw new StripeNotConfigured();
-  if (!isSubscribableTier(args.tier)) {
-    throw new Error(`${args.tier} has no monthly price and cannot be subscribed to`);
+  const plan = resolveSubscriptionPlan(args.org.type, args.tier);
+  if (!plan) {
+    throw new Error(`${args.tier} has no flat monthly price and cannot be subscribed to`);
   }
-  const plan = TIERS[args.tier];
   const customerId = await ensureStripeCustomer(args.org, args.email);
 
   const session = await stripePost<{ id: string; url: string }>("/v1/checkout/sessions", {
@@ -126,7 +146,7 @@ export async function createSubscriptionCheckout(args: {
         quantity: 1,
         price_data: {
           currency: "usd",
-          unit_amount: Math.round(plan.monthly * 100),
+          unit_amount: Math.round(plan.monthlyUsd * 100),
           recurring: { interval: "month" },
           product_data: { name: `Divini Partners - ${plan.label}` },
         },

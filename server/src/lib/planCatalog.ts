@@ -9,15 +9,27 @@
  * the long-term monetization engine. Optimizing for GMV, transaction volume,
  * retention, and cross-sell -- not subscription revenue in isolation.
  *
- * NOT YET WIRED to billing/entitlements. lib/stripeBilling.ts's
- * SUBSCRIBABLE_TIERS + db.ts's TIERS still only cover the Vendor role (the
- * Phase 1 slice, matching the pre-existing $45/$99 numbers). Phase 2 extends
- * the org-membership + Stripe-subscription plumbing built in Phase 1 to every
- * role below, keyed by (role, planKey) instead of a single global tier.
+ * Wired to billing/entitlements via planTierFor(role, tier): the shared
+ * organizations.tier enum (client/free_partner/partner/premier) still marks
+ * WHICH LEVEL an org is on (free/plus/pro), but the real dollar figure, fee
+ * rate, and feature limits for that level are looked up here, per role,
+ * instead of the flat db.ts TIERS table (which remains the fallback for the
+ * `billing` role and any role without a catalog entry).
  *
  * Zero em dashes.
  */
-import type { Role } from "../db.js";
+import type { Role, Tier } from "../db.js";
+
+/** Numeric usage limits called out in a plan's feature list (null = unlimited,
+ *  a key simply absent = not applicable to this role). Mirrors
+ *  lib/entitlements.ts's CapabilityKey; kept as plain strings here so
+ *  planCatalog.ts has no import-time dependency on entitlements.ts. */
+export type PlanLimits = Partial<Record<
+  | "events.active" | "quotes.per_event" | "quotes.compare" | "locations" | "spaces"
+  | "inventory_items" | "warehouses" | "team_seats" | "workers" | "leads.monthly"
+  | "leads.active" | "proposals.monthly" | "packages",
+  number | null
+>>;
 
 export interface PlanTier {
   key: string;
@@ -32,6 +44,7 @@ export interface PlanTier {
   seatsIncluded?: number;
   features: string[];
   priceNote?: string;
+  limits?: PlanLimits;
 }
 
 export interface RolePlanCatalog {
@@ -63,6 +76,7 @@ export const PLAN_CATALOG: RolePlanCatalog[] = [
           "10 quote requests/event",
           "Compare 3 quotes",
         ],
+        limits: { "events.active": 2, "quotes.per_event": 10, "quotes.compare": 3 },
       },
       {
         key: "plus",
@@ -83,6 +97,7 @@ export const PLAN_CATALOG: RolePlanCatalog[] = [
           "Unlimited collaborators",
           "Priority support",
         ],
+        limits: { "events.active": 10, "quotes.per_event": null, "quotes.compare": 10 },
       },
       {
         key: "concierge",
@@ -115,6 +130,7 @@ export const PLAN_CATALOG: RolePlanCatalog[] = [
           "Preferred vendors",
           "Basic analytics",
         ],
+        limits: { locations: 1, spaces: 2, "leads.monthly": 10, "proposals.monthly": 5 },
       },
       {
         key: "plus",
@@ -137,6 +153,7 @@ export const PLAN_CATALOG: RolePlanCatalog[] = [
           "Calendar sync",
           "Website widget",
         ],
+        limits: { locations: 3, "leads.monthly": null, "proposals.monthly": null, team_seats: 5 },
       },
       {
         key: "pro",
@@ -160,6 +177,7 @@ export const PLAN_CATALOG: RolePlanCatalog[] = [
           "Advanced CRM",
           "Lead scoring",
         ],
+        limits: { locations: 15, team_seats: 15 },
       },
     ],
   },
@@ -185,6 +203,7 @@ export const PLAN_CATALOG: RolePlanCatalog[] = [
           "Messaging",
           "5 active leads",
         ],
+        limits: { "leads.active": 5, packages: 3 },
       },
       {
         key: "plus",
@@ -206,6 +225,7 @@ export const PLAN_CATALOG: RolePlanCatalog[] = [
           "Analytics",
           "Website embed",
         ],
+        limits: { "leads.active": null, team_seats: 3 },
       },
       {
         key: "pro",
@@ -228,6 +248,7 @@ export const PLAN_CATALOG: RolePlanCatalog[] = [
           "API",
           "Automation",
         ],
+        limits: { team_seats: 10 },
       },
     ],
   },
@@ -242,6 +263,7 @@ export const PLAN_CATALOG: RolePlanCatalog[] = [
         platformFeeRate: 0.05,
         feeCapCents: 250000,
         features: ["50 inventory items", "Quotes", "Payments", "1 warehouse", "Availability"],
+        limits: { inventory_items: 50, warehouses: 1 },
       },
       {
         key: "plus",
@@ -260,6 +282,7 @@ export const PLAN_CATALOG: RolePlanCatalog[] = [
           "QR codes",
           "Utilization reporting",
         ],
+        limits: { inventory_items: 1000, team_seats: 5 },
       },
       {
         key: "pro",
@@ -280,6 +303,7 @@ export const PLAN_CATALOG: RolePlanCatalog[] = [
           "White label",
           "Advanced analytics",
         ],
+        limits: { inventory_items: 10000 },
       },
     ],
   },
@@ -294,6 +318,7 @@ export const PLAN_CATALOG: RolePlanCatalog[] = [
         platformFeeRate: 0.05,
         feeCapCents: 250000,
         features: ["2 active events", "RFPs", "Budgets", "Timeline", "Client portal", "Payments"],
+        limits: { "events.active": 2 },
       },
       {
         key: "plus",
@@ -314,6 +339,7 @@ export const PLAN_CATALOG: RolePlanCatalog[] = [
           "Guest lists",
           "Templates",
         ],
+        limits: { "events.active": 15, team_seats: 5 },
       },
       {
         key: "pro",
@@ -337,6 +363,7 @@ export const PLAN_CATALOG: RolePlanCatalog[] = [
           "Sponsor management",
           "Registration",
         ],
+        limits: { "events.active": 100, team_seats: 15 },
       },
     ],
   },
@@ -367,6 +394,7 @@ export const PLAN_CATALOG: RolePlanCatalog[] = [
         platformFeeRate: null,
         seatsIncluded: 25,
         features: ["25 workers", "Scheduling", "Messaging", "Call sheets", "Payroll export", "Time tracking"],
+        limits: { workers: 25 },
       },
       {
         key: "pro",
@@ -384,6 +412,7 @@ export const PLAN_CATALOG: RolePlanCatalog[] = [
           "Analytics",
           "API",
         ],
+        limits: { workers: 250 },
       },
     ],
   },
@@ -413,6 +442,7 @@ export const PLAN_CATALOG: RolePlanCatalog[] = [
           "Deliverables",
           "Renewals",
         ],
+        limits: { team_seats: 5 },
       },
       {
         key: "pro",
@@ -431,6 +461,7 @@ export const PLAN_CATALOG: RolePlanCatalog[] = [
           "API",
           "White label",
         ],
+        limits: { team_seats: 15 },
       },
     ],
   },
@@ -475,4 +506,30 @@ export const ENTERPRISE_TRIGGERS: string[] = [
 
 export function planCatalogForRole(role: Role): RolePlanCatalog | undefined {
   return PLAN_CATALOG.find((r) => r.role === role);
+}
+
+/**
+ * Maps the shared `organizations.tier` enum (client/free_partner/partner/
+ * premier/white_label) to a plan LEVEL (0 = free, 1 = plus, 2 = pro), so the
+ * existing tier column keeps working as "which level is this org on" while
+ * the actual dollar figure and feature list are looked up per role. Client's
+ * "concierge" tier and Installer's "worker"/"team" naming still line up by
+ * position: tiers[0] is always the free/entry tier, tiers[2] is always the
+ * top tier.
+ */
+const TIER_LEVEL: Record<Tier, number> = {
+  client: 0,
+  free_partner: 0,
+  partner: 1,
+  premier: 2,
+};
+
+/** The real, role-specific plan (price/fee/features) for an org's tier LEVEL,
+ *  or undefined when the role has no catalog entry yet (falls back to the
+ *  flat TIERS table -- see lib/entitlements.ts, lib/stripeBilling.ts). */
+export function planTierFor(role: Role | string | null | undefined, tier: Tier): PlanTier | undefined {
+  const catalog = planCatalogForRole(role as Role);
+  if (!catalog) return undefined;
+  const level = TIER_LEVEL[tier] ?? 0;
+  return catalog.tiers[level];
 }

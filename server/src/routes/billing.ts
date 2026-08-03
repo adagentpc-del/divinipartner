@@ -17,13 +17,33 @@ import * as db from "../db.js";
 import { TIERS, type Tier } from "../db.js";
 import {
   isConfigured,
-  isSubscribableTier,
-  SUBSCRIBABLE_TIERS,
+  resolveSubscriptionPlan,
   createSubscriptionCheckout,
   cancelSubscription,
   StripeNotConfigured,
 } from "../lib/stripeBilling.js";
+import { planCatalogForRole } from "../lib/planCatalog.js";
 import { PUBLIC_APP_URL, BASE_PATH } from "../config.js";
+
+/** The org's real, role-aware subscribable tiers (Plus/Pro-equivalent, with a
+ *  flat monthly price) -- from planCatalog.ts when the role has a catalog
+ *  entry, otherwise the flat TIERS table (Phase 1 fallback). */
+function subscribableTiersFor(orgType: string | null): { key: Tier; label: string; monthly: number; feeRate: number }[] {
+  const catalog = planCatalogForRole(orgType as any);
+  if (catalog) {
+    const tierKeys: Tier[] = ["partner", "premier"];
+    return tierKeys
+      .map((key, i) => {
+        const t = catalog.tiers[i + 1]; // [0]=free, [1]=plus, [2]=pro
+        if (!t || t.monthlyUsd == null) return null;
+        return { key, label: t.label, monthly: t.monthlyUsd, feeRate: t.platformFeeRate ?? 0 };
+      })
+      .filter((v): v is { key: Tier; label: string; monthly: number; feeRate: number } => v != null);
+  }
+  return (["partner", "premier"] as Tier[])
+    .filter((t) => TIERS[t].monthly > 0)
+    .map((t) => ({ key: t, label: TIERS[t].label, monthly: TIERS[t].monthly, feeRate: TIERS[t].feeRate }));
+}
 
 const h =
   (fn: (req: Request, res: Response) => Promise<unknown>) =>
@@ -48,7 +68,7 @@ router.get(
     if (!actor.org) return res.json({ configured: isConfigured(), organization: null });
     res.json({
       configured: isConfigured(),
-      subscribable_tiers: SUBSCRIBABLE_TIERS.map((t) => ({ key: t, ...TIERS[t] })),
+      subscribable_tiers: subscribableTiersFor(actor.org.type),
       organization: {
         id: actor.org.id,
         tier: actor.org.tier,
@@ -69,10 +89,10 @@ router.post(
     if (!actor.org) return res.status(400).json({ error: "register an organization first" });
 
     const tier = String(req.body?.tier || "") as Tier;
-    if (!isSubscribableTier(tier)) {
-      return res.status(400).json({
-        error: `tier must be one of: ${SUBSCRIBABLE_TIERS.join(", ")}`,
-      });
+    const plan = resolveSubscriptionPlan(actor.org.type, tier);
+    if (!plan) {
+      const options = subscribableTiersFor(actor.org.type).map((t) => t.key);
+      return res.status(400).json({ error: `tier must be one of: ${options.join(", ")}` });
     }
     if (!isConfigured()) {
       return res.status(503).json({ error: "subscription billing is not configured yet" });

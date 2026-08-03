@@ -164,6 +164,7 @@ import campaigns from "./routes/campaigns.js";
 import orgs from "./routes/orgs.js";
 import billing from "./routes/billing.js";
 import entitlementsRouter from "./routes/entitlements.js";
+import plans from "./routes/plans.js";
 
 const router = Router();
 
@@ -304,6 +305,7 @@ router.use("/admin/campaigns", campaigns);
 router.use("/orgs", orgs);
 router.use("/billing", billing);
 router.use("/entitlements", entitlementsRouter);
+router.use("/plans", plans);
 
 export function errorHandler(err: any, _req: Request, res: Response, _next: NextFunction) {
   if (err instanceof ForbiddenError) return res.status(403).json({ error: err.message });

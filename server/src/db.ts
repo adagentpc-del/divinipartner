@@ -9,6 +9,7 @@
  * dashboards and platform fees.
  */
 import { q, q1, pool } from "./pool.js";
+import { planTierFor } from "./lib/planCatalog.js";
 
 export class ForbiddenError extends Error {
   status = 403;
@@ -209,19 +210,30 @@ export async function applySubscriptionUpdate(args: {
   tier?: string | null;
 }): Promise<void> {
   let orgId = args.orgId ?? null;
-  if (!orgId && args.stripeCustomerId) {
+  let orgType: string | null = null;
+  if (orgId) {
+    const row = await q1<{ type: string | null }>(`select type from organizations where id = $1`, [orgId]);
+    orgType = row?.type ?? null;
+  } else if (args.stripeCustomerId) {
     const org = await getOrgByStripeCustomerId(args.stripeCustomerId);
     orgId = org?.id ?? null;
+    orgType = org?.type ?? null;
   }
   if (!orgId) return;
 
   if (args.status === "active" || args.status === "trialing") {
     const tier = args.tier && (TIERS as Record<string, unknown>)[args.tier] ? (args.tier as Tier) : null;
     if (tier) {
+      // Role-aware fee rate: lib/planCatalog.ts is authoritative when the org's
+      // role has a real plan catalog entry (a role with platformFeeRate: null,
+      // e.g. client/installer/sponsor, correctly gets 0 -- never TIERS' rate).
+      // Falls back to the flat TIERS rate for roles with no catalog entry.
+      const roleTier = planTierFor(orgType as Role, tier);
+      const feeRate = roleTier ? roleTier.platformFeeRate ?? 0 : TIERS[tier].feeRate;
       await q1(
         `update organizations set tier = $2, platform_fee_rate = $3, subscription_status = 'active',
            stripe_subscription_id = $4, updated_at = now() where id = $1`,
-        [orgId, tier, TIERS[tier].feeRate, args.stripeSubscriptionId],
+        [orgId, tier, feeRate, args.stripeSubscriptionId],
       );
     } else {
       await q1(
