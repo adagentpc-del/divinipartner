@@ -42,7 +42,7 @@ export function useMe(): {
     email: session.user?.email ?? null,
     role: auth?.isAdmin ? 'admin' : company?.kind ?? undefined,
     isAdmin: !!auth?.isAdmin,
-    organization: company ? { name: company.name, tier: undefined } : null,
+    organization: company ? { name: company.name, tier: company.tier } : null,
   };
 
   return { me, loading, signOut: () => { void auth?.signOut?.(); }, organizations, switchOrg };

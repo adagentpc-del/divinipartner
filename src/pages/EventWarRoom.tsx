@@ -86,6 +86,21 @@ export default function EventWarRoom({ eventId }: { eventId: string }) {
     }
   }
 
+  if (!eventId) {
+    return (
+      <div className="card">
+        <h3 style={{ margin: '0 0 6px' }}>Divini Event Command: Risk & Alerts</h3>
+        <p className="note" style={{ margin: 0 }}>
+          This view needs a specific event. Open an event from your event list, then
+          use its Risk &amp; Alerts tab to see the live scan for that event.
+        </p>
+        <a className="btn" href="/events" style={{ display: 'inline-block', marginTop: 12 }}>
+          Go to your events
+        </a>
+      </div>
+    );
+  }
+
   if (lockError) return <UpgradePrompt error={lockError} />;
 
   if (loading && !data) {

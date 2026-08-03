@@ -15,12 +15,31 @@ export default function SearchBids() {
   useEffect(() => {
     if (!company) return;
     (async () => {
-      const prof = await getVendorProfile(company.id);
-      const svc = prof?.services ?? [];
+      // getVendorProfile has no live backing endpoint; degrade to an
+      // unfiltered category list rather than leaving the page stuck loading
+      // forever on the failed fetch.
+      let svc: string[] = [];
+      try {
+        const prof = await getVendorProfile(company.id);
+        svc = prof?.services ?? [];
+      } catch {
+        svc = [];
+      }
       setServices(svc); setActive(svc);
-      const pkgs = await getOpenPackages({ categories: svc });
-      setRows(pkgs);
-      setLoading(false);
+      // getOpenPackages() (GET /packages/open) also has no live backing
+      // endpoint -- /api/packages is org-scoped CRUD for the caller's own
+      // packages (server/src/routes/packages.ts), not a cross-org open-bid
+      // marketplace listing. Degrade to an empty result rather than an
+      // unhandled rejection; the empty state below already reads correctly
+      // ("No open bids match yet").
+      try {
+        const pkgs = await getOpenPackages({ categories: svc });
+        setRows(pkgs);
+      } catch {
+        setRows([]);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [company]);
 
