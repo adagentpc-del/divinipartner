@@ -8,7 +8,7 @@
  * user to an `organization` (the account). Roles + tiers drive the role-based
  * dashboards and platform fees.
  */
-import { q1, pool } from "./pool.js";
+import { q, q1, pool } from "./pool.js";
 
 export class ForbiddenError extends Error {
   status = 403;
@@ -58,7 +58,14 @@ export type DbOrg = {
   platform_fee_rate: string | null;
   verification_status: string | null;
   white_label_status: string | null;
+  stripe_customer_id?: string | null;
+  stripe_subscription_id?: string | null;
+  subscription_status?: string | null;
 };
+
+/** One organization a user belongs to, from the multi-org switcher's point of
+ *  view: is it the org currently active on their session (users.organization_id)? */
+export type MyOrganization = DbOrg & { membership_role: string | null; active: boolean };
 
 const USER_COLS = "id, oidc_sub, email, name, role, organization_id";
 
@@ -118,15 +125,177 @@ export async function getActor(idOrSub: string, email: string | null): Promise<A
   return { user, org };
 }
 
-/** The organization the user belongs to (or null). */
+const ORG_COLS =
+  "o.id, o.name, o.type, o.tier, o.platform_fee_rate, o.verification_status, o.white_label_status, " +
+  "o.stripe_customer_id, o.stripe_subscription_id, o.subscription_status";
+
+/** The organization the user belongs to (or null). This is the ACTIVE org for
+ *  the session (users.organization_id) -- see switchActiveOrganization for
+ *  how a user with multiple org memberships changes which one is active. */
 export async function getMyOrg(userId: string): Promise<DbOrg | null> {
   return q1<DbOrg>(
-    `select o.id, o.name, o.type, o.tier, o.platform_fee_rate, o.verification_status, o.white_label_status
+    `select ${ORG_COLS}
        from organizations o
        join users u on u.organization_id = o.id
       where u.id = $1`,
     [userId],
   );
+}
+
+/**
+ * Every organization this user belongs to (multi-org), newest membership
+ * first, flagged with which one is currently active on their session. Used
+ * to render the org switcher.
+ */
+export async function listMyOrganizations(userId: string): Promise<MyOrganization[]> {
+  return q<MyOrganization>(
+    `select ${ORG_COLS}, m.role as membership_role,
+            (u.organization_id = o.id) as active
+       from organization_memberships m
+       join organizations o on o.id = m.organization_id
+       join users u on u.id = m.user_id
+      where m.user_id = $1
+      order by m.is_default desc, m.created_at asc`,
+    [userId],
+  );
+}
+
+/**
+ * Switch the user's ACTIVE organization to one they already belong to.
+ * Verifies membership first (never lets a user switch into an org they are
+ * not a member of). Returns the newly active org, or null if not a member.
+ */
+export async function switchActiveOrganization(userId: string, organizationId: string): Promise<DbOrg | null> {
+  const member = await q1<{ organization_id: string }>(
+    `select organization_id from organization_memberships where user_id = $1 and organization_id = $2`,
+    [userId, organizationId],
+  );
+  if (!member) return null;
+  await q1(`update users set organization_id = $2, updated_at = now() where id = $1`, [
+    userId,
+    organizationId,
+  ]);
+  return q1<DbOrg>(`select ${ORG_COLS} from organizations o where o.id = $1`, [organizationId]);
+}
+
+/** Look up an org by its Stripe Customer id (used by the webhook's
+ *  invoice.payment_failed handler, which only carries a customer id). */
+export async function getOrgByStripeCustomerId(stripeCustomerId: string): Promise<DbOrg | null> {
+  return q1<DbOrg>(`select ${ORG_COLS} from organizations o where o.stripe_customer_id = $1`, [
+    stripeCustomerId,
+  ]);
+}
+
+/**
+ * Apply a Stripe subscription lifecycle event to the org it belongs to.
+ * Idempotent: replaying the same event just re-applies the same deterministic
+ * state, so the webhook can safely retry. Resolves the org from `orgId`
+ * (checkout session / subscription metadata) or, failing that, from the
+ * Stripe customer id. A no-op if neither resolves to a known org.
+ *
+ *   active / trialing            -> promote to the subscribed tier (real fee
+ *                                    rate + monthly price), subscription_status active
+ *   past_due                     -> keep the current tier (grace period, do
+ *                                    not yank access on a single missed payment),
+ *                                    subscription_status past_due
+ *   canceled / unpaid / expired  -> downgrade to the free tier, clear the
+ *                                    subscription id, subscription_status canceled
+ */
+export async function applySubscriptionUpdate(args: {
+  orgId?: string | null;
+  stripeCustomerId?: string | null;
+  stripeSubscriptionId: string;
+  status: string;
+  tier?: string | null;
+}): Promise<void> {
+  let orgId = args.orgId ?? null;
+  if (!orgId && args.stripeCustomerId) {
+    const org = await getOrgByStripeCustomerId(args.stripeCustomerId);
+    orgId = org?.id ?? null;
+  }
+  if (!orgId) return;
+
+  if (args.status === "active" || args.status === "trialing") {
+    const tier = args.tier && (TIERS as Record<string, unknown>)[args.tier] ? (args.tier as Tier) : null;
+    if (tier) {
+      await q1(
+        `update organizations set tier = $2, platform_fee_rate = $3, subscription_status = 'active',
+           stripe_subscription_id = $4, updated_at = now() where id = $1`,
+        [orgId, tier, TIERS[tier].feeRate, args.stripeSubscriptionId],
+      );
+    } else {
+      await q1(
+        `update organizations set subscription_status = 'active', stripe_subscription_id = $2, updated_at = now()
+         where id = $1`,
+        [orgId, args.stripeSubscriptionId],
+      );
+    }
+  } else if (args.status === "past_due") {
+    await q1(`update organizations set subscription_status = 'past_due', updated_at = now() where id = $1`, [
+      orgId,
+    ]);
+  } else if (args.status === "canceled" || args.status === "unpaid" || args.status === "incomplete_expired") {
+    await q1(
+      `update organizations set tier = 'free_partner', platform_fee_rate = $2, subscription_status = 'canceled',
+         stripe_subscription_id = null, updated_at = now() where id = $1`,
+      [orgId, TIERS.free_partner.feeRate],
+    );
+  }
+}
+
+/**
+ * Create an ADDITIONAL organization for a user who already has one (or more)
+ * -- e.g. a planner who also runs a venue, or a sponsor agency adding a
+ * second brand. Unlike registerOrganization (the first-time onboarding path,
+ * which is a no-op if the user already has an org), this always creates a
+ * new org + membership row. The newly created org becomes the active org
+ * only when `makeActive` is true; otherwise the user's current active org is
+ * left unchanged and they can switch into the new one later.
+ */
+export async function addOrganization(
+  userId: string,
+  payload: { role: Role; orgName: string; tier?: Tier; makeActive?: boolean },
+): Promise<DbOrg> {
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    const tier: Tier = payload.tier && (TIERS as Record<string, unknown>)[payload.tier]
+      ? payload.tier
+      : "free_partner";
+    const feeRate = TIERS[tier].feeRate;
+    const org = (
+      await client.query(
+        `insert into organizations (name, type, tier, platform_fee_rate, subscription_status,
+           verification_status, white_label_status, included_seats)
+         values ($1,$2,$3,$4,'active','draft','not_eligible',1)
+         returning id, name, type, tier, platform_fee_rate, verification_status, white_label_status,
+           stripe_customer_id, stripe_subscription_id, subscription_status`,
+        [payload.orgName, payload.role, tier, feeRate],
+      )
+    ).rows[0];
+
+    await client.query(
+      `insert into organization_memberships (user_id, organization_id, role, is_default)
+       values ($1, $2, $3, false)
+       on conflict (user_id, organization_id) do nothing`,
+      [userId, org.id, payload.role],
+    );
+
+    if (payload.makeActive) {
+      await client.query(`update users set organization_id = $2, updated_at = now() where id = $1`, [
+        userId,
+        org.id,
+      ]);
+    }
+
+    await client.query("commit");
+    return org as DbOrg;
+  } catch (e) {
+    await client.query("rollback");
+    throw e;
+  } finally {
+    client.release();
+  }
 }
 
 /**
@@ -210,8 +379,15 @@ export async function registerOrganization(
       exhibitor: "free_partner",
       viewer: "client",
     };
-    const tier: Tier = (TIERS as Record<string, unknown>)[payload.tier]
-      ? payload.tier
+    // Only FREE tiers may be self-declared at registration -- a paid tier
+    // (partner/premier) requires an actual Stripe subscription (see
+    // POST /billing/subscribe), never a client-submitted field here. Any paid
+    // tier requested at registration time is coerced down to the free tier;
+    // the caller upgrades for real, post-registration, through billing.
+    const requestedTier = (TIERS as Record<string, unknown>)[payload.tier] ? payload.tier : null;
+    const requestedIsFree = requestedTier ? TIERS[requestedTier].monthly === 0 : false;
+    const tier: Tier = requestedTier && requestedIsFree
+      ? requestedTier
       : roleDefaultTier[payload.role] ?? "free_partner";
     const feeRate = TIERS[tier].feeRate;
     // organizations.type is free text (no DB CHECK); the role maps straight to it,
@@ -230,6 +406,13 @@ export async function registerOrganization(
       `update users set role = $2, organization_id = $3, account_type = $2, status = 'active', updated_at = now()
         where id = $1`,
       [u.id, payload.role, org.id],
+    );
+
+    await client.query(
+      `insert into organization_memberships (user_id, organization_id, role, is_default)
+       values ($1, $2, $3, true)
+       on conflict (user_id, organization_id) do nothing`,
+      [u.id, org.id, payload.role],
     );
 
     await client.query(

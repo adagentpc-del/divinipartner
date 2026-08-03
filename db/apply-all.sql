@@ -5076,3 +5076,55 @@ create table if not exists event_schedule_sends (
   sent_at timestamptz default now(),
   unique (event_id, milestone, audience)
 );
+
+-- ============================================================================
+-- Divini Partners - Organization memberships (multi-org support).
+--
+-- A user may belong to more than one organization (e.g. one person running
+-- both a venue and a planning company, or a sponsor agency managing several
+-- brand accounts). `users.organization_id` remains the user's ACTIVE org for
+-- the current session -- every existing query that joins through it keeps
+-- working unmodified. This table is the membership ledger: which orgs a user
+-- can switch into, plus their role within each one.
+--
+-- Additive only. Backfilled from the existing single-org rows so today's
+-- users show up as a member of their current org with no behavior change.
+-- Zero em dashes.
+-- ============================================================================
+
+create table if not exists organization_memberships (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  organization_id uuid not null references organizations(id) on delete cascade,
+  role text,
+  is_default boolean not null default false,
+  created_at timestamptz default now(),
+  unique (user_id, organization_id)
+);
+create index if not exists idx_org_memberships_user on organization_memberships(user_id);
+create index if not exists idx_org_memberships_org on organization_memberships(organization_id);
+
+-- Backfill: every user currently pointing at an org becomes a member of it.
+insert into organization_memberships (user_id, organization_id, role, is_default)
+select id, organization_id, role, true
+from users
+where organization_id is not null
+on conflict (user_id, organization_id) do nothing;
+
+-- ============================================================================
+-- Divini Partners - Real recurring subscription billing (Phase 1 of the
+-- role-based subscription/entitlement system).
+--
+-- Adds Stripe Customer + Subscription tracking to organizations so tier
+-- upgrades are backed by an actual recurring charge instead of a
+-- self-declared, unpaid `tier` value. Additive only.
+-- Zero em dashes.
+-- ============================================================================
+
+alter table organizations add column if not exists stripe_customer_id text;
+alter table organizations add column if not exists stripe_subscription_id text;
+
+create unique index if not exists idx_organizations_stripe_customer
+  on organizations(stripe_customer_id) where stripe_customer_id is not null;
+create unique index if not exists idx_organizations_stripe_subscription
+  on organizations(stripe_subscription_id) where stripe_subscription_id is not null;

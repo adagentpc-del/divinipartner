@@ -182,24 +182,28 @@ Covered in depth in §1.3c above (dual role source, `users.role` CHECK constrain
 
 ---
 
-## 7. Open decisions needed before implementation starts
+## 7. Open decisions — RESOLVED (2026-08-03)
 
-1. **Legacy tiers (V1) vs. Pricing V2** as the foundation for the new role-based plans. This audit recommends **legacy tiers** (matches the spec's exact dollar figures) — confirm.
-2. **Grandfathering**: what happens to organizations currently on `tier='partner'`/`'premier'` with no Stripe subscription once real billing goes live? (Grace period + auto-downgrade vs. one-time backfill charge vs. manual outreach.)
-3. **Per-role pricing**: confirm the Vendor $45/$99 numbers are the *only* prices to preserve verbatim, and that Venue/Supplier/Planner/Installer/Sponsor/Client plans are new price points to be designed (the spec says "may have different subscription prices" but doesn't give numbers for the other 6 roles) — need those numbers, or a mandate to propose them, before Phase 2 (Stripe Products/Prices) can be created.
-4. **Multi-org UX**: should a user with multiple orgs get an explicit org-switcher (like Slack workspace switching), or is "multi-org" scoped more narrowly (e.g. only certain roles, like Sponsor agencies managing multiple brands) for this phase?
-5. **Feature-flags route**: leave broken/out of scope, or fix as a quick unrelated win while in this area of the code?
+1. **Legacy tiers (V1) vs. Pricing V2**: **Legacy V1 tiers.** Confirmed as the foundation. Fee/rate numbers in §2 of the spec are binding.
+2. **Grandfathering**: **Not applicable.** Platform confirmed to have no real users yet — no migration/grace-period logic needed. Existing `tier`/`subscription_status` rows can be treated as test data.
+3. **Per-role pricing**: **RESOLVED with real numbers**, provided directly by the user (2026-08-03), optimized for GMV/transactions/retention/cross-sell over subscription revenue in isolation -- platform fees stay the long-term monetization engine, subscriptions are priced as a "no-brainer" upgrade. Captured verbatim as structured data in `server/src/lib/planCatalog.ts` (`PLAN_CATALOG`, `ADD_ONS`, `ENTERPRISE_TRIGGERS`) so it is not re-derived. Not yet wired to billing/entitlements -- that wiring is Phase 2. Headline numbers: Client Free/$19 Plus/$149-499 Concierge (no platform fee); Venue Free-5%/$149 Plus-2.5%/$399 Pro-1%; Vendor Free-5%/$45 Plus-2.5%/$99 Pro-1% (unchanged, matches what already shipped); Supplier Free-5%/$99 Plus-2.5%/$249 Pro-1%; Planner Free-5%/$149 Plus-2.5%/$349 Pro-1%; Installer Worker-free/$79 Team/$249 Pro (no platform fee); Sponsor Free/$99 Plus/$349 Pro (no platform fee). Plus a shared add-on price list (seats, locations, warehouses, storage, AI credits, Verified Business, Background Check, Featured Listing, booking widget, SMS) and Enterprise auto-trigger criteria (25+ team, 15+ locations, 250+ active events, multi-brand/office, SSO, heavy API, custom procurement, dedicated AM).
+4. **Multi-org UX**: **Full org-switcher.** `organization_memberships` table plus a visible nav switcher, each org with its own subscription/entitlements, in Phase 1.
+5. **Feature-flags route**: left out of scope for this project (unrelated pre-existing gap, not touched).
+
+Implementation may now proceed to Phase 1.
 
 ## 8. Proposed implementation phases
 
 Each phase is independently shippable and verifiable (tests + live smoke test, matching this session's standard throughout). Recommend tackling in this order; **stopping after Phase 1 for a check-in is reasonable given the size of Phase 1 alone.**
 
-- **Phase 1 — Foundation (blocking everything else)**
-  - `stripe_customer_id` on `organizations`; Stripe Customer creation on first subscription checkout.
-  - Real Stripe subscription Checkout (`mode: "subscription"`) for the existing Vendor Free/Plus/Pro plans (reusing the existing dollar figures) — the smallest possible real-billing slice, proving the pattern before extending to 6 more roles.
-  - Subscription lifecycle webhook handling (`customer.subscription.*`, `invoice.payment_failed`) → `organizations.subscription_status`/`tier`, idempotent.
-  - `server/src/lib/entitlements.ts` skeleton (fee-rate delegation only, no limits yet) so routes have one place to start calling into.
-  - `organization_memberships` table (additive), minimal "act as org" support (only where multi-org is actually exercised by an existing flow, e.g. profile switching if any exists today — none was found in this audit, so this is genuinely new UX).
+- **Phase 1 — Foundation (blocking everything else) -- COMPLETE, live-verified (2026-08-03)**
+  - `stripe_customer_id` + `stripe_subscription_id` on `organizations` (`db/schema-billing.sql`); `ensureStripeCustomer` in `server/src/lib/stripeBilling.ts`.
+  - Real Stripe subscription Checkout (`mode: "subscription"`) for the existing Vendor Free/Plus/Pro plans via `POST /api/billing/subscribe` -- the smallest possible real-billing slice, proving the pattern before extending to 6 more roles in Phase 2. `POST /register` no longer accepts a client-submitted paid tier (verified: requesting `tier: "premier"` at registration is coerced to `free_partner`).
+  - Subscription lifecycle webhook handling added to the existing `/api/payments/webhook/stripe` handler: `customer.subscription.created/updated/deleted` promote/downgrade the org's tier + fee rate; `invoice.payment_failed` marks `past_due` (grace period, tier is not yanked on a single missed payment) ahead of the subscription-level event. Idempotent. Live-verified end to end with a real HMAC-signed synthetic event: tier promotion, past_due grace, and cancellation downgrade all confirmed against a running server + Postgres.
+  - `server/src/lib/entitlements.ts` (fee-rate/cap delegation to `platformFees.ts`; `CapabilityKey`/`checkLimit` typed out, all limits `null`/unlimited until Phase 2/3) + `GET /api/entitlements`.
+  - `organization_memberships` table (additive, backfilled from every existing `users.organization_id`), full org-switcher: `GET /api/orgs/mine`, `POST /api/orgs` (create an additional org), `POST /api/orgs/switch`. SPA: `src/lib/auth.tsx` exposes `organizations`/`switchOrg`; a gold pill `<select>` in `DashboardShell.tsx`'s topbar appears whenever a user belongs to more than one org. Verified live in a real browser at iPhone width (390px): switching orgs re-renders the entire dashboard (Vendor Dashboard -> Planner Studio) with no reload.
+  - **Bonus fix (audit gap #1, now closed):** the $2,500 fee cap was previously only enforced in `db/quotes.ts`, not in the real payment-recording path (`db/payments.ts`'s `computeFees`). `computeFees` now delegates to `platformFees.ts`'s `computePlatformFee` (per-transaction cap), and a new `applyEventFeeCap` enforces the per-event CUMULATIVE cap by summing prior recorded payments on the same event -- mirroring, and now consistent with, `quotes.ts`'s logic. Live-verified: a single $100,000 booking capped to exactly $2,500; a second payment on the same event correctly charged $0 once the cap was already reached.
+  - **Per-role pricing (audit gap re: decision #3) now fully specified** by the user with real numbers for all 7 roles, captured as structured data in `server/src/lib/planCatalog.ts` (`PLAN_CATALOG`, `ADD_ONS`, `ENTERPRISE_TRIGGERS`). Not yet wired to billing/entitlements -- that wiring is Phase 2.
 - **Phase 2 — Per-role plan catalog**
   - Define plans/prices for the remaining 6 roles (pending decision #3 above).
   - Extend `entitlements.ts` with real `limits` per plan.

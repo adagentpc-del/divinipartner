@@ -716,7 +716,13 @@ router.post(
       }
       if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
         const s = (event.data as { object?: Record<string, unknown> } | undefined)?.object ?? {};
-        if (s.payment_status === "paid") {
+        const m0 = (s.metadata as Record<string, string> | null) ?? {};
+        // Org subscription checkouts (mode: subscription) are NOT a marketplace
+        // transaction -- the tier promotion is applied by customer.subscription.*
+        // below, once Stripe confirms the recurring subscription itself, not here.
+        if (m0.purpose === "org_subscription") {
+          // no-op: wait for customer.subscription.created/updated.
+        } else if (s.payment_status === "paid") {
           const m = (s.metadata as Record<string, string> | null) ?? {};
           const reference = String((s.payment_intent as string) || s.id);
           // Public event orders (tickets / exhibitor booths): confirm the specific
@@ -754,6 +760,41 @@ router.post(
           await releaseTicketOrder(m.order_id).catch(() => false);
         } else if (m.purpose === "exhibitor" && m.order_id) {
           await releaseExhibitorOrder(m.order_id).catch(() => false);
+        }
+      }
+      // Org subscription lifecycle: the ONLY place a paid tier is ever promoted
+      // or downgraded. Metadata carries { org_id, tier } (set at checkout, see
+      // lib/stripeBilling.ts's subscription_data.metadata); falls back to the
+      // Stripe customer id when metadata is missing for any reason.
+      if (
+        event.type === "customer.subscription.created" ||
+        event.type === "customer.subscription.updated" ||
+        event.type === "customer.subscription.deleted"
+      ) {
+        const sub = (event.data as { object?: Record<string, unknown> } | undefined)?.object ?? {};
+        const m = (sub.metadata as Record<string, string> | null) ?? {};
+        const status = event.type === "customer.subscription.deleted" ? "canceled" : String(sub.status ?? "");
+        await db.applySubscriptionUpdate({
+          orgId: m.org_id || null,
+          stripeCustomerId: typeof sub.customer === "string" ? sub.customer : null,
+          stripeSubscriptionId: String(sub.id ?? ""),
+          status,
+          tier: m.tier || null,
+        });
+      }
+      // A recurring invoice failed to collect: mark the org past_due immediately
+      // (customer.subscription.updated will also fire, but this is the earliest
+      // signal). No org_id metadata on the invoice object, so resolve by customer.
+      if (event.type === "invoice.payment_failed") {
+        const inv = (event.data as { object?: Record<string, unknown> } | undefined)?.object ?? {};
+        const customerId = typeof inv.customer === "string" ? inv.customer : null;
+        const subscriptionId = typeof inv.subscription === "string" ? inv.subscription : null;
+        if (customerId && subscriptionId) {
+          await db.applySubscriptionUpdate({
+            stripeCustomerId: customerId,
+            stripeSubscriptionId: subscriptionId,
+            status: "past_due",
+          });
         }
       }
       return res.json({ received: true });

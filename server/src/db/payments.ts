@@ -18,6 +18,7 @@ import {
   computeOnTopCharge as computeOnTopChargePure,
   decomposeGrossOnTop as decomposeGrossOnTopPure,
 } from "../lib/pricingMath.js";
+import { computePlatformFee } from "../lib/platformFees.js";
 
 export const PAYOUT_STATUSES = [
   "not_ready",
@@ -121,7 +122,15 @@ export function computeOnTopCharge(subtotal: number): {
   return computeOnTopChargePure(subtotal, PLATFORM_FEE_RATE_V2, 0.2);
 }
 
-/** Compute the platform + processing fees and the net payout for a payment. */
+/**
+ * Compute the platform + processing fees and the net payout for a payment.
+ * Only called when PRICING_V2 is OFF (see resolvePaymentFees below). Delegates
+ * the rate AND the $2,500 platform-fee cap to lib/platformFees.ts's
+ * computePlatformFee -- the single implementation of "what does this org's
+ * plan charge", so this no longer computes an uncapped fee independently.
+ * This is the PER-TRANSACTION cap; recordPayment/recordProcessorPayment apply
+ * the additional PER-EVENT cumulative cap on top via applyEventFeeCap.
+ */
 export function computeFees(amount: number, tier: string | null | undefined): {
   platformFee: number;
   processingFee: number;
@@ -129,8 +138,8 @@ export function computeFees(amount: number, tier: string | null | undefined): {
   breakdown: Record<string, number>;
 } {
   const amt = Number(amount) || 0;
-  const rate = feeRateForTier(tier);
-  const platformFee = Math.round(amt * rate * 100) / 100;
+  const fee = computePlatformFee(Math.round(amt * 100), { tier });
+  const platformFee = fee.platformFeeCents / 100;
   const pctFee = CONFIGURABLE_FEES.find((f) => f.key === "processing_fee");
   const flatFee = CONFIGURABLE_FEES.find((f) => f.key === "processing_fee_flat");
   const processingFee =
@@ -140,7 +149,64 @@ export function computeFees(amount: number, tier: string | null | undefined): {
     platformFee,
     processingFee,
     netPayout,
-    breakdown: { platform_fee: platformFee, processing_fee: processingFee, net_payout: netPayout, platform_fee_rate: rate },
+    breakdown: {
+      platform_fee: platformFee,
+      processing_fee: processingFee,
+      net_payout: netPayout,
+      platform_fee_rate: fee.feeRate,
+    },
+  };
+}
+
+const EVENT_FEE_CAP_CENTS = 250000; // $2,500 per event, cumulative, all tiers.
+const MIN_FEE_CENTS = 200; // $2 minimum platform profit per booking, matching db/quotes.ts.
+
+/** Platform fees already recorded on this event's OTHER payments, in cents,
+ *  for the per-EVENT cumulative $2,500 cap (mirrors db/quotes.ts's
+ *  eventFeeSoFarCents, but reads the payments table -- the actual money
+ *  collected -- rather than the quotes table). */
+async function eventFeeSoFarCents(eventId: string, excludeReference?: string | null): Promise<number> {
+  const params: unknown[] = [eventId];
+  let extra = "";
+  if (excludeReference) {
+    params.push(excludeReference);
+    extra = ` and reference is distinct from $${params.length}`;
+  }
+  const row = await q1<{ c: string | number }>(
+    `select coalesce(sum(platform_fee),0) as c from payments
+       where event_id = $1 and status = 'recorded'${extra}`,
+    params,
+  );
+  return Math.round((Number(row?.c) || 0) * 100);
+}
+
+/**
+ * Reduce a freshly-computed fee breakdown to respect the per-event cumulative
+ * $2,500 cap, given what has already been recorded on other payments for the
+ * same event. No-op (returns the input unchanged) when there is no event_id.
+ * Only called from the real recording paths (recordPayment,
+ * insertProcessorPaymentOnConflict) -- never from the preview endpoint or the
+ * monetization fallback, which stay per-transaction-capped only.
+ */
+async function applyEventFeeCap(
+  fees: { platformFee: number; processingFee: number; netPayout: number; breakdown: Record<string, number> },
+  eventId: string | null | undefined,
+  excludeReference?: string | null,
+): Promise<typeof fees> {
+  if (!eventId) return fees;
+  const soFarCents = await eventFeeSoFarCents(eventId, excludeReference);
+  const remaining = Math.max(0, EVENT_FEE_CAP_CENTS - soFarCents);
+  const rawFeeCents = Math.round(fees.platformFee * 100);
+  let feeCents = Math.min(rawFeeCents, remaining);
+  if (remaining > 0) feeCents = Math.max(feeCents, Math.min(MIN_FEE_CENTS, remaining));
+  if (feeCents === rawFeeCents) return fees;
+  const platformFee = Math.round(feeCents) / 100;
+  const netPayout = Math.round((fees.netPayout + (fees.platformFee - platformFee)) * 100) / 100;
+  return {
+    platformFee,
+    processingFee: fees.processingFee,
+    netPayout,
+    breakdown: { ...fees.breakdown, platform_fee: platformFee, net_payout: netPayout, event_fee_cap_applied: 1 },
   };
 }
 
@@ -197,13 +263,19 @@ export function decomposeGrossOnTop(gross: number): {
 /**
  * Resolve the fee breakdown for a recorded payment. Under PRICING_V2 the input
  * amount is the gross client total and we decompose it on-top; otherwise we use
- * the legacy tier carve-out. Single chokepoint so every insert path agrees.
+ * the legacy tier carve-out, per-transaction capped by computeFees and then
+ * further reduced (when eventId is known) to respect the per-event cumulative
+ * $2,500 cap via applyEventFeeCap. Single chokepoint so every insert path
+ * agrees.
  */
-function resolvePaymentFees(
+async function resolvePaymentFees(
   amount: number,
   tier: string | null | undefined,
-): { platformFee: number; processingFee: number; netPayout: number; breakdown: Record<string, number> } {
-  return PRICING_V2 ? decomposeGrossOnTop(amount) : computeFees(amount, tier);
+  eventId?: string | null,
+  excludeReference?: string | null,
+): Promise<{ platformFee: number; processingFee: number; netPayout: number; breakdown: Record<string, number> }> {
+  if (PRICING_V2) return decomposeGrossOnTop(amount);
+  return applyEventFeeCap(computeFees(amount, tier), eventId, excludeReference);
 }
 
 export interface RecordPaymentInput {
@@ -250,7 +322,11 @@ export async function recordPayment(
   recordedBy: string | null,
   input: RecordPaymentInput,
 ): Promise<PaymentRow> {
-  const { platformFee, processingFee, netPayout, breakdown } = resolvePaymentFees(input.amount, tier);
+  const { platformFee, processingFee, netPayout, breakdown } = await resolvePaymentFees(
+    input.amount,
+    tier,
+    input.event_id,
+  );
   const payout: PayoutStatus = input.payout_status ?? "payment_received";
   const row = (await q1<PaymentRow>(
     `insert into payments
@@ -354,7 +430,12 @@ async function insertProcessorPaymentOnConflict(
   recordedBy: string | null,
   input: ProcessorPaymentInput,
 ): Promise<PaymentRow | null> {
-  const { platformFee, processingFee, netPayout, breakdown } = resolvePaymentFees(input.amount, tier);
+  const { platformFee, processingFee, netPayout, breakdown } = await resolvePaymentFees(
+    input.amount,
+    tier,
+    input.event_id,
+    input.reference,
+  );
   const payout: PayoutStatus = input.payout_status ?? "payment_received";
   return q1<PaymentRow>(
     `insert into payments

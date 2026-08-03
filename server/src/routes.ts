@@ -159,6 +159,11 @@ import vendorMetricsRouter from "./routes/vendor-metrics.js";
 import connectPayouts from "./routes/connect-payouts.js";
 import adminManage from "./routes/admin-manage.js";
 import campaigns from "./routes/campaigns.js";
+// Role-based subscription/entitlement system, Phase 1: multi-org membership
+// switcher + real Stripe recurring subscription billing + entitlements.
+import orgs from "./routes/orgs.js";
+import billing from "./routes/billing.js";
+import entitlementsRouter from "./routes/entitlements.js";
 
 const router = Router();
 
@@ -296,6 +301,9 @@ router.use("/vendor-metrics", vendorMetricsRouter);
 router.use("/connect-payouts", connectPayouts);
 router.use("/admin/manage", adminManage);
 router.use("/admin/campaigns", campaigns);
+router.use("/orgs", orgs);
+router.use("/billing", billing);
+router.use("/entitlements", entitlementsRouter);
 
 export function errorHandler(err: any, _req: Request, res: Response, _next: NextFunction) {
   if (err instanceof ForbiddenError) return res.status(403).json({ error: err.message });
