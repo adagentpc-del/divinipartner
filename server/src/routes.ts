@@ -166,6 +166,7 @@ import billing from "./routes/billing.js";
 import entitlementsRouter from "./routes/entitlements.js";
 import plans from "./routes/plans.js";
 import vendorProfitability from "./routes/vendor-profitability.js";
+import warehouses from "./routes/warehouses.js";
 
 const router = Router();
 
@@ -308,6 +309,7 @@ router.use("/billing", billing);
 router.use("/entitlements", entitlementsRouter);
 router.use("/plans", plans);
 router.use("/vendor-profitability", vendorProfitability);
+router.use("/warehouses", warehouses);
 
 export function errorHandler(err: any, _req: Request, res: Response, _next: NextFunction) {
   if (err instanceof ForbiddenError) return res.status(403).json({ error: err.message });

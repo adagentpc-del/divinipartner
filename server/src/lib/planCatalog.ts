@@ -16,6 +16,16 @@
  * instead of the flat db.ts TIERS table (which remains the fallback for the
  * `billing` role and any role without a catalog entry).
  *
+ * BRANDING RULE (user directive, 2026-08-03): never market a feature as "AI
+ * ___". Every AI-powered feature is labeled either "Divini Concierge" (a
+ * guided assist -- matching, qualification, pricing guidance, follow-ups:
+ * the tool advises or acts on the user's behalf) or "Divini Builder" (a
+ * generator -- proposals, budgets, timelines, RFPs: the tool produces a
+ * document/artifact the user reviews and sends). This mapping is provisional
+ * pending the user's own tool specifications; do not add net-new "AI ___"
+ * bullets anywhere in this file, and update the existing labels once the
+ * user's exact tool definitions land.
+ *
  * Zero em dashes.
  */
 import type { Role, Tier } from "../db.js";
@@ -88,9 +98,9 @@ export const PLAN_CATALOG: RolePlanCatalog[] = [
           "10 active events",
           "Unlimited quote requests",
           "Compare 10 quotes",
-          "AI budget builder",
-          "AI vendor matching",
-          "AI timeline",
+          "Divini Builder for budgets",
+          "Divini Concierge vendor matching",
+          "Divini Builder for timelines",
           "Shared planning",
           "Guest lists",
           "Vendor scorecards",
@@ -165,8 +175,8 @@ export const PLAN_CATALOG: RolePlanCatalog[] = [
         seatsIncluded: 15,
         features: [
           "15 locations",
-          "AI proposals",
-          "AI pricing",
+          "Divini Builder for proposals",
+          "Divini Concierge pricing guidance",
           "Dynamic pricing",
           "Floorplans",
           "BEOs",
@@ -235,10 +245,10 @@ export const PLAN_CATALOG: RolePlanCatalog[] = [
         feeCapCents: 250000,
         seatsIncluded: 10,
         features: [
-          "AI proposals",
-          "AI pricing",
-          "AI follow-up",
-          "AI lead qualification",
+          "Divini Builder for proposals",
+          "Divini Concierge pricing guidance",
+          "Divini Concierge follow-ups",
+          "Divini Concierge lead qualification",
           "Margin tracking",
           "Job costing",
           "Forecasting",
@@ -280,7 +290,7 @@ export const PLAN_CATALOG: RolePlanCatalog[] = [
           "QR codes",
           "Utilization reporting",
         ],
-        limits: { inventory_items: 1000, team_seats: 5 },
+        limits: { inventory_items: 1000, team_seats: 5, warehouses: 1 },
       },
       {
         key: "pro",
@@ -348,10 +358,10 @@ export const PLAN_CATALOG: RolePlanCatalog[] = [
         seatsIncluded: 15,
         features: [
           "100 active events",
-          "AI RFPs",
-          "AI venue matching",
-          "AI budgets",
-          "AI timelines",
+          "Divini Builder for RFPs",
+          "Divini Concierge venue matching",
+          "Divini Builder for budgets",
+          "Divini Builder for timelines",
           "Procurement reporting",
           "Profitability",
           "API",
@@ -448,7 +458,7 @@ export const PLAN_CATALOG: RolePlanCatalog[] = [
         platformFeeRate: null,
         seatsIncluded: 15,
         features: [
-          "AI matching",
+          "Divini Concierge sponsorship matching",
           "ROI analytics",
           "Audience scoring",
           "Competitor tracking",
@@ -475,9 +485,9 @@ export const ADD_ONS: AddOn[] = [
   { key: "warehouse", label: "Additional Warehouse", priceUsd: 29, priceNote: "/mo" },
   { key: "storage_25gb", label: "Additional 25 GB Storage", priceUsd: 10, priceNote: "/mo" },
   { key: "storage_100gb", label: "Additional 100 GB Storage", priceUsd: 29, priceNote: "/mo" },
-  { key: "ai_credits_100", label: "AI 100 Credits", priceUsd: 10 },
-  { key: "ai_credits_500", label: "AI 500 Credits", priceUsd: 35 },
-  { key: "ai_credits_2000", label: "AI 2,000 Credits", priceUsd: 99 },
+  { key: "divini_credits_100", label: "Divini Credits (100)", priceUsd: 10 },
+  { key: "divini_credits_500", label: "Divini Credits (500)", priceUsd: 35 },
+  { key: "divini_credits_2000", label: "Divini Credits (2,000)", priceUsd: 99 },
   { key: "verified_business", label: "Verified Business", priceUsd: 99, priceNote: "/year" },
   { key: "background_check", label: "Background Check", priceUsd: null, priceNote: "Cost + margin" },
   { key: "featured_listing", label: "Featured Marketplace Listing", priceUsd: null, priceNote: "$49-$199/mo" },

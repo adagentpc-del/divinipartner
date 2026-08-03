@@ -60,6 +60,7 @@ const NAV: NavItem[] = [
   { label: 'Decks & Programs', icon: 'K', to: '/profile/decks-programs' },
   { label: 'Services', icon: 'S', to: '/profile' },
   { label: 'Rental Inventory', icon: 'N', to: '/inventory' },
+  { label: 'Warehouses', icon: 'W', to: '/warehouses' },
   { label: 'Pricing Rules', icon: 'C', to: '/vendor-pricing' },
   { label: 'Packages', icon: 'K', to: '/packages' },
   { label: 'Quote Requirements', icon: 'Q', to: '/vendor-requirements' },

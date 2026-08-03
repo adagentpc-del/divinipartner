@@ -179,6 +179,7 @@ import DailyBriefing from './pages/DailyBriefing';
 import RevenueIntelligence from './pages/RevenueIntelligence';
 import Forecasting from './pages/Forecasting';
 import Profitability from './pages/Profitability';
+import Warehouses from './pages/Warehouses';
 import BusinessHealth from './pages/BusinessHealth';
 import PricingIntelligence from './pages/PricingIntelligence';
 import MarketplaceIntelligence from './pages/MarketplaceIntelligence';
@@ -442,6 +443,7 @@ function Routed() {
       <Route path="/revenue-intelligence" element={<Authed><RevenueIntelligence /></Authed>} />
       <Route path="/forecasting" element={<Authed><Forecasting /></Authed>} />
       <Route path="/profitability" element={<Authed><Profitability /></Authed>} />
+      <Route path="/warehouses" element={<Authed><Warehouses /></Authed>} />
       <Route path="/business-health" element={<Authed><BusinessHealth /></Authed>} />
       <Route path="/pricing-intelligence" element={<Authed><PricingIntelligence /></Authed>} />
       <Route path="/marketplace-intelligence" element={<Authed><MarketplaceIntelligence /></Authed>} />
