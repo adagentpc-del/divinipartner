@@ -37,7 +37,6 @@ const ADMIN_TABS: [string, string][] = [
   ['/admin/claim-engine', 'Claim Engine'],
   ['/admin/audit', 'Audit Log'],
   ['/admin/white-label', 'White Label'],
-  ['/admin/features', 'Feature Flags'],
 ];
 
 export default function AdminConsole() {

@@ -90,10 +90,8 @@ import MarketplaceSearch from './pages/marketplace/MarketplaceSearch';
 import Reports from './pages/reports/Reports';
 
 // top-level pages reachable from nav
-import Projects from './pages/Projects';
 import SearchBids from './pages/SearchBids';
 import AdminConsole from './pages/AdminConsole';
-import AdminFeatures from './pages/AdminFeatures';
 import VendorReadiness from './pages/VendorReadiness';
 
 // vendor network + invites
@@ -377,7 +375,6 @@ function Routed() {
       <Route path="/events/:id/day" element={<Authed><EventDayMode /></Authed>} />
       <Route path="/bids" element={<Authed><BidBoard /></Authed>} />
       <Route path="/quotes/auto/:bidId" element={<Authed><AutoQuoteDraft /></Authed>} />
-      <Route path="/projects" element={<Authed><Projects /></Authed>} />
       <Route path="/search-bids" element={<Authed><SearchBids /></Authed>} />
       <Route path="/vendor-readiness-score" element={<Authed><VendorReadiness /></Authed>} />
 
@@ -489,7 +486,6 @@ function Routed() {
 
       {/* admin (pages self-guard on isAdmin) */}
       <Route path="/admin" element={<Authed><AdminConsole /></Authed>} />
-      <Route path="/admin/features" element={<Authed><AdminFeatures /></Authed>} />
       <Route path="/admin/intelligence" element={<Authed><AdminIntelligence /></Authed>} />
       <Route path="/admin/accounts" element={<Authed><AdminAccounts /></Authed>} />
       <Route path="/admin/white-label" element={<Authed><WhiteLabelAdmin /></Authed>} />
