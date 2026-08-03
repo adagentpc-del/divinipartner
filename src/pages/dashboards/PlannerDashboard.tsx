@@ -12,6 +12,7 @@ const NAV: NavItem[] = [
   { label: 'Divini Proposal Studio', icon: '✎', to: '/proposal-studio' },
   { label: 'Divini Follow-Up Desk', icon: '⏰', to: '/follow-up-desk' },
   { label: 'Divini Profit Map', icon: '$', to: '/profit-map' },
+  { label: 'Divini Price Guide', icon: '£', to: '/price-guide' },
   { label: 'Events', icon: 'E', to: '/events' },
   { label: 'Calendar', icon: 'c', to: '/calendar' },
   { label: 'Recommendations', icon: 'C', to: '/event-recommendations' },

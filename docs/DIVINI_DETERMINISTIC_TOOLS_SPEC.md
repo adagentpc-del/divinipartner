@@ -220,4 +220,32 @@ The complete section-by-section specification (Divini Concierge, Proposal Studio
 
 ---
 
+## Shipped: Divini Price Guide (slice 6, 2026-08-03)
+
+**Business problem solved.** Pricing is too often a gut-feel number, disconnected from what a job actually costs and what margin the org needs to stay healthy. Divini Price Guide turns a real cost and a chosen target margin into an exact price, and shows the org's own real historical margin (from Divini Profit Map) as honest context -- never a "smart" suggestion pretending to know better than the org's own numbers.
+
+**Users served.** Venue, Vendor, Supplier (shares Vendor's dashboard), Planner, Sponsor -- the same role set as every prior slice.
+
+**Workflow completed.** Add a pricing item (name, optional category, a real typical cost, a target margin, an optional floor margin) -> the target price and floor price compute immediately, shown with the exact formula used -> a banner at the top of the page shows the org's own real average achieved margin across every costed job in Divini Profit Map, so there is a real number to weigh against the chosen target, not a guess -> editing the cost or either margin recomputes both prices live -> items can be deleted.
+
+**Deterministic logic.** One formula, applied everywhere: `price = cost / (1 - margin)`. No LLM, no generated number, no fabricated "optimal price." The historical context is a real aggregate already computed by Divini Profit Map (`getProfitMapReport`'s `marginPct`), reused directly rather than recomputed or approximated -- and deliberately kept as an org-wide average, not a per-item fuzzy match against past job descriptions, because a text-similarity guess masquerading as a fact would violate spec constraint 6 (never fabricate a business recommendation).
+
+**Data model.** `price_guide_items` -- one row per pricing item, storing only the real inputs (cost, target margin, floor margin); the prices themselves are never stored, only computed at read time, so they can never drift out of sync with an edited cost or margin. See `db/schema-price-guide.sql`.
+
+**Integrations.** Calls `getProfitMapReport()` directly from `db/profitMap.ts` for the historical-context banner -- reusing the exact same computation Profit Map's own page shows, not a second implementation of the same math (spec constraint 10).
+
+**Permissions.** Every read/write is org-scoped through the existing `Actor` pattern. Verified live: a second (Plus-tier) org gets 404 attempting to edit or delete the first org's pricing item.
+
+**Analytics captured.** Every pricing item is a real stored row with its inputs and timestamps; the calculator itself needs no separate event log since it recomputes from Profit Map's already-captured job history.
+
+**Subscription entitlements.** Plus+ per spec section 18 ("Plus: ... basic Price Guide"), using the same `isPlusTier()` gate introduced in the Profit Map slice -- verified live: blocked with a structured `feature_locked` (403, upgrade target "Plus") on a free-tier org, unlocked at Plus.
+
+**Tests completed.** Live end-to-end against a running server + Postgres: free-tier org blocked, unlocked at Plus; invalid margin (>= 1) rejected with a clean 400 and a specific message; a created item's target and floor prices verified against the exact formula by direct calculation; updating the cost recomputes the target price correctly; the context endpoint starts at zero jobs, then reflects a real accepted-and-costed Proposal Studio job's exact margin once one exists (not an approximation); item delete; cross-org IDOR blocked (404) on edit and delete. Browser-verified at iPhone width: the real historical-context banner, a pricing item showing cost, target price, floor price, and the formula, all rendering together.
+
+**Business value delivered.** A price a user sets is now traceable to a real cost and a chosen margin, with the org's own track record shown alongside it as an honest reference point -- never a black-box number. This is the sixth slice of structured business data (after Pipeline, Scope Builder, Proposal Studio, Follow-Up Desk, and Profit Map) that Business Review is built to summarize later.
+
+**Deferred enhancements (optional intelligence layer, per spec section 16 -- not started, no LLM dependency added).** Model-suggested target margins based on category-level trends. The deterministic engine above remains fully functional and complete without any of it. A true per-category historical match (rather than an org-wide average) was explicitly not built in this slice -- it would require either exact category tagging discipline across Proposal Studio and Price Guide (not yet enforced) or a fuzzy match that risks fabricating a false correlation; both are real design decisions for the user to make, not defaults to guess at silently.
+
+---
+
 *This document is updated as each slice ships, with a "shipped" section per tool matching the required implementation report format (section 20): business problem solved, users served, workflow, deterministic logic, data model, integrations, permissions, analytics captured, subscription entitlements, tests completed, business value delivered, deferred enhancements.*
