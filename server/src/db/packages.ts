@@ -52,6 +52,16 @@ export function lineItemTotal(items: PackageItem[] | undefined): number {
   );
 }
 
+/** Count of the org's packages, for the entitlements "packages" limit (vendor
+ *  Free plan: 3 packages). */
+export async function countPackages(orgId: string): Promise<number> {
+  const row = await q1<{ n: string }>(
+    `select count(*)::int as n from packages where organization_id = $1`,
+    [orgId],
+  );
+  return Number(row?.n ?? 0);
+}
+
 /** List packages for an org. */
 export async function listPackages(orgId: string, status?: string): Promise<any[]> {
   if (status) {

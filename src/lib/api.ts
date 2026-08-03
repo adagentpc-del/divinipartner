@@ -32,16 +32,35 @@ function authHeader(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+/**
+ * Thrown on any non-2xx response. Keeps `.message` a plain string (every
+ * existing `catch (e) { setErr((e as Error).message) }` call site keeps
+ * working unchanged) while also carrying the parsed JSON body, so callers
+ * that need structured error data -- e.g. a `plan_limit_reached` response,
+ * see lib/entitlements.tsx -- do not have to re-derive it from a string.
+ */
+export class ApiError extends Error {
+  status: number;
+  body: unknown;
+  constructor(status: number, body: unknown, message: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.body = body;
+  }
+}
+
 async function handle<T>(res: Response): Promise<T> {
   if (!res.ok) {
+    let body: unknown = null;
     let detail = '';
     try {
-      const body = await res.json();
-      detail = body?.error || JSON.stringify(body);
+      body = await res.json();
+      detail = (body as { error?: string })?.error || JSON.stringify(body);
     } catch {
       detail = res.statusText;
     }
-    throw new Error(detail || `Request failed (${res.status})`);
+    throw new ApiError(res.status, body, detail || `Request failed (${res.status})`);
   }
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;

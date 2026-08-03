@@ -115,6 +115,16 @@ export async function listMyEvents(actor: Actor): Promise<EventRow[]> {
   );
 }
 
+/** Count of the org's non-archived events, for the entitlements "events.active"
+ *  limit (client/planner plans). Archived events never count against it. */
+export async function countActiveEvents(orgId: string): Promise<number> {
+  const row = await q1<{ n: string }>(
+    `select count(*)::int as n from events where organization_id = $1 and status <> 'archived'`,
+    [orgId],
+  );
+  return Number(row?.n ?? 0);
+}
+
 /** Get a single event the actor can access, or throw NotFound/Forbidden. */
 export async function getEvent(actor: Actor, id: string): Promise<EventRow> {
   const ev = await q1<EventRow>(`select * from events where id = $1`, [id]);

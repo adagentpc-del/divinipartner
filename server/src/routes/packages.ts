@@ -7,6 +7,7 @@ import { Router, type Request, type Response, type NextFunction } from "express"
 import { getAuth, requireUser } from "../auth.js";
 import * as db from "../db.js";
 import * as pkg from "../db/packages.js";
+import { checkLimit, limitExceededPayload } from "../lib/entitlements.js";
 
 const h =
   (fn: (req: Request, res: Response) => Promise<unknown>) =>
@@ -14,13 +15,18 @@ const h =
     fn(req, res).catch(next);
 
 async function requireOrg(req: Request, res: Response): Promise<string | null> {
+  const org = await requireOrgRow(req, res);
+  return org?.id ?? null;
+}
+
+async function requireOrgRow(req: Request, res: Response): Promise<db.DbOrg | null> {
   const auth = getAuth(req);
   const actor = await db.getActor(auth.userId!, auth.email);
   if (!actor.org) {
     res.status(400).json({ error: "no organization for this account" });
     return null;
   }
-  return actor.org.id;
+  return actor.org;
 }
 
 const router = Router();
@@ -56,9 +62,14 @@ router.post(
   "/",
   requireUser,
   h(async (req, res) => {
-    const orgId = await requireOrg(req, res);
-    if (!orgId) return;
-    const item = await pkg.createPackage(orgId, req.body ?? {});
+    const org = await requireOrgRow(req, res);
+    if (!org) return;
+    const used = await pkg.countPackages(org.id);
+    const check = checkLimit(org, "packages", used);
+    if (!check.allowed) {
+      return res.status(402).json(limitExceededPayload(org, "packages", check));
+    }
+    const item = await pkg.createPackage(org.id, req.body ?? {});
     res.status(201).json({ package: item });
   }),
 );

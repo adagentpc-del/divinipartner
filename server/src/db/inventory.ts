@@ -105,6 +105,16 @@ export async function listInventory(
   return q(sql, params);
 }
 
+/** Count of the org's inventory items, for the entitlements "inventory_items"
+ *  limit (supplier plans). */
+export async function countInventoryItems(orgId: string): Promise<number> {
+  const row = await q1<{ n: string }>(
+    `select count(*)::int as n from inventory_items where organization_id = $1`,
+    [orgId],
+  );
+  return Number(row?.n ?? 0);
+}
+
 /** Get one inventory item scoped to the org. */
 export async function getInventoryItem(orgId: string, id: string): Promise<any | null> {
   return q1(

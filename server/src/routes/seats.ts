@@ -23,6 +23,7 @@ import {
 } from "../db/seats.js";
 import { enabledProcessors, createCheckout, type Processor } from "../lib/processors.js";
 import { SEAT_PRICE_USD, PUBLIC_APP_URL, BASE_PATH } from "../config.js";
+import { checkLimit, limitExceededPayload } from "../lib/entitlements.js";
 
 const h =
   (fn: (req: Request, res: Response) => Promise<unknown>) =>
@@ -75,6 +76,11 @@ router.post(
       return res.status(400).json({ error: "a valid email is required" });
     }
     const name = typeof b.name === "string" ? b.name : null;
+    const used = await countBillableSeats(actor.org.id);
+    const check = checkLimit(actor.org, "team_seats", used);
+    if (!check.allowed) {
+      return res.status(402).json(limitExceededPayload(actor.org, "team_seats", check));
+    }
     const seat = await addSeat(actor.org.id, email, name);
     res.status(201).json({ seat });
   }),

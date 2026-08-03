@@ -11,6 +11,7 @@ import * as events from "../db/events.js";
 import { notify } from "../lib/notify.js";
 import { recipients } from "../lib/recipients.js";
 import { isTerminalStatus, onEventCompleted } from "../db/completion.js";
+import { checkLimit, limitExceededPayload } from "../lib/entitlements.js";
 
 const h =
   (fn: (req: Request, res: Response) => Promise<unknown>) =>
@@ -50,6 +51,13 @@ router.post(
     const { name } = req.body ?? {};
     if (!name || typeof name !== "string") {
       return res.status(400).json({ error: "name required" });
+    }
+    if (a.org) {
+      const used = await events.countActiveEvents(a.org.id);
+      const check = checkLimit(a.org, "events.active", used);
+      if (!check.allowed) {
+        return res.status(402).json(limitExceededPayload(a.org, "events.active", check));
+      }
     }
     const ev = await events.createEvent(a, req.body);
     res.status(201).json({ event: ev });

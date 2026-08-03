@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiGet, apiSend } from '../../lib/api';
+import { isPlanLimitError, UpgradePrompt, type PlanLimitError } from '../../lib/entitlements';
 
 /**
  * Events list - the entry point into per-event workspaces. Lists events the
@@ -30,6 +31,7 @@ export default function EventsList() {
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ name: '', type: '', date_time: '', guest_count: '', budget: '', event_goals: '', required_services: '' });
   const [busy, setBusy] = useState(false);
+  const [limitError, setLimitError] = useState<PlanLimitError | null>(null);
 
   async function load() {
     setLoading(true);
@@ -53,6 +55,7 @@ export default function EventsList() {
     if (!form.name.trim()) return;
     setBusy(true);
     setErr(null);
+    setLimitError(null);
     try {
       const r = await apiSend<{ event: EventRow }>('POST', '/events', {
         name: form.name.trim(),
@@ -65,7 +68,8 @@ export default function EventsList() {
       });
       nav(`/events/${r.event.id}`);
     } catch (e) {
-      setErr((e as Error).message);
+      if (isPlanLimitError(e)) setLimitError(e.body);
+      else setErr((e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -86,6 +90,7 @@ export default function EventsList() {
       </header>
 
       {err ? <p className="evl-error">{err}</p> : null}
+      {limitError && <UpgradePrompt error={limitError} onDismiss={() => setLimitError(null)} />}
 
       {creating ? (
         <form className="evl-form" onSubmit={create}>

@@ -6,12 +6,13 @@
  * org's role (organizations.type) has an entry in lib/planCatalog.ts, that
  * role-specific plan (real dollar figure, real fee rate, real feature
  * limits) is authoritative; otherwise this falls back to the flat
- * lib/platformFees.ts rate/cap with every limit unlimited. Nothing calls
- * checkLimit to actually block a create yet -- that wiring is Phase 3.
+ * lib/platformFees.ts rate/cap with every limit unlimited.
  *
- * Every route that creates a metered resource must call checkLimit()
- * server-side before the insert. The SPA's GET /entitlements reads the same
- * numbers to render upgrade prompts -- never to enforce anything itself.
+ * Every route that creates a metered resource calls checkLimit()
+ * server-side before the insert and, when blocked, responds with
+ * limitExceededPayload() so the SPA's upgrade prompt is always the same
+ * shape. The SPA's GET /entitlements reads the same numbers to render
+ * proactive "X of Y used" indicators -- never to enforce anything itself.
  */
 import { TIERS, type DbOrg, type Tier, type Role } from "../db.js";
 import { computePlatformFee, planForOrg, type PlanKey } from "./platformFees.js";
@@ -106,8 +107,8 @@ export interface LimitCheck {
 
 /**
  * Would using one more unit of `key` still be within the org's plan limit?
- * Always allowed while every limit is null (Phase 1); real enforcement lands
- * in Phase 3 once entitlements.limits carries real per-role numbers.
+ * `null` limit means unlimited (either the plan has no cap on this key, or
+ * the role has no catalog entry yet).
  */
 export function checkLimit(
   org: Pick<DbOrg, "tier" | "platform_fee_rate" | "type">,
@@ -118,4 +119,36 @@ export function checkLimit(
   const limit = limits[key] ?? null;
   if (limit == null) return { allowed: true, limit: null, used: currentUsage };
   return { allowed: currentUsage < limit, limit, used: currentUsage };
+}
+
+const NEXT_TIER: Record<Tier, Tier | null> = {
+  client: "partner",
+  free_partner: "partner",
+  partner: "premier",
+  premier: null,
+};
+
+/**
+ * The response body every checkLimit-gated route sends when a create is
+ * blocked, so the SPA's upgrade prompt (one shared component) always gets
+ * the same shape regardless of which capability tripped. Not a 4xx the
+ * client should retry -- it is a real "upgrade to continue" signal.
+ */
+export function limitExceededPayload(
+  org: Pick<DbOrg, "tier" | "platform_fee_rate" | "type">,
+  key: CapabilityKey,
+  check: LimitCheck,
+) {
+  const tier = (org.tier as Tier) in TIERS ? (org.tier as Tier) : "free_partner";
+  const nextTier = NEXT_TIER[tier];
+  const nextRoleTier = nextTier ? planTierFor(org.type as Role, nextTier) : undefined;
+  return {
+    error: "plan_limit_reached",
+    capability: key,
+    limit: check.limit,
+    used: check.used,
+    upgrade: nextRoleTier
+      ? { tier: nextTier, label: nextRoleTier.label, monthlyUsd: nextRoleTier.monthlyUsd }
+      : null,
+  };
 }

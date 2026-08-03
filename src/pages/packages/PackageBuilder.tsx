@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { apiGet, apiSend } from '../../lib/api';
+import { isPlanLimitError, UpgradePrompt, type PlanLimitError } from '../../lib/entitlements';
 
 // Phase 4 - Package / Bundle builder (blueprint 17). Build named bundles of
 // inventory items + services with bundle pricing.
@@ -47,6 +48,7 @@ export default function PackageBuilder() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [limitError, setLimitError] = useState<PlanLimitError | null>(null);
 
   async function load() {
     setLoading(true);
@@ -99,13 +101,15 @@ export default function PackageBuilder() {
   async function save() {
     if (!editing) return;
     setSaving(true);
+    setLimitError(null);
     try {
       if (editing.id) await apiSend('PUT', `/packages/${editing.id}`, editing);
       else await apiSend('POST', '/packages', editing);
       setEditing(null);
       await load();
     } catch (e) {
-      setError((e as Error).message);
+      if (isPlanLimitError(e)) setLimitError(e.body);
+      else setError((e as Error).message);
     } finally {
       setSaving(false);
     }
@@ -138,6 +142,7 @@ export default function PackageBuilder() {
       </header>
 
       {error && <div className="pkg-error">{error}</div>}
+      {limitError && <UpgradePrompt error={limitError} onDismiss={() => setLimitError(null)} />}
 
       {loading ? (
         <div className="pkg-empty">Loading packages.</div>
