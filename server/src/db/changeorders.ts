@@ -1,9 +1,12 @@
 /**
- * Change Orders data-access (blueprint section 23).
- *
- * A change order amends an in-flight event: added/removed scope with a price
- * delta, sent for acceptance, then optionally folded into the invoice. Carries a
+ * Divini Change Desk (docs/DIVINI_DETERMINISTIC_TOOLS_SPEC.md, build-order
+ * slice 8; originally built pre-spec as "Change Orders," blueprint section
+ * 23). Controls scope, price, AND schedule changes to an in-flight event:
+ * added/removed scope with a price delta, an optional requested new date,
+ * sent for acceptance, then optionally folded into the invoice. Carries a
  * scope-creep flag so planners + admins can watch for runaway add-ons.
+ * Every status transition is preserved in an append-only history table,
+ * never overwritten (spec constraint 9).
  */
 import { q, q1, pool } from "../pool.js";
 
@@ -53,6 +56,8 @@ export interface ChangeOrderRow {
   platform_fee: string | null;
   amount: string | null;
   scope_creep_flag: boolean;
+  requested_new_date: string | null;
+  schedule_change_note: string | null;
   status: string | null;
   responded_at: string | null;
   created_at: string;
@@ -93,6 +98,8 @@ export interface CreateChangeOrderInput {
   line_items?: ChangeOrderLineItem[];
   platform_fee_rate?: number;
   scope_creep_flag?: boolean;
+  requested_new_date?: string | null;
+  schedule_change_note?: string | null;
   status?: ChangeOrderStatus;
 }
 
@@ -131,12 +138,14 @@ export async function createChangeOrder(
       explicit: input.scope_creep_flag,
     });
 
+    const status = input.status ?? "draft";
     const row = (
       await client.query<ChangeOrderRow>(
         `insert into change_orders
            (change_order_number, event_id, quote_id, invoice_id, vendor_id, requested_by, title,
-            description, reason, line_items, subtotal, platform_fee, amount, scope_creep_flag, status)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,$12,$13,$14,$15)
+            description, reason, line_items, subtotal, platform_fee, amount, scope_creep_flag,
+            requested_new_date, schedule_change_note, status)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,$12,$13,$14,$15,$16,$17)
          returning *`,
         [
           nextChangeOrderNumber((Number(totalCount?.c) || 0) + 1),
@@ -153,10 +162,17 @@ export async function createChangeOrder(
           platformFee,
           amount,
           scopeCreep,
-          input.status ?? "draft",
+          input.requested_new_date ?? null,
+          input.schedule_change_note ?? null,
+          status,
         ],
       )
     ).rows[0];
+    await client.query(
+      `insert into change_order_status_history (change_order_id, from_status, to_status, changed_by)
+       values ($1, null, $2, $3)`,
+      [row.id, status, requestedBy],
+    );
     await client.query("commit");
     return row;
   } catch (e) {
@@ -186,13 +202,59 @@ export async function getChangeOrder(id: string): Promise<ChangeOrderRow | null>
 
 const ALLOWED: ReadonlySet<ChangeOrderStatus> = new Set(CHANGE_ORDER_STATUSES);
 
-export async function updateChangeOrderStatus(id: string, status: ChangeOrderStatus): Promise<ChangeOrderRow | null> {
+export async function updateChangeOrderStatus(
+  id: string,
+  status: ChangeOrderStatus,
+  changedBy: string | null = null,
+): Promise<ChangeOrderRow | null> {
   if (!ALLOWED.has(status)) throw new Error(`invalid change order status: ${status}`);
   const stamp =
     status === "accepted" || status === "declined" || status === "revision_requested" ? ", responded_at = now()" : "";
-  return q1<ChangeOrderRow>(
-    `update change_orders set status = $2, updated_at = now()${stamp} where id = $1 returning *`,
-    [id, status],
+
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    const existing = (await client.query<{ status: string | null }>(`select status from change_orders where id = $1`, [id])).rows[0];
+    if (!existing) {
+      await client.query("rollback");
+      return null;
+    }
+    const row = (
+      await client.query<ChangeOrderRow>(
+        `update change_orders set status = $2, updated_at = now()${stamp} where id = $1 returning *`,
+        [id, status],
+      )
+    ).rows[0];
+    await client.query(
+      `insert into change_order_status_history (change_order_id, from_status, to_status, changed_by)
+       values ($1,$2,$3,$4)`,
+      [id, existing.status, status, changedBy],
+    );
+    await client.query("commit");
+    return row;
+  } catch (e) {
+    await client.query("rollback");
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
+export type ChangeOrderStatusHistoryRow = {
+  id: string;
+  change_order_id: string;
+  from_status: string | null;
+  to_status: string;
+  changed_by: string | null;
+  changed_at: string;
+};
+
+/** Append-only status history for a change order (spec constraint 9: never
+ *  overwrite revision history). */
+export async function listStatusHistory(changeOrderId: string): Promise<ChangeOrderStatusHistoryRow[]> {
+  return q<ChangeOrderStatusHistoryRow>(
+    `select * from change_order_status_history where change_order_id = $1 order by changed_at desc`,
+    [changeOrderId],
   );
 }
 

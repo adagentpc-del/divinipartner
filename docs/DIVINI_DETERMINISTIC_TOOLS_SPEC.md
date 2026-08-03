@@ -276,4 +276,32 @@ The complete section-by-section specification (Divini Concierge, Proposal Studio
 
 ---
 
+## Shipped: Divini Change Desk (slice 8, 2026-08-03)
+
+**Business problem solved.** Scope creeps, prices shift, and schedules move after a quote is accepted, and without a controlled record of each change, nobody can later say exactly what was agreed to and when. Divini Change Desk generalizes a solid pre-existing "Change Orders" feature (blueprint section 23) into the spec's actual tool: it already controlled scope and price; this slice adds the missing schedule half and makes every approval permanent, not just the current status.
+
+**Users served.** Planner (the existing dashboard entry point), and by extension any event participant -- client, planner, or the org that owns the event -- since access is already gated on real event participation, not role.
+
+**Workflow completed.** Open Change Desk for an event -> create a change order with a title, description, reason, priced line items, and now optionally a requested new date and a schedule-change note -> the tool computes the subtotal, platform fee, and total automatically, and flags scope creep when the pattern (a large delta relative to budget, or 3+ prior change orders on the event) is real, never guessed -> advance the status through its lifecycle (draft, sent, accepted, declined, revision requested, added to invoice, paid, closed) -> every single transition is now preserved in an append-only history, viewable per change order, so "what was approved and when" is always answerable -> sign approval via the existing e-signature flow.
+
+**Deterministic logic.** Zero LLM, unchanged from the original build: subtotal/fee/total are pure sums, and the scope-creep flag is a fixed, explainable heuristic (>=15% of event budget, or a 4th+ change order on the same event, or an explicit flag) -- never an opinion. The only new deterministic logic this slice adds is trivial and honest: a schedule change is just a date and a note, stored and shown exactly as entered, not interpreted.
+
+**Data model.** `change_orders` (additively extended with `requested_new_date`, `schedule_change_note`) and a new `change_order_status_history` table (append-only; every creation and every status change writes a `from_status -> to_status` row, spec constraint 9). See `db/schema-change-desk.sql`.
+
+**Integrations.** Unchanged: optionally linked to `quotes`, `invoices`, and `vendors`; IDOR-gated through the existing `getEvent` participant check (organization, client, or planner match) shared with the rest of the event workspace.
+
+**Permissions.** Unchanged and reverified: every route (list, create, detail, status update, and the new history endpoint) requires real event participation. Verified live: a second org gets 403 on list, status update, and history for an event it does not participate in.
+
+**Analytics captured.** The append-only status history is the real new analytics surface this slice adds -- previously only the current status and a single `responded_at` timestamp existed; now the full sequence of who changed what, when, is a permanent, queryable record.
+
+**Subscription entitlements.** Unchanged (no explicit Change Desk tier requirement found in the spec's section 18 excerpt available to this build) -- shipped free-tier-inclusive, consistent with Pipeline and Follow-Up Desk's "basic" free inclusion, not gated.
+
+**Tests completed.** Live end-to-end against a running server + Postgres: a change order created with real scope (line items), price (computed subtotal/fee/total), and a schedule change (requested date + note) together; creation itself logs an initial `null -> draft` history row; advancing draft -> sent -> accepted appends two more history rows with correct `from_status`/`to_status` pairs, verified both via the API and a direct `change_order_status_history` count; an invalid status is rejected with a clean 400; the pre-existing scope-creep heuristic reverified still fires correctly after 4 change orders on one event; cross-org IDOR blocked (403) on list, status update, and the new history endpoint. Browser-verified at iPhone width: the renamed "Divini Change Desk" page, the schedule-change banner rendering the requested date and note, and the expanded status history showing the real append-only "Draft" entry with its timestamp.
+
+**Business value delivered.** A change to scope, price, or schedule is now controlled the same way across all three -- proposed, priced, dated, approved -- with a permanent record of exactly what happened and when, closing the "schedule" gap the tool's own name promised but the original build never covered.
+
+**Deferred enhancements (optional intelligence layer, per spec section 16 -- not started, no LLM dependency added).** Model-suggested change-order language or auto-detected scope creep from a linked Scope Builder instance's diff. The deterministic engine above remains fully functional and complete without any of it. Also not built in this slice: widening the dashboard nav entry point beyond Planner to Venue/Vendor/Sponsor (the backend already supports any real event participant regardless of role; only the dashboard shortcut is scoped to Planner today) -- left as-is since the pre-existing scoping was a deliberate prior choice, not something this slice's mandate was to revisit.
+
+---
+
 *This document is updated as each slice ships, with a "shipped" section per tool matching the required implementation report format (section 20): business problem solved, users served, workflow, deterministic logic, data model, integrations, permissions, analytics captured, subscription entitlements, tests completed, business value delivered, deferred enhancements.*

@@ -20,7 +20,7 @@ const NAV: NavItem[] = [
   { label: 'Venue Comparison', icon: 'V', to: '/venue-comparison' },
   { label: 'Preferred Vendors', icon: 'D', to: '/preferred-vendors' },
   { label: 'Guest Hub', icon: 'S', to: '/guest-hub' },
-  { label: 'Change Orders', icon: 'O', to: '/change-orders' },
+  { label: 'Divini Change Desk', icon: 'O', to: '/change-orders' },
   { label: 'Event Memory', icon: 'Y', to: '/event-memory' },
   { label: 'Post-Event Feedback', icon: 'K', to: '/post-event-feedback' },
   { label: 'Opportunities', icon: 'X', to: '/opportunities' },

@@ -1,11 +1,13 @@
 /**
- * Change Order routes (blueprint section 23). Mounted at /api/change-orders.
+ * Divini Change Desk routes (originally "Change Orders," blueprint section
+ * 23). Mounted at /api/change-orders.
  *
- *   GET    /api/change-orders?event_id=   list change orders for an event
- *   GET    /api/change-orders/meta        statuses + labels
- *   POST   /api/change-orders             create a change order (computes scope creep)
- *   GET    /api/change-orders/:id         single change order
- *   PATCH  /api/change-orders/:id/status  advance lifecycle status
+ *   GET    /api/change-orders?event_id=      list change orders for an event
+ *   GET    /api/change-orders/meta           statuses + labels
+ *   POST   /api/change-orders                create a change order (scope/price/schedule, computes scope creep)
+ *   GET    /api/change-orders/:id            single change order
+ *   PATCH  /api/change-orders/:id/status     advance lifecycle status (logs append-only history)
+ *   GET    /api/change-orders/:id/history    append-only status history
  */
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { getAuth, requireUser } from "../auth.js";
@@ -17,6 +19,7 @@ import {
   listChangeOrders,
   getChangeOrder,
   updateChangeOrderStatus,
+  listStatusHistory,
   CHANGE_ORDER_STATUSES,
   CHANGE_ORDER_STATUS_LABELS,
   type ChangeOrderStatus,
@@ -73,6 +76,8 @@ router.post(
       line_items: Array.isArray(b.line_items) ? b.line_items : [],
       platform_fee_rate: feeRate,
       scope_creep_flag: !!b.scope_creep_flag,
+      requested_new_date: typeof b.requested_new_date === "string" ? b.requested_new_date : null,
+      schedule_change_note: typeof b.schedule_change_note === "string" ? b.schedule_change_note : null,
       status: b.status as ChangeOrderStatus | undefined,
     });
     res.status(201).json({ change_order: row });
@@ -104,12 +109,25 @@ router.patch(
     if (!existing || !existing.event_id) return res.status(404).json({ error: "not found" });
     await getEvent(actor, existing.event_id); // IDOR gate before mutating status
     try {
-      const row = await updateChangeOrderStatus(req.params.id, status);
+      const row = await updateChangeOrderStatus(req.params.id, status, actor.user.id);
       if (!row) return res.status(404).json({ error: "not found" });
       res.json({ change_order: row });
     } catch (e) {
       res.status(400).json({ error: (e as Error).message });
     }
+  }),
+);
+
+router.get(
+  "/:id/history",
+  requireUser,
+  h(async (req, res) => {
+    const auth = getAuth(req);
+    const actor = await db.getActor(auth.userId!, auth.email);
+    const existing = await getChangeOrder(req.params.id);
+    if (!existing || !existing.event_id) return res.status(404).json({ error: "not found" });
+    await getEvent(actor, existing.event_id); // IDOR gate: must be a participant of the CO's event
+    res.json({ history: await listStatusHistory(req.params.id) });
   }),
 );
 
