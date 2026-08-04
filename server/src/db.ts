@@ -610,6 +610,27 @@ export async function applyPasswordReset(userId: string, passwordHash: string): 
 }
 
 /**
+ * Session revocation (SOC 2 / ISO 27001 audit, 2026-08-03): mark every
+ * session token issued before right now as no longer valid, even though its
+ * signature still verifies -- see server/src/auth.ts's resolve(), which
+ * checks a token's `iat` claim against this timestamp on every request.
+ * Call after any event that should invalidate other already-issued sessions
+ * for this user, e.g. a password reset.
+ */
+export async function invalidateSessions(userId: string): Promise<void> {
+  await q1(`update users set sessions_invalidated_before = now() where id = $1`, [userId]);
+}
+
+/** The session-revocation cutoff for a user, or null if none has ever been set. */
+export async function sessionsInvalidatedBefore(userId: string): Promise<Date | null> {
+  const row = await q1<{ sessions_invalidated_before: string | null }>(
+    `select sessions_invalidated_before from users where id = $1 limit 1`,
+    [userId],
+  );
+  return row?.sessions_invalidated_before ? new Date(row.sessions_invalidated_before) : null;
+}
+
+/**
  * Delete (anonymize + deactivate) the caller's own account, requiring their
  * current password as a re-confirmation. Apple Guideline 5.1.1(v).
  *

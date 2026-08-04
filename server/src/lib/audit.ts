@@ -13,6 +13,7 @@
  */
 import { q, q1 } from "../pool.js";
 import type { Actor } from "../db.js";
+import { logger } from "./logger.js";
 
 export type AuditActor = {
   /** users.id (uuid) of the acting user, when known. */
@@ -83,8 +84,12 @@ export async function logAction(
       ],
     );
   } catch (e) {
-    // eslint-disable-next-line no-console
-    console.error("[audit] failed to write entry", action, (e as Error)?.message);
+    // A failed audit write is itself an anomaly worth monitoring (SOC 2
+    // CC7.2) -- this app's compliance posture depends on audit_logs being
+    // reliable, so a write failure here should reach the same
+    // error-monitoring path as any other unexpected failure, not just a
+    // console line nobody watches.
+    logger.error("audit log write failed", { action, error: (e as Error)?.message });
   }
 }
 

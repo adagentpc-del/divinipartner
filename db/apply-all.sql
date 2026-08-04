@@ -5582,3 +5582,12 @@ create table if not exists mfa_backup_codes (
 );
 create index if not exists idx_mfa_backup_codes_user on mfa_backup_codes(user_id);
 
+-- ====== db/schema-session-revocation.sql ======
+-- ---------------------------------------------------------------------------
+-- Session revocation: a session JWT issued before sessions_invalidated_before
+-- is treated as logged out even though its signature still verifies. See
+-- server/src/auth.ts's resolve() and server/src/db.ts's
+-- sessionsInvalidatedBefore()/invalidateSessions().
+-- ---------------------------------------------------------------------------
+alter table users add column if not exists sessions_invalidated_before timestamptz;
+

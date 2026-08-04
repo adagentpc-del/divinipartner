@@ -20,6 +20,8 @@ import type { Request, Response, NextFunction, RequestHandler } from "express";
 import { getAdminAllowedEmails } from "./config.js";
 import { verifySession, SESSION_COOKIE } from "./lib/session.js";
 import { getMfaUser } from "./db/mfa.js";
+import { sessionsInvalidatedBefore } from "./db.js";
+import { sessionIsRevoked } from "./lib/sessionRevocation.js";
 
 export interface AuthResult {
   userId: string | null;
@@ -73,6 +75,21 @@ function computeIsAdmin(email: string | null): boolean {
 async function resolve(req: Request): Promise<AuthResult> {
   const claims = await verifySession(sessionToken(req));
   if (!claims || !claims.sub) return EMPTY_AUTH;
+  // Session revocation (SOC 2 / ISO 27001 audit, 2026-08-03): a session JWT
+  // is otherwise valid for its full 30-day lifetime regardless of anything
+  // that happens to the account afterward. Password reset now stamps
+  // sessions_invalidated_before = now() (db.ts's invalidateSessions), so any
+  // token issued before that cutoff is treated as logged out here, even
+  // though its signature still verifies -- one extra indexed lookup per
+  // authenticated request, the standard cost of real revocation for a
+  // stateless JWT scheme (there is no free way to revoke a signed token
+  // short of checking a mutable store on every use).
+  if (typeof claims.iat === "number") {
+    const cutoff = await sessionsInvalidatedBefore(claims.sub);
+    if (sessionIsRevoked({ iatSeconds: claims.iat, iamMs: claims.iam }, cutoff)) {
+      return EMPTY_AUTH;
+    }
+  }
   const email = claims.email ? claims.email.toLowerCase() : null;
   return {
     userId: claims.sub,

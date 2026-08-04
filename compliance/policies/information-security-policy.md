@@ -71,14 +71,18 @@ hashed passwords, role-based + allowlist-based access control, CSRF
 protection, rate limiting, security response headers, parameterized SQL
 throughout, optional encryption at rest for stored objects, TLS in transit
 (edge-terminated), and audit logging on 45+ sensitive-action call sites.
-TOTP-based MFA is available to every user and required for admin access,
-and an automated backup mechanism (backup + verified restore) is built
-(both 2026-08-03; see `AI_PROJECT_OS/53_SOC2_ISO27001_AUDIT.md`) -- though
-the backup mechanism still needs an operator to install the cron schedule
-before it runs automatically (`AI_PROJECT_OS/23_DEPLOYMENT.md`). Known,
-currently-open gaps: no structured logging or error-monitoring service, and
-no general session-revocation mechanism. See the audit document for the
-full, ranked list -- do not let this policy imply those gaps are closed.
+TOTP-based MFA is available to every user and required for admin access; an
+automated backup mechanism (backup + verified restore) is built; session
+revocation on password reset is built; and structured logging with an
+optional error-monitoring webhook is built (all 2026-08-03; see
+`AI_PROJECT_OS/53_SOC2_ISO27001_AUDIT.md`). Every code-fixable gap the
+audit found is now closed. What remains is purely operator action: install
+the backup cron schedule and point `ERROR_MONITORING_WEBHOOK_URL` at a real
+destination (`AI_PROJECT_OS/23_DEPLOYMENT.md`), plus two lower-severity
+items (encryption at rest is opt-in rather than default, DB TLS is
+operator-configured rather than enforced). See the audit document for the
+full, current list -- do not let this policy imply operator-action items
+are closed before they actually are.
 
 ## 6. Enforcement and exceptions
 

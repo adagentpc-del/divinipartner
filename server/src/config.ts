@@ -84,6 +84,18 @@ export const storageEncryptionEnabled = (): boolean => !!STORAGE_ENCRYPTION_KEY;
 export const BACKUP_RETENTION_DAYS = Number(process.env.BACKUP_RETENTION_DAYS || 14);
 export const BACKUP_KEY_PREFIX = "backups/db";
 
+/**
+ * Optional error-monitoring sink (lib/logger.ts). When set, every
+ * logger.error() call POSTs a JSON payload to this URL (best-effort,
+ * non-blocking) in addition to the structured stdout/stderr log line that
+ * always happens regardless. A generic webhook rather than a specific
+ * vendor SDK -- point it at a Slack incoming webhook, a custom collector,
+ * or a Sentry-compatible ingestion proxy. Unset by default: structured
+ * logging to stdout/stderr always happens; this only adds real-time
+ * alerting on top of it once an operator has somewhere to send it.
+ */
+export const ERROR_MONITORING_WEBHOOK_URL = process.env.ERROR_MONITORING_WEBHOOK_URL || "";
+
 // Signing secret for short-lived download URLs (HMAC). Falls back to
 // OIDC_CLIENT_ID-derived value in dev but should be set explicitly in prod.
 export const DOWNLOAD_URL_SECRET =

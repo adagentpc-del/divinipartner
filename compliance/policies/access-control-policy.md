@@ -101,12 +101,16 @@ access point in the system.
 
 - Sessions are signed JWTs (`SESSION_SECRET`-keyed), 30-day fixed expiry,
   delivered as an httpOnly cookie plus a bearer-token fallback.
-- **Gap:** no idle/inactivity timeout, and no general session-revocation
-  mechanism -- a stolen token remains valid until it naturally expires,
-  except for the one case fixed 2026-08-03 (a deleted account's token is
-  now explicitly rejected). See
-  `AI_PROJECT_OS/53_SOC2_ISO27001_AUDIT.md` gap #4 for the recommended fix
-  (a session-epoch/denylist mechanism) -- not yet built.
+- Session revocation is REQUIRED (and built, 2026-08-03) on two events:
+  account deletion (`AccountDeletedError`, permanent) and password reset
+  (`sessions_invalidated_before`, checked on every authenticated request).
+  A password reset invalidates every OTHER already-issued session for that
+  user, compared with millisecond precision so a reset and a still-valid
+  old session in the same wall-clock second are correctly distinguished.
+- **Remaining gap:** no idle/inactivity timeout -- a session with no
+  revoking event stays valid for its full 30-day life regardless of
+  activity level. Lower priority than the revocation gap this closed, since
+  it affects normal usage rather than a compromised-credential scenario.
 
 ## 8. Related documents
 

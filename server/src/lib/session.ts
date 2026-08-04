@@ -69,6 +69,10 @@ function sessionSecret(): Uint8Array {
 export interface SessionClaims extends JWTPayload {
   sub: string;
   email: string | null;
+  /** Millisecond-precision issued-at. See signSession for why this exists
+   *  alongside the standard (whole-second) `iat`. Absent on any session
+   *  token signed before this field was added. */
+  iam?: number;
 }
 
 /** Name of the session cookie. */
@@ -79,7 +83,21 @@ export const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 
 /** Sign a 30-day HS256 session token { sub, email }. */
 export async function signSession(userId: string, email: string | null): Promise<string> {
-  return new SignJWT({ email })
+  return new SignJWT({
+    email,
+    // Millisecond-precision issued-at, IN ADDITION TO the standard `iat`
+    // claim `.setIssuedAt()` sets below. `iat` per the JWT spec is
+    // whole-second resolution, which is too coarse for session revocation:
+    // a login and a later password reset that land in the SAME wall-clock
+    // second (verified during live testing of this feature -- fast
+    // scripted requests, but a fast attacker/victim sequence is not
+    // impossible either) would be indistinguishable by `iat` alone,
+    // meaning an old, stolen token issued a heartbeat before a reset could
+    // slip through as if it were the freshly-issued replacement. `iam`
+    // (issued-at-milliseconds) resolves that ambiguity exactly -- see
+    // auth.ts's resolve() and lib/sessionRevocation.ts.
+    iam: Date.now(),
+  })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(userId)
     .setIssuedAt()

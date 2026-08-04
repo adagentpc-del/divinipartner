@@ -1,0 +1,21 @@
+-- ============================================================================
+-- Divini Partners by Divini Group - session revocation
+-- ----------------------------------------------------------------------------
+-- Closes gap #3 from the 2026-08-03 SOC 2 / ISO 27001 audit
+-- (AI_PROJECT_OS/53_SOC2_ISO27001_AUDIT.md): a password reset did not
+-- invalidate other already-issued session tokens for the same user, so a
+-- token stolen before a legitimate reset stayed valid until its natural
+-- 30-day expiry.
+--
+-- sessions_invalidated_before marks the cutoff: any session JWT whose `iat`
+-- (issued-at) claim is BEFORE this timestamp is treated as logged out, even
+-- though its signature still verifies -- checked in server/src/auth.ts's
+-- resolve() against server/src/db.ts's sessionsInvalidatedBefore(). Set by
+-- invalidateSessions(userId) on every successful password reset
+-- (server/src/routes/auth-native.ts).
+--
+-- Idempotent: only `add column if not exists`. Safe to run repeatedly.
+-- Zero em dashes.
+-- ============================================================================
+
+alter table users add column if not exists sessions_invalidated_before timestamptz;

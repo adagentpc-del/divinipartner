@@ -42,9 +42,13 @@ Known debt and cleanup, roughly ordered by value.
 
 - Default is local-disk plaintext. Before scale: move to S3, enable encryption at rest, enable bucket versioning, and set up backups + separate key backup. (`OBJECT-STORAGE.md`.)
 
-## Observability
+## Observability (RESOLVED 2026-08-03)
 
-- No structured logging or error monitoring (Sentry-style). Add before or shortly after taking real money. Still true as of the 2026-08-03 audit — the highest-value item on this list that hasn't moved.
+- Built: `server/src/lib/logger.ts`, structured JSON logging (ts/level/msg/context) to stdout/stderr, wired into the central Express error handler, process-level uncaughtException/unhandledRejection handlers, and a failed audit-log write. An optional `ERROR_MONITORING_WEBHOOK_URL` fires on every `logger.error()`, best-effort, matching this codebase's usual pattern for optional third-party integrations. Live-verified: a real 500 produced a structured log line with full request context and reached a local webhook receiver. Existing scattered `console.log` calls elsewhere were deliberately not mass-rewritten (low value, high regression risk for a same-pass mechanical change); the critical monitoring-relevant paths now go through the structured logger. See `53_SOC2_ISO27001_AUDIT.md`.
+
+## Session revocation (RESOLVED 2026-08-03)
+
+- Built: `users.sessions_invalidated_before`, stamped on every password reset, checked on every authenticated request (`auth.ts`'s `resolve()`). Caught and fixed a real bug while building it: the standard JWT `iat` claim's whole-second resolution made an old and new session indistinguishable when a login and a reset landed in the same wall-clock second -- fixed with a custom millisecond-precision `iam` claim (`lib/session.ts`). 9 unit tests plus live end-to-end verification (multiple rapid-fire reset cycles landing in the identical second). See `53_SOC2_ISO27001_AUDIT.md`.
 
 ## MFA / 2FA (RESOLVED 2026-08-03)
 

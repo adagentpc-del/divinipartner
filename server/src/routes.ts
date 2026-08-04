@@ -3,6 +3,8 @@
  */
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { ForbiddenError, NotFoundError, AccountDeletedError } from "./db.js";
+import { logger } from "./lib/logger.js";
+import { getAuth } from "./auth.js";
 
 import foundation from "./routes/foundation.js";
 // Native email/password auth (replaces Authentik OIDC)
@@ -325,12 +327,18 @@ router.use("/proposal-studio", proposalStudio);
 router.use("/follow-up-desk", followUpDesk);
 router.use("/price-guide", priceGuide);
 
-export function errorHandler(err: any, _req: Request, res: Response, _next: NextFunction) {
+export function errorHandler(err: any, req: Request, res: Response, _next: NextFunction) {
   if (err instanceof AccountDeletedError) return res.status(401).json({ error: "unauthorized" });
   if (err instanceof ForbiddenError) return res.status(403).json({ error: err.message });
   if (err instanceof NotFoundError) return res.status(404).json({ error: err.message });
-  // eslint-disable-next-line no-console
-  console.error("[api error]", err?.message || err);
+  const auth = getAuth(req);
+  logger.error("unhandled api error", {
+    error: err?.message || String(err),
+    stack: err?.stack,
+    method: req.method,
+    path: req.path,
+    userId: auth.userId,
+  });
   res.status(500).json({ error: "internal error" });
 }
 

@@ -65,14 +65,21 @@ Source: `server/src/config.ts`, `server/src/app.ts`, `server/src/lib/{session,ra
 - Optionally enable storage encryption (`STORAGE_ENCRYPTION_KEY`) and S3.
 - Set `sslmode=require` on `DATABASE_URL` for any managed/remote Postgres instance.
 - Install the automated-backup cron job (`23_DEPLOYMENT.md`) -- the backup/restore mechanism is built, but nothing runs it on a schedule until this cron line is added.
+- Set `ERROR_MONITORING_WEBHOOK_URL` to a real destination -- structured logging always happens, but nobody is alerted in real time until this is set.
 - Keep `STRIPE_SECRET_KEY` unset until ready (no money moves; see `52_COMPLIANCE.md`).
 
 ## MFA / 2FA
 
 - RESOLVED 2026-08-03: TOTP-based two-factor authentication, self-service (Profile -> Account), with QR enrollment, 10 single-use backup codes, and a login-time challenge step. A distinctly-typed 5-minute JWT (`signMfaChallenge`/`verifyMfaChallenge` in `lib/session.ts`) proves a correct password was entered without granting session access -- `verifySession` explicitly rejects any token carrying a `typ` claim, so this challenge token can never be replayed as full API access even though it is signed with the same `SESSION_SECRET`. ENFORCED for `ADMIN_ALLOWED_EMAILS` accounts: `requireAdmin` (`auth.ts`) checks enrollment and refuses admin actions with `mfa_required_for_admin` until the admin enrolls (login itself still succeeds, so an admin is never locked out with no path to enroll). See `53_SOC2_ISO27001_AUDIT.md` for the full detail.
 
+## Session revocation
+
+- RESOLVED 2026-08-03: a password reset invalidates every OTHER already-issued session for that user (`users.sessions_invalidated_before`, checked on every authenticated request in `auth.ts`'s `resolve()`). Uses a custom millisecond-precision `iam` JWT claim rather than the standard whole-second `iat`, closing a real same-wall-clock-second ambiguity caught during live testing. See `53_SOC2_ISO27001_AUDIT.md`.
+
+## Structured logging / error monitoring
+
+- RESOLVED 2026-08-03: `lib/logger.ts`, structured JSON to stdout/stderr, wired into the central error handler, process crash handlers, and audit-log failures. Optional `ERROR_MONITORING_WEBHOOK_URL` for real-time alerting (generic webhook, not a specific vendor SDK) -- structured logging always happens regardless; the webhook is the part that still needs an operator to point it somewhere. See `53_SOC2_ISO27001_AUDIT.md`.
+
 ## SOC 2 / ISO 27001
 
-- See `53_SOC2_ISO27001_AUDIT.md` for a full code-level control audit mapped to SOC 2 Trust Services Criteria and ISO 27001 Annex A, including what was fixed 2026-08-03 (stale MFA claims, password-reset notification + audit logging, account-deletion notification, MFA itself, and the automated-backup mechanism) and the ranked list of open gaps that remain (installing the backup cron schedule, structured logging/monitoring, session revocation, default-on encryption at rest).
-
-> TODO(owner): Add error monitoring / structured logging (Sentry-style) before or shortly after taking real money.
+- See `53_SOC2_ISO27001_AUDIT.md` for a full code-level control audit mapped to SOC 2 Trust Services Criteria and ISO 27001 Annex A. As of 2026-08-03, every code-fixable gap it found is closed (MFA, account deletion, automated backups, session revocation, structured logging/monitoring); what remains is purely operator action (install the backup cron job, point the error-monitoring webhook somewhere real) plus two lower-severity items (default-on encryption at rest, enforced DB TLS for managed instances).

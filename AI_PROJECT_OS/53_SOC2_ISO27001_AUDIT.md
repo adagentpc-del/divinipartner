@@ -57,13 +57,18 @@ yet exist.
 ### Session management (SOC 2 CC6.1; ISO 27001 A.8.5)
 
 - JWT sessions, `SESSION_SECRET`-signed, httpOnly + SameSite=Lax cookie.
-  30-day fixed expiry, no idle timeout, no server-side revocation list --
-  a stolen token remains valid until it naturally expires, EXCEPT after
-  account deletion, where `ensureUser()` now explicitly rejects any request
-  from a deleted account's still-valid token (`AccountDeletedError`, 401;
-  fixed 2026-08-03 alongside account deletion). Password reset and logout do
-  not currently invalidate other outstanding sessions/tokens for the same
-  user -- see "Open gaps" below.
+  30-day fixed expiry, no idle timeout. Two independent revocation
+  mechanisms, both checked on every authenticated request: (1) account
+  deletion -- `ensureUser()` rejects any request from a deleted account's
+  still-valid token (`AccountDeletedError`, 401; fixed 2026-08-03 alongside
+  account deletion); (2) password reset -- `sessions_invalidated_before`
+  (fixed 2026-08-03, later same day) invalidates every OTHER already-issued
+  session for that user, compared with millisecond precision via a custom
+  `iam` JWT claim so a reset and a still-valid old session landing in the
+  same wall-clock second are correctly distinguished (see the update below
+  for the real bug this closes). Logout itself only clears the calling
+  browser's cookie/token, same as any session scheme -- it was never meant
+  to revoke OTHER devices' sessions, only password reset is.
 
 ### Encryption (SOC 2 CC6.1, CC6.7; ISO 27001 A.8.24)
 
@@ -202,37 +207,72 @@ table count (170/170) and row counts, verified idempotent on a second
 restore into the same target. See `23_DEPLOYMENT.md`'s "Automated database
 backups" section for the remaining cron-install step.
 
-## Open gaps (not fixed here -- need a dedicated build or an operator decision)
+## Update 2026-08-03 (evening): session revocation + structured logging/monitoring built
 
-Ranked by how commonly an auditor would flag them first.
+Both remaining code-fixable gaps from the list below (originally #2 and #3)
+are RESOLVED:
 
-1. **Automated backups are built but not yet SCHEDULED anywhere.** MEDIUM
-   (downgraded from HIGH now that the mechanism exists -- see the update
-   above). Installing the cron line and choosing retention/S3 is a single
-   operator action (`23_DEPLOYMENT.md`), not a code change.
-2. **No structured logging / error monitoring.** MEDIUM-HIGH. Carried over
-   from `16_TECH_DEBT.md`, unchanged by this audit. Needed for CC7.2
-   ("the entity monitors ... for anomalies") to be more than an audit-log
-   table nobody watches.
-3. **Session revocation.** MEDIUM. A password reset or account deletion does
-   not invalidate OTHER already-issued session tokens for the same user
-   (except the deleted-account case, fixed earlier this pass). A 30-day JWT
-   stolen before a legitimate password reset stays valid until it expires.
-   Fixing this generally would need a session-version or denylist mechanism
-   (e.g. a `users.session_epoch` column bumped on password change, checked
-   in `verifySession`) -- a real, scoped, code-fixable improvement, but a
-   separate change from this audit given the JWT-verification code path is
-   security-critical and deserves its own careful, tested pass rather than
-   a same-turn edit.
-4. **Encryption at rest is opt-in, not default.** MEDIUM. `storageCrypto.ts`
+- **Session revocation.** `users.sessions_invalidated_before`
+  (`db/schema-session-revocation.sql`) is stamped by `db.ts`'s
+  `invalidateSessions()`, called on every successful password reset
+  (`routes/auth-native.ts`'s `/auth/reset`, right before issuing the
+  replacement session). `auth.ts`'s `resolve()` checks it on every
+  authenticated request via `lib/sessionRevocation.ts`'s pure
+  `sessionIsRevoked()`. Caught and fixed a real bug while building this: the
+  standard JWT `iat` claim has whole-SECOND resolution, so a login and a
+  later reset landing in the same wall-clock second (verified live -- fast
+  requests, but a fast attacker/victim sequence is not impossible either)
+  made the old and new tokens indistinguishable, meaning a stolen token
+  could slip through as if it were the fresh replacement. Fixed by adding a
+  custom millisecond-precision `iam` claim to the session JWT
+  (`lib/session.ts`'s `signSession`) and comparing that instead, with a
+  floored-`iat` fallback kept only for any token issued before this change.
+  9 unit tests (`tests/sessionRevocation.test.ts`) cover both paths
+  including the exact same-second race. Live-verified end to end multiple
+  times: old token rejected (401), new token from the same reset accepted
+  (200), including several rapid-fire back-to-back reset cycles that landed
+  in the identical wall-clock second.
+- **Structured logging + error monitoring.** `lib/logger.ts`: every log
+  line is one JSON object (ts, level, msg, ...context) to stdout/stderr,
+  trivially parseable by any log aggregator. Wired into the central Express
+  error handler (`routes.ts`'s `errorHandler`, now with method/path/userId
+  context), process-level `uncaughtException`/`unhandledRejection` handlers
+  (`index.ts`, exits cleanly in production so pm2 restarts into a clean
+  process), and a failed audit-log write (`lib/audit.ts`). An OPTIONAL
+  generic webhook sink (`ERROR_MONITORING_WEBHOOK_URL`) fires on every
+  `logger.error()` call, best-effort and non-blocking -- off by default,
+  matching every other optional integration in this codebase (Stripe,
+  PayPal, S3, AV scan), real once an operator points it at their actual
+  monitoring stack (Slack webhook, custom collector, Sentry-compatible
+  ingestion proxy). Live-verified: triggered a real 500, confirmed the
+  structured log line with full context, and confirmed a local webhook
+  receiver got the same payload.
+
+Scope note on structured logging: existing scattered `console.log`/
+`console.error` calls elsewhere in the codebase were NOT mass-rewritten --
+that would be a large, low-value mechanical change for this pass. The
+critical paths that actually matter for CC7.2 ("the entity monitors ... for
+anomalies") now go through the structured logger; less critical call sites
+can be migrated incrementally as they are touched.
+
+## Open gaps (not fixed here -- need an operator decision, not more code)
+
+1. **Automated backups are built but not yet SCHEDULED anywhere.** MEDIUM.
+   Installing the cron line and choosing retention/S3 is a single operator
+   action (`23_DEPLOYMENT.md`), not a code change.
+2. **Encryption at rest is opt-in, not default.** MEDIUM. `storageCrypto.ts`
    only encrypts objects when `STORAGE_ENCRYPTION_KEY` is set. Recommend the
    go-live runbook (`T1`/`T3` in `12_TASK_QUEUE.md`) require setting it
    before any real vendor documents are uploaded in production.
-5. **DB TLS is operator-configured, not enforced.** LOW-MEDIUM.
+3. **DB TLS is operator-configured, not enforced.** LOW-MEDIUM.
    `sslmode=require` works if set in `DATABASE_URL` but nothing in the app
    requires it. Document as a required production `DATABASE_URL` parameter
    for a managed/remote Postgres instance (a local same-host DB, as used in
    dev, does not need it).
+4. **Error-monitoring webhook is unconfigured by default.** LOW. The
+   mechanism exists (see above); an operator still needs to set
+   `ERROR_MONITORING_WEBHOOK_URL` to somewhere real for alerts to actually
+   reach anyone.
 
 ## Framework cross-reference (quick index)
 
@@ -240,14 +280,14 @@ Ranked by how commonly an auditor would flag them first.
 |---|---|---|---|
 | Access control / RBAC | CC6.1-CC6.3 | A.5.15-A.5.18, A.8.2-A.8.5 | Implemented |
 | MFA | CC6.1, CC6.6 | A.8.5 | Implemented (self-service TOTP; enforced for admin accounts) |
-| Session management | CC6.1 | A.8.5 | Partial (no general revocation) |
+| Session management | CC6.1 | A.8.5 | Implemented (revocation on password reset, millisecond-precision) |
 | Encryption in transit | CC6.1, CC6.7 | A.8.24 | Implemented (edge TLS + HSTS) |
 | Encryption at rest | CC6.1, CC6.7 | A.8.24 | Opt-in, not default |
 | Audit logging | CC7.2, CC7.3 | A.8.15 | Implemented, unmonitored |
 | Change management (this repo's own dev process) | CC8.1 | A.8.32 | Out of scope for code audit |
 | Vulnerability management | CC7.1 | A.8.8 | Partial (`npm audit` pass done 2026-08-03; no recurring schedule) |
 | Backup / recovery | A1.2 | A.8.13 | Mechanism built + verified (backup + restore); scheduling is the one remaining operator step |
-| Monitoring / logging review | CC7.2 | A.8.16 | **Gap** (no alerting/SIEM) |
+| Monitoring / logging review | CC7.2 | A.8.16 | Implemented (structured logging + optional error-monitoring webhook); operator still needs to point the webhook somewhere real |
 | Data subject rights | Privacy (if in scope) | A.5.34 | Implemented, stronger than expected |
 | Incident response | CC7.4, CC7.5 | A.5.24-A.5.28 | Policy-only, not yet drafted (next task) |
 | Vendor/subprocessor management | CC9.2 | A.5.19-A.5.23 | Policy-only, not yet drafted (next task) |
@@ -262,10 +302,13 @@ Ranked by how commonly an auditor would flag them first.
    2026-08-03: see the update above. Remaining: install the cron line
    (`23_DEPLOYMENT.md`) and choose retention/S3 (operator decision).
 3. ~~Scope and build MFA~~ DONE 2026-08-03: see the update above.
-4. Add structured logging / error monitoring (already tracked in
-   `16_TECH_DEBT.md`).
-5. Build general session revocation (gap #3 above) as its own scoped,
-   carefully-tested pass.
-6. When ready to pursue actual certification: engage counsel/a SOC 2 auditor
+4. ~~Add structured logging / error monitoring~~ DONE 2026-08-03 (evening):
+   see the update above.
+5. ~~Build general session revocation~~ DONE 2026-08-03 (evening): see the
+   update above.
+6. Install the automated-backup cron job and point
+   `ERROR_MONITORING_WEBHOOK_URL` at a real destination (both operator
+   actions -- `23_DEPLOYMENT.md`).
+7. When ready to pursue actual certification: engage counsel/a SOC 2 auditor
    or ISO 27001 certification body -- this document is preparation for that
    engagement, not a substitute for it.

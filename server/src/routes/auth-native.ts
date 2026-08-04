@@ -320,6 +320,12 @@ router.post(
       return res.status(400).json({ error: "This reset link is invalid or has expired." });
     }
     await db.applyPasswordReset(user.id, hashPassword(password));
+    // Session revocation: invalidate every OTHER already-issued session
+    // token for this user before issuing the new one below, so a token
+    // stolen before this reset stops working immediately rather than
+    // staying valid for up to 30 more days. Must run BEFORE issueSession so
+    // the freshly-issued token's iat lands after this cutoff.
+    await db.invalidateSessions(user.id);
     // Detection control: tell the account owner their password changed, so a
     // reset they did not request (e.g. via a compromised inbox) is visible to
     // them immediately, not just recoverable after the fact via audit_logs.
