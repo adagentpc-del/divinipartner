@@ -42,7 +42,7 @@ Note: `db/SCHEMA-NOTES.md` documents an earlier local-validation setup (Postgres
   - `featured_placements` - Featured Vendor subscriptions (`price_cents = 4900`, status, period, stripe_ref).
   - `partner_commissions`, `partner_payouts` - referral commissions and payouts.
   - `leakage_events` - off-platform circumvention / fee-owed tracking.
-- Payouts / Connect: payout-accounts, payouts (`server/src/db/payouts.ts`, `payout-accounts.ts`).
+- Payouts / Connect: payout-accounts, payouts (`server/src/db/payouts.ts`, `payout-accounts.ts`). `payout_accounts.stripe_api_version` ('v1'|'v2', default 'v1', added 2026-08-03) selects which Connect account shape an org uses -- see `22_APIS_AND_INTEGRATIONS.md`'s Stripe section. `organizations.subscription_payment_source` ('card'|'stripe_balance', added same day) records whether the org's active subscription is funded by a card (`lib/stripeBilling.ts`, the original path) or their v2 connected account's Stripe balance (`lib/stripeAccounts.ts`, new).
 - Intelligence: Divini Score, playbooks, relationship, opportunity, war room, event memory, member/attendee, business health, market intel.
 - Venue intelligence: venue-twin, venue-compare, venue metrics/restrictions.
 - Nonprofit / fundraising: `fundraising_events`, `auction_bids`, sponsorship, donor, volunteer, sponsor-purchases, tickets.

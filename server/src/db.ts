@@ -231,6 +231,17 @@ export async function getOrgByStripeCustomerId(stripeCustomerId: string): Promis
   ]);
 }
 
+/** Look up an org by its Stripe Subscription id. Needed for the
+ *  stripe_balance-funded subscription path (lib/stripeAccounts.ts): that
+ *  invoice has no `customer` (cus_...) at all -- the connected account IS
+ *  the payer -- so invoice.payment_failed cannot resolve via
+ *  getOrgByStripeCustomerId and falls back to this instead. */
+export async function getOrgByStripeSubscriptionId(stripeSubscriptionId: string): Promise<DbOrg | null> {
+  return q1<DbOrg>(`select ${ORG_COLS} from organizations o where o.stripe_subscription_id = $1`, [
+    stripeSubscriptionId,
+  ]);
+}
+
 /**
  * Apply a Stripe subscription lifecycle event to the org it belongs to.
  * Idempotent: replaying the same event just re-applies the same deterministic
@@ -260,6 +271,15 @@ export async function applySubscriptionUpdate(args: {
     orgType = row?.type ?? null;
   } else if (args.stripeCustomerId) {
     const org = await getOrgByStripeCustomerId(args.stripeCustomerId);
+    orgId = org?.id ?? null;
+    orgType = org?.type ?? null;
+  } else {
+    // stripe_balance-funded subscriptions (lib/stripeAccounts.ts) have no
+    // Stripe Customer at all -- the connected account itself is the payer --
+    // so this is the only resolution path available once metadata.org_id is
+    // also missing (e.g. an invoice.payment_failed event, which carries
+    // neither).
+    const org = await getOrgByStripeSubscriptionId(args.stripeSubscriptionId);
     orgId = org?.id ?? null;
     orgType = org?.type ?? null;
   }

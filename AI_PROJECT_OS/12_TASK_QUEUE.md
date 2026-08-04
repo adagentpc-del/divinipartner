@@ -77,8 +77,21 @@ Prioritized backlog, seeded from the Go-Live runbook remaining items and the V2 
 - Dependencies: T5, legal sign-off
 - Effort: M
 - Acceptance: `STRIPE_SECRET_KEY` set; payouts and venue share leave queue-only and settle via Stripe Connect; not-a-party "we do not hold funds" posture matches the Connect setup.
-- Related files: `server/src/lib/stripe-connect.ts`, `server/src/lib/payoutEngine.ts`, `server/src/routes/connect-payouts.ts`, `server/src/routes/payments.ts`
+- Related files: `server/src/lib/stripe-connect.ts`, `server/src/lib/payoutEngine.ts`, `server/src/routes/connect-payouts.ts`, `server/src/routes/payments.ts`, `server/src/lib/stripeAccounts.ts`
 - Notes: Do not enable until counsel reviews Terms + policies and the Connect flow is confirmed.
+- Update 2026-08-03: a second Connect account shape (Accounts v2, direct
+  charge -- `server/src/lib/stripeAccounts.ts`) was added alongside the
+  original v1 Express/destination-charge flow, specifically to make the
+  connected (vendor) account unambiguously the merchant of record for the
+  charge, matching the "we do not hold funds" language more directly than
+  the v1 destination-charge path (where the charge technically belongs to
+  the platform account first). Confirm with counsel WHICH shape (or both)
+  the "not a party" Terms language should describe once this key is set --
+  built and typechecked, but NOT live-verified against real Stripe test-mode
+  API calls (no `STRIPE_SECRET_KEY` available in the build environment). See
+  `22_APIS_AND_INTEGRATIONS.md` for the full detail and `.env.local.example`
+  for how to obtain test-mode keys and verify the flow before this task is
+  unblocked.
 
 ## T8 - Legal / counsel review
 

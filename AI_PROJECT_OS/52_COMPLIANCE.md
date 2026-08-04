@@ -16,6 +16,7 @@ Source: Divini-Go-Live-Runbook.md, Divini-Security-and-iOS-Hardening-Summary.md,
 - The platform's intended posture is that it does NOT hold funds. Funds settle to the vendor (via Stripe Connect) and the platform takes only an application fee.
 - The "we do not hold funds" language in Terms/policies must match the actual Stripe Connect setup before enabling real money.
 - The on-top fee is presented transparently to the client; the vendor receives the full quote. Anti-circumvention / non-circumvention policy backs the leakage-recovery mechanics.
+- Two Connect account shapes exist as of 2026-08-03 (see `22_APIS_AND_INTEGRATIONS.md`): the original v1 Express/destination-charge flow (charge created on the platform's own account, then auto-split out to the vendor) and a new Accounts v2 direct-charge flow (`server/src/lib/stripeAccounts.ts`, the connected/vendor account IS the merchant of record for the charge, nothing is ever transferred out because it never belonged to the platform). The v2 shape is the more literally accurate match for "we do not hold funds" -- flag both shapes for counsel when T7 (`12_TASK_QUEUE.md`) is unblocked, since the Terms language should describe whichever is actually in use (or both, if v1-onboarded vendors are grandfathered rather than migrated).
 
 ## Attorney-review flags (must clear before real money)
 

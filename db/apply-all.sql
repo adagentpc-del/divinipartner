@@ -5591,3 +5591,13 @@ create index if not exists idx_mfa_backup_codes_user on mfa_backup_codes(user_id
 -- ---------------------------------------------------------------------------
 alter table users add column if not exists sessions_invalidated_before timestamptz;
 
+-- ====== db/schema-stripe-accounts-v2.sql ======
+-- ---------------------------------------------------------------------------
+-- Stripe Accounts v2 (direct-charge model), alongside the existing v1
+-- Express/destination-charge flow. See server/src/lib/stripeAccounts.ts.
+-- ---------------------------------------------------------------------------
+alter table payout_accounts add column if not exists stripe_api_version text not null default 'v1'
+  check (stripe_api_version in ('v1','v2'));
+alter table organizations add column if not exists subscription_payment_source text
+  check (subscription_payment_source in ('card','stripe_balance'));
+
