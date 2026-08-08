@@ -338,6 +338,17 @@ Prioritized backlog, seeded from the Go-Live runbook remaining items and the V2 
 - Related files: `server/src/lib/extract.ts`, new test fixtures/harness (location TBD, likely `server/tests` or a dedicated `eval/` directory).
 - See: `docs/platform-standard/section-08-ai-security-governance.md`, risk R-30.
 
+## T30 - Build refund-issuance and dispute-response capability before T7 unblocks (found 2026-08-08, ALFY2 pack Section 09)
+
+- Priority: P1 (conditional on T7 -- must exist before real money goes live, not urgent while it stays off)
+- Status: NOT STARTED
+- Owner: unassigned
+- Dependencies: T7 (real Stripe keys)
+- Effort: M
+- Acceptance: full-tree grep found zero code paths that call a Stripe/PayPal refund API or handle a `charge.dispute.*` webhook -- the only "refund" references in the codebase are bookkeeping fields in `lib/payoutEngine.ts`'s net-profit calculation. `PaymentPolicy.tsx` already correctly scopes Divini's refund responsibility narrowly (marketplace-facilitator stance: refunds happen between transacting parties or via the processor, and the platform's own facilitation fee is "non-refundable except where required by law") -- so this is not currently a policy contradiction, but it is a real operational gap: if a legally-required refund situation arises for the platform's own fee (double-billing, an unauthorized-transaction dispute), there is no in-app mechanism to act, only a manual Stripe Dashboard action with no documented internal process. Before T7 unblocks real money: (1) build an admin-triggered refund action calling Stripe's refund API, audit-logged; (2) add a `charge.dispute.created`/`charge.dispute.updated` webhook handler that at minimum records the dispute and alerts an operator.
+- Related files: `server/src/routes/payments.ts`, `server/src/lib/processors.ts`.
+- See: `docs/platform-standard/section-09-payments-stripe-webhooks.md`, risk R-33.
+
 ## ALFY2 / Claude Master Platform Execution Pack (started 2026-08-08)
 
 A separately-uploaded 18-section audit framework is being run against this
@@ -350,12 +361,14 @@ Environments, Secrets, CI/CD & Supply Chain), Section 04
 (Authorization, RBAC/ABAC, RLS, Tenancy, Admin & Impersonation), Section 06
 (Database Integrity, Data Lifecycle, Backups & Recovery), Section 07
 (App/API Perimeter, Input Validation, File Upload, Bot & Malware Security),
-and Section 08 (AI Security, Governance, Prompt-Injection Defense & Model
-Quality) are complete; see `docs/platform-standard/release-readiness.md`
-for cumulative status across all 18 sections as they execute. New findings
-that represent real, actionable work (like T13-T29 above) get a task here
-as they're found, so this queue stays the single place to look for "what's
-left to do" -- `docs/platform-standard/` is where the pack's own required
-audit/evidence/risk trail lives, not a second task list.
+Section 08 (AI Security, Governance, Prompt-Injection Defense & Model
+Quality), and Section 09 (Payments, Stripe, Webhooks, Subscriptions,
+Marketplace & Tax) are complete; see
+`docs/platform-standard/release-readiness.md` for cumulative status across
+all 18 sections as they execute. New findings that represent real,
+actionable work (like T13-T30 above) get a task here as they're found, so
+this queue stays the single place to look for "what's left to do" --
+`docs/platform-standard/` is where the pack's own required audit/evidence/
+risk trail lives, not a second task list.
 
 > TODO(owner): Add any product feature tasks beyond go-live as they are defined.

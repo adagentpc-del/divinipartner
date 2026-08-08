@@ -60,6 +60,12 @@ Bootstrapped at Section 01.
 | S08-04, S08-06 | Command output | Live `POST /api/profile/extract` against a real registered account with Ollama unreachable: `{"available":false,...}`, no crash; `select * from audit_logs where action='ai.extract_profile'` showing the new trail row with `provider`/`model`/`outcome` populated and no extracted text stored | 2026-08-08 |
 | S08-05 | Command output | `grep -rn "SESSION_SECRET\|API_KEY\|password_hash\|reset_token\|verify_token\|totp_secret" server/src/lib/{extract,discovery,discovery-search}.ts` — zero matches | 2026-08-08 |
 | S08 (all) | File | `docs/platform-standard/section-08-ai-security-governance.md` (new) | 2026-08-08 |
+| S09-01 | Command output | `grep -rniE "card_number|cvc|cvv|pan\b" server/src` — zero real matches; `stripeBilling.ts`/`stripeAccounts.ts` read in full confirming Checkout-Session-only collection | 2026-08-08 |
+| S09-02 | Command output | Grepped `payments.ts`/`connect-payouts.ts` for a client-supplied Stripe account/destination id — zero matches; traced `getPayoutAccount`/`activeDirectChargeAccount` call sites, all keyed by `actor.org.id` | 2026-08-08 |
+| S09-03, S09-04 | Command output | Live HTTP tests against the running server: forged Stripe signature → 400, missing signature header → 400, neither recorded in `webhook_events`; direct DB test of the dedup insert (`on conflict (provider, event_id) do nothing returning id`) — first insert returns a row, identical second insert returns zero rows | 2026-08-08 |
+| S09-06 | Command output | Full-tree grep for a refund API call and `charge.dispute.*` handler — zero matches; `PaymentPolicy.tsx` read in full, confirmed consistent with the code (marketplace-facilitator stance, not a contradiction) | 2026-08-08 |
+| S09-07 | Code | `routes/founding-member.ts` + `db/member-attendee.ts`, read in full — no pricing/fee-rate write found | 2026-08-08 |
+| S09 (all) | File | `docs/platform-standard/section-09-payments-stripe-webhooks.md`, `db/schema-webhook-events.sql`, `server/src/db/webhookEvents.ts` (all new) | 2026-08-08 |
 
 ## Notes
 

@@ -5622,3 +5622,23 @@ create index if not exists idx_tasks_org on tasks(organization_id);
 create index if not exists idx_visitor_signals_org on visitor_signals(organization_id);
 create index if not exists idx_partners_user on partners(user_id);
 create index if not exists idx_visitor_signals_user on visitor_signals(user_id);
+
+-- ====== db/schema-webhook-events.sql ======
+-- ---------------------------------------------------------------------------
+-- Webhook event ledger, found during the ALFY2 pack Section 09 (payments)
+-- audit. See db/schema-webhook-events.sql for the full rationale.
+-- ---------------------------------------------------------------------------
+create table if not exists webhook_events (
+  id uuid primary key default gen_random_uuid(),
+  provider text not null,
+  event_id text not null,
+  event_type text,
+  received_at timestamptz not null default now(),
+  processed_at timestamptz,
+  status text not null default 'received' check (status in ('received','processed','failed')),
+  attempt_count int not null default 0,
+  last_error text,
+  unique (provider, event_id)
+);
+create index if not exists idx_webhook_events_status on webhook_events(status);
+create index if not exists idx_webhook_events_provider on webhook_events(provider, received_at desc);

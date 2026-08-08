@@ -17,7 +17,8 @@ format.
 | 06 Database Integrity, Data Lifecycle, Backups & Recovery | READY WITH P2 ITEMS — see below | 2026-08-08 |
 | 07 App/API Perimeter, Input Validation, File Upload, Bot & Malware Security | READY WITH P2 ITEMS — see below | 2026-08-08 |
 | 08 AI Security, Governance, Prompt-Injection Defense & Model Quality | READY WITH P2 ITEMS — see below | 2026-08-08 |
-| 09–18 | Not yet started | — |
+| 09 Payments, Stripe, Webhooks, Subscriptions, Marketplace & Tax | READY (architecture) WITH ITEMS BLOCKED ON T7 — see below | 2026-08-08 |
+| 10–18 | Not yet started | — |
 
 ## Section 01 summary
 
@@ -232,8 +233,48 @@ format.
   harness; the confidence-score design choice is documented, not tracked
   as an open defect).
 
+## Section 09 summary
+
+- No Stripe or PayPal credentials of any kind (test or live) are
+  configured in this environment, consistent with T7 (real money
+  intentionally not live since Section 01). Every check requiring an
+  actual processor round trip is explicitly marked BLOCKED with the exact
+  operator action, not faked or assumed passing.
+- Everything checkable by architecture, live fail-closed testing, and
+  direct database verification was done live: PCI scope confirmed
+  minimal (Checkout-only, zero server-side cardholder data), connected-
+  account/payout destinations confirmed always server-resolved (no
+  client-selected authority), webhook signature verification confirmed
+  fail-closed via a real HTTP test against the running server (forged
+  and missing signatures both correctly rejected), and the coupon/
+  promotion-engine requirement confirmed satisfied (one canonical value
+  mechanism, no parallel systems).
+- **Found and fixed a real P1 gap**: no event-level webhook idempotency
+  ledger existed — only payment-row-level idempotency, leaving several
+  webhook event types (`account.updated`, `customer.subscription.*`, the
+  v2 capability event) with zero duplicate-delivery protection and no
+  dead-letter/failure visibility. Built the pack's own suggested
+  `webhook_events` schema, wired it into both Stripe and PayPal handlers,
+  and live-verified the dedup logic directly against the database.
+- **Found a real P1 gap, documented not built**: no refund or dispute-
+  response capability exists anywhere in the app. Confirmed this is not
+  currently a policy contradiction (the Payment Policy already correctly
+  scopes Divini's refund responsibility narrowly for a marketplace-
+  facilitator model), but it is a real operational gap that should close
+  before T7 unblocks real money, not after — tracked as T30.
+- One P2 documented (out-of-order webhook delivery tolerance — narrow,
+  self-healing risk).
+- No P0 blockers among what could be tested. The T7 gate itself remains
+  the overarching blocker for anything requiring live money, exactly as
+  tracked since Section 01 — this section did not find a new reason to
+  delay T7 further, only confirmed what still needs to exist (refund/
+  dispute capability, real credential testing) before it unblocks.
+
 ## Overall launch readiness (cumulative, updated as sections complete)
 
-**NOT READY** — pending Sections 09–18. This is expected at this stage
-(eight of eighteen sections complete) and is not itself a new finding; it
-reflects where the multi-section pack currently stands, not a regression.
+**NOT READY** — pending Sections 10–18, plus the standing T7 gate (real
+money) which several sections now have concrete pre-requisites tracked
+against (refund/dispute capability, live credential testing). This is
+expected at this stage (nine of eighteen sections complete) and is not
+itself a new finding; it reflects where the multi-section pack currently
+stands, not a regression.

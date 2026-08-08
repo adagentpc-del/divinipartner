@@ -31,6 +31,7 @@ import {
   type PaymentKind,
 } from "../db/payments.js";
 import { applyPaymentToInvoice, getInvoicePartiesById } from "../db/invoices.js";
+import { recordWebhookEventOnce, markWebhookEventOutcome } from "../db/webhookEvents.js";
 import {
   confirmTicketOrder,
   confirmExhibitorOrder,
@@ -871,6 +872,16 @@ router.post(
     const raw = (req as unknown as { rawBody?: Buffer }).rawBody;
     const event = verifyStripeEvent(raw ?? "", req.headers["stripe-signature"] as string | undefined);
     if (!event) return res.status(400).json({ error: "invalid signature" });
+    const eventId = String(event.id ?? "");
+    const eventType = String(event.type ?? "");
+    // Event-level idempotency (ALFY2 pack Section 09): a duplicate delivery of
+    // an event that never touches the payments table (account.updated,
+    // customer.subscription.*, the v2 capability event) had no dedup
+    // protection before this -- only checkout.session.completed did, via
+    // payments.reference's unique index. Short-circuit here so a retried
+    // delivery is a cheap no-op instead of re-running every handler below.
+    const isNew = await recordWebhookEventOnce("stripe", eventId, eventType).catch(() => true);
+    if (!isNew) return res.json({ received: true, duplicate: true });
     // H2: only a genuine processing/DB failure returns 500 so Stripe retries.
     // A bad signature above is the only 400.
     try {
@@ -995,8 +1006,10 @@ router.post(
           });
         }
       }
+      await markWebhookEventOutcome("stripe", eventId, "processed").catch(() => undefined);
       return res.json({ received: true });
-    } catch {
+    } catch (e) {
+      await markWebhookEventOutcome("stripe", eventId, "failed", (e as Error)?.message).catch(() => undefined);
       return res.status(500).json({ error: "processing failed" });
     }
   }),
@@ -1017,6 +1030,10 @@ router.post(
       // unverified webhook. The skip-and-process path is dev/sandbox only.
       return res.status(400).json({ error: "webhook verification not configured" });
     }
+    const eventId = String(body.id ?? "");
+    const eventType = String(body.event_type ?? "");
+    const isNew = await recordWebhookEventOnce("paypal", eventId, eventType).catch(() => true);
+    if (!isNew) return res.json({ received: true, duplicate: true });
     // H2: only a genuine processing/DB failure returns 500 so PayPal retries.
     try {
       if (body.event_type === "PAYMENT.CAPTURE.COMPLETED") {
@@ -1052,8 +1069,10 @@ router.post(
           }
         }
       }
+      await markWebhookEventOutcome("paypal", eventId, "processed").catch(() => undefined);
       return res.json({ received: true });
-    } catch {
+    } catch (e) {
+      await markWebhookEventOutcome("paypal", eventId, "failed", (e as Error)?.message).catch(() => undefined);
       return res.status(500).json({ error: "processing failed" });
     }
   }),
