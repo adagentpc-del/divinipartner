@@ -19,6 +19,14 @@ Bootstrapped at Section 01.
 | S02-05 | Code | `src/components/CookieBanner.tsx`; `src/lib/fingerprint.ts` line ~155 (`if (!consentGranted()) return;`) | 2026-08-08 |
 | S02-06 | Code | `server/src/routes/signals.ts`, `server/src/db/signals.ts` — read in full, no purge/retention logic found | 2026-08-08 |
 | S02-07 | Command output | `grep -n -i "dmca\|copyright.*infring\|takedown\|artificial intelligence\|accessib"` across `Terms.tsx`, `Privacy.tsx`, `MarketplaceConduct.tsx` → no matches | 2026-08-08 |
+| S03-01 | Command output | `git grep` + `git log --all -p` regex scan for Stripe-live-key/AWS-key/PEM patterns across current tree and full history → zero matches; `git log --all --diff-filter=A --name-only` for `.env*` files → zero non-example matches | 2026-08-08 |
+| S03-02, S03-03, S03-05 | Command output | `npm ci --dry-run` (root + server) succeeded; full local run of the new CI sequence (typecheck → test → build server → build SPA → `npm audit --omit=dev --prefix server`) — all passed | 2026-08-08 |
+| S03-02, S03-03, S03-04 | File | `.github/workflows/ci.yml` (diff), `.github/dependabot.yml` (new) | 2026-08-08 |
+| S03-06 | Command output | `npm audit --omit=dev` (root, 11 findings) vs `npm audit --omit=dev --prefix server` (0 findings); `npm ls xcode` and `npm ls tar` tracing both vulnerable chains to `@capacitor/assets`/`@capacitor/cli` | 2026-08-08 |
+| S03-06 | File | `deploy.sh` read in full — confirms no `npm install` step runs on the production server | 2026-08-08 |
+| S03-07 | Command output | `npx license-checker --summary` full scan | 2026-08-08 |
+| S03-08 | Command output | `find` for `CODEOWNERS`/`LICENSE`; `git tag` (empty) | 2026-08-08 |
+| S03-09 | File | `server/src/scripts/restore-db.ts` `confirm()` function, read directly | 2026-08-08 |
 
 ## Notes
 

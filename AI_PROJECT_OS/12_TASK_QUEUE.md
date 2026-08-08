@@ -223,16 +223,77 @@ Prioritized backlog, seeded from the Go-Live runbook remaining items and the V2 
 - Acceptance: `docs/platform-standard/applicability-register.md` marks ADA/accessibility as APPLIES (public-facing commercial service, WCAG 2.2 AA baseline), but no Accessibility Statement page exists (confirmed via full-text search, 2026-08-08). Add one once Section 11's audit gives it real content to describe, rather than a content-free placeholder now.
 - Related files: new page; `src/App.tsx` routing.
 
+## CI hardened (RESOLVED 2026-08-08, ALFY2 pack Section 03)
+
+- `.github/workflows/ci.yml` previously used `npm install` (does not enforce
+  the lockfile), never ran the actual build (only typechecked), and had no
+  dependency-vulnerability gate. Fixed: switched to `npm ci` (locked
+  installs, both root and server), added real build steps for both, and
+  added `npm audit --omit=dev` as a blocking gate for the server package
+  (genuinely clean today, 0 vulnerabilities) -- see
+  `docs/platform-standard/section-03-repo-supply-chain.md` for why the
+  root/SPA side is intentionally not gated yet (all findings trace to
+  Capacitor mobile-build-only devDependencies never installed on the
+  production server).
+- Added `.github/dependabot.yml` (weekly, root npm + server npm + GitHub
+  Actions) -- none existed before.
+- Related files: `.github/workflows/ci.yml`, `.github/dependabot.yml`.
+
+## T19 - Resolve remaining npm audit findings in Capacitor mobile-build tooling (found 2026-08-08, ALFY2 pack Section 03)
+
+- Priority: P2
+- Status: NOT STARTED
+- Owner: unassigned (needs Mac/Xcode access to verify)
+- Dependencies: none
+- Effort: S, but requires a real mobile-build smoke test to verify safety
+- Acceptance: 11 `npm audit` findings (3 moderate, 7 high, 1 critical) in the root package, all traced to `@capacitor/assets`/`@capacitor/cli`/`xcode` (devDependencies for mobile icon/splash generation and Xcode project manipulation -- never installed on the production Linux server, confirmed `deploy.sh` never runs `npm install`). A safe `npm audit fix` already applied what it could; the rest need `npm audit fix --force`, which would bump these packages and must be verified against a real iOS/Android build before merging, since this environment has no Xcode/Android Studio to test with.
+- Related files: `package.json`, `package-lock.json`.
+- See: `docs/platform-standard/section-03-repo-supply-chain.md`.
+
+## T20 - Install and configure a linter, wire into CI (found 2026-08-08, ALFY2 pack Section 03)
+
+- Priority: P2
+- Status: NOT STARTED
+- Owner: unassigned
+- Dependencies: none
+- Effort: M (installing ESLint is quick; deciding how to handle whatever pre-existing issues it surfaces across ~250 files is the real work)
+- Acceptance: no `lint` script exists in either `package.json` today. Install and configure a linter appropriate to the stack (TypeScript + React), triage its initial findings (fix, suppress with justification, or accept as tech debt), then add a CI gate.
+- Related files: `package.json`, `server/package.json`, `.github/workflows/ci.yml`.
+- See: `docs/platform-standard/section-03-repo-supply-chain.md`.
+
+## T21 - Repository governance hygiene (found 2026-08-08, ALFY2 pack Section 03)
+
+- Priority: P2
+- Status: NOT STARTED
+- Owner: unassigned (branch-protection confirmation needs a GitHub admin; the rest is a small PR)
+- Dependencies: none
+- Effort: S
+- Acceptance: (1) confirm in GitHub settings whether the default branch requires PR review + passing CI before merge (not visible from repo contents -- operator to check and report back); (2) add a `CODEOWNERS` file; (3) start tagging releases (even lightweight `vN.N.N` tags at deploy time) so there's a real version history to point to; (4) resolve the redundant `pnpm-lock.yaml` at the repo root (CI and the documented deploy loop both use plain `npm` -- either remove the stray pnpm lockfile or standardize `build:server` on npm too, so there's one lockfile per install root, not two that can drift).
+- Related files: repo root (`CODEOWNERS`, `pnpm-lock.yaml`), `package.json` (`build:server` script).
+- See: `docs/platform-standard/section-03-repo-supply-chain.md`.
+
+## T22 - Written secrets-rotation runbook (found 2026-08-08, ALFY2 pack Section 03)
+
+- Priority: P2
+- Status: NOT STARTED
+- Owner: unassigned
+- Dependencies: none
+- Effort: S
+- Acceptance: secrets themselves are handled correctly today (never committed -- verified via a live scan of the full git history, `.gitignore` correctly excludes them), but there is no written procedure for an actual rotation event (suspected leak, employee offboarding, routine rotation cadence). Add a short runbook: which secrets exist, who can rotate each, and the exact steps (mirrors the existing `incident-response-plan.md` pattern in `compliance/policies/`).
+- Related files: new doc, likely alongside `compliance/policies/` or `AI_PROJECT_OS/51_SECURITY.md`.
+- See: `docs/platform-standard/section-03-repo-supply-chain.md`.
+
 ## ALFY2 / Claude Master Platform Execution Pack (started 2026-08-08)
 
 A separately-uploaded 18-section audit framework is being run against this
 repository, tracked under `docs/platform-standard/` (its own required
 artifact location, per the pack's rules) rather than duplicated here.
-Section 01 (Discovery, Architecture & Applicability Gate) and Section 02
-(Baseline Legal, Privacy, Consent & User Rights) are complete; see
+Section 01 (Discovery, Architecture & Applicability Gate), Section 02
+(Baseline Legal, Privacy, Consent & User Rights), and Section 03
+(Repository, Environments, Secrets, CI/CD & Supply Chain) are complete; see
 `docs/platform-standard/release-readiness.md` for cumulative status across
 all 18 sections as they execute. New findings that represent real,
-actionable work (like T13/T14/T15 above) get a task here as they're found,
+actionable work (like T13-T22 above) get a task here as they're found,
 so this queue stays the single place to look for "what's left to do" --
 `docs/platform-standard/` is where the pack's own required
 audit/evidence/risk trail lives, not a second task list.

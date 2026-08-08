@@ -10,8 +10,9 @@ format.
 |---|---|---|
 | 00 Read First / Master Execution Rules | Read, rules in effect for all later sections | 2026-08-08 |
 | 01 Discovery, Architecture & Applicability Gate | READY WITH P1 ITEMS — see below | 2026-08-08 |
-| 02 Baseline Legal, Privacy, Consent & User Rights | **READY WITH P1 ITEMS** — see below | 2026-08-08 |
-| 03–18 | Not yet started | — |
+| 02 Baseline Legal, Privacy, Consent & User Rights | READY WITH P1 ITEMS — see below | 2026-08-08 |
+| 03 Repository, Environments, Secrets, CI/CD & Supply Chain | **READY WITH P1 ITEMS** — see below | 2026-08-08 |
+| 04–18 | Not yet started | — |
 
 ## Section 01 summary
 
@@ -47,8 +48,25 @@ format.
   disclosure, Accessibility Statement — none exist today (R-11).
 - No P0 blockers found in Section 02 beyond what T7/T8 already track.
 
+## Section 03 summary
+
+- Real secret scan performed (current tree + full git history) — clean, no
+  secrets ever committed.
+- CI hardened: locked installs (`npm ci`), real build steps added (was
+  typecheck-only), a genuinely-passing dependency-vulnerability gate added
+  for the server package, and Dependabot configured for the first time.
+- 11 `npm audit` findings remain in root/SPA, all traced to Capacitor
+  mobile-build-only tooling never installed on the production server — real
+  but low real-world severity; resolving them safely needs a Mac/Xcode
+  verification step this environment can't perform (T19).
+- Repository-governance gaps found: no `CODEOWNERS`, no tagged releases,
+  branch-protection status unconfirmed, redundant `pnpm-lock.yaml`, no
+  written secrets-rotation runbook, no linter configured at all. All P2,
+  tracked as T20-T22.
+- No P0 blockers found in Section 03.
+
 ## Overall launch readiness (cumulative, updated as sections complete)
 
-**NOT READY** — pending Sections 03–18. This is expected at this stage (two
-of eighteen sections complete) and is not itself a new finding; it reflects
-where the multi-section pack currently stands, not a regression.
+**NOT READY** — pending Sections 04–18. This is expected at this stage
+(three of eighteen sections complete) and is not itself a new finding; it
+reflects where the multi-section pack currently stands, not a regression.

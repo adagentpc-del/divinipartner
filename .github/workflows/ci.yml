@@ -16,11 +16,11 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install dependencies
-        run: npm install
+      - name: Install dependencies (locked)
+        run: npm ci
 
-      - name: Install server dependencies
-        run: npm install --prefix server
+      - name: Install server dependencies (locked)
+        run: npm ci --prefix server
 
       - name: Typecheck server
         run: npx tsc -p server/tsconfig.json --noEmit
@@ -30,3 +30,19 @@ jobs:
 
       - name: Run tests
         run: npm test
+
+      - name: Build server
+        run: npm run build --prefix server
+
+      - name: Build SPA
+        run: npm run build
+
+      # Server has 0 known vulnerabilities (2026-08-08) -- a real gate, blocking.
+      # Root/SPA is NOT gated here: its findings are all in Capacitor mobile
+      # build tooling (devDependencies never installed on the production
+      # server -- deploy.sh does not run npm install at all, and mobile builds
+      # happen separately on a Mac per AI_PROJECT_OS/12_TASK_QUEUE.md T9), and
+      # `npm audit fix --force` would need a real mobile-build verification
+      # this CI runner cannot perform. See docs/platform-standard/risk-register.md.
+      - name: Audit server dependencies (production deps only)
+        run: npm audit --omit=dev --prefix server
