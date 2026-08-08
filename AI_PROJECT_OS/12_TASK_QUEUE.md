@@ -140,4 +140,39 @@ Prioritized backlog, seeded from the Go-Live runbook remaining items and the V2 
 - Acceptance: DONE -- `server/src/scripts/backup-db.ts` (pg_dump --clean --if-exists -> gzip -> the app's own object storage, encrypted at rest when `STORAGE_ENCRYPTION_KEY` is set, retention-pruned via a manifest) and `restore-db.ts` (with a real confirmation guard), live-verified end to end including a full restore into a scratch database with matching table/row counts and an idempotent second restore. REMAINING: install the cron job on the server (see `23_DEPLOYMENT.md`'s "Automated database backups" section) and decide retention days / S3 vs local-disk -- nothing runs this on a schedule until that cron line is added.
 - Related files: `server/src/scripts/backup-db.ts`, `server/src/scripts/restore-db.ts`, `server/src/config.ts` (`BACKUP_RETENTION_DAYS`), `21_DATABASE.md`, `23_DEPLOYMENT.md`
 
+## T13 - Age-affirmation step at registration (found 2026-08-08, ALFY2 pack Section 01)
+
+- Priority: P2
+- Status: NOT STARTED
+- Owner: unassigned
+- Dependencies: none
+- Effort: S
+- Acceptance: registration collects an explicit age/13+ (or applicable minimum) affirmation. The product is not child-directed and has no known minor userbase, so this is hygiene rather than a live COPPA violation -- but there is currently zero technical barrier to a minor signing up, which grows "knowingly collects" exposure over time the longer it goes unaddressed.
+- Related files: `server/src/routes/auth-native.ts` (registration), `src/pages/GetStarted.tsx`
+- See: `docs/platform-standard/applicability-register.md` (COPPA row), `docs/platform-standard/risk-register.md` R-01.
+
+## T14 - Define retention policy for `audit_logs` (found 2026-08-08, ALFY2 pack Section 01)
+
+- Priority: P1
+- Status: NOT STARTED
+- Owner: unassigned
+- Dependencies: none
+- Effort: S
+- Acceptance: `audit_logs` is a real, actively-written table (confirmed via `server/src/lib/audit.ts` and call sites across admin/MFA/payments/support/platform-revenue routes) with no defined retention or purge policy. Add it to the data-retention matrix (once built, see T8-adjacent privacy work) and, if warranted, an automated purge/archive job.
+- Related files: `db/apply-all.sql` (`audit_logs` table), `server/src/lib/audit.ts`
+- See: `docs/platform-standard/applicability-register.md`, `docs/platform-standard/risk-register.md` R-02.
+
+## ALFY2 / Claude Master Platform Execution Pack (started 2026-08-08)
+
+A separately-uploaded 18-section audit framework is being run against this
+repository, tracked under `docs/platform-standard/` (its own required
+artifact location, per the pack's rules) rather than duplicated here.
+Section 01 (Discovery, Architecture & Applicability Gate) is complete; see
+`docs/platform-standard/release-readiness.md` for cumulative status across
+all 18 sections as they execute. New findings that represent real,
+actionable work (like T13/T14 above) get a task here as they're found, so
+this queue stays the single place to look for "what's left to do" --
+`docs/platform-standard/` is where the pack's own required
+audit/evidence/risk trail lives, not a second task list.
+
 > TODO(owner): Add any product feature tasks beyond go-live as they are defined.
