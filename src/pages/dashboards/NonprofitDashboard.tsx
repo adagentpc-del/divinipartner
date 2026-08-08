@@ -35,6 +35,7 @@ const NAV: NavItem[] = [
   { label: 'Sponsorships', icon: 'H', to: '/sponsorships' },
   { label: 'Payments', icon: 'P', to: '/payments' },
   { label: 'Invoices', icon: 'I', to: '/invoices' },
+  { label: 'Get Paid', icon: '$', to: '/payouts/setup' },
   { label: 'Events', icon: 'E', to: '/events' },
   { label: 'Profile', icon: 'R', to: '/profile' },
   { label: 'Decks & Programs', icon: 'K', to: '/profile/decks-programs' },

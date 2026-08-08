@@ -1,25 +1,42 @@
 /**
- * Payout setup. A vendor/venue connects where they get paid so that client
- * payments split automatically: Stripe Connect (their net auto-transfers, the
- * Divini platform fee is kept) and/or a PayPal payout email. Route:
- * /payouts/setup. Zero em dashes.
+ * Payout setup. A vendor/venue/planner/installer/nonprofit connects where they
+ * get paid so that client payments split automatically, and (Accounts v2 only)
+ * can pay their own Divini Partners subscription straight from that same
+ * account's Stripe balance. Route: /payouts/setup.
+ *
+ * Two Stripe account shapes:
+ *   - Accounts v2 merchant account (recommended): the connected account is
+ *     the merchant of record for its own charges -- a chargeback from ITS
+ *     customer lands on ITS balance, not the platform's. Same account can
+ *     also be billed the org's own subscription fee from that balance.
+ *   - v1 Express account (classic): charge is on the platform account,
+ *     `transfer_data` auto-splits the net out. Still fully supported for
+ *     orgs already onboarded this way.
+ * Both, plus PayPal, are optional; the split logic falls back to
+ * record-and-hold when none is connected.
+ *
+ * Zero em dashes.
  */
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { apiGet, apiSend } from '../../lib/api';
+import { useAuth } from '../../lib/auth';
 
 type Account = {
   processor: 'stripe' | 'paypal';
   external_id: string | null;
   email: string | null;
   status: string;
+  charges_enabled: boolean;
   payouts_enabled: boolean;
   details_submitted: boolean;
+  stripe_api_version: 'v1' | 'v2';
 };
 type StatusResp = { accounts: Account[]; processors: { stripe: boolean; paypal: boolean } };
 
 export default function PayoutSettings() {
   const nav = useNavigate();
+  const { company } = useAuth();
   const [params, setParams] = useSearchParams();
   const [data, setData] = useState<StatusResp | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -39,11 +56,14 @@ export default function PayoutSettings() {
   }, []);
 
   useEffect(() => {
-    // Returning from Stripe onboarding: sync status, then drop the query flag.
-    const back = params.get('connected') === 'stripe' || params.get('refresh') === 'stripe';
+    // Returning from Stripe onboarding: sync status (v1 or v2, whichever
+    // sent us back), then drop the query flag.
+    const flag = params.get('connected') || params.get('refresh');
     (async () => {
-      if (back) {
-        try { await apiGet('/payments/connect/stripe/refresh'); setMsg('Stripe details synced.'); } catch { /* ignore */ }
+      if (flag === 'stripe' || flag === 'stripe-v2') {
+        const refreshPath =
+          flag === 'stripe-v2' ? '/payments/connect/stripe/merchant-account/refresh' : '/payments/connect/stripe/refresh';
+        try { await apiGet(refreshPath); setMsg('Stripe details synced.'); } catch { /* ignore */ }
         params.delete('connected'); params.delete('refresh'); setParams(params, { replace: true });
       }
       await load();
@@ -53,14 +73,40 @@ export default function PayoutSettings() {
 
   const stripe = data?.accounts.find((a) => a.processor === 'stripe');
   const paypal = data?.accounts.find((a) => a.processor === 'paypal');
+  const isV2 = stripe?.stripe_api_version === 'v2';
 
-  async function connectStripe() {
-    setBusy('stripe'); setErr(null);
+  async function connectStripeV2() {
+    setBusy('stripe-v2'); setErr(null);
+    try {
+      const r = await apiSend<{ url: string }>('POST', '/payments/connect/stripe/merchant-account/onboard', {});
+      window.location.href = r.url;
+    } catch (e) {
+      setErr((e as Error)?.message ?? 'Could not start Stripe onboarding');
+      setBusy(null);
+    }
+  }
+
+  async function connectStripeV1() {
+    setBusy('stripe-v1'); setErr(null);
     try {
       const r = await apiSend<{ url: string }>('POST', '/payments/connect/stripe/onboard', {});
       window.location.href = r.url;
     } catch (e) {
       setErr((e as Error)?.message ?? 'Could not start Stripe onboarding');
+      setBusy(null);
+    }
+  }
+
+  async function payFromBalance() {
+    const tier = company?.tier;
+    if (!tier) return;
+    setBusy('subscribe'); setErr(null); setMsg(null);
+    try {
+      await apiSend('POST', '/payments/connect/stripe/subscribe-from-balance', { tier });
+      setMsg('Subscription charge started from your account balance. It will confirm shortly.');
+    } catch (e) {
+      setErr((e as Error)?.message ?? 'Could not charge the subscription from your balance');
+    } finally {
       setBusy(null);
     }
   }
@@ -99,21 +145,58 @@ export default function PayoutSettings() {
           {/* Stripe */}
           <div className="dps-card">
             <div className="dps-card-head">
-              <h2>Card payments via Stripe</h2>
+              <h2>Stripe</h2>
               {stripe ? badge(stripe.payouts_enabled, stripe.payouts_enabled ? 'Active' : 'Onboarding') : badge(false, 'Not connected')}
             </div>
-            <p>Onboard once with Stripe. Card payments to you are split automatically: your net transfers to your bank, the platform fee stays with Divini.</p>
+
             {!data?.processors.stripe ? (
               <div className="dps-muted">Stripe is not enabled on this environment yet.</div>
-            ) : stripe?.payouts_enabled ? (
-              <div className="dps-ok-row">
-                <span>Payouts active. You are all set for automatic splits.</span>
-                <button className="dps-btn ghost" disabled={busy === 'stripe'} onClick={connectStripe}>Update details</button>
-              </div>
+            ) : !stripe ? (
+              <>
+                <p>
+                  Onboard once with Stripe. Card payments made to you are the merchant of record on
+                  your own account, so your net settles directly and your platform fee is skimmed
+                  automatically. Recommended: this also protects you, since a customer chargeback
+                  lands on your account, not the platform's.
+                </p>
+                <button className="dps-btn primary" disabled={!!busy} onClick={connectStripeV2}>
+                  {busy === 'stripe-v2' ? 'Opening Stripe...' : 'Connect Stripe (recommended)'}
+                </button>
+                <button className="dps-btn ghost dps-small" disabled={!!busy} onClick={connectStripeV1}>
+                  {busy === 'stripe-v1' ? 'Opening Stripe...' : 'Use the classic setup instead'}
+                </button>
+              </>
+            ) : isV2 ? (
+              <>
+                <p>Merchant account connected. Payments made to you settle directly to your account.</p>
+                {stripe.payouts_enabled ? (
+                  <div className="dps-ok-row">
+                    <span>Payouts active. You are all set for automatic splits.</span>
+                    <button className="dps-btn ghost" disabled={!!busy} onClick={connectStripeV2}>Update details</button>
+                  </div>
+                ) : (
+                  <button className="dps-btn primary" disabled={!!busy} onClick={connectStripeV2}>
+                    {busy === 'stripe-v2' ? 'Opening Stripe...' : 'Continue onboarding'}
+                  </button>
+                )}
+              </>
             ) : (
-              <button className="dps-btn primary" disabled={busy === 'stripe'} onClick={connectStripe}>
-                {busy === 'stripe' ? 'Opening Stripe...' : stripe ? 'Continue onboarding' : 'Connect Stripe'}
-              </button>
+              <>
+                <p>Classic Express account connected. Your net auto-transfers; the platform fee stays with Divini.</p>
+                {stripe.payouts_enabled ? (
+                  <div className="dps-ok-row">
+                    <span>Payouts active. You are all set for automatic splits.</span>
+                    <button className="dps-btn ghost" disabled={!!busy} onClick={connectStripeV1}>Update details</button>
+                  </div>
+                ) : (
+                  <button className="dps-btn primary" disabled={!!busy} onClick={connectStripeV1}>
+                    {busy === 'stripe-v1' ? 'Opening Stripe...' : 'Continue onboarding'}
+                  </button>
+                )}
+                <button className="dps-btn ghost dps-small" disabled={!!busy} onClick={connectStripeV2}>
+                  {busy === 'stripe-v2' ? 'Opening Stripe...' : 'Upgrade to a merchant account (recommended)'}
+                </button>
+              </>
             )}
           </div>
 
@@ -142,6 +225,22 @@ export default function PayoutSettings() {
           </div>
         </div>
 
+        {isV2 && stripe?.charges_enabled ? (
+          <div className="dps-card dps-wide">
+            <div className="dps-card-head">
+              <h2>Pay your subscription from this balance</h2>
+            </div>
+            <p>
+              Instead of a separate card, fund your Divini Partners subscription
+              {company?.tier ? <> ({company.tier})</> : null} straight from this account's own Stripe balance.
+              No effect if you are on a free plan.
+            </p>
+            <button className="dps-btn primary" disabled={!!busy || !company?.tier} onClick={payFromBalance}>
+              {busy === 'subscribe' ? 'Charging...' : 'Pay from balance'}
+            </button>
+          </div>
+        ) : null}
+
         <div className="dps-note">
           Funds split at the moment a client pays. Until you connect a payout method, payments are
           held by Divini and tracked on your payments page for manual release.
@@ -162,6 +261,7 @@ const CSS = `
 .dps-alert.ok{background:#e7f3ec;color:#1f7a4d}
 .dps-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
 .dps-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:24px 22px;display:flex;flex-direction:column;gap:12px}
+.dps-card.dps-wide{margin-top:20px}
 .dps-card-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .dps-card h2{font-size:19px;color:var(--em);margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-weight:600}
 .dps-card p{font-size:13.5px;color:var(--mut);line-height:1.55;margin:0;flex:1}
@@ -172,6 +272,8 @@ const CSS = `
 .dps-btn.primary{background:var(--em);color:#fff}
 .dps-btn.primary:disabled{opacity:.55;cursor:not-allowed}
 .dps-btn.ghost{background:transparent;color:var(--em);border-color:var(--line)}
+.dps-btn.ghost:disabled{opacity:.55;cursor:not-allowed}
+.dps-btn.dps-small{align-self:flex-start;padding:7px 12px;font-size:12px}
 .dps-ok-row{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13.5px;color:var(--ink)}
 .dps-field{display:flex;gap:8px}
 .dps-field input{flex:1;font:inherit;font-size:14px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff}

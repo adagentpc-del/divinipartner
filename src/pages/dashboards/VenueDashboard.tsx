@@ -57,6 +57,7 @@ const NAV: NavItem[] = [
   { label: 'Recommendations', icon: 'C', to: '/event-recommendations' },
   { label: 'Preferred Vendors', icon: 'V', to: '/preferred-vendors' },
   { label: 'Revenue Inventory', icon: 'N', to: '/revenue-inventory' },
+  { label: 'Get Paid', icon: '$', to: '/payouts/setup' },
   { label: 'Sponsorships', icon: 'H', to: '/sponsorships' },
   { label: 'Sponsorship Intel', icon: 'J', to: '/sponsorship-intel' },
   { label: 'Venue Comparison', icon: 'W', to: '/venue-comparison' },

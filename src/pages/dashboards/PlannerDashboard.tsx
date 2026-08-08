@@ -15,6 +15,7 @@ const NAV: NavItem[] = [
   { label: 'Divini Price Guide', icon: '£', to: '/price-guide' },
   { label: 'Events', icon: 'E', to: '/events' },
   { label: 'Calendar', icon: 'c', to: '/calendar' },
+  { label: 'Get Paid', icon: '$', to: '/payouts/setup' },
   { label: 'Recommendations', icon: 'C', to: '/event-recommendations' },
   { label: 'Event Assistant', icon: 'A', to: '/event-assistant' },
   { label: 'Venue Comparison', icon: 'V', to: '/venue-comparison' },

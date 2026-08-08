@@ -44,9 +44,10 @@ export async function listPayoutAccounts(orgId: string): Promise<PayoutAccount[]
 }
 
 /** Create or update the org's payout account for a processor. `stripe_api_version`
- *  is only ever set on INSERT (which onboarding path created the row) -- an
- *  UPDATE (e.g. a webhook syncing capability flags) never changes which
- *  path an already-onboarded org is on. */
+ *  is only ever changed when the caller explicitly passes it (the v1/v2
+ *  onboarding routes, on first onboarding OR an explicit v1 -> v2 switch) --
+ *  every other caller (webhook capability-flag syncs, PayPal upsert, the
+ *  refresh routes) omits it, so it stays whatever it already was. */
 export async function upsertPayoutAccount(
   orgId: string,
   processor: PayoutProcessor,
@@ -70,6 +71,13 @@ export async function upsertPayoutAccount(
         charges_enabled = excluded.charges_enabled,
         payouts_enabled = excluded.payouts_enabled,
         details_submitted = excluded.details_submitted,
+        -- Reads the RAW $9 param, not excluded.stripe_api_version -- that
+        -- column is always non-null (the VALUES clause below coalesces it to
+        -- 'v1' for the insert branch), so reading it here would silently
+        -- reset an existing v2 row to v1 on every unrelated update (e.g. a
+        -- webhook capability-flag sync). $9 is only non-null when a caller
+        -- explicitly means to set/switch it.
+        stripe_api_version = coalesce($9, payout_accounts.stripe_api_version),
         updated_at = now()
      returning *`,
     [

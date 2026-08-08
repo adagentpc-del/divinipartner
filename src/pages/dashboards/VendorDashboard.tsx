@@ -80,6 +80,7 @@ const NAV: NavItem[] = [
   { label: 'Search Bids', icon: 'L', to: '/search-bids' },
   { label: 'Invoices', icon: 'I', to: '/invoices' },
   { label: 'Payments', icon: 'Y', to: '/payments' },
+  { label: 'Get Paid', icon: '$', to: '/payouts/setup' },
   { label: 'Reviews', icon: 'R', to: '/reviews' },
   { label: 'Team Seats', icon: 'T', to: '/account/seats' },
   { label: 'Daily Briefing', icon: 'D', to: '/daily-briefing' },
