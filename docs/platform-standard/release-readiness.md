@@ -9,8 +9,9 @@ format.
 | Section | Status | Last Updated |
 |---|---|---|
 | 00 Read First / Master Execution Rules | Read, rules in effect for all later sections | 2026-08-08 |
-| 01 Discovery, Architecture & Applicability Gate | **READY WITH P1 ITEMS** — see below | 2026-08-08 |
-| 02–18 | Not yet started | — |
+| 01 Discovery, Architecture & Applicability Gate | READY WITH P1 ITEMS — see below | 2026-08-08 |
+| 02 Baseline Legal, Privacy, Consent & User Rights | **READY WITH P1 ITEMS** — see below | 2026-08-08 |
+| 03–18 | Not yet started | — |
 
 ## Section 01 summary
 
@@ -31,8 +32,23 @@ format.
   in this pack should be read as pressure to unblock T7 before counsel
   clears it.
 
+## Section 02 summary
+
+- The privacy self-service infrastructure (data-subject requests, consent
+  management, retention-policy declaration) was already far more built than
+  a first look suggested — real tables, a real backend, a real frontend.
+  The actual gap was discoverability, not missing functionality: fixed by
+  adding a `/account/privacy` route, a link from Profile → Account, and a
+  Privacy Policy update — live-verified in a real browser as a non-admin
+  user (R-08, resolved).
+- P1 items carried forward: data-retention policy content proposed but not
+  yet adopted or enforced (R-09); `visitor_signals` grows unbounded with no
+  purge job (R-10); three legal-document gaps — DMCA/copyright takedown, AI
+  disclosure, Accessibility Statement — none exist today (R-11).
+- No P0 blockers found in Section 02 beyond what T7/T8 already track.
+
 ## Overall launch readiness (cumulative, updated as sections complete)
 
-**NOT READY** — pending Sections 02–18. This is expected at this stage (one
+**NOT READY** — pending Sections 03–18. This is expected at this stage (two
 of eighteen sections complete) and is not itself a new finding; it reflects
 where the multi-section pack currently stands, not a regression.

@@ -71,8 +71,15 @@ export default function Privacy() {
         information (name, email, phone) and any team memberships tied to your account. Your organization's
         business records - quotes, invoices, events, bids, and files - are kept even after your own account is
         deleted, so that counterparties you transacted with and any other members of your organization are not
-        left with broken records. You may also email us to request deletion of specific records or to ask
-        questions about what is retained.
+        left with broken records.
+      </p>
+      <p>
+        For anything short of full account deletion - requesting a copy (export) of your data, correcting it,
+        asking what is retained, or requesting deletion of specific records - sign in and go to
+        <strong> Profile → Your data and privacy</strong> to submit a request, or use the direct link:
+        {' '}<a href="/account/privacy" style={{ color: '#1f6f50' }}>divinipartners.com/account/privacy</a>. The
+        same page lets you grant or withdraw consent for marketing email, analytics, and data processing. You
+        may also email us instead if you prefer.
       </p>
 
       <h2 style={h2}>Security</h2>

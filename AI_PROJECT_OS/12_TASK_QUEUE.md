@@ -162,16 +162,78 @@ Prioritized backlog, seeded from the Go-Live runbook remaining items and the V2 
 - Related files: `db/apply-all.sql` (`audit_logs` table), `server/src/lib/audit.ts`
 - See: `docs/platform-standard/applicability-register.md`, `docs/platform-standard/risk-register.md` R-02.
 
+## T15 - Purge job + retention decision for `visitor_signals` (found 2026-08-08, ALFY2 pack Section 02)
+
+- Priority: P2
+- Status: NOT STARTED
+- Owner: unassigned
+- Dependencies: none
+- Effort: S
+- Acceptance: `visitor_signals` (`server/src/db/signals.ts`, written from the public `POST /api/signals`, fed by `src/lib/fingerprint.ts`'s consent-gated device signature + IP + usage-signal collection) grows unbounded today -- confirmed by reading both the route and db module, no purge job exists anywhere. `Privacy.tsx` discloses the collection accurately but does not state a retention period. Decide a retention window (proposed: 12-13 months, see `docs/platform-standard/data-retention-matrix.md`) and build the purge job.
+- Related files: `server/src/routes/signals.ts`, `server/src/db/signals.ts`, `src/lib/fingerprint.ts`, `src/pages/Privacy.tsx`
+- See: `docs/platform-standard/data-retention-matrix.md`.
+
+## Privacy self-service tool wired up (RESOLVED 2026-08-08, ALFY2 pack Section 02)
+
+- The Module 7 privacy-request / consent / retention-policy backend and UI
+  (`server/src/db/compliancePrivacy.ts`, `routes/compliance-privacy.ts`,
+  `src/pages/ComplianceCenter.tsx`) already existed and worked correctly
+  (live-verified: a non-admin can submit/list their own requests and manage
+  consent; is correctly 403'd from admin-only retention-policy writes) but
+  was reachable only at the admin-sounding `/admin/compliance` URL with zero
+  nav link for ordinary users, and the Privacy Policy told users to email
+  support instead of mentioning it.
+- Fixed: added a second route `/account/privacy` (same component, which
+  already self-scopes its UI by `isAdmin`), linked it from
+  `ProfileEditor.tsx`'s Account tab (new "Your data and privacy" section,
+  next to the existing "Delete account" section), and updated `Privacy.tsx`
+  to reference the self-service path alongside the email fallback.
+  Live-verified in a real browser: the link renders, navigates correctly,
+  and the page shows only the sections appropriate to a non-admin user.
+- Related files: `src/App.tsx`, `src/pages/profile/ProfileEditor.tsx`,
+  `src/pages/Privacy.tsx`, `src/pages/ComplianceCenter.tsx`.
+
+## T16 - DMCA / copyright takedown notice (found 2026-08-08, ALFY2 pack Section 02)
+
+- Priority: P1
+- Status: NOT STARTED
+- Owner: unassigned
+- Dependencies: T8 (counsel review, same batch)
+- Effort: S (a standard notice-and-takedown page; a real DMCA safe-harbor designation also requires registering a DMCA agent with the US Copyright Office, which is an operator action, not a code task)
+- Acceptance: the platform hosts user-generated content (vendor profile images, descriptions, uploaded documents) but has no DMCA/copyright-infringement notice-and-takedown process anywhere in Terms, Privacy, or a standalone page (confirmed via full-text search, 2026-08-08). Add one, explicitly marked DRAFT pending counsel review, following the same pattern as `compliance/policies/`.
+- Related files: new page alongside `src/pages/{Terms,Privacy,MarketplaceConduct}.tsx`; `src/App.tsx` routing.
+
+## T17 - AI-use disclosure statement (found 2026-08-08, ALFY2 pack Section 02)
+
+- Priority: P1
+- Status: NOT STARTED
+- Owner: unassigned
+- Dependencies: none
+- Effort: S
+- Acceptance: the platform has real, user-facing AI features (Divini Concierge/Builder, document extraction, business discovery -- see `docs/platform-standard/architecture-map.md` §A) but no dedicated AI-use disclosure anywhere in the legal pages (confirmed via full-text search, 2026-08-08). Add a short, clear disclosure of what AI does, what data it sees, and its limitations, explicitly marked DRAFT pending counsel review.
+- Related files: new page or a new section within `src/pages/Privacy.tsx`; `src/App.tsx` routing if standalone.
+
+## T18 - Accessibility Statement (found 2026-08-08, ALFY2 pack Section 02)
+
+- Priority: P2
+- Status: NOT STARTED
+- Owner: unassigned
+- Dependencies: Section 11 (the substantive accessibility audit) should inform the statement's content, so sequence after that
+- Effort: S
+- Acceptance: `docs/platform-standard/applicability-register.md` marks ADA/accessibility as APPLIES (public-facing commercial service, WCAG 2.2 AA baseline), but no Accessibility Statement page exists (confirmed via full-text search, 2026-08-08). Add one once Section 11's audit gives it real content to describe, rather than a content-free placeholder now.
+- Related files: new page; `src/App.tsx` routing.
+
 ## ALFY2 / Claude Master Platform Execution Pack (started 2026-08-08)
 
 A separately-uploaded 18-section audit framework is being run against this
 repository, tracked under `docs/platform-standard/` (its own required
 artifact location, per the pack's rules) rather than duplicated here.
-Section 01 (Discovery, Architecture & Applicability Gate) is complete; see
+Section 01 (Discovery, Architecture & Applicability Gate) and Section 02
+(Baseline Legal, Privacy, Consent & User Rights) are complete; see
 `docs/platform-standard/release-readiness.md` for cumulative status across
 all 18 sections as they execute. New findings that represent real,
-actionable work (like T13/T14 above) get a task here as they're found, so
-this queue stays the single place to look for "what's left to do" --
+actionable work (like T13/T14/T15 above) get a task here as they're found,
+so this queue stays the single place to look for "what's left to do" --
 `docs/platform-standard/` is where the pack's own required
 audit/evidence/risk trail lives, not a second task list.
 

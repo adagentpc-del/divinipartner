@@ -503,6 +503,12 @@ function Routed() {
       <Route path="/admin/revenue-center" element={<Authed><RevenueCenter /></Authed>} />
       <Route path="/admin/audit-log" element={<Authed><AuditViewer /></Authed>} />
       <Route path="/admin/compliance" element={<Authed><ComplianceCenter /></Authed>} />
+      {/* Same component as /admin/compliance -- it already self-scopes by isAdmin (submit
+          request / manage consents for anyone signed in; retention policies admin-only).
+          A second, non-admin-sounding route so every role can actually find their privacy
+          rights UI, not just an admin who already knows the /admin/... URL. Linked from
+          ProfileEditor.tsx's "Your data and privacy" section. */}
+      <Route path="/account/privacy" element={<Authed><ComplianceCenter /></Authed>} />
       <Route path="/admin/venues" element={<Authed><AdminManageVenues /></Authed>} />
       <Route path="/admin/vendors" element={<Authed><AdminManageVendors /></Authed>} />
       <Route path="/admin/events" element={<Authed><AdminManageEvents /></Authed>} />

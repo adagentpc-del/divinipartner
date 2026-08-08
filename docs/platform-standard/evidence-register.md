@@ -12,6 +12,14 @@ Bootstrapped at Section 01.
 | S01-04 | Schema | `db/apply-all.sql` — `terms_acceptance` (line ~62), `consent_records` (line ~4183) | 2026-08-08 |
 | S01-05 | Schema + code | `db/apply-all.sql` — `audit_logs` (line ~341); `server/src/lib/audit.ts` and call sites in `db.ts`, `routes/{admin,admin-manage,mfa,payments,support,platform-revenue}.ts`, `db/introductions.ts`, `routes/foundation.ts` | 2026-08-08 |
 
+| S02-01 | Code + schema | `src/pages/{Terms,Privacy,PaymentPolicy,MarketplaceConduct,NonCircumvention,Cookies}.tsx`; `src/App.tsx` routes; `terms_acceptance` table | 2026-08-08 |
+| S02-02, S02-03 | Command output | Live `curl` tests against a real registered non-admin account: `POST /api/compliance-privacy/requests` → 201, `GET /api/compliance-privacy/requests` → own request only, `POST /api/compliance-privacy/retention` → 403 forbidden | 2026-08-08 |
+| S02-03 | Browser screenshot | Playwright, real browser: `/account/privacy` renders the submit-request section and correctly hides the admin-only retention section for a non-admin; `/profile`'s Account tab shows the new "Your data and privacy" link and navigates correctly | 2026-08-08 |
+| S02-04 | Database query | `select count(*) from data_retention_policies` → 0 rows (confirms mechanism exists but nothing is declared) | 2026-08-08 |
+| S02-05 | Code | `src/components/CookieBanner.tsx`; `src/lib/fingerprint.ts` line ~155 (`if (!consentGranted()) return;`) | 2026-08-08 |
+| S02-06 | Code | `server/src/routes/signals.ts`, `server/src/db/signals.ts` — read in full, no purge/retention logic found | 2026-08-08 |
+| S02-07 | Command output | `grep -n -i "dmca\|copyright.*infring\|takedown\|artificial intelligence\|accessib"` across `Terms.tsx`, `Privacy.tsx`, `MarketplaceConduct.tsx` → no matches | 2026-08-08 |
+
 ## Notes
 
 Prior work already done in this repository (outside this pack's own

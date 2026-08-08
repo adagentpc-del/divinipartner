@@ -646,6 +646,18 @@ export default function ProfileEditor() {
               </div>
             </Section>
 
+            <Section title="Your data and privacy">
+              <p className="dppe-help">
+                Request access to, export, correction, or deletion of your data, and manage your
+                consent preferences (marketing email, analytics, data processing).
+              </p>
+              <div className="dppe-actions">
+                <button className="dppe-btn" onClick={() => nav('/account/privacy')}>
+                  Open privacy requests
+                </button>
+              </div>
+            </Section>
+
             <Section title="Delete account">
               <p className="dppe-help">
                 Permanently delete your Divini Partners account. This signs you out and removes
