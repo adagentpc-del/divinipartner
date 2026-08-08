@@ -56,6 +56,10 @@ Bootstrapped at Section 01.
 | S07-07 | Code | `server/src/db/pipeline.ts`'s `createOpportunity()`, read in full — `organization_id`/`owner_user_id` hardcoded from the server-resolved actor, never from the spread `input` | 2026-08-08 |
 | S07-08, S07-09 | Command output | Live multipart uploads against `POST /api/profile-extras/decks` on a real test account: magic-byte-mismatch text-as-PDF (400), path-traversal filename (201, but stored at a sanitized org-scoped key), MZ-header-as-PDF (400); `find /data/procure-files -iname "*passwd*"` confirmed the file landed only at the safe path | 2026-08-08 |
 | S07 (all) | File | `docs/platform-standard/section-07-app-perimeter-input-upload-bot.md` (new) | 2026-08-08 |
+| S08-01, S08-02, S08-03 | Code | `server/src/lib/promptSafety.ts` (read in full); `server/src/lib/extract.ts` lines ~148-229; `db/apply-all.sql`'s `ai_profile_suggestions` table definition | 2026-08-08 |
+| S08-04, S08-06 | Command output | Live `POST /api/profile/extract` against a real registered account with Ollama unreachable: `{"available":false,...}`, no crash; `select * from audit_logs where action='ai.extract_profile'` showing the new trail row with `provider`/`model`/`outcome` populated and no extracted text stored | 2026-08-08 |
+| S08-05 | Command output | `grep -rn "SESSION_SECRET\|API_KEY\|password_hash\|reset_token\|verify_token\|totp_secret" server/src/lib/{extract,discovery,discovery-search}.ts` — zero matches | 2026-08-08 |
+| S08 (all) | File | `docs/platform-standard/section-08-ai-security-governance.md` (new) | 2026-08-08 |
 
 ## Notes
 

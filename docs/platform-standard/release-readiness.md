@@ -16,7 +16,8 @@ format.
 | 05 Authorization, RBAC/ABAC, RLS, Tenancy, Admin & Impersonation | **READY** — no open P0/P1/P2 items | 2026-08-08 |
 | 06 Database Integrity, Data Lifecycle, Backups & Recovery | READY WITH P2 ITEMS — see below | 2026-08-08 |
 | 07 App/API Perimeter, Input Validation, File Upload, Bot & Malware Security | READY WITH P2 ITEMS — see below | 2026-08-08 |
-| 08–18 | Not yet started | — |
+| 08 AI Security, Governance, Prompt-Injection Defense & Model Quality | READY WITH P2 ITEMS — see below | 2026-08-08 |
+| 09–18 | Not yet started | — |
 
 ## Section 01 summary
 
@@ -195,8 +196,44 @@ format.
   current file mix (business documents, logos), tracked as T28.
 - No P0 blockers. Section 07 closes with one open P2 item (R-28, T28).
 
+## Section 08 summary
+
+- Applicability gate passed (real AI functionality exists) but the actual
+  surface is small and well-contained: exactly 3 LLM call sites in the
+  entire codebase (all local-first Ollama by default, no external
+  provider unless explicitly opted in), zero tool-calling/RAG/agentic
+  infrastructure. Everything else branded "Divini Concierge"/"Divini
+  Builder" is deterministic code, not LLM-backed — confirmed by grep, not
+  assumed from the naming.
+- Prompt-injection defense (`lib/promptSafety.ts`) is genuinely
+  well-built (random per-call boundary fencing, injection-resistant
+  content stripping, dual system+user-turn reinforcement) and confirmed
+  used consistently at all 3 call sites — no gaps found.
+- Confirmed by design, not just by policy: the model can never set its
+  own role, owner, price, payout, or access level, and never writes
+  directly to a live record — every extraction becomes a
+  human-review-gated suggestion first (`ai_profile_suggestions` table
+  with a `status` lifecycle and separate raw-vs-resolved-value columns).
+- **Live-tested** graceful degradation: called the real extraction
+  endpoint against an unreachable LLM backend and confirmed a clean
+  `available:false` response, no crash or hang — the "LLM is never a
+  hard dependency" claim holds under a real failure, not just in the
+  try/catch's intent.
+- Found and fixed a real gap: AI extraction calls were not logged to
+  `audit_logs`, unlike every other privileged action in this codebase,
+  and short of the pack's explicit `ai_run_audit` requirement. Fixed and
+  live-verified — a real audit row now captures provider/model/source/
+  outcome without ever storing the extracted content itself.
+- Two P2 items documented, not built this pass: no automated evaluation
+  harness for extraction accuracy, and no per-field numeric confidence
+  score (the latter is a defensible design choice — omit uncertain
+  content rather than guess with a confidence label — not a raw gap).
+- No P0 blockers. Section 08 closes with two open P2 items (R-30 eval
+  harness; the confidence-score design choice is documented, not tracked
+  as an open defect).
+
 ## Overall launch readiness (cumulative, updated as sections complete)
 
-**NOT READY** — pending Sections 08–18. This is expected at this stage
-(seven of eighteen sections complete) and is not itself a new finding; it
+**NOT READY** — pending Sections 09–18. This is expected at this stage
+(eight of eighteen sections complete) and is not itself a new finding; it
 reflects where the multi-section pack currently stands, not a regression.
