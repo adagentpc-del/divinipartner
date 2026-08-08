@@ -18,6 +18,7 @@ import { botGuard } from "./lib/botGuard.js";
 
 const app: Express = express();
 app.set("trust proxy", 1);
+app.disable("x-powered-by");
 
 // Security response headers - set early, before routes and body parsing. HSTS
 // is on because the app is served behind Caddy over HTTPS.

@@ -316,6 +316,17 @@ Prioritized backlog, seeded from the Go-Live runbook remaining items and the V2 
 - Related files: `db/apply-all.sql` (new `alter table ... add constraint ... foreign key ...` block), the tables listed in `docs/platform-standard/section-06-database-integrity.md`.
 - See: `docs/platform-standard/section-06-database-integrity.md`, risk R-25.
 
+## T28 - Strip metadata from uploaded images/PDFs (found 2026-08-08, ALFY2 pack Section 07)
+
+- Priority: P2
+- Status: NOT STARTED
+- Owner: unassigned
+- Dependencies: none
+- Effort: S-M (needs a library choice: e.g. `sharp` already covers image EXIF stripping if/when it's added as a dependency; PDF metadata needs a separate small library or a `pdf-lib` pass)
+- Acceptance: uploaded images and PDFs (`server/src/routes/profile-decks-programs.ts` and any other route using `validateFileMeta`/`putObjectBytes`) are stored with embedded metadata (EXIF GPS/camera data on photos, PDF author/producer fields) stripped before write. Low severity today given this product's current file mix is mostly business documents (W-9s, COIs) and company logos rather than personal photography, but a real privacy-hygiene gap the moment any user-photo upload feature ships.
+- Related files: `server/src/lib/uploadGuard.ts`, `server/src/routes/profile-decks-programs.ts` (and any future upload route).
+- See: `docs/platform-standard/section-07-app-perimeter-input-upload-bot.md`, risk R-28.
+
 ## ALFY2 / Claude Master Platform Execution Pack (started 2026-08-08)
 
 A separately-uploaded 18-section audit framework is being run against this
@@ -325,13 +336,14 @@ Section 01 (Discovery, Architecture & Applicability Gate), Section 02
 (Baseline Legal, Privacy, Consent & User Rights), Section 03 (Repository,
 Environments, Secrets, CI/CD & Supply Chain), Section 04
 (Authentication, OAuth, Sessions, MFA & Account Recovery), Section 05
-(Authorization, RBAC/ABAC, RLS, Tenancy, Admin & Impersonation), and
-Section 06 (Database Integrity, Data Lifecycle, Backups & Recovery) are
-complete; see `docs/platform-standard/release-readiness.md` for cumulative
-status across all 18 sections as they execute. New findings that represent
-real, actionable work (like T13-T27 above) get a task here as they're
-found, so this queue stays the single place to look for "what's left to
-do" -- `docs/platform-standard/` is where the pack's own required
+(Authorization, RBAC/ABAC, RLS, Tenancy, Admin & Impersonation), Section 06
+(Database Integrity, Data Lifecycle, Backups & Recovery), and Section 07
+(App/API Perimeter, Input Validation, File Upload, Bot & Malware Security)
+are complete; see `docs/platform-standard/release-readiness.md` for
+cumulative status across all 18 sections as they execute. New findings
+that represent real, actionable work (like T13-T28 above) get a task here
+as they're found, so this queue stays the single place to look for "what's
+left to do" -- `docs/platform-standard/` is where the pack's own required
 audit/evidence/risk trail lives, not a second task list.
 
 > TODO(owner): Add any product feature tasks beyond go-live as they are defined.

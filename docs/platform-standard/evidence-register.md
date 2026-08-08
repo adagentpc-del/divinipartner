@@ -49,6 +49,13 @@ Bootstrapped at Section 01.
 | S06-07 | Command output | `pg_indexes` query showing `uq_payments_reference` (partial unique index on `payments.reference`) and `uq_payout_excl_tx`; code read of the `on conflict` inserts they back | 2026-08-08 |
 | S06-08 | Command output | Live reproduction + fix verification: seeded a real test user with a $10.00 credit ledger balance, fired 10 concurrent `POST /credits/redeem` requests for $10.00 each against the running server; after the `pg_advisory_xact_lock` fix, exactly 1 succeeded and 9 correctly got "insufficient credit balance," final ledger balance exactly $0.00 (verified by direct query, never negative) | 2026-08-08 |
 | S06 (all) | File | `docs/platform-standard/section-06-database-integrity.md`, `compliance/policies/backup-and-restore-runbook.md`, `db/schema-org-tenant-indexes.sql` (all new) | 2026-08-08 |
+| S07-01, S07-03 | Command output | `curl -D - -o /dev/null http://localhost:8099/api/healthz` against the running server, before and after the `x-powered-by` fix | 2026-08-08 |
+| S07-04 | Command output | `grep -rn "query(\`.*\${" server/src` — zero matches; `db/marketplace.ts`'s dynamic `ORDER BY` read in full, confirmed allowlist-gated | 2026-08-08 |
+| S07-05 | Code | `server/src/lib/safe-fetch.ts` (read in full); `server/src/lib/discovery-search.ts`'s `fetchPageText()` call site | 2026-08-08 |
+| S07-06 | Code | `server/src/routes/email-track.ts`'s `safeRedirectTarget()`; SPA-wide grep for `searchParams.get('redirect'\|'return'\|'next'\|'url'\|'target')` — zero matches | 2026-08-08 |
+| S07-07 | Code | `server/src/db/pipeline.ts`'s `createOpportunity()`, read in full — `organization_id`/`owner_user_id` hardcoded from the server-resolved actor, never from the spread `input` | 2026-08-08 |
+| S07-08, S07-09 | Command output | Live multipart uploads against `POST /api/profile-extras/decks` on a real test account: magic-byte-mismatch text-as-PDF (400), path-traversal filename (201, but stored at a sanitized org-scoped key), MZ-header-as-PDF (400); `find /data/procure-files -iname "*passwd*"` confirmed the file landed only at the safe path | 2026-08-08 |
+| S07 (all) | File | `docs/platform-standard/section-07-app-perimeter-input-upload-bot.md` (new) | 2026-08-08 |
 
 ## Notes
 

@@ -15,7 +15,8 @@ format.
 | 04 Authentication, OAuth, Sessions, MFA & Account Recovery | **READY** — no open P0/P1/P2 items | 2026-08-08 |
 | 05 Authorization, RBAC/ABAC, RLS, Tenancy, Admin & Impersonation | **READY** — no open P0/P1/P2 items | 2026-08-08 |
 | 06 Database Integrity, Data Lifecycle, Backups & Recovery | READY WITH P2 ITEMS — see below | 2026-08-08 |
-| 07–18 | Not yet started | — |
+| 07 App/API Perimeter, Input Validation, File Upload, Bot & Malware Security | READY WITH P2 ITEMS — see below | 2026-08-08 |
+| 08–18 | Not yet started | — |
 
 ## Section 01 summary
 
@@ -161,8 +162,41 @@ format.
   as T26) and one informational P2 (R-25, FK coverage on currently-empty
   partner/payout tables, revisit once T7 unblocks real data).
 
+## Section 07 summary
+
+- Live header inspection (not just code read) against the running server
+  confirmed the full perimeter header set (CSP with no `unsafe-inline`/
+  `unsafe-eval` script sources, HSTS, X-Frame-Options, X-Content-Type-
+  Options, Referrer-Policy, Permissions-Policy) is genuinely present on
+  every response. CORS and rate limiting both fail closed / stay layered
+  as designed.
+- Found and fixed a minor info-disclosure gap (`X-Powered-By: Express`
+  header) and two stale "no MFA anywhere" doc comments left over from
+  before Section 04 shipped native TOTP (same class of finding as the
+  Section 05 Privacy Policy fix — code comments overstating a gap that
+  had since been closed).
+- Full-tree grep swept every OWASP-listed input-validation category (SQL
+  injection, open redirect, mass assignment, SSRF): zero real findings.
+  The codebase already has dedicated, well-built defenses for the two
+  highest-risk categories — a real SSRF guard (`lib/safe-fetch.ts`,
+  blocking private/loopback/metadata IP ranges and validating redirects)
+  actually wired into the one real user-URL fetch site, and consistent
+  parameterized-query discipline with zero string-interpolated SQL found
+  anywhere in the server tree.
+- **Live adversarial file-upload test** against the real multipart upload
+  endpoint on a real test account: a magic-byte-mismatch file, a
+  path-traversal filename, and a disguised Windows-executable-as-PDF were
+  all either correctly rejected (400) or safely neutralized (traversal
+  segments stripped, file landed only inside the org-scoped storage root
+  — confirmed directly on disk, not just via the API response).
+- One real P2 gap found and documented (not fixed this pass): uploaded
+  images/PDFs keep their original embedded metadata (EXIF, PDF author
+  fields) with no stripping step — low severity given this product's
+  current file mix (business documents, logos), tracked as T28.
+- No P0 blockers. Section 07 closes with one open P2 item (R-28, T28).
+
 ## Overall launch readiness (cumulative, updated as sections complete)
 
-**NOT READY** — pending Sections 07–18. This is expected at this stage
-(six of eighteen sections complete) and is not itself a new finding; it
+**NOT READY** — pending Sections 08–18. This is expected at this stage
+(seven of eighteen sections complete) and is not itself a new finding; it
 reflects where the multi-section pack currently stands, not a regression.
