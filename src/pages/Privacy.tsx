@@ -84,9 +84,9 @@ export default function Privacy() {
 
       <h2 style={h2}>Security</h2>
       <p>
-        We use industry-standard measures including encrypted connections and database row-level security to
-        protect your data. No method of transmission or storage is 100% secure, but we work to protect your
-        information and limit access to it.
+        We use industry-standard measures including encrypted connections and access controls that scope every
+        request to your account and organization to protect your data. No method of transmission or storage is
+        100% secure, but we work to protect your information and limit access to it.
       </p>
 
       <h2 style={h2}>Children</h2>

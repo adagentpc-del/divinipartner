@@ -282,6 +282,28 @@ Prioritized backlog, seeded from the Go-Live runbook remaining items and the V2 
 - Live-verified with two independent "device" logins for the same account: both worked, device A called the new endpoint, device A still worked immediately after (freshly re-issued token), device B was immediately dead (`401`). Frontend button added to Profile → Account (new "Sessions" section, next to the existing MFA/delete-account controls) and confirmed rendering correctly in a real browser.
 - Related files: `server/src/routes/auth-native.ts` (`POST /sign-out-other-sessions`), `src/pages/profile/ProfileEditor.tsx` (new "Sessions" section).
 
+## T24 - Wire up or remove the unused presigned-download-URL mechanism (found 2026-08-08, ALFY2 pack Section 05)
+
+- Priority: P2
+- Status: NOT STARTED
+- Owner: unassigned
+- Dependencies: none
+- Effort: S
+- Acceptance: `server/src/lib/objectStorage.ts` exports a fully-working, HMAC-signed, TTL-bound, timing-safe-compared presigned download URL mechanism (`signDownloadUrl`/`verifyDownloadUrl`) but no route in `server/src/routes.ts` mounts a `/api/documents/download` endpoint that actually calls `verifyDownloadUrl` -- it's dead code, referenced only in a stale comment in `server/src/db/profile-extras.ts`. Not exploitable (nothing serves files through it), but should be either wired up to a real route or removed so a future developer doesn't assume a working signed-URL download path exists.
+- Related files: `server/src/lib/objectStorage.ts`, `server/src/storage.ts`, `server/src/db/profile-extras.ts`.
+- See: `docs/platform-standard/section-05-authorization.md`, risk R-19.
+
+## T25 - Fix stale platform_fee_rate on subscription cancellation for null-fee-rate roles (found 2026-08-08, ALFY2 pack Section 05)
+
+- Priority: P2
+- Status: NOT STARTED
+- Owner: unassigned
+- Dependencies: none
+- Effort: S
+- Acceptance: `server/src/db.ts`'s `applySubscriptionUpdate()` cancellation branch (`status === "canceled" | "unpaid" | "incomplete_expired"`) hardcodes `platform_fee_rate = TIERS.free_partner.feeRate` instead of using the same role-aware `planTierFor(orgType, tier)` lookup the "active" branch uses. For a `client`-role org (whose plan catalog entry has `platformFeeRate: null` at every tier), this leaves a stale/incorrect cached value in the column after cancellation. Confirmed not currently exploitable or an overcharge risk -- `createInvoice()` always recomputes the real fee fresh from the live tier at invoice time, never from this cached column -- but it's a latent correctness bug for any future code path that trusts the column directly.
+- Related files: `server/src/db.ts` (`applySubscriptionUpdate`), `server/src/lib/planCatalog.ts`.
+- See: `docs/platform-standard/section-05-authorization.md`, risk R-20.
+
 ## ALFY2 / Claude Master Platform Execution Pack (started 2026-08-08)
 
 A separately-uploaded 18-section audit framework is being run against this
@@ -289,13 +311,14 @@ repository, tracked under `docs/platform-standard/` (its own required
 artifact location, per the pack's rules) rather than duplicated here.
 Section 01 (Discovery, Architecture & Applicability Gate), Section 02
 (Baseline Legal, Privacy, Consent & User Rights), Section 03 (Repository,
-Environments, Secrets, CI/CD & Supply Chain), and Section 04
-(Authentication, OAuth, Sessions, MFA & Account Recovery) are complete; see
-`docs/platform-standard/release-readiness.md` for cumulative status across
-all 18 sections as they execute. New findings that represent real,
-actionable work (like T13-T22 above) get a task here as they're found,
-so this queue stays the single place to look for "what's left to do" --
-`docs/platform-standard/` is where the pack's own required
+Environments, Secrets, CI/CD & Supply Chain), Section 04
+(Authentication, OAuth, Sessions, MFA & Account Recovery), and Section 05
+(Authorization, RBAC/ABAC, RLS, Tenancy, Admin & Impersonation) are
+complete; see `docs/platform-standard/release-readiness.md` for cumulative
+status across all 18 sections as they execute. New findings that represent
+real, actionable work (like T13-T25 above) get a task here as they're
+found, so this queue stays the single place to look for "what's left to
+do" -- `docs/platform-standard/` is where the pack's own required
 audit/evidence/risk trail lives, not a second task list.
 
 > TODO(owner): Add any product feature tasks beyond go-live as they are defined.

@@ -13,7 +13,8 @@ format.
 | 02 Baseline Legal, Privacy, Consent & User Rights | READY WITH P1 ITEMS — see below | 2026-08-08 |
 | 03 Repository, Environments, Secrets, CI/CD & Supply Chain | READY WITH P1 ITEMS — see below | 2026-08-08 |
 | 04 Authentication, OAuth, Sessions, MFA & Account Recovery | **READY** — no open P0/P1/P2 items | 2026-08-08 |
-| 05–18 | Not yet started | — |
+| 05 Authorization, RBAC/ABAC, RLS, Tenancy, Admin & Impersonation | READY WITH P2 ITEMS — see below | 2026-08-08 |
+| 06–18 | Not yet started | — |
 
 ## Section 01 summary
 
@@ -89,8 +90,36 @@ format.
   with two independent device logins.
 - No P0 blockers. Section 04 closes with zero open items.
 
+## Section 05 summary
+
+- No Postgres Row-Level Security exists anywhere in the schema; confirmed
+  by grep, not assumed. All authorization is application-layer via the
+  `getActor()` primitive. Documented as a standing architectural risk
+  (R-18), not a live gap — live adversarial testing found zero cross-tenant
+  leaks in every resource class tested.
+- Live adversarial test suite run against a running server with two
+  independently-registered real organizations: cross-tenant read/write on
+  events, bids, quotes, invoices; forged event-vendor attach; forged
+  org-switch (membership spoof). 13 attack attempts, 13 correct rejections
+  (403/404), zero cross-tenant or privilege-escalation failures.
+- Admin impersonation / "view as" does not exist in this codebase (N/A,
+  confirmed by code search).
+- One real finding fixed same-session: Privacy Policy overstated "database
+  row-level security" as a protection mechanism; reworded to accurately
+  describe the actual application-layer scoping (R-17, resolved).
+- Two P2 hygiene items found and documented, not fixed this pass (neither
+  is exploitable): dead presigned-download-URL code with no route ever
+  calling it (R-19), and a stale-but-unused `platform_fee_rate` value set
+  on subscription cancellation for role catalogs with a null fee rate
+  (R-20).
+- Built `docs/platform-standard/authorization-matrix.md` documenting the
+  resource/enforcement-point model for future sections and future
+  engineers to extend consistently.
+- No P0 blockers. Section 05 closes with zero open P0/P1 items (two P2
+  hygiene items tracked, not blocking).
+
 ## Overall launch readiness (cumulative, updated as sections complete)
 
-**NOT READY** — pending Sections 05–18. This is expected at this stage
-(four of eighteen sections complete) and is not itself a new finding; it
+**NOT READY** — pending Sections 06–18. This is expected at this stage
+(five of eighteen sections complete) and is not itself a new finding; it
 reflects where the multi-section pack currently stands, not a regression.

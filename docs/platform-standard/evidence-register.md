@@ -34,6 +34,14 @@ Bootstrapped at Section 01.
 | S04-01 to S04-10 | Command output + browser screenshot | Full live validation-matrix run against a running server with a real registered test account: register/verify/login/wrong-password/unverified-account/MFA-enroll/MFA-login-challenge/backup-codes/password-reset (expired + replayed)/session-revocation/sign-out-other-sessions/rate-limiting/forged-role — see `docs/platform-standard/section-04-authentication.md` for the full table with exact requests and results | 2026-08-08 |
 | S04-05 | Script | Purpose-built Python RFC 6238 TOTP generator matching `server/src/lib/totp.ts`'s exact parameters, used to compute real MFA codes without an authenticator app | 2026-08-08 |
 | S04-07 | Code | `server/src/routes/auth-native.ts` `POST /sign-out-other-sessions`; `src/pages/profile/ProfileEditor.tsx` "Sessions" section | 2026-08-08 |
+| S05-01 | Command output | `grep -ni "row level security\|create policy" db/apply-all.sql` — zero matches | 2026-08-08 |
+| S05-02, S05-03 | Command output | Full live adversarial run: two orgs registered via real `POST /api/register` HTTP flow (CSRF + session cookies), Org A created an event/bid/quote/invoice, Org B attempted read/write/status-change/vendor-attach/org-switch against every one — see `docs/platform-standard/section-05-authorization.md` for the exact requests and responses | 2026-08-08 |
+| S05-04 | Code | `server/src/routes/signatures.ts` `GET /:id/pdf` (`isParty` check); `server/src/routes/profile-decks-programs.ts` `GET /decks/:id/download` (org-scoped `extras.getDeck()`) — both read in full | 2026-08-08 |
+| S05-05 | Command output | `grep -rln "impersonat\|viewAs\|actAs" server/src` — no real matches (loose-pattern false positives ruled out by direct inspection) | 2026-08-08 |
+| S05-06 | Command output | `grep -rn "organization_id.*req\.body\|req\.body.*organization_id"` across `server/src/routes/*.ts`; both hits read and traced to their ownership-check call sites | 2026-08-08 |
+| S05-07 | Code | `server/src/db.ts` `applySubscriptionUpdate()`; `server/src/lib/entitlements.ts` `isTopTier()`/`checkLimit()`; `server/src/routes/payments.ts` `customer.subscription.*` webhook handlers — full trace | 2026-08-08 |
+| S05-08 | File | `src/pages/Privacy.tsx` line ~87 (diff) | 2026-08-08 |
+| S05 (all) | File | `docs/platform-standard/authorization-matrix.md` (new), `docs/platform-standard/section-05-authorization.md` (new) | 2026-08-08 |
 
 ## Notes
 
