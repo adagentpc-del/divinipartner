@@ -311,10 +311,15 @@ export async function applySubscriptionUpdate(args: {
       orgId,
     ]);
   } else if (args.status === "canceled" || args.status === "unpaid" || args.status === "incomplete_expired") {
+    // Same role-aware lookup as the "active" branch above, so a cancelled
+    // org's fee rate lands on the correct free-tier value for its role
+    // (e.g. client stays 0, not the flat TIERS.free_partner rate).
+    const roleTier = planTierFor(orgType as Role, "free_partner");
+    const feeRate = roleTier ? roleTier.platformFeeRate ?? 0 : TIERS.free_partner.feeRate;
     await q1(
       `update organizations set tier = 'free_partner', platform_fee_rate = $2, subscription_status = 'canceled',
          stripe_subscription_id = null, updated_at = now() where id = $1`,
-      [orgId, TIERS.free_partner.feeRate],
+      [orgId, feeRate],
     );
   }
 }

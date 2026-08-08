@@ -15,12 +15,9 @@ import {
   IS_PROD,
   STRIPE_WEBHOOK_SECRET,
   PAYPAL_WEBHOOK_ID,
-  DOWNLOAD_URL_SECRET,
   stripeEnabled,
   paypalEnabled,
 } from "../config.js";
-
-const DEV_DOWNLOAD_SECRET = "dev-only-download-secret-change-me";
 
 /**
  * Assert that production has the secrets its enabled integrations require.
@@ -40,13 +37,6 @@ export function assertProductionSecrets(): void {
   if (paypalEnabled() && !PAYPAL_WEBHOOK_ID) {
     errors.push(
       "PAYPAL_WEBHOOK_ID is empty but PayPal is enabled. PayPal webhooks cannot be verified; set it before processing payments.",
-    );
-  }
-
-  if (DOWNLOAD_URL_SECRET === DEV_DOWNLOAD_SECRET) {
-     
-    console.warn(
-      "[startup-check] WARNING: DOWNLOAD_URL_SECRET is still the dev fallback in production. Set DOWNLOAD_URL_SECRET (or SESSION_SECRET) to a strong unique value.",
     );
   }
 

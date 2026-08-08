@@ -282,26 +282,16 @@ Prioritized backlog, seeded from the Go-Live runbook remaining items and the V2 
 - Live-verified with two independent "device" logins for the same account: both worked, device A called the new endpoint, device A still worked immediately after (freshly re-issued token), device B was immediately dead (`401`). Frontend button added to Profile → Account (new "Sessions" section, next to the existing MFA/delete-account controls) and confirmed rendering correctly in a real browser.
 - Related files: `server/src/routes/auth-native.ts` (`POST /sign-out-other-sessions`), `src/pages/profile/ProfileEditor.tsx` (new "Sessions" section).
 
-## T24 - Wire up or remove the unused presigned-download-URL mechanism (found 2026-08-08, ALFY2 pack Section 05)
+## T24 - Wire up or remove the unused presigned-download-URL mechanism (RESOLVED 2026-08-08, ALFY2 pack Section 05)
 
-- Priority: P2
-- Status: NOT STARTED
-- Owner: unassigned
-- Dependencies: none
-- Effort: S
-- Acceptance: `server/src/lib/objectStorage.ts` exports a fully-working, HMAC-signed, TTL-bound, timing-safe-compared presigned download URL mechanism (`signDownloadUrl`/`verifyDownloadUrl`) but no route in `server/src/routes.ts` mounts a `/api/documents/download` endpoint that actually calls `verifyDownloadUrl` -- it's dead code, referenced only in a stale comment in `server/src/db/profile-extras.ts`. Not exploitable (nothing serves files through it), but should be either wired up to a real route or removed so a future developer doesn't assume a working signed-URL download path exists.
-- Related files: `server/src/lib/objectStorage.ts`, `server/src/storage.ts`, `server/src/db/profile-extras.ts`.
+- Status: DONE. Removed the dead code rather than wiring up a new route (no product requirement asked for a bearer-token signed-URL download path, and every real download route already uses the org/party-scoped session-authenticated pattern). Removed `signDownloadUrl`/`verifyDownloadUrl` from `server/src/lib/objectStorage.ts`, their re-exports from `server/src/storage.ts`, the now-fully-unused `DOWNLOAD_URL_SECRET` config var and its fail-closed production startup check in `server/src/config.ts`, and the matching warning in `server/src/lib/startup-check.ts`. Updated the misleading doc comments in both files plus `.env.local.example` and `DEPLOY.md` (both told operators to set a secret that no longer does anything). Verified zero remaining references via `grep -rn "DOWNLOAD_URL_SECRET" server/src`, and confirmed the server still boots and serves `/api/healthz` cleanly after the change.
+- Related files: `server/src/lib/objectStorage.ts`, `server/src/storage.ts`, `server/src/config.ts`, `server/src/lib/startup-check.ts`, `.env.local.example`, `DEPLOY.md`.
 - See: `docs/platform-standard/section-05-authorization.md`, risk R-19.
 
-## T25 - Fix stale platform_fee_rate on subscription cancellation for null-fee-rate roles (found 2026-08-08, ALFY2 pack Section 05)
+## T25 - Fix stale platform_fee_rate on subscription cancellation for null-fee-rate roles (RESOLVED 2026-08-08, ALFY2 pack Section 05)
 
-- Priority: P2
-- Status: NOT STARTED
-- Owner: unassigned
-- Dependencies: none
-- Effort: S
-- Acceptance: `server/src/db.ts`'s `applySubscriptionUpdate()` cancellation branch (`status === "canceled" | "unpaid" | "incomplete_expired"`) hardcodes `platform_fee_rate = TIERS.free_partner.feeRate` instead of using the same role-aware `planTierFor(orgType, tier)` lookup the "active" branch uses. For a `client`-role org (whose plan catalog entry has `platformFeeRate: null` at every tier), this leaves a stale/incorrect cached value in the column after cancellation. Confirmed not currently exploitable or an overcharge risk -- `createInvoice()` always recomputes the real fee fresh from the live tier at invoice time, never from this cached column -- but it's a latent correctness bug for any future code path that trusts the column directly.
-- Related files: `server/src/db.ts` (`applySubscriptionUpdate`), `server/src/lib/planCatalog.ts`.
+- Status: DONE. `server/src/db.ts`'s `applySubscriptionUpdate()` cancellation branch now calls the same `planTierFor(orgType, "free_partner")` lookup the "active" branch already used, instead of hardcoding `TIERS.free_partner.feeRate`. A cancelled `client`-role org (whose plan catalog entry has `platformFeeRate: null` at every tier) now correctly lands on fee rate 0 instead of the flat partner-role rate.
+- Related files: `server/src/db.ts` (`applySubscriptionUpdate`).
 - See: `docs/platform-standard/section-05-authorization.md`, risk R-20.
 
 ## ALFY2 / Claude Master Platform Execution Pack (started 2026-08-08)

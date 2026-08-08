@@ -96,13 +96,6 @@ export const BACKUP_KEY_PREFIX = "backups/db";
  */
 export const ERROR_MONITORING_WEBHOOK_URL = process.env.ERROR_MONITORING_WEBHOOK_URL || "";
 
-// Signing secret for short-lived download URLs (HMAC). Falls back to
-// OIDC_CLIENT_ID-derived value in dev but should be set explicitly in prod.
-export const DOWNLOAD_URL_SECRET =
-  process.env.DOWNLOAD_URL_SECRET ||
-  process.env.SESSION_SECRET ||
-  "dev-only-download-secret-change-me";
-
 export const PUBLIC_APP_URL = (process.env.PUBLIC_APP_URL || "").replace(/\/$/, "");
 export const BASE_PATH = (process.env.BASE_PATH || "/").replace(/\/$/, "") || "";
 
@@ -133,27 +126,6 @@ export function getAllowedOrigins(): string[] {
 }
 
 export const IS_PROD = process.env.NODE_ENV === "production";
-
-/**
- * Security-secret fail-safe. In production, security secrets that still carry a
- * known dev fallback (or are empty) are a forgery hazard, so we THROW at module
- * load to abort startup. Outside production these fall back to dev values so the
- * app still boots and typechecks. SESSION_SECRET is asserted in lib/session.ts.
- */
-const DEV_DOWNLOAD_URL_SECRET = "dev-only-download-secret-change-me";
-if (IS_PROD) {
-  const secretErrors: string[] = [];
-  if (!DOWNLOAD_URL_SECRET || DOWNLOAD_URL_SECRET === DEV_DOWNLOAD_URL_SECRET) {
-    secretErrors.push(
-      "DOWNLOAD_URL_SECRET is unset, empty, or the insecure dev fallback. Download URLs would be forgeable. Set DOWNLOAD_URL_SECRET (or SESSION_SECRET) to a strong unique value.",
-    );
-  }
-  if (secretErrors.length > 0) {
-    throw new Error(
-      "[config] production secret check failed:\n  - " + secretErrors.join("\n  - "),
-    );
-  }
-}
 
 /**
  * Payment processors. Feature-flagged: when keys are absent the processor is

@@ -12,27 +12,18 @@
  * AES-256-GCM (see storageCrypto.ts) before being written and decrypted on read,
  * for both providers.
  *
- * Download URLs keep working exactly as before: signDownloadUrl/verifyDownloadUrl
- * produce the same short-lived HMAC-signed /api/documents/download links, and the
- * download route streams the decrypted bytes regardless of provider.
+ * Downloads are served by org-scoped, session-authenticated routes (e.g.
+ * routes/profile-decks-programs.ts, routes/signatures.ts) that look the
+ * object up by id and check the caller's actor before streaming it -- there
+ * is no bearer-token signed-URL download path.
  *
- * Zero em dashes, dependency free (node:crypto, node:fs, node:path, fetch).
+ * Zero em dashes, dependency free (node:fs, node:path, fetch).
  */
-import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import {
-  FILE_STORAGE_DIR,
-  DOWNLOAD_URL_SECRET,
-  BASE_PATH,
-  STORAGE_PROVIDER,
-  s3Config,
-  s3Enabled,
-} from "../config.js";
+import { FILE_STORAGE_DIR, STORAGE_PROVIDER, s3Config, s3Enabled } from "../config.js";
 import { encryptBytes, decryptBytes } from "./storageCrypto.js";
 import { signS3Request } from "./s3sigv4.js";
-
-const SIGNED_TTL_SECONDS = 3600;
 
 // --- key safety -------------------------------------------------------------
 
@@ -158,29 +149,4 @@ export function deleteObject(key: string): Promise<void> {
 
 export function objectExists(key: string): Promise<boolean> {
   return provider().exists(key);
-}
-
-// --- short-lived signed download URLs (unchanged contract) ------------------
-
-function sign(key: string, exp: number): string {
-  return crypto.createHmac("sha256", DOWNLOAD_URL_SECRET).update(`${key}|${exp}`).digest("hex");
-}
-
-/** Equivalent of the old Supabase createSignedUrl(path, 3600). Relative URL. */
-export function signDownloadUrl(relKey: string, ttlSeconds = SIGNED_TTL_SECONDS): string {
-  const exp = Math.floor(Date.now() / 1000) + ttlSeconds;
-  const sig = sign(relKey, exp);
-  const qs = new URLSearchParams({ path: relKey, exp: String(exp), sig });
-  return `${BASE_PATH}/api/documents/download?${qs.toString()}`;
-}
-
-/** Verify a signed download request. Returns the path when valid, else null. */
-export function verifyDownloadUrl(relKey: string, exp: string, sig: string): string | null {
-  const expNum = Number(exp);
-  if (!Number.isFinite(expNum) || expNum < Math.floor(Date.now() / 1000)) return null;
-  const expected = sign(relKey, expNum);
-  const a = Buffer.from(sig);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
-  return safeRelKey(relKey);
 }
