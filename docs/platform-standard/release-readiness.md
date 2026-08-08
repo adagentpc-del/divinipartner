@@ -60,7 +60,7 @@ format.
   but low real-world severity; resolving them safely needs a Mac/Xcode
   verification step this environment can't perform (T19).
 - Repository-governance gaps found and mostly closed same-session: added
-  `CODEOWNERS`, tagged `v0.1.0` (first release tag), removed the redundant
+  `CODEOWNERS`, created a local `v0.1.0` tag (push rejected -- not yet published), removed the redundant
   `pnpm-lock.yaml` (converted `build:server`/`build:all` to npm, verified
   working end to end), wrote a secrets-rotation runbook, and installed +
   configured ESLint (fixed one real Rules-of-Hooks bug and one unstable

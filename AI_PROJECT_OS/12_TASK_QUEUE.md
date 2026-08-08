@@ -263,9 +263,9 @@ Prioritized backlog, seeded from the Go-Live runbook remaining items and the V2 
 
 ## T21 - Repository governance hygiene (PARTIALLY RESOLVED 2026-08-08, ALFY2 pack Section 03)
 
-- Status: DONE except branch-protection confirmation (needs a GitHub admin, cannot be checked or set from repo contents).
+- Status: DONE except branch-protection confirmation (needs a GitHub admin) and actually publishing the `v0.1.0` tag (created locally, push rejected -- see below).
   - Added `CODEOWNERS` (repo root) -- default owner is the GitHub remote's owner; flagged money/legal-adjacent paths as candidates for more specific ownership later.
-  - Tagged `v0.1.0` at this point in history -- first tagged release; establishes the pattern for future deploys to tag from.
+  - Created annotated tag `v0.1.0` locally at this point in history, establishing the pattern for future deploys to tag from -- but **could not push it**: `git push origin v0.1.0` returned a 403 (this session's push access covers branch refs but not tag refs). The tag exists on this branch locally only. Operator: run `git push origin v0.1.0` from an environment with full push access to actually publish it, or re-tag from wherever this branch lands after merge.
   - Resolved the redundant `pnpm-lock.yaml`: removed it and converted `build:server`/`build:all` in `package.json` from `pnpm` to `npm`, matching what CI and the documented deploy loop actually use. Verified `npm run build:all` still works end to end.
 - Remaining: **operator to confirm in GitHub repo settings** whether the default branch requires PR review + passing CI before merge, and set it if not already configured.
 - Related files: `CODEOWNERS`, `package.json`, removed `pnpm-lock.yaml`.

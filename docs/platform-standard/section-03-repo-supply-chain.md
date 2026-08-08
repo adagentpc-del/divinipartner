@@ -15,7 +15,7 @@ changed after the initial audit and why each fix was safe to make.
 | PR review expectations | UNKNOWN | Same as above |
 | CODEOWNERS | **PASS (was FAIL — fixed)** | `CODEOWNERS` added at repo root |
 | No direct-to-prod deploys from unreviewed local state | **PARTIAL** | Deploy is a manual `rsync` + `deploy.sh` loop run by whoever has server SSH access (`AI_PROJECT_OS/23_DEPLOYMENT.md`) — nothing technical stops someone from rsyncing uncommitted local changes straight to production. This is a real, structural gap, not a documentation gap, and isn't fixable by adding a file — it needs either branch protection (above) enforced as the only path to what gets deployed, or a real CD pipeline replacing the manual loop. Left as a genuine finding, not force-closed. |
-| Tagged releases / versioning | **PASS (was FAIL — fixed)** | `v0.1.0` tagged — first release tag, establishes the pattern |
+| Tagged releases / versioning | **PARTIAL (was FAIL)** | `v0.1.0` annotated tag created locally, establishing the pattern — but `git push origin v0.1.0` was rejected (403: this session's push access covers branch refs, not tag refs). Not yet published; see `operator-actions.md`. |
 | Changelog / release-notes process | **PASS** | `AI_PROJECT_OS/13_CHANGELOG.md` exists and is maintained as prose (not git-tag-linked, but real and current) |
 
 ## Environment separation
@@ -85,8 +85,11 @@ immediately:
   - Down to 0 errors / 44 non-blocking warnings. `npm run lint` added,
     wired into `.github/workflows/ci.yml`.
 - **CODEOWNERS added**, defaulting to the GitHub remote's owner.
-- **`v0.1.0` tagged** — first release tag, establishing the pattern for
-  future deploys.
+- **`v0.1.0` tag created locally** — first release tag, establishing the
+  pattern for future deploys. **Not published**: `git push origin v0.1.0`
+  was rejected with a 403 (this session can push branches but not tag
+  refs). Operator: `git push origin v0.1.0` from an environment with full
+  push access, or re-tag once this branch lands on `main`.
 - **Redundant `pnpm-lock.yaml` removed**; `build:server`/`build:all` in
   `package.json` converted from pnpm to npm (matching what CI and the
   documented deploy loop actually use); verified `npm run build:all`
