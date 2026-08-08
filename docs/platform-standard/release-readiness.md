@@ -59,10 +59,16 @@ format.
   mobile-build-only tooling never installed on the production server — real
   but low real-world severity; resolving them safely needs a Mac/Xcode
   verification step this environment can't perform (T19).
-- Repository-governance gaps found: no `CODEOWNERS`, no tagged releases,
-  branch-protection status unconfirmed, redundant `pnpm-lock.yaml`, no
-  written secrets-rotation runbook, no linter configured at all. All P2,
-  tracked as T20-T22.
+- Repository-governance gaps found and mostly closed same-session: added
+  `CODEOWNERS`, tagged `v0.1.0` (first release tag), removed the redundant
+  `pnpm-lock.yaml` (converted `build:server`/`build:all` to npm, verified
+  working end to end), wrote a secrets-rotation runbook, and installed +
+  configured ESLint (fixed one real Rules-of-Hooks bug and one unstable
+  React-key anti-pattern found along the way, tuned out two rules after
+  sampling their findings and confirming they were noise not signal for
+  this codebase). Only genuinely un-closeable item: branch-protection
+  status, a GitHub-UI setting this environment cannot check or set
+  (operator action, T21 remainder).
 - No P0 blockers found in Section 03.
 
 ## Overall launch readiness (cumulative, updated as sections complete)

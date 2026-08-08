@@ -82,7 +82,7 @@ export default function ItineraryTab({ eventId }: { eventId: string }) {
       setPub((r.items ?? []).filter((i) => i.is_public));
     } catch { /* non-fatal */ }
   }
-  useEffect(() => { void load(); void loadPublic(); /* eslint-disable-next-line */ }, [eventId]);
+  useEffect(() => { void load(); void loadPublic();   }, [eventId]);
 
   async function addPublic(e: React.FormEvent) {
     e.preventDefault();

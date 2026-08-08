@@ -49,7 +49,7 @@ export default function SeatingChartTab({ eventId }: { eventId: string }) {
       setLayout(normalize(existing?.layout));
     } catch (e) { setErr((e as Error).message); }
   }
-  useEffect(() => { void load(); /* eslint-disable-next-line */ }, [eventId]);
+  useEffect(() => { void load();   }, [eventId]);
 
   function normalize(l: Layout | null | undefined): Layout {
     return { tables: l?.tables ?? [], zones: l?.zones ?? [], assignments: l?.assignments ?? {} };

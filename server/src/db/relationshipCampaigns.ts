@@ -272,7 +272,7 @@ export async function resolveAudience(actor: Actor, id: string): Promise<Campaig
   const audience = (campaign.audience ?? {}) as Audience;
   const orgIds = await audienceOrgIds(actor, owner, audience);
 
-  let recipients: { partner_org_id: string | null; name: string | null; email: string }[] = [];
+  const recipients: { partner_org_id: string | null; name: string | null; email: string }[] = [];
   if (orgIds.length) {
     const rows = await q<{ org_id: string; name: string | null; email: string | null }>(
       `select org_id, name, email from (

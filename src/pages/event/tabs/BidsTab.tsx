@@ -39,7 +39,7 @@ export default function BidsTab({ eventId }: { eventId: string }) {
       setErr((e as Error).message);
     }
   }
-  useEffect(() => { void load(); /* eslint-disable-next-line */ }, [eventId]);
+  useEffect(() => { void load();   }, [eventId]);
 
   async function post(e: React.FormEvent) {
     e.preventDefault();

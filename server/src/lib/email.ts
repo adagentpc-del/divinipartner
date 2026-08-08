@@ -99,7 +99,7 @@ export async function sendEmail(msg: EmailMessage): Promise<EmailResult> {
   const to = recipients(msg.to);
   if (to.length === 0) return { ok: false, error: "no recipients" };
   if (!emailEnabled()) {
-    // eslint-disable-next-line no-console
+     
     console.log(`[email:disabled] to=${to.join(", ")} subject="${msg.subject}"`);
     return { ok: false, skipped: true };
   }

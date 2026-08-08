@@ -24,6 +24,7 @@ audit these policies reference.
 - `data-retention-and-deletion-policy.md` -- how long data is kept, and how deletion works (SOC 2 Privacy criteria if in scope; ISO 27001 A.5.34; GDPR/CCPA-adjacent)
 - `incident-response-plan.md` -- what happens when something goes wrong (SOC 2 CC7.4-CC7.5; ISO 27001 A.5.24-A.5.28)
 - `subprocessors.md` -- every third party that touches user data, and why
+- `secrets-rotation-runbook.md` -- the actual secrets inventory and the procedure for rotating each one (SOC 2 CC6.1; ISO 27001 A.8.24)
 
 ## Before any of these are real
 

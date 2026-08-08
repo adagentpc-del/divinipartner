@@ -56,7 +56,7 @@ export default function BidBoard() {
       setLoading(false);
     }
   }
-  useEffect(() => { void load(); /* eslint-disable-next-line */ }, [category, rushOnly]);
+  useEffect(() => { void load();   }, [category, rushOnly]);
 
   const categories = useMemo(
     () => Array.from(new Set(rows.map((b) => b.category).filter(Boolean) as string[])).sort(),

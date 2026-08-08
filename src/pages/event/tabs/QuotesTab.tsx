@@ -82,7 +82,7 @@ export default function QuotesTab({ eventId }: { eventId: string }) {
       setErr((e as Error).message);
     }
   }
-  useEffect(() => { void load(); /* eslint-disable-next-line */ }, [eventId]);
+  useEffect(() => { void load();   }, [eventId]);
 
   async function view(id: string) {
     setErr(null);

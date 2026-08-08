@@ -79,7 +79,7 @@ export default function MarketplaceSearch() {
       setBadges(await fetchBadgesBatch('company', orgIds));
     } catch (e) { setErr((e as Error).message); } finally { setLoading(false); }
   }
-  useEffect(() => { void search(); /* eslint-disable-next-line */ }, [kind, category, region, sort, premierOnly]);
+  useEffect(() => { void search();   }, [kind, category, region, sort, premierOnly]);
 
   return (
     <div className="ms">

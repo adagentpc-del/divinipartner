@@ -34,9 +34,9 @@ interface LogLine {
 function write(level: LogLine["level"], msg: string, context?: LogContext): LogLine {
   const line: LogLine = { ts: new Date().toISOString(), level, msg, ...context };
   const json = JSON.stringify(line);
-  // eslint-disable-next-line no-console
+   
   if (level === "error") console.error(json);
-  // eslint-disable-next-line no-console
+   
   else console.log(json);
   return line;
 }

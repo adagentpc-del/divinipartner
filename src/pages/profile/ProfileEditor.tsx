@@ -137,6 +137,8 @@ export default function ProfileEditor() {
       const s = await apiGet<State>('/profile');
       setState(s);
       setSections(s.draft?.sections ?? {});
+      // `clean` (below) is a hoisted function declaration, so this is a lint false positive.
+      // eslint-disable-next-line react-hooks/immutability
       if (s.theme) setTheme((t) => ({ ...t, ...clean(s.theme as Theme) }));
     } catch (e: any) {
       setErr(e?.message ?? 'Could not load your profile.');
@@ -301,7 +303,7 @@ export default function ProfileEditor() {
       // Non-fatal: the section just stays in its loading state.
     }
   }
-  useEffect(() => { if (session) loadMfaStatus(); /* eslint-disable-line */ }, [session]);
+  useEffect(() => { if (session) loadMfaStatus();   }, [session]);
 
   async function startMfaEnroll() {
     setMfaErr(''); setMfaMsg('');

@@ -11,7 +11,7 @@ const redirectUri =
   (typeof window !== 'undefined' ? `${window.location.origin}${basePath}/auth/callback` : '');
 
 if (!issuer || !clientId) {
-  // eslint-disable-next-line no-console
+   
   console.error(
     'Missing VITE_OIDC_ISSUER / VITE_OIDC_CLIENT_ID. OIDC login will not work until these are set at build time.'
   );

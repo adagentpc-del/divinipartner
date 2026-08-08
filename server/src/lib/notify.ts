@@ -69,7 +69,7 @@ export interface NotifyPayload {
  */
 export async function deliver(payload: NotifyPayload): Promise<NotifyPayload> {
   const recipients = Array.isArray(payload.to) ? payload.to.join(", ") : payload.to;
-  // eslint-disable-next-line no-console
+   
   console.log(
     `[notify] kind=${payload.kind} to=${recipients} subject="${payload.subject}"`,
     payload.context ?? {},

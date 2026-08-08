@@ -41,7 +41,7 @@ export default function AdminAccounts() {
       setLoading(false);
     }
   }
-  useEffect(() => { if (isAdmin) void load(); else setLoading(false); /* eslint-disable-next-line */ }, [isAdmin, filter]);
+  useEffect(() => { if (isAdmin) void load(); else setLoading(false);   }, [isAdmin, filter]);
 
   async function verify(id: string, status: string) {
     setBusy(id);

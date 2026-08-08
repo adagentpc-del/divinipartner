@@ -45,7 +45,7 @@ export default function TasksTab({ eventId }: { eventId: string }) {
       setMeta(m);
     } catch (e) { setErr((e as Error).message); }
   }
-  useEffect(() => { void load(); /* eslint-disable-next-line */ }, [eventId]);
+  useEffect(() => { void load();   }, [eventId]);
 
   async function refresh() {
     const t = await apiGet<{ tasks: Task[] }>(`/tasks/event/${eventId}`);

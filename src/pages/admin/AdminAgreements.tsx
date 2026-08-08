@@ -170,7 +170,7 @@ export default function AdminAgreements() {
       void load();
       void loadVendors();
     } else setLoadingRows(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [isAdmin]);
 
   function toggleEdit(a: Agreement) {

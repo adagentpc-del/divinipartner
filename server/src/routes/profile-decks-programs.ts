@@ -84,7 +84,7 @@ async function streamDeckFile(res: Response, deck: { storage_key: string | null;
     return;
   }
   res.setHeader("Content-Type", deck.content_type || "application/octet-stream");
-  const name = (deck.file_name || "deck").replace(/[^\w.\-]+/g, "_");
+  const name = (deck.file_name || "deck").replace(/[^\w.-]+/g, "_");
   res.setHeader("Content-Disposition", `inline; filename="${name}"`);
   // Provider-agnostic + encryption-aware streaming (local disk or S3).
   await streamObject(deck.storage_key, res);

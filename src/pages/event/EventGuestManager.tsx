@@ -426,7 +426,7 @@ export function VendorRequirementToggle({
         }
       })
       .catch(() => undefined);
-    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+     
   }, [eventId]);
 
   async function save(e: React.FormEvent) {

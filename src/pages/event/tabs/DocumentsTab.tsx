@@ -88,7 +88,7 @@ export default function DocumentsTab({ eventId }: { eventId: string }) {
         setDescription(r.event.event_goals ?? '');
       })
       .catch((e) => setErr((e as Error).message));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [eventId]);
 
   async function generate() {

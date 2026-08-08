@@ -62,7 +62,7 @@ export default function ComplianceCenter() {
       }
     } catch (e) { setErr((e as Error).message); } finally { setLoading(false); }
   }
-  useEffect(() => { void load(); /* eslint-disable-next-line */ }, [isAdmin]);
+  useEffect(() => { void load();   }, [isAdmin]);
 
   async function submitRequest() {
     setErr(null); setMsg(null);

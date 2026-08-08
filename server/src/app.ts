@@ -30,7 +30,7 @@ app.use(securityHeaders());
 // permissive bootstrap for local dev convenience.
 const allowedOrigins = getAllowedOrigins();
 if (IS_PROD && allowedOrigins.length === 0) {
-  // eslint-disable-next-line no-console
+   
   console.warn(
     "[cors] No allowlist configured in production (PUBLIC_APP_URL / ALLOWED_ORIGINS empty). " +
       "Denying all cross-origin requests; restricting to same-origin. Set PUBLIC_APP_URL or ALLOWED_ORIGINS.",

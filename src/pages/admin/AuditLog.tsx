@@ -44,7 +44,7 @@ export default function AuditLog() {
     if (!isAdmin) { setLoading(false); return; }
     apiGet<{ actions: string[] }>('/admin/audit/actions').then((r) => setActions(r.actions)).catch(() => {});
   }, [isAdmin]);
-  useEffect(() => { if (isAdmin) void load(); /* eslint-disable-next-line */ }, [isAdmin, action]);
+  useEffect(() => { if (isAdmin) void load();   }, [isAdmin, action]);
 
   if (!isAdmin) {
     return <div className="al"><style>{AL_CSS}</style><p className="al-guard">This page is restricted to platform administrators.</p></div>;

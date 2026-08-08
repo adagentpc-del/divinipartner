@@ -73,7 +73,7 @@ export default function AuditViewer() {
       .catch(() => {});
   }, [isAdmin]);
   useEffect(() => { setOffset(0); }, [action, objectType, search, from, to]);
-  useEffect(() => { if (isAdmin) void load(); /* eslint-disable-next-line */ }, [isAdmin, action, objectType, search, from, to, offset]);
+  useEffect(() => { if (isAdmin) void load();   }, [isAdmin, action, objectType, search, from, to, offset]);
 
   async function exportCsv() {
     try {

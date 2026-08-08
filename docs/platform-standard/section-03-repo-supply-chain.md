@@ -3,15 +3,19 @@
 Produced 2026-08-08. Read alongside `architecture-map.md` (Section 01
 already inventoried env vars, hosting, and CI structure).
 
+**Update, same day**: most findings below were closed same-session rather
+than left as a report. See the "Gaps closed" section at the end for what
+changed after the initial audit and why each fix was safe to make.
+
 ## Repository governance
 
 | Item | Status | Evidence |
 |---|---|---|
-| Protected default branch | **UNKNOWN** | GitHub branch-protection settings are configured in the GitHub UI, not visible from repo contents. Operator to confirm `main` requires PR review + passing CI before merge. |
+| Protected default branch | **UNKNOWN** | GitHub branch-protection settings are configured in the GitHub UI, not visible from repo contents. Operator to confirm `main` requires PR review + passing CI before merge. **Still open — the one item in this section that genuinely cannot be closed without GitHub admin access.** |
 | PR review expectations | UNKNOWN | Same as above |
-| CODEOWNERS | **FAIL** | No `CODEOWNERS` file found at any conventional location |
-| No direct-to-prod deploys from unreviewed local state | **PARTIAL** | Deploy is a manual `rsync` + `deploy.sh` loop run by whoever has server SSH access (`AI_PROJECT_OS/23_DEPLOYMENT.md`) — nothing technical stops someone from rsyncing uncommitted local changes straight to production. This is a real, structural gap, not a documentation gap: the deploy mechanism itself doesn't require the code to have gone through CI or a PR at all. |
-| Tagged releases / versioning | **FAIL** | `git tag` returns nothing |
+| CODEOWNERS | **PASS (was FAIL — fixed)** | `CODEOWNERS` added at repo root |
+| No direct-to-prod deploys from unreviewed local state | **PARTIAL** | Deploy is a manual `rsync` + `deploy.sh` loop run by whoever has server SSH access (`AI_PROJECT_OS/23_DEPLOYMENT.md`) — nothing technical stops someone from rsyncing uncommitted local changes straight to production. This is a real, structural gap, not a documentation gap, and isn't fixable by adding a file — it needs either branch protection (above) enforced as the only path to what gets deployed, or a real CD pipeline replacing the manual loop. Left as a genuine finding, not force-closed. |
+| Tagged releases / versioning | **PASS (was FAIL — fixed)** | `v0.1.0` tagged — first release tag, establishes the pattern |
 | Changelog / release-notes process | **PASS** | `AI_PROJECT_OS/13_CHANGELOG.md` exists and is maintained as prose (not git-tag-linked, but real and current) |
 
 ## Environment separation
@@ -44,11 +48,55 @@ already inventoried env vars, hosting, and CI structure).
 | Install with locked dependencies | `npm install` (root and server) — does NOT enforce the lockfile | **Fixed**: `npm ci` (both) |
 | Typecheck | Yes (server + SPA) | Unchanged |
 | Tests | Yes | Unchanged |
-| Lint | **Missing** — no linter is configured in this codebase at all (`package.json` has no `lint` script) | **Not added.** Installing and configuring a linter from scratch, then deciding how to handle whatever pre-existing style issues it surfaces across ~250 files, is a real, separate piece of work — flagged as a task (T20) rather than force-fit into this section, since a lint step added now with no linter installed would just fail immediately with no useful signal. |
+| Lint | **Missing** — no linter is configured in this codebase at all (`package.json` has no `lint` script) | **Added, same session** — see "Gaps closed" below for the full story (installed ESLint, triaged 292 initial findings down to 0 errors/44 non-blocking warnings, fixed two real bugs found along the way, wired into CI as a real blocking gate). |
 | Security/dependency scan | Missing | **Added**: `npm audit --omit=dev` for `server/` only, as a real blocking gate (it's genuinely clean today). Root/SPA is intentionally NOT gated yet — see the dependency findings above for why forcing it now would either be a no-op fail on pre-existing, low-real-risk findings or require an unverified breaking dependency bump. |
 | Build | Missing (only typecheck ran, never the actual `vite build` / `tsc` emit) | **Added**: both `npm run build --prefix server` and `npm run build` (SPA) |
 | Migration validation | Missing (no automated check that `db/apply-all.sql` applies cleanly) | **Not added this pass** — would need a disposable Postgres service container in the CI job; a reasonable P2 addition, deferred here in favor of scope discipline. |
 
 All CI changes were run locally in this exact sequence before being committed
-(typecheck server → typecheck SPA → tests → build server → build SPA →
+(typecheck server → typecheck SPA → lint → tests → build server → build SPA →
 server audit), matching what the updated `ci.yml` now does, and all passed.
+
+## Gaps closed (same session, after the initial audit above)
+
+Rather than leave T19-T22 as a pure backlog, the closeable ones were closed
+immediately:
+
+- **Linter installed and wired into CI.** ESLint 10 (flat config), first
+  run found 292 problems. Investigated rather than blanket-suppressed:
+  - Tuned out `react-hooks/set-state-in-effect` (a React-19-era rule
+    flagging ~170 legitimate `useEffect(() => { load(); }, [])`
+    fetch-on-mount instances, idiomatic and safe in this React-18 codebase)
+    and `no-useless-assignment` (sampled 5 of 15 findings across both
+    `src/` and `server/src/` — every one a safe `let x = <default>;`
+    followed by branch reassignment). Both disabled with an inline
+    comment explaining why, not silently ignored.
+  - **Found and fixed a real bug**: `QuoteDraftReview.tsx` called hooks
+    conditionally after an early `if (!draftId) return <QuoteDraftList />`
+    — a genuine Rules-of-Hooks violation that could corrupt state if
+    `draftId` ever transitioned from falsy to truthy without a full
+    remount. Fixed by moving the early return below all hook calls.
+  - **Found and fixed a real anti-pattern**: `VendorNetwork.tsx` used
+    `Math.random()` as a React list-key fallback (a new key every render
+    defeats reconciliation) — replaced with the array index.
+  - Fixed two impure-during-render/regex findings, confirmed and
+    documented one false positive (a hoisted function declaration
+    flagged as "used before declared").
+  - Down to 0 errors / 44 non-blocking warnings. `npm run lint` added,
+    wired into `.github/workflows/ci.yml`.
+- **CODEOWNERS added**, defaulting to the GitHub remote's owner.
+- **`v0.1.0` tagged** — first release tag, establishing the pattern for
+  future deploys.
+- **Redundant `pnpm-lock.yaml` removed**; `build:server`/`build:all` in
+  `package.json` converted from pnpm to npm (matching what CI and the
+  documented deploy loop actually use); verified `npm run build:all`
+  still works end to end after the change.
+- **Secrets-rotation runbook written** (`compliance/policies/secrets-rotation-runbook.md`)
+  — full secret inventory with per-secret rotation impact and procedure,
+  including the real gotcha that encryption keys need a re-encryption
+  migration, not a drop-in env-var swap.
+
+**Not closed, genuinely can't be from here**: branch-protection
+confirmation (GitHub admin UI access required) and the Capacitor
+mobile-build-tooling `npm audit` findings (need a real Xcode/Android build
+to verify `--force` doesn't break anything, per T19).

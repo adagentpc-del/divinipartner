@@ -159,9 +159,6 @@ export default function QuoteDraftReview() {
   const [search] = useSearchParams();
   const draftId = params.id || search.get('id') || undefined;
 
-  // No id selected: render the list of the actor's drafts instead of dead-ending.
-  if (!draftId) return <QuoteDraftList />;
-
   const [draft, setDraft] = useState<Draft | null>(null);
   const [scope, setScope] = useState('');
   const [installNotes, setInstallNotes] = useState('');
@@ -196,7 +193,15 @@ export default function QuoteDraftReview() {
     }
   }
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [draftId]);
+  useEffect(() => { load();   }, [draftId]);
+
+  // No id selected: render the list of the actor's drafts instead of
+  // dead-ending. Moved below the hooks above (was previously an early
+  // return before them, which violates React's Rules of Hooks -- if
+  // draftId ever transitions from falsy to truthy without a full remount,
+  // this component would call zero hooks on one render and nine on the
+  // next).
+  if (!draftId) return <QuoteDraftList />;
 
   async function save() {
     if (!draft) return;

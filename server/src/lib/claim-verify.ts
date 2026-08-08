@@ -120,7 +120,7 @@ export async function startClaim(args: {
     });
     await claim.setProfileClaimStatus(profile.id, "claim_pending");
     // STUB: a real build emails `code` to publicEmail via the email infra.
-    // eslint-disable-next-line no-console
+     
     console.log(`[claim-verify STUB] code for ${profile.profile_slug} -> ${maskEmail(publicEmail)}: ${code}`);
     return {
       verificationId: v.id,

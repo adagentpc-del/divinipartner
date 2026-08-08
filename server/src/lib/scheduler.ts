@@ -69,7 +69,7 @@ export async function runDueOutreach(limit = 200): Promise<OutreachSummary> {
       else skipped++;
     } catch (err) {
       failed++;
-      // eslint-disable-next-line no-console
+       
       console.error(
         `[scheduler] outreach send failed for profile ${row.profile_id}: ${
           err instanceof Error ? err.message : String(err)
@@ -165,18 +165,18 @@ export function startSchedulerLoop(): void {
   const tick = () => {
     runScheduler()
       .then((summary) => {
-        // eslint-disable-next-line no-console
+         
         console.log(`[scheduler] tick ${JSON.stringify(summary)}`);
       })
       .catch((err) => {
-        // eslint-disable-next-line no-console
+         
         console.error(
           `[scheduler] tick failed: ${err instanceof Error ? err.message : String(err)}`,
         );
       });
   };
 
-  // eslint-disable-next-line no-console
+   
   console.log(`[scheduler] starting in-process loop every ${WORKER_INTERVAL_MINUTES} minute(s)`);
   _timer = setInterval(tick, intervalMs);
   tick();

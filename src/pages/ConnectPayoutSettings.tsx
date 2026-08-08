@@ -80,7 +80,7 @@ export default function ConnectPayoutSettings() {
 
   useEffect(() => {
     if (session) load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [session]);
 
   if (!session) return <div className="cps"><div className="card">Sign in to manage payouts.</div></div>;

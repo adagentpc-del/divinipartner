@@ -27,6 +27,10 @@ Bootstrapped at Section 01.
 | S03-07 | Command output | `npx license-checker --summary` full scan | 2026-08-08 |
 | S03-08 | Command output | `find` for `CODEOWNERS`/`LICENSE`; `git tag` (empty) | 2026-08-08 |
 | S03-09 | File | `server/src/scripts/restore-db.ts` `confirm()` function, read directly | 2026-08-08 |
+| S03-10 | Command output | `npm run lint` — 0 errors, exit code 0, confirmed against the full `src/`+`server/src/` tree | 2026-08-08 |
+| S03-10 | File | `eslint.config.js`; fixes in `QuoteDraftReview.tsx`, `VendorNetwork.tsx`, `EventDayMode.tsx`, `ProfileEditor.tsx`, `profile-decks-programs.ts`, `signatures.ts` | 2026-08-08 |
+| S03-08 | Command output | `npm run build:all` verified working end to end after converting `build:server`/`build:all` from pnpm to npm | 2026-08-08 |
+| S03-11 | File | `compliance/policies/secrets-rotation-runbook.md` | 2026-08-08 |
 
 ## Notes
 

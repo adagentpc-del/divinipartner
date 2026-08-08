@@ -121,7 +121,7 @@ export default function EventDayMode() {
   const [contacts, setContacts] = useState<EventVendor[]>([]);
   const [guests, setGuests] = useState<Guest[]>([]);
   const [headcount, setHeadcount] = useState<Headcount | null>(null);
-  const [now, setNow] = useState<number>(Date.now());
+  const [now, setNow] = useState<number>(() => Date.now());
   const [busy, setBusy] = useState(false);
   const [statusBusy, setStatusBusy] = useState(false);
   const [icsBusy, setIcsBusy] = useState(false);

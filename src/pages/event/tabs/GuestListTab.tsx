@@ -69,7 +69,7 @@ export default function GuestListTab({ eventId }: { eventId: string }) {
       setErr((e as Error).message);
     }
   }
-  useEffect(() => { void load(); /* eslint-disable-next-line */ }, [eventId]);
+  useEffect(() => { void load();   }, [eventId]);
 
   async function toggleNotifyGuestsSchedule() {
     const next = !notifyGuestsSchedule;

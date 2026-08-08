@@ -6,9 +6,10 @@
   "description": "Divini Partners - procurement marketplace (Vite SPA + Express/Postgres backend, native email/password auth, pluggable local-disk/S3 storage)",
   "scripts": {
     "dev": "vite",
+    "lint": "eslint src server/src",
     "build": "tsc && vite build",
-    "build:server": "pnpm --dir server install --no-frozen-lockfile && pnpm --dir server run build",
-    "build:all": "pnpm run build && pnpm run build:server && rm -rf server/dist/public && cp -r dist server/dist/public",
+    "build:server": "npm --prefix server install && npm --prefix server run build",
+    "build:all": "npm run build && npm run build:server && rm -rf server/dist/public && cp -r dist server/dist/public",
     "start": "node --enable-source-maps server/dist/index.js",
     "preview": "vite preview",
     "app:build": "npm run build && npx cap sync",
@@ -36,10 +37,16 @@
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^8.4.0",
+    "@eslint/js": "^10.0.1",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
+    "eslint": "^10.8.1",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.3",
+    "globals": "^17.9.0",
     "typescript": "^5.5.4",
+    "typescript-eslint": "^8.66.0",
     "vite": "^5.4.0"
   }
 }

@@ -106,7 +106,7 @@ export default function AdminCampaigns() {
   useEffect(() => {
     if (isAdmin) void load();
     else setLoadingRows(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [isAdmin]);
 
   async function create(e: React.FormEvent) {

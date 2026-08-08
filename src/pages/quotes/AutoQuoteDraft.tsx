@@ -80,7 +80,7 @@ export default function AutoQuoteDraft() {
     }
   }
 
-  useEffect(() => { generate(); /* eslint-disable-next-line */ }, [bidId, eventId]);
+  useEffect(() => { generate();   }, [bidId, eventId]);
 
   useEffect(() => {
     let on = true;

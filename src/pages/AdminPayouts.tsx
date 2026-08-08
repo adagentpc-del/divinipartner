@@ -120,7 +120,7 @@ export default function AdminPayouts() {
     }
     void loadMeta();
     void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [isAdmin]);
 
   function partnerLabel(id: string | null): string {

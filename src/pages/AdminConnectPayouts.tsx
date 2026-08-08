@@ -119,7 +119,7 @@ export default function AdminConnectPayouts() {
 
   useEffect(() => {
     if (isAdmin) load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [isAdmin]);
 
   if (!isAdmin) return <div className="acp" style={{ padding: 24 }}><div className="card"><div className="empty">Admins only.</div></div></div>;

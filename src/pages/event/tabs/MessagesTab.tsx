@@ -73,7 +73,7 @@ export default function MessagesTab({ eventId }: { eventId: string }) {
       setErr((e as Error).message);
     }
   }
-  useEffect(() => { void load(); /* eslint-disable-next-line */ }, [eventId]);
+  useEffect(() => { void load();   }, [eventId]);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
   async function send(e: React.FormEvent) {

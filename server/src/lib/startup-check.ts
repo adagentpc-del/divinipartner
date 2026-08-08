@@ -44,7 +44,7 @@ export function assertProductionSecrets(): void {
   }
 
   if (DOWNLOAD_URL_SECRET === DEV_DOWNLOAD_SECRET) {
-    // eslint-disable-next-line no-console
+     
     console.warn(
       "[startup-check] WARNING: DOWNLOAD_URL_SECRET is still the dev fallback in production. Set DOWNLOAD_URL_SECRET (or SESSION_SECRET) to a strong unique value.",
     );
@@ -55,7 +55,7 @@ export function assertProductionSecrets(): void {
     // installed on the host, see lib/uploadGuard.ts). This is a visibility
     // warning so "no malware scanning" is a decision an operator has to
     // notice, not a silent default.
-    // eslint-disable-next-line no-console
+     
     console.warn(
       "[startup-check] WARNING: AV_SCAN_ENABLED is not 'true'. Uploaded files are NOT being " +
         "virus/malware scanned (extension, MIME, and magic-byte checks still apply). Install " +
@@ -65,7 +65,7 @@ export function assertProductionSecrets(): void {
 
   if (errors.length > 0) {
     const message = "[startup-check] production secret check failed:\n  - " + errors.join("\n  - ");
-    // eslint-disable-next-line no-console
+     
     console.error(message);
     throw new Error(message);
   }

@@ -186,7 +186,7 @@ router.get(
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
-      `inline; filename="signed-${(row.document_title ?? "agreement").replace(/[^\w.\-]+/g, "_")}-${row.id.slice(0, 8)}.pdf"`,
+      `inline; filename="signed-${(row.document_title ?? "agreement").replace(/[^\w.-]+/g, "_")}-${row.id.slice(0, 8)}.pdf"`,
     );
     // Provider-agnostic + encryption-aware streaming.
     await streamObject(row.signed_pdf_path, res);

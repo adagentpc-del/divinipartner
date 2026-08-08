@@ -250,38 +250,31 @@ Prioritized backlog, seeded from the Go-Live runbook remaining items and the V2 
 - Related files: `package.json`, `package-lock.json`.
 - See: `docs/platform-standard/section-03-repo-supply-chain.md`.
 
-## T20 - Install and configure a linter, wire into CI (found 2026-08-08, ALFY2 pack Section 03)
+## T20 - Install and configure a linter, wire into CI (RESOLVED 2026-08-08, ALFY2 pack Section 03)
 
-- Priority: P2
-- Status: NOT STARTED
-- Owner: unassigned
-- Dependencies: none
-- Effort: M (installing ESLint is quick; deciding how to handle whatever pre-existing issues it surfaces across ~250 files is the real work)
-- Acceptance: no `lint` script exists in either `package.json` today. Install and configure a linter appropriate to the stack (TypeScript + React), triage its initial findings (fix, suppress with justification, or accept as tech debt), then add a CI gate.
-- Related files: `package.json`, `server/package.json`, `.github/workflows/ci.yml`.
-- See: `docs/platform-standard/section-03-repo-supply-chain.md`.
+- Status: DONE. Installed ESLint 10 (flat config, `eslint.config.js`) with `typescript-eslint` recommended (non-type-checked variant, for a fast first run), `eslint-plugin-react-hooks`, `eslint-plugin-react-refresh`. First run found 292 problems; investigated rather than blanket-suppressed:
+  - Tuned out `react-hooks/set-state-in-effect` (a React-19-era rule flagging ~170 legitimate, safe `useEffect(() => { load(); }, [])` fetch-on-mount instances used idiomatically throughout this React-18 codebase) and `no-useless-assignment` (sampled 5 of 15 findings across both `src/` and `server/src/` -- every one is a safe `let x = <default>;` followed by branch reassignment, not a bug) -- both disabled with an inline comment explaining why, not silently ignored.
+  - Found and fixed one **real bug**: `src/pages/QuoteDraftReview.tsx` called hooks conditionally after an early `if (!draftId) return <QuoteDraftList />;` -- a genuine React Rules-of-Hooks violation that could cause state corruption if `draftId` ever transitioned from falsy to truthy without a full remount. Moved the early return below all hook calls.
+  - Found and fixed a real anti-pattern: `src/pages/network/VendorNetwork.tsx` used `Math.random()` as a React list-key fallback (a new key every render defeats reconciliation) -- replaced with the array index.
+  - Fixed two impure-during-render findings (`Date.now()` as a raw `useState` initializer in `EventDayMode.tsx` -> lazy initializer form), two harmless regex over-escapes (`no-useless-escape` in `profile-decks-programs.ts`/`signatures.ts`), and one confirmed false positive (`ProfileEditor.tsx` -- flagged a hoisted function declaration as "used before declared"; documented inline rather than silently disabling the rule).
+  - Remaining 44 warnings (mostly `react-hooks/exhaustive-deps`) are non-blocking by design -- real findings for a future pass, not launch blockers.
+  - Added `npm run lint` (root, covers both `src/` and `server/src/`) and wired it into `.github/workflows/ci.yml` as a real, currently-passing gate.
+- Related files: `eslint.config.js`, `package.json`, `.github/workflows/ci.yml`, plus the fixes above.
 
-## T21 - Repository governance hygiene (found 2026-08-08, ALFY2 pack Section 03)
+## T21 - Repository governance hygiene (PARTIALLY RESOLVED 2026-08-08, ALFY2 pack Section 03)
 
-- Priority: P2
-- Status: NOT STARTED
-- Owner: unassigned (branch-protection confirmation needs a GitHub admin; the rest is a small PR)
-- Dependencies: none
-- Effort: S
-- Acceptance: (1) confirm in GitHub settings whether the default branch requires PR review + passing CI before merge (not visible from repo contents -- operator to check and report back); (2) add a `CODEOWNERS` file; (3) start tagging releases (even lightweight `vN.N.N` tags at deploy time) so there's a real version history to point to; (4) resolve the redundant `pnpm-lock.yaml` at the repo root (CI and the documented deploy loop both use plain `npm` -- either remove the stray pnpm lockfile or standardize `build:server` on npm too, so there's one lockfile per install root, not two that can drift).
-- Related files: repo root (`CODEOWNERS`, `pnpm-lock.yaml`), `package.json` (`build:server` script).
-- See: `docs/platform-standard/section-03-repo-supply-chain.md`.
+- Status: DONE except branch-protection confirmation (needs a GitHub admin, cannot be checked or set from repo contents).
+  - Added `CODEOWNERS` (repo root) -- default owner is the GitHub remote's owner; flagged money/legal-adjacent paths as candidates for more specific ownership later.
+  - Tagged `v0.1.0` at this point in history -- first tagged release; establishes the pattern for future deploys to tag from.
+  - Resolved the redundant `pnpm-lock.yaml`: removed it and converted `build:server`/`build:all` in `package.json` from `pnpm` to `npm`, matching what CI and the documented deploy loop actually use. Verified `npm run build:all` still works end to end.
+- Remaining: **operator to confirm in GitHub repo settings** whether the default branch requires PR review + passing CI before merge, and set it if not already configured.
+- Related files: `CODEOWNERS`, `package.json`, removed `pnpm-lock.yaml`.
 
-## T22 - Written secrets-rotation runbook (found 2026-08-08, ALFY2 pack Section 03)
+## T22 - Written secrets-rotation runbook (RESOLVED 2026-08-08, ALFY2 pack Section 03)
 
-- Priority: P2
-- Status: NOT STARTED
-- Owner: unassigned
-- Dependencies: none
-- Effort: S
-- Acceptance: secrets themselves are handled correctly today (never committed -- verified via a live scan of the full git history, `.gitignore` correctly excludes them), but there is no written procedure for an actual rotation event (suspected leak, employee offboarding, routine rotation cadence). Add a short runbook: which secrets exist, who can rotate each, and the exact steps (mirrors the existing `incident-response-plan.md` pattern in `compliance/policies/`).
-- Related files: new doc, likely alongside `compliance/policies/` or `AI_PROJECT_OS/51_SECURITY.md`.
-- See: `docs/platform-standard/section-03-repo-supply-chain.md`.
+- Status: DONE. `compliance/policies/secrets-rotation-runbook.md` -- full secrets inventory (from `docs/platform-standard/architecture-map.md`) with per-secret rotation impact/procedure, when-to-rotate triggers, and the general rotation procedure (including the real gotcha that `PAYOUT_ENC_KEY`/`STORAGE_ENCRYPTION_KEY` need a re-encryption migration, not a drop-in swap). Same DRAFT status as every other `compliance/policies/` document -- needs a named owner and a real rehearsed rotation before it's a relied-upon control.
+- Related files: `compliance/policies/secrets-rotation-runbook.md`, `compliance/policies/README.md`.
+
 
 ## ALFY2 / Claude Master Platform Execution Pack (started 2026-08-08)
 

@@ -85,7 +85,7 @@ export default function AdminPartners() {
       setRows(pl.partners); setMeta(m);
     } catch (e) { setErr((e as Error).message); } finally { setLoading(false); }
   }
-  useEffect(() => { if (isAdmin) void load(); else setLoading(false); /* eslint-disable-next-line */ }, [isAdmin]);
+  useEffect(() => { if (isAdmin) void load(); else setLoading(false);   }, [isAdmin]);
 
   async function openDetail(id: string) {
     setErr(null);

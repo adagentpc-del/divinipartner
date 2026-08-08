@@ -190,7 +190,7 @@ export async function runEventScheduleDistribution(now: Date = new Date()): Prom
       if (await sendGuestScheduleIfDue(ev, now)) guestsSent++;
     } catch (err) {
       failed++;
-      // eslint-disable-next-line no-console
+       
       console.error(
         `[schedule-distribution] failed for event ${ev.id}: ${err instanceof Error ? err.message : String(err)}`,
       );

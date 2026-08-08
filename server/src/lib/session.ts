@@ -55,7 +55,7 @@ function sessionSecret(): Uint8Array {
     }
     if (!_warned) {
       _warned = true;
-      // eslint-disable-next-line no-console
+       
       console.warn(
         "[auth] SESSION_SECRET is not set. Using an INSECURE dev secret. " +
           "Set SESSION_SECRET in .env.local before deploy.",

@@ -99,7 +99,7 @@ export default function ProfileDecksPrograms() {
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   async function uploadDeck() {

@@ -64,7 +64,7 @@ export default function QuoteApprovals() {
 
   useEffect(() => {
     loadDrafts();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);  
 
   async function openChain(id: string) {
     setActiveId(id);

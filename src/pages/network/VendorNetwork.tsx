@@ -260,11 +260,11 @@ export default function VendorNetwork() {
 
           {results.length > 0 && (
             <ul className="vn-list vn-results">
-              {results.map((r) => {
+              {results.map((r, i) => {
                 const id = r.organization_id ?? '';
                 const already = starredIds.has(id);
                 return (
-                  <li key={id || r.name || Math.random()} className="vn-row">
+                  <li key={id || r.name || i} className="vn-row">
                     <div className="vn-avatar" aria-hidden="true">
                       {(r.name ?? 'V').slice(0, 1).toUpperCase()}
                     </div>
