@@ -276,14 +276,21 @@ Prioritized backlog, seeded from the Go-Live runbook remaining items and the V2 
 - Related files: `compliance/policies/secrets-rotation-runbook.md`, `compliance/policies/README.md`.
 
 
+## T23 - Standalone "sign out all other sessions" action (RESOLVED 2026-08-08, ALFY2 pack Section 04)
+
+- Status: DONE. `POST /api/auth/sign-out-other-sessions` (`requireUser`) calls the existing, already-verified `db.invalidateSessions()`, then re-issues a fresh session for the calling device immediately after (same ordering the password-reset flow already uses), so the device that asked for this stays signed in while every other one is cut off.
+- Live-verified with two independent "device" logins for the same account: both worked, device A called the new endpoint, device A still worked immediately after (freshly re-issued token), device B was immediately dead (`401`). Frontend button added to Profile → Account (new "Sessions" section, next to the existing MFA/delete-account controls) and confirmed rendering correctly in a real browser.
+- Related files: `server/src/routes/auth-native.ts` (`POST /sign-out-other-sessions`), `src/pages/profile/ProfileEditor.tsx` (new "Sessions" section).
+
 ## ALFY2 / Claude Master Platform Execution Pack (started 2026-08-08)
 
 A separately-uploaded 18-section audit framework is being run against this
 repository, tracked under `docs/platform-standard/` (its own required
 artifact location, per the pack's rules) rather than duplicated here.
 Section 01 (Discovery, Architecture & Applicability Gate), Section 02
-(Baseline Legal, Privacy, Consent & User Rights), and Section 03
-(Repository, Environments, Secrets, CI/CD & Supply Chain) are complete; see
+(Baseline Legal, Privacy, Consent & User Rights), Section 03 (Repository,
+Environments, Secrets, CI/CD & Supply Chain), and Section 04
+(Authentication, OAuth, Sessions, MFA & Account Recovery) are complete; see
 `docs/platform-standard/release-readiness.md` for cumulative status across
 all 18 sections as they execute. New findings that represent real,
 actionable work (like T13-T22 above) get a task here as they're found,

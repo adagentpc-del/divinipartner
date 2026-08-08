@@ -253,6 +253,37 @@ router.post("/logout", (_req, res) => {
   res.json({ ok: true });
 });
 
+/**
+ * Sign out every OTHER session (lost/stolen device, an old browser you no
+ * longer trust) without changing the password. Reuses the same
+ * invalidateSessions() a password reset already relies on (see the /reset
+ * handler above) -- the mechanism is proven; this is a second, deliberate
+ * entry point to it. Re-issues a fresh session for THIS request/device
+ * immediately after invalidating, in the same order the /reset handler
+ * uses, so the caller stays signed in on the device they used to ask for
+ * this.
+ */
+router.post(
+  "/sign-out-other-sessions",
+  requireUser,
+  h(async (req, res) => {
+    const auth = getAuth(req);
+    const user = await db.ensureUser(auth.userId!, auth.email);
+    await db.invalidateSessions(user.id);
+    await logAction(
+      { id: user.id, email: user.email },
+      "account.sessions_revoked",
+      "user",
+      user.id,
+      null,
+      null,
+      { summary: "User signed out all other sessions." },
+    );
+    const { token } = await issueSession(res, { id: user.id, email: user.email });
+    return res.json({ ok: true, token });
+  }),
+);
+
 // ---- Me (mirror /api/me shape the SPA expects) -----------------------------
 router.get(
   "/me",

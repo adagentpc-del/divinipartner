@@ -11,8 +11,9 @@ format.
 | 00 Read First / Master Execution Rules | Read, rules in effect for all later sections | 2026-08-08 |
 | 01 Discovery, Architecture & Applicability Gate | READY WITH P1 ITEMS — see below | 2026-08-08 |
 | 02 Baseline Legal, Privacy, Consent & User Rights | READY WITH P1 ITEMS — see below | 2026-08-08 |
-| 03 Repository, Environments, Secrets, CI/CD & Supply Chain | **READY WITH P1 ITEMS** — see below | 2026-08-08 |
-| 04–18 | Not yet started | — |
+| 03 Repository, Environments, Secrets, CI/CD & Supply Chain | READY WITH P1 ITEMS — see below | 2026-08-08 |
+| 04 Authentication, OAuth, Sessions, MFA & Account Recovery | **READY** — no open P0/P1/P2 items | 2026-08-08 |
+| 05–18 | Not yet started | — |
 
 ## Section 01 summary
 
@@ -71,8 +72,25 @@ format.
   (operator action, T21 remainder).
 - No P0 blockers found in Section 03.
 
+## Section 04 summary
+
+- OAuth/social login: N/A — genuinely doesn't exist (confirmed by reading
+  `server/src/auth.ts` in full), so OAuth-state-mismatch and
+  account-linking-collision from the pack's validation matrix are N/A too.
+- All 12 applicable validation-matrix items tested live against a running
+  server with a real registered test account — not assumed from reading
+  code. Every one passed, including adversarial cases (forged admin flag,
+  replayed tokens, expired tokens, MFA challenge-token replay, rate
+  limiting).
+- One real completeness gap found and closed same-session: no standalone
+  "sign out other sessions" action existed independent of a password
+  change. Added `POST /auth/sign-out-other-sessions` (reusing the
+  already-proven revocation mechanism) plus a frontend button, live-verified
+  with two independent device logins.
+- No P0 blockers. Section 04 closes with zero open items.
+
 ## Overall launch readiness (cumulative, updated as sections complete)
 
-**NOT READY** — pending Sections 04–18. This is expected at this stage
-(three of eighteen sections complete) and is not itself a new finding; it
+**NOT READY** — pending Sections 05–18. This is expected at this stage
+(four of eighteen sections complete) and is not itself a new finding; it
 reflects where the multi-section pack currently stands, not a regression.

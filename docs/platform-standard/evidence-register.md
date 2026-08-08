@@ -31,6 +31,9 @@ Bootstrapped at Section 01.
 | S03-10 | File | `eslint.config.js`; fixes in `QuoteDraftReview.tsx`, `VendorNetwork.tsx`, `EventDayMode.tsx`, `ProfileEditor.tsx`, `profile-decks-programs.ts`, `signatures.ts` | 2026-08-08 |
 | S03-08 | Command output | `npm run build:all` verified working end to end after converting `build:server`/`build:all` from pnpm to npm | 2026-08-08 |
 | S03-11 | File | `compliance/policies/secrets-rotation-runbook.md` | 2026-08-08 |
+| S04-01 to S04-10 | Command output + browser screenshot | Full live validation-matrix run against a running server with a real registered test account: register/verify/login/wrong-password/unverified-account/MFA-enroll/MFA-login-challenge/backup-codes/password-reset (expired + replayed)/session-revocation/sign-out-other-sessions/rate-limiting/forged-role — see `docs/platform-standard/section-04-authentication.md` for the full table with exact requests and results | 2026-08-08 |
+| S04-05 | Script | Purpose-built Python RFC 6238 TOTP generator matching `server/src/lib/totp.ts`'s exact parameters, used to compute real MFA codes without an authenticator app | 2026-08-08 |
+| S04-07 | Code | `server/src/routes/auth-native.ts` `POST /sign-out-other-sessions`; `src/pages/profile/ProfileEditor.tsx` "Sessions" section | 2026-08-08 |
 
 ## Notes
 

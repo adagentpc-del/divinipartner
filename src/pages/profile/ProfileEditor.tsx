@@ -108,6 +108,10 @@ export default function ProfileEditor() {
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteErr, setDeleteErr] = useState('');
+  // Sign out other sessions (lost/stolen device), no password change needed.
+  const [signOutBusy, setSignOutBusy] = useState(false);
+  const [signOutMsg, setSignOutMsg] = useState('');
+  const [signOutErr, setSignOutErr] = useState('');
   // Two-factor authentication (TOTP).
   const [mfa, setMfa] = useState<MfaStatus | null>(null);
   const [mfaBusy, setMfaBusy] = useState(false);
@@ -269,6 +273,23 @@ export default function ProfileEditor() {
       setTransferErr(e?.message ?? 'Could not transfer ownership.');
     } finally {
       setTransferBusy(false);
+    }
+  }
+
+  async function signOutOtherSessions() {
+    setSignOutErr(''); setSignOutMsg('');
+    const ok = window.confirm(
+      'Sign out every other device/browser signed in to your account? This one stays signed in.',
+    );
+    if (!ok) return;
+    setSignOutBusy(true);
+    try {
+      await apiSend('POST', '/auth/sign-out-other-sessions', {});
+      setSignOutMsg('Every other session has been signed out. This device stays signed in.');
+    } catch (e: any) {
+      setSignOutErr(e?.message ?? 'Could not sign out other sessions.');
+    } finally {
+      setSignOutBusy(false);
     }
   }
 
@@ -644,6 +665,20 @@ export default function ProfileEditor() {
               <div className="dppe-actions">
                 <button className="dppe-btn" onClick={transferOwner} disabled={transferBusy}>
                   {transferBusy ? 'Transferring...' : 'Transfer ownership'}
+                </button>
+              </div>
+            </Section>
+
+            <Section title="Sessions">
+              <p className="dppe-help">
+                Lost a device, or signed in somewhere you no longer trust? Sign out every other
+                session without changing your password. This device stays signed in.
+              </p>
+              {signOutErr && <div className="dppe-err" style={{ marginTop: 10 }}>{signOutErr}</div>}
+              {signOutMsg && <div className="dppe-ok" style={{ marginTop: 10 }}>{signOutMsg}</div>}
+              <div className="dppe-actions">
+                <button className="dppe-btn" onClick={signOutOtherSessions} disabled={signOutBusy}>
+                  {signOutBusy ? 'Signing out...' : 'Sign out other sessions'}
                 </button>
               </div>
             </Section>
