@@ -294,6 +294,28 @@ Prioritized backlog, seeded from the Go-Live runbook remaining items and the V2 
 - Related files: `server/src/db.ts` (`applySubscriptionUpdate`).
 - See: `docs/platform-standard/section-05-authorization.md`, risk R-20.
 
+## T26 - Race-proof the entitlement usage-limit checks (found 2026-08-08, ALFY2 pack Section 06)
+
+- Priority: P2
+- Status: NOT STARTED
+- Owner: unassigned
+- Dependencies: none (reference implementation already shipped in `credits.ts`)
+- Effort: M (5 route files, each needs its own careful transaction wrap + a concurrency test like the one used to verify the credits fix)
+- Acceptance: `server/src/routes/{seats,events,inventory,packages,warehouses}.ts` all call `lib/entitlements.ts`'s `checkLimit()` with the shape "count current usage -> check against the plan limit -> insert the new row" as three separate steps with no lock between them. Two concurrent requests at the limit can both pass the check and both insert, letting an org exceed its plan's seat/event/inventory/package/warehouse cap by a small margin under concurrent-request abuse. Not exploitable for money (these are usage caps, not payments) and not cross-tenant, but a real correctness gap. Fix each the same way `server/src/lib/credits.ts`'s `redeemCredit()` was fixed this session: wrap the count-check-insert in one transaction guarded by `pg_advisory_xact_lock(hashtext(org.id))` (scoped per-org here, not per-user, since the limit is org-wide), recomputing the count inside that same transaction. Verify each with the same style of live concurrent-request test used to verify the credits fix (fire N simultaneous requests at the limit, confirm exactly the allowed number succeed and the final count never exceeds the plan limit).
+- Related files: `server/src/routes/seats.ts`, `events.ts`, `inventory.ts`, `packages.ts`, `warehouses.ts`; reference fix in `server/src/lib/credits.ts`.
+- See: `docs/platform-standard/section-06-database-integrity.md`, risk R-24.
+
+## T27 - Add real FK constraints to partner/payout/exhibitor/sponsor tables before they carry live data (found 2026-08-08, ALFY2 pack Section 06)
+
+- Priority: P2
+- Status: NOT STARTED
+- Owner: unassigned
+- Dependencies: T7 (real Stripe money must be unblocked before these tables have real rows to protect)
+- Effort: S once T7 lands
+- Acceptance: audited all 81 `*_id`-shaped columns with no FK constraint (`docs/platform-standard/section-06-database-integrity.md` has the full list). Most are intentional (polymorphic type+id references, external Stripe ids) and need no change. A real subset -- `partners`, `partner_commissions`, `partner_referrals`, `partner_payouts`, `payout_instructions`, `connect_accounts`, `exhibitor_orders`, `sponsor_purchases`, and related tables -- are genuine internal references with no FK backing them, currently safe only because every one of those tables is empty (Stripe unconfigured). Add real FK constraints (with considered ON DELETE behavior, following the CASCADE/SET NULL pattern already used elsewhere) before real writes start landing in them.
+- Related files: `db/apply-all.sql` (new `alter table ... add constraint ... foreign key ...` block), the tables listed in `docs/platform-standard/section-06-database-integrity.md`.
+- See: `docs/platform-standard/section-06-database-integrity.md`, risk R-25.
+
 ## ALFY2 / Claude Master Platform Execution Pack (started 2026-08-08)
 
 A separately-uploaded 18-section audit framework is being run against this
@@ -302,11 +324,12 @@ artifact location, per the pack's rules) rather than duplicated here.
 Section 01 (Discovery, Architecture & Applicability Gate), Section 02
 (Baseline Legal, Privacy, Consent & User Rights), Section 03 (Repository,
 Environments, Secrets, CI/CD & Supply Chain), Section 04
-(Authentication, OAuth, Sessions, MFA & Account Recovery), and Section 05
-(Authorization, RBAC/ABAC, RLS, Tenancy, Admin & Impersonation) are
+(Authentication, OAuth, Sessions, MFA & Account Recovery), Section 05
+(Authorization, RBAC/ABAC, RLS, Tenancy, Admin & Impersonation), and
+Section 06 (Database Integrity, Data Lifecycle, Backups & Recovery) are
 complete; see `docs/platform-standard/release-readiness.md` for cumulative
 status across all 18 sections as they execute. New findings that represent
-real, actionable work (like T13-T25 above) get a task here as they're
+real, actionable work (like T13-T27 above) get a task here as they're
 found, so this queue stays the single place to look for "what's left to
 do" -- `docs/platform-standard/` is where the pack's own required
 audit/evidence/risk trail lives, not a second task list.

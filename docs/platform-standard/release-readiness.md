@@ -13,8 +13,9 @@ format.
 | 02 Baseline Legal, Privacy, Consent & User Rights | READY WITH P1 ITEMS — see below | 2026-08-08 |
 | 03 Repository, Environments, Secrets, CI/CD & Supply Chain | READY WITH P1 ITEMS — see below | 2026-08-08 |
 | 04 Authentication, OAuth, Sessions, MFA & Account Recovery | **READY** — no open P0/P1/P2 items | 2026-08-08 |
-| 05 Authorization, RBAC/ABAC, RLS, Tenancy, Admin & Impersonation | READY WITH P2 ITEMS — see below | 2026-08-08 |
-| 06–18 | Not yet started | — |
+| 05 Authorization, RBAC/ABAC, RLS, Tenancy, Admin & Impersonation | **READY** — no open P0/P1/P2 items | 2026-08-08 |
+| 06 Database Integrity, Data Lifecycle, Backups & Recovery | READY WITH P2 ITEMS — see below | 2026-08-08 |
+| 07–18 | Not yet started | — |
 
 ## Section 01 summary
 
@@ -107,19 +108,61 @@ format.
 - One real finding fixed same-session: Privacy Policy overstated "database
   row-level security" as a protection mechanism; reworded to accurately
   describe the actual application-layer scoping (R-17, resolved).
-- Two P2 hygiene items found and documented, not fixed this pass (neither
-  is exploitable): dead presigned-download-URL code with no route ever
-  calling it (R-19), and a stale-but-unused `platform_fee_rate` value set
-  on subscription cancellation for role catalogs with a null fee rate
-  (R-20).
+- Two P2 hygiene items found and **both since closed in a same-day
+  follow-up pass**: the dead presigned-download-URL code (R-19) was
+  removed (not wired up — no real requirement asked for a bearer-token
+  download path, and every real download route already uses the proven
+  org/party-scoped session-authenticated pattern), and the stale
+  `platform_fee_rate` on cancellation (R-20) now uses the same role-aware
+  lookup the active-subscription branch already used.
 - Built `docs/platform-standard/authorization-matrix.md` documenting the
   resource/enforcement-point model for future sections and future
   engineers to extend consistently.
-- No P0 blockers. Section 05 closes with zero open P0/P1 items (two P2
-  hygiene items tracked, not blocking).
+- No P0 blockers. Section 05 closes with **zero open items of any
+  priority**.
+
+## Section 06 summary
+
+- Live schema introspection (not just reading the schema file) against
+  the running 170-table database: every table has a primary key; core
+  hot-path FKs (events/bids/quotes/invoices/event_vendors/memberships)
+  have deliberate, sensible cascade behavior; the migration file
+  (`db/apply-all.sql`) is fully idempotent and additive-only with zero
+  unguarded destructive drops; deletion is soft-delete/anonymize (never a
+  hard delete), so referential integrity can never be corrupted by it.
+- Found and fixed a real, live tenant-index gap (12 tables missing an
+  `organization_id` index, 2 more missing `user_id`) — meaningful because
+  there is no Postgres RLS (Section 05), so every tenant-scoped query
+  depends on these indexes as data grows; `payments`/`platform_credits`
+  were on this list (R-21, resolved).
+- Actually exercised the backup/restore mechanism as a real restore for
+  the first time since it was built (2026-08-03) — this had been a
+  unit-tested-in-isolation script, not a proven round trip, until this
+  session's live backup + restore-into-a-scratch-database test with exact
+  row/table-count verification (R-22, resolved). New
+  `compliance/policies/backup-and-restore-runbook.md` with RTO/RPO
+  assumptions and an honest list of what the test does NOT cover
+  (production cron install status, off-site storage config, no PITR — all
+  remain operator-verification items).
+- **Found and fixed a real, live, money-adjacent double-spend race**: the
+  platform-credits redemption endpoint (`POST /api/credits/redeem`)
+  checked balance then inserted the debit with no lock between them —
+  live-reproduced against a real test account, then closed with a
+  transaction + `pg_advisory_xact_lock`, then re-verified under the exact
+  same concurrent-load scenario (10 simultaneous $10 redemption requests
+  against a $10 balance: before the fix this could over-redeem, after the
+  fix exactly 1 succeeded and the final balance was exactly $0.00, never
+  negative) (R-23, resolved).
+- Found and documented (not fixed this pass) the same race shape in 5
+  lower-severity entitlement-limit route files — a soft plan-limit
+  overrun, not monetary or cross-tenant, with the exact proven remediation
+  pattern already written up for a fast follow-up (R-24, T26).
+- No P0 blockers. Section 06 closes with one open P2 item (R-24, tracked
+  as T26) and one informational P2 (R-25, FK coverage on currently-empty
+  partner/payout tables, revisit once T7 unblocks real data).
 
 ## Overall launch readiness (cumulative, updated as sections complete)
 
-**NOT READY** — pending Sections 06–18. This is expected at this stage
-(five of eighteen sections complete) and is not itself a new finding; it
+**NOT READY** — pending Sections 07–18. This is expected at this stage
+(six of eighteen sections complete) and is not itself a new finding; it
 reflects where the multi-section pack currently stands, not a regression.

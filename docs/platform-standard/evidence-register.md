@@ -42,6 +42,13 @@ Bootstrapped at Section 01.
 | S05-07 | Code | `server/src/db.ts` `applySubscriptionUpdate()`; `server/src/lib/entitlements.ts` `isTopTier()`/`checkLimit()`; `server/src/routes/payments.ts` `customer.subscription.*` webhook handlers — full trace | 2026-08-08 |
 | S05-08 | File | `src/pages/Privacy.tsx` line ~87 (diff) | 2026-08-08 |
 | S05 (all) | File | `docs/platform-standard/authorization-matrix.md` (new), `docs/platform-standard/section-05-authorization.md` (new) | 2026-08-08 |
+| S06-01, S06-02, S06-04 | Command output | Live `pg_class`/`pg_constraint`/`pg_indexes` queries against the running database (170 tables); full grep of `db/apply-all.sql` for `CREATE TABLE`/`ALTER TABLE ADD COLUMN`/`DROP` guard coverage | 2026-08-08 |
+| S06-03 | Command output | `information_schema.columns` + `pg_indexes` query identifying 12 tables missing an `organization_id` index and 2 missing `user_id`; `db/schema-org-tenant-indexes.sql` applied live via `psql -f`; re-query confirmed zero remaining gaps | 2026-08-08 |
+| S06-05 | Code | `server/src/db.ts` `deleteAccount()`, read in full | 2026-08-08 |
+| S06-06 | Command output | Real `node dist/scripts/backup-db.js` run (100,301 bytes, 1.094s) against the live dev database; disposable scratch database created; real `node dist/scripts/restore-db.js latest --yes` restore into it; table-count (170/170) and row-count (orgs 59/59, users 82/82, events 11/11, audit_logs 23/23) verification; scratch database dropped after | 2026-08-08 |
+| S06-07 | Command output | `pg_indexes` query showing `uq_payments_reference` (partial unique index on `payments.reference`) and `uq_payout_excl_tx`; code read of the `on conflict` inserts they back | 2026-08-08 |
+| S06-08 | Command output | Live reproduction + fix verification: seeded a real test user with a $10.00 credit ledger balance, fired 10 concurrent `POST /credits/redeem` requests for $10.00 each against the running server; after the `pg_advisory_xact_lock` fix, exactly 1 succeeded and 9 correctly got "insufficient credit balance," final ledger balance exactly $0.00 (verified by direct query, never negative) | 2026-08-08 |
+| S06 (all) | File | `docs/platform-standard/section-06-database-integrity.md`, `compliance/policies/backup-and-restore-runbook.md`, `db/schema-org-tenant-indexes.sql` (all new) | 2026-08-08 |
 
 ## Notes
 

@@ -15,7 +15,7 @@
  *
  * Grants and redemptions are audited by the caller via lib/audit.ts.
  */
-import { q, q1 } from "../pool.js";
+import { q, q1, pool } from "../pool.js";
 
 export type CreditKind = "earned" | "redeemed" | "expired" | "pending";
 
@@ -166,21 +166,48 @@ export async function redeemCredit(
   if (!context || (context.purpose !== "subscription" && context.purpose !== "membership")) {
     throw new CreditError("credits can only be redeemed toward a subscription or membership");
   }
-  const balance = await creditBalance(userId);
-  if (amount > balance) {
-    throw new CreditError("insufficient credit balance for this redemption");
-  }
   const fullReason = context.ref ? `${reason} (${context.purpose}:${context.ref})` : `${reason} (${context.purpose})`;
-  const row = await q1<CreditRow>(
-    `insert into platform_credits
-       (user_id, organization_id, amount_cents, kind, reason)
-     values ($1, $2, $3, 'redeemed', $4)
-     returning id, user_id, organization_id, amount_cents, kind, reason,
-               source_referral_id, expires_at, created_at`,
-    [userId, context.organizationId ?? null, amount, fullReason],
-  );
-  const balanceCents = await creditBalance(userId);
-  return { redeemed: row as CreditRow, balanceCents };
+  // The balance check and the debit insert must be atomic, or two concurrent
+  // redemptions for the same user can both read the same balance and both
+  // pass the check -- a real double-spend of credit value (found live during
+  // the ALFY2 pack Section 06 audit). pg_advisory_xact_lock serializes
+  // concurrent redeemCredit calls for the SAME user (only, via hashtext(userId))
+  // for the lifetime of this transaction, so the second caller's balance read
+  // always sees the first caller's already-committed-within-tx debit.
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    await client.query("select pg_advisory_xact_lock(hashtext($1))", [userId]);
+    const balRow = await client.query<{ earned: string | null; redeemed: string | null; expired: string | null }>(
+      `select
+         coalesce(sum(amount_cents) filter (where kind = 'earned'), 0)   as earned,
+         coalesce(sum(amount_cents) filter (where kind = 'redeemed'), 0) as redeemed,
+         coalesce(sum(amount_cents) filter (where kind = 'expired'), 0)  as expired
+       from platform_credits where user_id = $1`,
+      [userId],
+    );
+    const r = balRow.rows[0];
+    const balance = Math.max(0, cents(r?.earned) - cents(r?.redeemed) - cents(r?.expired));
+    if (amount > balance) {
+      throw new CreditError("insufficient credit balance for this redemption");
+    }
+    const inserted = await client.query<CreditRow>(
+      `insert into platform_credits
+         (user_id, organization_id, amount_cents, kind, reason)
+       values ($1, $2, $3, 'redeemed', $4)
+       returning id, user_id, organization_id, amount_cents, kind, reason,
+                 source_referral_id, expires_at, created_at`,
+      [userId, context.organizationId ?? null, amount, fullReason],
+    );
+    const balanceCents = balance - amount;
+    await client.query("commit");
+    return { redeemed: inserted.rows[0] as CreditRow, balanceCents };
+  } catch (e) {
+    await client.query("rollback").catch(() => undefined);
+    throw e;
+  } finally {
+    client.release();
+  }
 }
 
 /** Format cents as a USD string for notifications and the dashboard. */

@@ -5601,3 +5601,24 @@ alter table payout_accounts add column if not exists stripe_api_version text not
 alter table organizations add column if not exists subscription_payment_source text
   check (subscription_payment_source in ('card','stripe_balance'));
 
+
+-- ====== db/schema-org-tenant-indexes.sql ======
+-- ---------------------------------------------------------------------------
+-- Missing organization_id tenant indexes, found during the ALFY2 pack
+-- Section 06 (database integrity) audit. See
+-- db/schema-org-tenant-indexes.sql for the full rationale.
+-- ---------------------------------------------------------------------------
+create index if not exists idx_crm_activities_org on crm_activities(organization_id);
+create index if not exists idx_feedback_items_org on feedback_items(organization_id);
+create index if not exists idx_floorplans_org on floorplans(organization_id);
+create index if not exists idx_introductions_org on introductions(organization_id);
+create index if not exists idx_itinerary_items_org on itinerary_items(organization_id);
+create index if not exists idx_nba_dismissals_org on nba_dismissals(organization_id);
+create index if not exists idx_partners_org on partners(organization_id);
+create index if not exists idx_payments_org on payments(organization_id);
+create index if not exists idx_platform_credits_org on platform_credits(organization_id);
+create index if not exists idx_seating_charts_org on seating_charts(organization_id);
+create index if not exists idx_tasks_org on tasks(organization_id);
+create index if not exists idx_visitor_signals_org on visitor_signals(organization_id);
+create index if not exists idx_partners_user on partners(user_id);
+create index if not exists idx_visitor_signals_user on visitor_signals(user_id);
