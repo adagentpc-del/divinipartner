@@ -217,7 +217,7 @@ export default function SeatSettings() {
 }
 
 const CSS = `
-.dss{--em:#123c2e;--em2:#1E5D4A;--gold:#C9A35B;--ivory:#F7F4EE;--ink:#2c2a26;--mut:#7d776c;--line:#e7e1d6;background:var(--ivory);min-height:100vh;font-family:Inter,system-ui,sans-serif;color:var(--ink)}
+.dss{--em:#123c2e;--em2:#1E5D4A;--gold:#C9A35B;--ivory:#F7F4EE;--ink:#2c2a26;--mut:#6b6459;--line:#e7e1d6;background:var(--ivory);min-height:100vh;font-family:Inter,system-ui,sans-serif;color:var(--ink)}
 .dss-wrap{max-width:880px;margin:0 auto;padding:40px 24px 80px}
 .dss-link{background:none;border:none;color:var(--em);font:inherit;font-size:13px;font-weight:600;cursor:pointer;padding:0;margin-bottom:18px}
 .dss-kicker{display:block;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);margin-bottom:6px}

@@ -251,7 +251,7 @@ export default function PayoutSettings() {
 }
 
 const CSS = `
-.dps{--em:#123c2e;--em2:#1E5D4A;--gold:#C9A35B;--ivory:#F7F4EE;--ink:#2c2a26;--mut:#7d776c;--line:#e7e1d6;background:var(--ivory);min-height:100vh;font-family:Inter,system-ui,sans-serif;color:var(--ink)}
+.dps{--em:#123c2e;--em2:#1E5D4A;--gold:#C9A35B;--ivory:#F7F4EE;--ink:#2c2a26;--mut:#6b6459;--line:#e7e1d6;background:var(--ivory);min-height:100vh;font-family:Inter,system-ui,sans-serif;color:var(--ink)}
 .dps-wrap{max-width:880px;margin:0 auto;padding:40px 24px 80px}
 .dps-link{background:none;border:none;color:var(--em);font:inherit;font-size:13px;font-weight:600;cursor:pointer;padding:0;margin-bottom:18px}
 .dps h1{font-family:'Cormorant Garamond',Georgia,serif;font-size:38px;color:var(--em);margin:0 0 8px;font-weight:600}

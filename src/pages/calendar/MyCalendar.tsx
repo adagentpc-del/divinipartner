@@ -348,7 +348,7 @@ export default function MyCalendar() {
 }
 
 const CSS = `
-.cal { --e:#123c2e; --e2:#1E5D4A; --g:#C9A35B; --iv:#F7F4EE; --ink:#2c2a26; --mut:#7d776c; --ln:#e7e1d6;
+.cal { --e:#123c2e; --e2:#1E5D4A; --g:#C9A35B; --iv:#F7F4EE; --ink:#2c2a26; --mut:#6b6459; --ln:#e7e1d6;
   font-family:'Inter',system-ui,sans-serif; color:var(--ink); max-width:900px; margin: 0 auto; padding: 28px 20px 60px; }
 .cal *,.cal *::before,.cal *::after { box-sizing:border-box; }
 .cal h1,.cal h2 { font-family:'Cormorant Garamond',Georgia,serif; margin:0; }

@@ -160,7 +160,7 @@ export default function BidBoard() {
 const BB_CSS = `
 .bb {
   --dp-emerald: #123c2e; --dp-emerald-2: #1E5D4A; --dp-gold: #C9A35B;
-  --dp-ivory: #F7F4EE; --dp-ink: #2c2a26; --dp-muted: #7d776c; --dp-line: #e7e1d6;
+  --dp-ivory: #F7F4EE; --dp-ink: #2c2a26; --dp-muted: #6b6459; --dp-line: #e7e1d6;
   font-family: 'Inter', system-ui, -apple-system, sans-serif; color: var(--dp-ink);
   background: var(--dp-ivory); min-height: 100vh; padding: 28px 30px 60px; max-width: 1120px; margin: 0 auto;
 }

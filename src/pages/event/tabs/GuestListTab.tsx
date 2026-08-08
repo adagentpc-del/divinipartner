@@ -253,7 +253,7 @@ const G_CSS = `
 .gl-statl { display: block; font-size: 10px; letter-spacing: .5px; text-transform: uppercase; color: #9a8a5e; margin-top: 4px; font-weight: 600; }
 .gl-add { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: rgba(247,244,238,.6); border: 1px dashed #e7e1d6; border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; }
 .gl-in { font: inherit; font-size: 12.5px; padding: 7px 10px; border: 1px solid #e7e1d6; border-radius: 8px; background: #fff; color: #2c2a26; flex: 1 1 130px; min-width: 0; }
-.gl-chk { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #7d776c; }
+.gl-chk { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #6b6459; }
 .gl-bulk { background: #fff; border: 1px solid #e7e1d6; border-radius: 12px; padding: 14px; margin-bottom: 16px; }
 .gl-ta { width: 100%; font: inherit; font-size: 12.5px; padding: 9px; border: 1px solid #e7e1d6; border-radius: 8px; margin: 8px 0; box-sizing: border-box; resize: vertical; }
 .gl-table td { vertical-align: top; }

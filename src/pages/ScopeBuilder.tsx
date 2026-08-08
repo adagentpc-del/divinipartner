@@ -432,7 +432,7 @@ function FieldInput({ field, value, onChange }: { field: TemplateField; value: u
 }
 
 const CSS = `
-.scb { --e:#123c2e; --e2:#1E5D4A; --g:#C9A35B; --ink:#2c2a26; --mut:#7d776c; --ln:#e7e1d6;
+.scb { --e:#123c2e; --e2:#1E5D4A; --g:#C9A35B; --ink:#2c2a26; --mut:#6b6459; --ln:#e7e1d6;
   --bg:#fbf9f4; font-family:'Inter',system-ui,sans-serif; color:var(--ink); max-width:920px;
   margin:0 auto; padding:24px 20px 56px; }
 .scb *,.scb *::before,.scb *::after { box-sizing:border-box; }

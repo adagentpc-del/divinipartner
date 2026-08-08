@@ -9,7 +9,7 @@ export default function Privacy() {
       </div>
 
       <h1 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 36, color: '#1f3d31', marginBottom: 6 }}>Privacy Policy</h1>
-      <div style={{ color: '#6b7a72', marginBottom: 28 }}>Effective June 8, 2026</div>
+      <div style={{ color: '#5c6a63', marginBottom: 28 }}>Effective June 8, 2026</div>
 
       <p>
         Divini Partners (“we,” “us”) operates an event partnership marketplace that connects venues,
@@ -77,7 +77,7 @@ export default function Privacy() {
         For anything short of full account deletion - requesting a copy (export) of your data, correcting it,
         asking what is retained, or requesting deletion of specific records - sign in and go to
         <strong> Profile → Your data and privacy</strong> to submit a request, or use the direct link:
-        {' '}<a href="/account/privacy" style={{ color: '#1f6f50' }}>divinipartners.com/account/privacy</a>. The
+        {' '}<a href="/account/privacy" style={{ color: '#1f6f50', textDecoration: 'underline' }}>divinipartners.com/account/privacy</a>. The
         same page lets you grant or withdraw consent for marketing email, analytics, and data processing. You
         may also email us instead if you prefer.
       </p>
@@ -97,7 +97,7 @@ export default function Privacy() {
 
       <h2 style={h2}>Contact</h2>
       <p>
-        Questions or deletion requests: <a href="mailto:support@divinipartners.com" style={{ color: '#1f6f50' }}>support@divinipartners.com</a>.
+        Questions or deletion requests: <a href="mailto:support@divinipartners.com" style={{ color: '#1f6f50', textDecoration: 'underline' }}>support@divinipartners.com</a>.
       </p>
       <p>
         Divini Partners by Divini Group LLC<br />
@@ -105,7 +105,7 @@ export default function Privacy() {
       </p>
 
       <div style={{ marginTop: 40 }}>
-        <Link to="/" style={{ color: '#1f6f50' }}>← Back to Divini Partners</Link>
+        <Link to="/" style={{ color: '#1f6f50', textDecoration: 'underline' }}>← Back to Divini Partners</Link>
       </div>
     </div>
   );

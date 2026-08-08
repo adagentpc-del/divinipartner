@@ -232,7 +232,7 @@ export default function PackageBuilder() {
 }
 
 const CSS = `
-.pkg { --e:#123c2e; --e2:#1E5D4A; --g:#C9A35B; --iv:#F7F4EE; --ink:#2c2a26; --mut:#7d776c; --ln:#e7e1d6;
+.pkg { --e:#123c2e; --e2:#1E5D4A; --g:#C9A35B; --iv:#F7F4EE; --ink:#2c2a26; --mut:#6b6459; --ln:#e7e1d6;
   font-family:'Inter',system-ui,sans-serif; color:var(--ink); max-width:1180px; }
 .pkg *,.pkg *::before,.pkg *::after { box-sizing:border-box; }
 .pkg h1,.pkg h2,.pkg h3 { font-family:'Cormorant Garamond',Georgia,serif; margin:0; }

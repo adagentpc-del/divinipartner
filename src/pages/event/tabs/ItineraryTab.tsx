@@ -214,7 +214,7 @@ export default function ItineraryTab({ eventId }: { eventId: string }) {
 const I_CSS = `
 .it-pub { background: #fff; border: 1px solid #e7e1d6; border-radius: 12px; padding: 14px 16px; margin-bottom: 18px; }
 .it-pubhead { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
-.it-pubsub { font-size: 12px; color: #7d776c; max-width: 460px; margin-top: 2px; }
+.it-pubsub { font-size: 12px; color: #6b6459; max-width: 460px; margin-top: 2px; }
 .it-pubform { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
 .it-pubform .fp-in { font: inherit; font-size: 12.5px; padding: 7px 10px; border: 1px solid #e7e1d6; border-radius: 8px; background: #fff; color: #2c2a26; flex: 1 1 140px; min-width: 0; }
 .it-publist { display: flex; flex-direction: column; gap: 6px; }
@@ -231,10 +231,10 @@ const I_CSS = `
 .it-checkglyph { flex: 0 0 auto; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; text-transform: uppercase; }
 .sev-error { background: #f6eaea; color: #8a3a3a; } .sev-error .it-checkglyph { background: #8a3a3a; color: #fff; }
 .sev-warning { background: rgba(201,163,91,.14); color: #8a6d2e; } .sev-warning .it-checkglyph { background: #C9A35B; color: #fff; }
-.sev-info { background: #eef2ef; color: #4a5a52; } .sev-info .it-checkglyph { background: #7d776c; color: #fff; }
+.sev-info { background: #eef2ef; color: #4a5a52; } .sev-info .it-checkglyph { background: #6b6459; color: #fff; }
 .sev-ok { background: rgba(30,93,74,.1); color: #1E5D4A; margin-bottom: 16px; } .sev-ok .it-checkglyph { background: #1E5D4A; color: #fff; }
 .it-roles { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
-.it-role { display: flex; align-items: center; gap: 6px; font: inherit; font-size: 12px; padding: 6px 12px; border: 1px solid #e7e1d6; border-radius: 999px; background: #fff; color: #7d776c; cursor: pointer; }
+.it-role { display: flex; align-items: center; gap: 6px; font: inherit; font-size: 12px; padding: 6px 12px; border: 1px solid #e7e1d6; border-radius: 999px; background: #fff; color: #6b6459; cursor: pointer; }
 .it-role.is-active { background: #123c2e; border-color: #123c2e; color: #fff; }
 .it-rolecount { font-size: 10px; font-weight: 700; background: rgba(0,0,0,.08); border-radius: 999px; padding: 0 6px; }
 .it-role.is-active .it-rolecount { background: rgba(255,255,255,.2); }
@@ -247,7 +247,7 @@ const I_CSS = `
 .cat-payment { background: #f6eaea; color: #8a3a3a; }
 .cat-service { background: #eaf0ee; color: #1E5D4A; }
 .it-title { font-size: 13.5px; color: #2c2a26; font-weight: 600; }
-.it-desc { font-size: 12px; color: #7d776c; margin-top: 2px; line-height: 1.5; }
+.it-desc { font-size: 12px; color: #6b6459; margin-top: 2px; line-height: 1.5; }
 .it-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; align-items: center; }
 .it-owner { font-size: 10.5px; color: #9a8a5e; font-weight: 600; }
 .it-loc { font-size: 10.5px; color: #b3aa99; }

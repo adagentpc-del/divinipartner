@@ -163,7 +163,7 @@ const CSS = `
   position: absolute; top: 12px; right: 14px;
   width: 28px; height: 28px; border-radius: 8px;
   background: transparent; border: 0; cursor: pointer;
-  color: #7d776c; font-size: 16px; line-height: 1;
+  color: #6b6459; font-size: 16px; line-height: 1;
 }
 .dplk-close:hover { color: #123c2e; background: rgba(18,60,46,.06); }
 `;

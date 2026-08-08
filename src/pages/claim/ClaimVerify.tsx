@@ -20,7 +20,7 @@ const AGREEMENT_TEXT =
   'I confirm that I am the owner or an authorized representative of this business, that the information I provide is accurate, and that I have the authority to claim and manage this profile on Divini Partners by Divini Group. I understand that the existing listing was generated from publicly available information and that claiming it converts it into a verified Free Partner account I control.';
 
 const STYLES = `
-.cvf{--emerald:#1E5D4A;--emerald-deep:#123c2e;--emerald-mid:#174838;--champagne:#D9CCB0;--ink:#2c2a26;--muted:#7d776c;--line:#e7e1d6;--ivory:#f7f4ee;--bg:#f3efe6;background:var(--bg);color:var(--ink);min-height:100vh;font-family:Inter,system-ui,sans-serif}
+.cvf{--emerald:#1E5D4A;--emerald-deep:#123c2e;--emerald-mid:#174838;--champagne:#D9CCB0;--ink:#2c2a26;--muted:#6b6459;--line:#e7e1d6;--ivory:#f7f4ee;--bg:#f3efe6;background:var(--bg);color:var(--ink);min-height:100vh;font-family:Inter,system-ui,sans-serif}
 .cvf .wrap{max-width:560px;margin:0 auto;padding:34px 22px 80px}
 .cvf h1,.cvf h2,.cvf h3{font-family:'Cormorant Garamond',serif;color:var(--emerald-deep);margin:0}
 .cvf .brandbar{display:flex;align-items:center;gap:11px;margin-bottom:22px}

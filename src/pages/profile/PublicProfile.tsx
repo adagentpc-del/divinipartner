@@ -608,7 +608,7 @@ export default function PublicProfile() {
 }
 
 const CSS = `
-.pp{--e:#123c2e;--gold:#C9A35B;--ivory:#F7F4EE;--ink:#2c2a26;--muted:#7d776c;--line:#e7e1d6;
+.pp{--e:#123c2e;--gold:#C9A35B;--ivory:#F7F4EE;--ink:#2c2a26;--muted:#6b6459;--line:#e7e1d6;
   min-height:100vh;background:var(--ivory);color:var(--ink);font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;}
 .pp *{box-sizing:border-box;}
 .pp-shellhead{display:flex;align-items:center;justify-content:space-between;padding:14px 28px;background:var(--e);color:var(--ivory);}

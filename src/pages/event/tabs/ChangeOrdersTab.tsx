@@ -96,10 +96,10 @@ const CO_CSS = `
 .ew-co-creep { font-size: 10px; font-weight: 600; color: #9b2c2c; background: rgba(155,44,44,.1); border: 1px solid rgba(155,44,44,.35); border-radius: 999px; padding: 1px 8px; text-transform: uppercase; letter-spacing: .4px; }
 .ew-co-cardtitle { font-size: 18px; color: #123c2e; margin: 2px 0; }
 .ew-co-desc { font-size: 13px; color: #2c2a26; margin: 4px 0; line-height: 1.5; }
-.ew-co-reason { font-size: 12px; color: #7d776c; margin: 2px 0 8px; }
-.ew-co-amounts { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12.5px; color: #7d776c; padding-top: 8px; border-top: 1px solid #e7e1d6; }
+.ew-co-reason { font-size: 12px; color: #6b6459; margin: 2px 0 8px; }
+.ew-co-amounts { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12.5px; color: #6b6459; padding-top: 8px; border-top: 1px solid #e7e1d6; }
 .ew-co-total { color: #123c2e; font-weight: 700; }
-.ew-co-pill { font-size: 10.5px; font-weight: 600; padding: 2px 10px; border-radius: 999px; border: 1px solid #e7e1d6; background: #F7F4EE; color: #7d776c; }
+.ew-co-pill { font-size: 10.5px; font-weight: 600; padding: 2px 10px; border-radius: 999px; border: 1px solid #e7e1d6; background: #F7F4EE; color: #6b6459; }
 .ew-co-pill.st-accepted, .ew-co-pill.st-paid { background: rgba(30,93,74,.12); color: #1E5D4A; border-color: rgba(30,93,74,.3); }
 .ew-co-pill.st-declined { background: rgba(155,44,44,.1); color: #9b2c2c; border-color: rgba(155,44,44,.35); }
 .ew-co-pill.st-sent, .ew-co-pill.st-revision_requested, .ew-co-pill.st-added_to_invoice { background: rgba(201,163,91,.16); color: #8a5a12; border-color: rgba(201,163,91,.45); }

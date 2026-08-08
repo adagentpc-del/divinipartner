@@ -26,7 +26,7 @@ type ConnectAccount = {
 };
 
 const STYLES = `
-.cps{--emerald:#1E5D4A;--emerald-deep:#123c2e;--champagne:#D9CCB0;--ink:#2c2a26;--muted:#7d776c;--line:#e7e1d6;--ivory:#f7f4ee;font-family:Inter,system-ui,sans-serif;color:var(--ink);max-width:840px}
+.cps{--emerald:#1E5D4A;--emerald-deep:#123c2e;--champagne:#D9CCB0;--ink:#2c2a26;--muted:#6b6459;--line:#e7e1d6;--ivory:#f7f4ee;font-family:Inter,system-ui,sans-serif;color:var(--ink);max-width:840px}
 .cps h1{font-family:'Cormorant Garamond',serif;color:var(--emerald-deep);font-size:30px;margin:0}
 .cps .sub{font-size:13px;color:var(--muted);margin-top:3px}
 .cps .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}

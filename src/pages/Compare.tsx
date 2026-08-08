@@ -109,7 +109,7 @@ const CSS = `
 .cmp-wrap { max-width: 1100px; margin: 0 auto; }
 .cmp-brand { font-family: Georgia, serif; font-size: 18px; color: #123c2e; font-weight: 700; }
 .cmp-title { font-family: Georgia, serif; font-size: 28px; color: #123c2e; margin: 4px 0 18px; }
-.cmp-loading, .cmp-sub { color: #7d776c; }
+.cmp-loading, .cmp-sub { color: #6b6459; }
 .cmp-card { background: #fff; border: 1px solid #e7e1d6; border-radius: 12px; padding: 22px; }
 .cmp-scroll { overflow-x: auto; border: 1px solid #e7e1d6; border-radius: 12px; background: #fff; }
 .cmp-table { border-collapse: collapse; width: 100%; min-width: 520px; }

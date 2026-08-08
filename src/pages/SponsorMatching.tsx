@@ -202,7 +202,7 @@ export default function SponsorMatching() {
 const CSS = `
 .spm {
   --vemerald: #1E5D4A; --vemerald-deep: #123c2e; --vgold: #C9A35B;
-  --vivory: #f7f4ee; --vink: #2c2a26; --vmuted: #7d776c; --vline: #e7e1d6;
+  --vivory: #f7f4ee; --vink: #2c2a26; --vmuted: #6b6459; --vline: #e7e1d6;
   max-width: 1000px; margin: 0 auto; padding: 28px 24px 56px;
   font-family: Inter, system-ui, sans-serif; color: var(--vink);
 }

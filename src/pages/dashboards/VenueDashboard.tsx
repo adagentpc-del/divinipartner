@@ -130,7 +130,7 @@ export default function VenueDashboard() {
           box-shadow:0 0 0 1px rgba(201,163,91,.18)}
         .vd-network-txt{min-width:240px}
         .vd-network-txt b{font-family:'Cormorant Garamond',Georgia,serif;font-size:18px;color:#123c2e;display:block}
-        .vd-network-txt span{font-size:12.5px;color:#7d776c;line-height:1.5}
+        .vd-network-txt span{font-size:12.5px;color:#6b6459;line-height:1.5}
         .vd-network-btn{background:#1E5D4A;color:#fff;border:0;border-radius:10px;font:inherit;font-size:13px;
           font-weight:600;padding:11px 18px;cursor:pointer;white-space:nowrap}
         .vd-network-btn:hover{background:#123c2e}

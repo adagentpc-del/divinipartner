@@ -275,12 +275,12 @@ const Q_CSS = `
 .ew-q-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; border-bottom: 1px solid #e7e1d6; padding-bottom: 14px; }
 .ew-q-brandtop { font-size: 10.5px; letter-spacing: 1px; text-transform: uppercase; color: #9a8a5e; font-weight: 600; }
 .ew-q-vendor { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 24px; color: #123c2e; }
-.ew-q-close { background: transparent; border: 1px solid #e7e1d6; border-radius: 8px; padding: 6px 12px; font: inherit; font-size: 12px; cursor: pointer; color: #7d776c; }
-.ew-q-event { font-size: 13px; color: #7d776c; margin: 10px 0 16px; }
+.ew-q-close { background: transparent; border: 1px solid #e7e1d6; border-radius: 8px; padding: 6px 12px; font: inherit; font-size: 12px; cursor: pointer; color: #6b6459; }
+.ew-q-event { font-size: 13px; color: #6b6459; margin: 10px 0 16px; }
 .ew-q-sect, .ew-q-excl { margin-bottom: 14px; }
 .ew-q-secttitle { font-size: 11px; letter-spacing: .6px; text-transform: uppercase; color: #9a8a5e; font-weight: 600; margin-bottom: 6px; }
 .ew-q-li { display: flex; justify-content: space-between; font-size: 13px; color: #2c2a26; padding: 4px 0; border-bottom: 1px dashed #efe9dd; }
-.ew-q-excl ul { margin: 0; padding-left: 18px; font-size: 12.5px; color: #7d776c; }
+.ew-q-excl ul { margin: 0; padding-left: 18px; font-size: 12.5px; color: #6b6459; }
 .ew-q-totals { background: rgba(247,244,238,.7); border-radius: 12px; padding: 14px 16px; margin: 12px 0; }
 .ew-q-totals > div { display: flex; justify-content: space-between; font-size: 13px; color: #4a463e; padding: 3px 0; }
 .ew-q-grand { font-weight: 700; color: #123c2e !important; font-size: 16px !important; border-top: 1px solid #e7e1d6; margin-top: 6px; padding-top: 8px !important; }
@@ -289,15 +289,15 @@ const Q_CSS = `
 .ew-btn.danger { background: #8a3a3a; }
 .ew-btn.danger:hover { background: #743030; }
 .ew-cmp-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
-.ew-cmp-hint { font-size: 12px; color: #7d776c; }
+.ew-cmp-hint { font-size: 12px; color: #6b6459; }
 .ew-cmp-cap { font-size: 12px; color: #a8631a; }
 .ew-q-thread { border-top: 1px solid #e7e1d6; margin-top: 18px; padding-top: 16px; }
-.ew-q-threadempty { font-size: 12.5px; color: #7d776c; margin: 4px 0 12px; }
+.ew-q-threadempty { font-size: 12.5px; color: #6b6459; margin: 4px 0 12px; }
 .ew-q-msgs { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .ew-q-msg { border-radius: 10px; padding: 8px 12px; font-size: 13px; }
 .ew-q-msg.me { background: rgba(18,60,46,.06); }
 .ew-q-msg.them { background: rgba(247,244,238,.9); border: 1px solid #efe9dd; }
-.ew-q-msgmeta { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #7d776c; margin-bottom: 3px; }
+.ew-q-msgmeta { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #6b6459; margin-bottom: 3px; }
 .ew-q-msgmeta > span:first-child { font-weight: 600; color: #4a463e; }
 .ew-q-msgtime { margin-left: auto; }
 .ew-q-revtag { background: #a8631a; color: #fff; border-radius: 6px; padding: 1px 6px; font-size: 10px; letter-spacing: .3px; text-transform: uppercase; }

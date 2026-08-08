@@ -360,6 +360,28 @@ Prioritized backlog, seeded from the Go-Live runbook remaining items and the V2 
 - Related files: `server/src/lib/claim-emails.ts`, `server/src/lib/email.ts`.
 - See: `docs/platform-standard/section-10-email-sms-push-marketing.md`, risk R-35.
 
+## T32 - Strengthen focus indicators across component style blocks (found 2026-08-08, ALFY2 pack Section 11)
+
+- Priority: P1
+- Status: NOT STARTED
+- Owner: unassigned
+- Dependencies: none
+- Effort: M (design pass required, not a mechanical value swap)
+- Acceptance: several interactive elements' `:focus`/`:focus-visible` styling is too subtle to reliably meet WCAG 2.2 AA visible-focus expectations, but focus styling is declared independently in roughly 30 separate component style blocks rather than one shared stylesheet, so a safe fix requires visually verifying each one (not a blind bulk find/replace the way the color-contrast fix in this same section was). Audit each component's focus style, standardize on a visible, sufficiently high-contrast focus ring, and live-verify with keyboard-only navigation across representative pages.
+- Related files: component-level `<style>` blocks and CSS modules across `src/pages/` and `src/components/` (see the Section 11 report for the specific set inspected).
+- See: `docs/platform-standard/section-11-ux-accessibility.md`, risk R-40.
+
+## T33 - Add a skip-to-main-content link (found 2026-08-08, ALFY2 pack Section 11)
+
+- Priority: P2
+- Status: NOT STARTED
+- Owner: unassigned
+- Dependencies: none
+- Effort: M (needs a shared layout shell first, or a per-page addition otherwise)
+- Acceptance: no "Skip to main content" link exists anywhere in the app (WCAG 2.4.1 Bypass Blocks). Not fixable as one global edit today because the app has no shared layout shell across its 100+ independently-built page components -- either introduce a shared shell that every page routes through (larger refactor) or add the skip link and a matching `id="main"` target to each page individually. Live-verify with keyboard-only navigation that the link appears on first Tab press and correctly moves focus to page content.
+- Related files: `src/App.tsx` (routing), individual page components under `src/pages/`.
+- See: `docs/platform-standard/section-11-ux-accessibility.md`, risk R-39.
+
 ## ALFY2 / Claude Master Platform Execution Pack (started 2026-08-08)
 
 A separately-uploaded 18-section audit framework is being run against this
@@ -374,11 +396,12 @@ Environments, Secrets, CI/CD & Supply Chain), Section 04
 (App/API Perimeter, Input Validation, File Upload, Bot & Malware Security),
 Section 08 (AI Security, Governance, Prompt-Injection Defense & Model
 Quality), Section 09 (Payments, Stripe, Webhooks, Subscriptions,
-Marketplace & Tax), and Section 10 (Email, SMS, Push Notifications &
-Marketing Compliance) are complete; see
+Marketplace & Tax), Section 10 (Email, SMS, Push Notifications &
+Marketing Compliance), and Section 11 (UX, Accessibility, Onboarding,
+Forms, Navigation & Content Quality) are complete; see
 `docs/platform-standard/release-readiness.md` for cumulative status across
 all 18 sections as they execute. New findings that represent real,
-actionable work (like T13-T31 above) get a task here as they're found, so
+actionable work (like T13-T33 above) get a task here as they're found, so
 this queue stays the single place to look for "what's left to do" --
 `docs/platform-standard/` is where the pack's own required audit/evidence/
 risk trail lives, not a second task list.

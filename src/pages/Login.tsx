@@ -173,10 +173,10 @@ export default function Login() {
         </form>
 
         <p className="note" style={{ margin: '14px 0 0', lineHeight: 1.6 }}>
-          New to Divini Partners? <Link to="/register" style={{ color: '#1E5D4A' }}>Create an account</Link>
+          New to Divini Partners? <Link to="/register" style={{ color: '#1E5D4A', textDecoration: 'underline' }}>Create an account</Link>
         </p>
         <p className="note" style={{ margin: '6px 0 0', lineHeight: 1.6 }}>
-          <Link to="/forgot" style={{ color: '#1E5D4A' }}>Forgot password?</Link>
+          <Link to="/forgot" style={{ color: '#1E5D4A', textDecoration: 'underline' }}>Forgot password?</Link>
         </p>
       </div>
     </div>

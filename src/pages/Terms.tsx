@@ -9,14 +9,14 @@ export default function Terms() {
       </div>
 
       <h1 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 36, color: '#1f3d31', marginBottom: 6 }}>Terms of Service</h1>
-      <div style={{ color: '#6b7a72', marginBottom: 28 }}>Effective June 24, 2026</div>
+      <div style={{ color: '#5c6a63', marginBottom: 28 }}>Effective June 24, 2026</div>
 
       <p>
         These Terms of Service (the "Terms") are a binding agreement between you and Divini Group LLC
         ("Divini Partners," "we," "us," or "our") governing your access to and use of the Divini
         Partners websites, applications, and services (collectively, the "Platform"). By creating an
         account, accessing, or using the Platform, you agree to these Terms and to our{' '}
-        <Link to="/privacy" style={{ color: '#1f6f50' }}>Privacy Policy</Link>. If you do not agree,
+        <Link to="/privacy" style={{ color: '#1f6f50', textDecoration: 'underline' }}>Privacy Policy</Link>. If you do not agree,
         do not use the Platform. If you use the Platform on behalf of an organization, you represent
         that you are authorized to bind that organization to these Terms.
       </p>
@@ -170,7 +170,7 @@ export default function Terms() {
 
       <h2 style={h2}>Contact</h2>
       <p>
-        Questions about these Terms: <a href="mailto:support@divinipartners.com" style={{ color: '#1f6f50' }}>support@divinipartners.com</a>.
+        Questions about these Terms: <a href="mailto:support@divinipartners.com" style={{ color: '#1f6f50', textDecoration: 'underline' }}>support@divinipartners.com</a>.
       </p>
       <p>
         Divini Partners by Divini Group LLC<br />
@@ -178,7 +178,7 @@ export default function Terms() {
       </p>
 
       <div style={{ marginTop: 40 }}>
-        <Link to="/" style={{ color: '#1f6f50' }}>← Back to Divini Partners</Link>
+        <Link to="/" style={{ color: '#1f6f50', textDecoration: 'underline' }}>← Back to Divini Partners</Link>
       </div>
     </div>
   );

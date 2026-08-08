@@ -19,7 +19,8 @@ format.
 | 08 AI Security, Governance, Prompt-Injection Defense & Model Quality | READY WITH P2 ITEMS — see below | 2026-08-08 |
 | 09 Payments, Stripe, Webhooks, Subscriptions, Marketplace & Tax | READY (architecture) WITH ITEMS BLOCKED ON T7 — see below | 2026-08-08 |
 | 10 Email, SMS, Push Notifications & Marketing Compliance | **READY** — no open P0/P1 items | 2026-08-08 |
-| 11–18 | Not yet started | — |
+| 11 UX, Accessibility, Onboarding, Forms, Navigation & Content Quality | READY (scoped) WITH P1 ITEMS — see below | 2026-08-08 |
+| 12–18 | Not yet started | — |
 
 ## Section 01 summary
 
@@ -303,11 +304,66 @@ format.
   best-practice gap, not a current CAN-SPAM violation).
 - No P0 blockers. Section 10 closes with zero open P0/P1 items.
 
+## Section 11 summary
+
+- Scope note: tested 9 representative pages (public marketing pages,
+  Marketplace search/filter, auth pages, a sample of legal pages, and a
+  sample authenticated dashboard view) with real, tool-driven WCAG 2.2 AA
+  scanning — not an exhaustive page-by-page audit of the ~100+ page
+  component tree. Documented explicitly as scoped, not claimed as
+  complete coverage.
+- **Live-tested with a real browser**, not just code reading: axe-core
+  4.10.0 injected via Playwright into an actual rendered Chromium session
+  against the built SPA, re-run after every fix to confirm each violation
+  actually cleared (not just that the source line changed).
+- Found and fixed a real, systemic color-contrast gap: the muted-text
+  token (`#7d776c` on white, ~3.9:1) and a green ROI-stat accent
+  (`#2f8f5b`) both failed the WCAG AA 4.5:1 minimum for normal text.
+  Because this codebase repeats these exact hex values as locally-scoped
+  CSS custom properties per component rather than importing one shared
+  stylesheet, the fix required a verified bulk replacement across 128
+  files (`#7d776c` → `#6b6459`, contrast-checked to pass 4.5:1) plus a
+  targeted swap for the ROI accent and 8 legal-page "effective date"
+  strings, rather than one central token edit.
+- Found and fixed a real WCAG 1.4.1 (Use of Color) gap: in-body-text
+  links on Login, Register, and 6 legal pages were distinguished only by
+  color, with no underline or other non-color cue. Added
+  `text-decoration: underline` at each site.
+- Found and fixed a real, critical WCAG 4.1.2 (Name, Role, Value) gap on
+  the public Marketplace search/filter panel: 6 form controls (search,
+  location, capacity, budget, event type, availability) had no
+  programmatically associated accessible name — visually adjacent labels
+  only, no `htmlFor`/`id` pairing — meaning a screen-reader user could not
+  tell what any filter field was for. Fixed with proper `id`/`htmlFor`
+  pairs and live-reverified as cleared.
+- One axe-core finding investigated and confirmed as a **tool false
+  positive, not a real defect**: hero sections on Pricing/Marketplace/
+  HowItWorks/ForVendors were flagged for insufficient contrast because
+  axe-core cannot resolve a background painted by a `z-index`-layered
+  sibling element rather than a direct ancestor. Verified with an actual
+  Playwright screenshot showing genuinely high-contrast white text on a
+  dark emerald gradient in the real rendered page — documented with
+  evidence rather than either silently dismissed or incorrectly "fixed."
+- Two items found and deliberately **not** fixed this pass, tracked as
+  open tasks: focus-indicator strength needs a design pass across ~30
+  separate component style blocks to verify visual correctness, not a
+  safe mechanical value swap (T32, P1); a skip-to-main-content link
+  cannot be added as one global fix because the app has no shared layout
+  shell across its 100+ independently-built page components (T33, P2).
+- SMS notifications: user confirmed at this session's Section 11 start
+  that SMS is intentionally out of scope for this build (v2), consistent
+  with the Section 10 finding that no SMS code exists yet beyond a future
+  pricing-catalog placeholder. Not a gap — deliberate deferral, already
+  reflected in R-tracking under Section 10.
+- No P0 blockers. Section 11 closes with two open items: one P1 (T32
+  focus-indicator strength) and one P2 (T33 skip-link), both requiring a
+  design/engineering pass beyond what's safely mechanical to bulk-fix.
+
 ## Overall launch readiness (cumulative, updated as sections complete)
 
-**NOT READY** — pending Sections 11–18, plus the standing T7 gate (real
+**NOT READY** — pending Sections 12–18, plus the standing T7 gate (real
 money) which several sections now have concrete pre-requisites tracked
 against (refund/dispute capability, live credential testing). This is
-expected at this stage (ten of eighteen sections complete) and is not
+expected at this stage (eleven of eighteen sections complete) and is not
 itself a new finding; it reflects where the multi-section pack currently
 stands, not a regression.

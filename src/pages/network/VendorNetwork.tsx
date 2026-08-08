@@ -392,7 +392,7 @@ export default function VendorNetwork() {
 }
 
 const CSS = `
-.vn{--em:#123c2e;--em2:#1E5D4A;--gold:#C9A35B;--ivory:#F7F4EE;--ink:#2c2a26;--muted:#7d776c;--line:#e7e1d6;
+.vn{--em:#123c2e;--em2:#1E5D4A;--gold:#C9A35B;--ivory:#F7F4EE;--ink:#2c2a26;--muted:#6b6459;--line:#e7e1d6;
   min-height:100vh;background:#f3efe6;color:var(--ink);font-family:Inter,system-ui,sans-serif;padding:32px 24px 56px}
 .vn *,.vn *::before,.vn *::after{box-sizing:border-box}
 .vn h1,.vn h2,.vn h3{font-family:'Cormorant Garamond',Georgia,serif;font-weight:600;margin:0;color:var(--em)}

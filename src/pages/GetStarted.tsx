@@ -173,18 +173,18 @@ export default function GetStarted() {
         .reg{min-height:100vh;background:#f3efe6;color:#2c2a26;font-family:Inter,system-ui,sans-serif;padding:40px 20px}
         .reg .wrap{max-width:720px;margin:0 auto}
         .reg .brand{font-family:'Cormorant Garamond',serif;font-size:24px;color:#123c2e;font-weight:700;text-align:center}
-        .reg .tg{text-align:center;color:#7d776c;font-size:12px;letter-spacing:.5px;text-transform:uppercase;margin-bottom:24px}
+        .reg .tg{text-align:center;color:#6b6459;font-size:12px;letter-spacing:.5px;text-transform:uppercase;margin-bottom:24px}
         .reg .card{background:#fff;border:1px solid #e7e1d6;border-radius:16px;padding:28px;box-shadow:0 30px 60px -40px rgba(18,60,46,.4)}
         .reg h1{font-family:'Cormorant Garamond',serif;font-size:30px;color:#123c2e;margin:0 0 4px}
-        .reg .sub{color:#7d776c;font-size:14px;margin-bottom:22px}
-        .reg .lbl{font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#7d776c;margin:18px 0 10px}
+        .reg .sub{color:#6b6459;font-size:14px;margin-bottom:22px}
+        .reg .lbl{font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#6b6459;margin:18px 0 10px}
         .reg .roles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
         @media(max-width:560px){.reg .roles{grid-template-columns:1fr}}
         .reg .role{text-align:left;border:1px solid #e7e1d6;background:#fff;border-radius:12px;padding:14px;cursor:pointer;transition:.15s}
         .reg .role:hover{border-color:#1E5D4A}
         .reg .role.on{border-color:#1E5D4A;background:#f0f6f2;box-shadow:0 0 0 1px #1E5D4A inset}
         .reg .role .rn{font-weight:700;font-size:15px;color:#123c2e}
-        .reg .role .rb{font-size:12.5px;color:#7d776c;margin-top:3px;line-height:1.4}
+        .reg .role .rb{font-size:12.5px;color:#6b6459;margin-top:3px;line-height:1.4}
         .reg input{width:100%;padding:12px;border:1px solid #e7e1d6;border-radius:10px;font-size:15px;font-family:Inter}
         .reg input:focus{outline:none;border-color:#1E5D4A}
         .reg .tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
@@ -193,7 +193,7 @@ export default function GetStarted() {
         .reg .tier.on{border-color:#C9A35B;background:#fbf7ee;box-shadow:0 0 0 1px #C9A35B inset}
         .reg .tier .tn{font-weight:700;color:#123c2e}
         .reg .tier .tp{font-family:'Cormorant Garamond',serif;font-size:20px;color:#123c2e}
-        .reg .tier .tf{font-size:12px;color:#7d776c}
+        .reg .tier .tf{font-size:12px;color:#6b6459}
         .reg .agree{display:flex;gap:10px;align-items:flex-start;margin:18px 0;font-size:13px;color:#2c2a26;line-height:1.5}
         .reg .agree input{width:auto;margin-top:3px}
         .reg .btn{width:100%;padding:14px;border:none;border-radius:12px;background:#1E5D4A;color:#fff;font-weight:700;font-size:15px;cursor:pointer}

@@ -175,7 +175,7 @@ export default function DiviniScoreBadge({
 }
 
 const CSS = `
-.ds { --e:#123c2e; --e2:#1E5D4A; --g:#C9A35B; --ink:#2c2a26; --mut:#7d776c; --ln:#e7e1d6;
+.ds { --e:#123c2e; --e2:#1E5D4A; --g:#C9A35B; --ink:#2c2a26; --mut:#6b6459; --ln:#e7e1d6;
   font-family:'Inter',system-ui,sans-serif; color:var(--ink); display:inline-block; }
 .ds *,.ds *::before,.ds *::after { box-sizing:border-box; }
 .ds-muted { font-size:12px; color:var(--mut); }

@@ -172,7 +172,7 @@ export default function ShareBidPanel({ bidId }: { bidId: string }) {
 const SBP_CSS = `
 .sbp-root { background: #faf8f3; border: 1px solid #e7e1d6; border-radius: 10px; padding: 14px; margin-top: 10px; display: flex; flex-direction: column; gap: 10px; }
 .sbp-error { margin: 0; font-size: 12.5px; color: #8a3a3a; }
-.sbp-muted { margin: 0; font-size: 12.5px; color: #7d776c; }
+.sbp-muted { margin: 0; font-size: 12.5px; color: #6b6459; }
 .sbp-create { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .sbp-create input, .sbp-create select { font: inherit; padding: 8px 10px; border: 1px solid #e7e1d6; border-radius: 8px; background: #fff; }
 .sbp-label-input { flex: 1 1 160px; min-width: 140px; }
@@ -180,10 +180,10 @@ const SBP_CSS = `
 .sbp-item { background: #fff; border: 1px solid #e7e1d6; border-radius: 9px; padding: 11px 12px; display: flex; flex-direction: column; gap: 8px; }
 .sbp-item-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .sbp-url { flex: 1 1 220px; min-width: 160px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: #123c2e; background: #f3f0e8; border: 1px solid #eae4d7; border-radius: 6px; padding: 6px 8px; overflow-wrap: anywhere; }
-.sbp-item-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12px; color: #7d776c; }
+.sbp-item-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12px; color: #6b6459; }
 .sbp-badge { font-size: 10px; letter-spacing: .5px; text-transform: uppercase; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: rgba(30,93,74,.12); color: #1E5D4A; border: 1px solid rgba(30,93,74,.3); }
 .sbp-label-text { color: #4a463e; font-weight: 600; }
-.sbp-stats { color: #7d776c; }
+.sbp-stats { color: #6b6459; }
 .sbp-btn { font: inherit; cursor: pointer; border: none; border-radius: 8px; padding: 8px 12px; background: #1E5D4A; color: #fff; font-size: 12.5px; }
 .sbp-btn:hover { background: #184c3d; }
 .sbp-btn:disabled { opacity: .55; cursor: default; }

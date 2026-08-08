@@ -208,7 +208,7 @@ import DonorProspecting from './pages/DonorProspecting';
 import VendorScorecards from './pages/VendorScorecards';
 
 function Loading() {
-  return <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', color: '#7d776c' }}>Loading…</div>;
+  return <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', color: '#6b6459' }}>Loading…</div>;
 }
 
 // EventWarRoom takes an eventId prop; this wrapper supplies it from the route.

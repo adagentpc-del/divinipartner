@@ -180,7 +180,7 @@ const CSS = `
   --dp-gold: #C9A35B;
   --dp-ivory: #F7F4EE;
   --dp-ink: #2c2a26;
-  --dp-muted: #7d776c;
+  --dp-muted: #6b6459;
   --dp-line: #e7e1d6;
   display: flex;
   min-height: 100vh;

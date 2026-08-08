@@ -321,7 +321,7 @@ export default function ExhibitorsTab({ eventId }: { eventId: string }) {
 const EX_CSS = `
 .ex-helper { margin: 0 0 18px; }
 .ex-section { margin-bottom: 24px; }
-.ex-secttitle { font-size: 10.5px; letter-spacing: .5px; text-transform: uppercase; color: #7d776c; font-weight: 600; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+.ex-secttitle { font-size: 10.5px; letter-spacing: .5px; text-transform: uppercase; color: #6b6459; font-weight: 600; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
 .ex-count { font-size: 10px; font-weight: 700; color: #123c2e; background: rgba(201,163,91,.2); border-radius: 999px; padding: 1px 8px; }
 .ex-add { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
 .ex-in { font: inherit; font-size: 13px; padding: 8px 11px; border: 1px solid #e7e1d6; border-radius: 8px; background: #fff; color: #2c2a26; flex: 1 1 160px; min-width: 0; }
@@ -330,7 +330,7 @@ const EX_CSS = `
 .ex-check input { width: 15px; height: 15px; accent-color: #1E5D4A; }
 .ex-flag { font-size: 9px; font-weight: 700; letter-spacing: .5px; color: #8a3a3a; background: rgba(138,58,58,.12); border-radius: 4px; padding: 1px 5px; margin-left: 6px; text-transform: uppercase; }
 .ex-flag-plain { color: #123c2e; background: rgba(18,60,46,.1); margin-left: 0; }
-.ex-benefits { font-size: 11.5px; color: #7d776c; margin-top: 3px; }
+.ex-benefits { font-size: 11.5px; color: #6b6459; margin-top: 3px; }
 .ex-booth-yes { font-size: 11px; font-weight: 600; color: #1E5D4A; }
 .ex-badge { font-size: 10px; font-weight: 700; letter-spacing: .4px; text-transform: capitalize; border-radius: 999px; padding: 2px 9px; }
 .ex-badge-available { color: #1E5D4A; background: rgba(30,93,74,.14); }

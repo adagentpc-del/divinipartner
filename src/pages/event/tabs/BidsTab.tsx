@@ -143,7 +143,7 @@ const B_CSS = `
 .ew-bid-top { display: flex; align-items: center; gap: 8px; }
 .ew-bid-cat { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 19px; color: #123c2e; }
 .ew-bid-scopep { margin: 0; font-size: 13px; color: #4a463e; line-height: 1.5; }
-.ew-bid-meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; color: #7d776c; }
+.ew-bid-meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; color: #6b6459; }
 .ew-bid-meta select { font: inherit; padding: 6px 9px; border: 1px solid #e7e1d6; border-radius: 7px; background: #fff; }
 .ew-bid-share { display: flex; flex-direction: column; gap: 6px; }
 .ew-tag { font-size: 10px; letter-spacing: .5px; text-transform: uppercase; font-weight: 600; padding: 2px 8px; border-radius: 999px; }

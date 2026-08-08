@@ -39,7 +39,7 @@ const AGREEMENT_TYPES = ['partnership', 'referral', 'revenue_share', 'custom'] a
 const APPLIES_TO = ['signed_contracts', 'all_bookings', 'first_booking', 'custom'] as const;
 
 const STYLES = `
-.aml{--emerald:#1E5D4A;--emerald-deep:#123c2e;--emerald-mid:#174838;--gold:#C9A35B;--champagne:#D9CCB0;--ink:#2c2a26;--muted:#7d776c;--line:#e7e1d6;--ivory:#f7f4ee;background:var(--ivory);color:var(--ink);min-height:100vh;font-family:Inter,system-ui,sans-serif}
+.aml{--emerald:#1E5D4A;--emerald-deep:#123c2e;--emerald-mid:#174838;--gold:#C9A35B;--champagne:#D9CCB0;--ink:#2c2a26;--muted:#6b6459;--line:#e7e1d6;--ivory:#f7f4ee;background:var(--ivory);color:var(--ink);min-height:100vh;font-family:Inter,system-ui,sans-serif}
 .aml .wrap{max-width:1180px;margin:0 auto;padding:26px 28px 60px}
 .aml h1,.aml h2,.aml h3{font-family:'Cormorant Garamond',serif;color:var(--emerald-deep);margin:0}
 .aml .top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:6px}

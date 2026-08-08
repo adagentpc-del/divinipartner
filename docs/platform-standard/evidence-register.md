@@ -70,6 +70,12 @@ Bootstrapped at Section 01.
 | S10-02, S10-03 | Code | `lib/claim-emails.ts`'s `decideSend()` and `complianceFooter()`, read in full | 2026-08-08 |
 | S10-04 | Command output | Live HTTP test: forged Resend/Svix webhook signature with `RESEND_WEBHOOK_SECRET` unset → 400; direct DB test of the suppression insert + case-insensitive lookup; direct invocation of `sendEmail()` with a seeded suppression row, both single-recipient (`all recipients suppressed`) and mixed-recipient (per-address filtering confirmed via the logged outgoing recipient list) | 2026-08-08 |
 | S10 (all) | File | `docs/platform-standard/section-10-email-sms-push-marketing.md`, `db/schema-communication-suppressions.sql`, `server/src/db/communicationSuppressions.ts` (all new) | 2026-08-08 |
+| S11-01, S11-02, S11-03 | Command output | Live axe-core 4.10 scans (Playwright + a real Chromium browser against the actual built/served production bundle) across 9 pages, run twice (before and after the fixes), full JSON violation output captured both times | 2026-08-08 |
+| S11-04 | Screenshot | `pricing_hero.png` — full-page Playwright screenshot of the Pricing hero, confirming the flagged white text is genuinely high-contrast against its real (z-index-layered) dark background | 2026-08-08 |
+| S11-05, S11-06 | Command output | Full-tree grep for a skip-link/`<main>` landmark (zero matches) and for `outline:\s*none` (30 matches, all the same border-color-replacement pattern) | 2026-08-08 |
+| S11-07 | Command output | `grep -rn "<img" src --include=*.tsx \| grep -v "alt="` — zero matches | 2026-08-08 |
+| S11-08 | Code | `src/pages/onboarding/Onboarding.tsx`, read in full | 2026-08-08 |
+| S11 (all) | File | `docs/platform-standard/section-11-ux-accessibility.md` (new) | 2026-08-08 |
 
 ## Notes
 

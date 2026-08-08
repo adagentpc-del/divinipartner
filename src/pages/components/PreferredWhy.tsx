@@ -139,7 +139,7 @@ export default function PreferredWhy({
 }
 
 const CSS = `
-.pw { --e:#123c2e; --e2:#1E5D4A; --g:#C9A35B; --ink:#2c2a26; --mut:#7d776c; --ln:#e7e1d6;
+.pw { --e:#123c2e; --e2:#1E5D4A; --g:#C9A35B; --ink:#2c2a26; --mut:#6b6459; --ln:#e7e1d6;
   font-family:'Inter',system-ui,sans-serif; color:var(--ink); }
 .pw *,.pw *::before,.pw *::after { box-sizing:border-box; }
 .pw-head { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:6px; }

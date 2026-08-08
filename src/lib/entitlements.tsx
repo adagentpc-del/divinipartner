@@ -148,7 +148,7 @@ export function UpgradePrompt({
         .upgrade-prompt .up-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
         .upgrade-prompt .up-btn{background:#123c2e;color:#fff;border:none;border-radius:9px;padding:9px 16px;font-weight:600;font-size:13.5px;cursor:pointer}
         .upgrade-prompt .up-btn:disabled{opacity:.6;cursor:default}
-        .upgrade-prompt .up-dismiss{background:transparent;border:none;color:#7d776c;font-size:13px;cursor:pointer;text-decoration:underline}
+        .upgrade-prompt .up-dismiss{background:transparent;border:none;color:#6b6459;font-size:13px;cursor:pointer;text-decoration:underline}
         .upgrade-prompt .up-err{color:#a3382f;font-size:12.5px}
       `}</style>
       <div className="up-head">{head}</div>

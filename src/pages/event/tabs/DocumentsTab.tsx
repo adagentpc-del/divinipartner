@@ -360,25 +360,25 @@ const D_CSS = `
 .ew-doc-dl div { display: flex; flex-direction: column; gap: 2px; }
 .ew-doc-dl dt { font-size: 10.5px; letter-spacing: .4px; text-transform: uppercase; color: #9a8a5e; font-weight: 600; }
 .ew-doc-dl dd { margin: 0; font-size: 13.5px; color: #2c2a26; }
-.ew-doc-note { margin: 14px 0 0; font-size: 12px; color: #7d776c; font-style: italic; }
+.ew-doc-note { margin: 14px 0 0; font-size: 12px; color: #6b6459; font-style: italic; }
 .ew-doc-success { margin: 10px 0 0; font-size: 12.5px; color: #1E5D4A; font-weight: 600; background: rgba(30,93,74,.08); border: 1px solid rgba(30,93,74,.25); border-radius: 9px; padding: 10px 12px; }
 .ew-doc-warn { margin: 10px 0 0; font-size: 12.5px; color: #8a5a1a; font-weight: 600; background: rgba(201,163,91,.12); border: 1px solid rgba(201,163,91,.35); border-radius: 9px; padding: 10px 12px; }
 .ew-doc-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
-.ew-doc-desc { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 600; color: #7d776c; margin: 12px 0; }
+.ew-doc-desc { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 600; color: #6b6459; margin: 12px 0; }
 .ew-doc-desc textarea { font: inherit; font-size: 13px; padding: 8px 10px; border: 1px solid #e7e1d6; border-radius: 8px; background: #fff; color: #2c2a26; }
 .ew-doc-scopenote { margin: 10px 0 0; }
 .ew-doc-items { margin-top: 14px; display: flex; flex-direction: column; gap: 10px; }
 .ew-doc-item { border: 1px solid #e7e1d6; border-radius: 10px; padding: 12px 14px; }
 .ew-doc-item.is-editing { background: rgba(247,244,238,.5); display: flex; flex-direction: column; gap: 10px; }
-.ew-doc-item.is-editing label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 600; color: #7d776c; }
+.ew-doc-item.is-editing label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 600; color: #6b6459; }
 .ew-doc-item.is-editing input, .ew-doc-item.is-editing textarea { font: inherit; font-size: 13px; padding: 8px 10px; border: 1px solid #e7e1d6; border-radius: 8px; background: #fff; color: #2c2a26; }
 .ew-doc-itemmain { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .ew-doc-itemcat { font-weight: 700; color: #123c2e; font-size: 14px; }
-.ew-doc-itembudget { font-size: 12.5px; color: #7d776c; font-variant-numeric: tabular-nums; }
+.ew-doc-itembudget { font-size: 12.5px; color: #6b6459; font-variant-numeric: tabular-nums; }
 .ew-doc-itemscope { margin: 6px 0 0; font-size: 12.5px; color: #4a463e; line-height: 1.5; }
 .ew-doc-itemactions { display: flex; gap: 8px; margin-top: 8px; }
 .ew-doc-editrow { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; margin-top: 10px; }
-.ew-doc-editrow label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 600; color: #7d776c; flex: 1 1 160px; }
+.ew-doc-editrow label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 600; color: #6b6459; flex: 1 1 160px; }
 .ew-doc-editrow select, .ew-doc-editrow input { font: inherit; font-size: 13px; padding: 8px 10px; border: 1px solid #e7e1d6; border-radius: 8px; background: #fff; color: #2c2a26; }
 .ew-btn.sm { padding: 6px 12px; font-size: 12px; }
 @media (max-width: 720px) { .ew-doc-dl { grid-template-columns: 1fr; } }

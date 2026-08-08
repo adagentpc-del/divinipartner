@@ -197,7 +197,7 @@ export default function VisitorSignals() {
 const VS_CSS = `
 .vs {
   --dp-emerald: #123c2e; --dp-emerald-2: #1E5D4A; --dp-gold: #C9A35B;
-  --dp-ivory: #F7F4EE; --dp-ink: #2c2a26; --dp-muted: #7d776c; --dp-line: #e7e1d6;
+  --dp-ivory: #F7F4EE; --dp-ink: #2c2a26; --dp-muted: #6b6459; --dp-line: #e7e1d6;
   font-family: 'Inter', system-ui, -apple-system, sans-serif; color: var(--dp-ink);
   padding: 26px 30px 48px; max-width: 1180px; width: 100%; margin: 0 auto;
 }

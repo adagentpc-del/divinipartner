@@ -165,7 +165,7 @@ export default function PriceGuide() {
 }
 
 const CSS = `
-.pg { --e:#123c2e; --e2:#1E5D4A; --g:#C9A35B; --ink:#2c2a26; --mut:#7d776c; --ln:#e7e1d6;
+.pg { --e:#123c2e; --e2:#1E5D4A; --g:#C9A35B; --ink:#2c2a26; --mut:#6b6459; --ln:#e7e1d6;
   --bg:#fbf9f4; font-family:'Inter',system-ui,sans-serif; color:var(--ink); max-width:920px;
   margin:0 auto; padding:24px 20px 56px; }
 .pg *,.pg *::before,.pg *::after { box-sizing:border-box; }

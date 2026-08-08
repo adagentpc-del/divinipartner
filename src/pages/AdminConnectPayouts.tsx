@@ -43,7 +43,7 @@ type Row = {
 type Totals = { pendingCents: number; readyCents: number; paidCents: number };
 
 const STYLES = `
-.acp{--emerald:#1E5D4A;--emerald-deep:#123c2e;--ink:#2c2a26;--muted:#7d776c;--line:#e7e1d6;--ivory:#f7f4ee;font-family:Inter,system-ui,sans-serif;color:var(--ink)}
+.acp{--emerald:#1E5D4A;--emerald-deep:#123c2e;--ink:#2c2a26;--muted:#6b6459;--line:#e7e1d6;--ivory:#f7f4ee;font-family:Inter,system-ui,sans-serif;color:var(--ink)}
 .acp h1{font-family:'Cormorant Garamond',serif;color:var(--emerald-deep);font-size:30px;margin:0}
 .acp .sub{font-size:13px;color:var(--muted);margin-top:3px;max-width:720px}
 .acp .warn{display:inline-block;font-size:12px;font-weight:600;padding:7px 12px;border-radius:9px;margin:14px 0;background:#fbeeee;border:1px solid #ecd2d2;color:#7a3030}

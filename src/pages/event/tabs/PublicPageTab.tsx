@@ -326,11 +326,11 @@ const PP2_CSS = `
 .pp2-linklabel { font-size: 10.5px; letter-spacing: .5px; text-transform: uppercase; color: #b3aa99; font-weight: 600; margin-bottom: 3px; }
 .pp2-link { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: #123c2e; }
 .pp2-linkactions { display: flex; align-items: center; gap: 12px; }
-.pp2-count { font-size: 11.5px; color: #7d776c; }
+.pp2-count { font-size: 11.5px; color: #6b6459; }
 .pp2-section { margin-bottom: 20px; }
-.pp2-secttitle { font-size: 10.5px; letter-spacing: .5px; text-transform: uppercase; color: #7d776c; font-weight: 600; margin-bottom: 8px; }
+.pp2-secttitle { font-size: 10.5px; letter-spacing: .5px; text-transform: uppercase; color: #6b6459; font-weight: 600; margin-bottom: 8px; }
 .pp2-modes { display: inline-flex; border: 1px solid #e7e1d6; border-radius: 10px; overflow: hidden; background: #fff; }
-.pp2-mode { font: inherit; font-size: 12.5px; color: #7d776c; background: transparent; border: 0; padding: 8px 18px; cursor: pointer; border-right: 1px solid #e7e1d6; }
+.pp2-mode { font: inherit; font-size: 12.5px; color: #6b6459; background: transparent; border: 0; padding: 8px 18px; cursor: pointer; border-right: 1px solid #e7e1d6; }
 .pp2-mode:last-child { border-right: 0; }
 .pp2-mode:hover { background: rgba(18,60,46,.04); color: #123c2e; }
 .pp2-mode.is-active { background: #123c2e; color: #fff; font-weight: 600; }
@@ -338,7 +338,7 @@ const PP2_CSS = `
 .pp2-check { display: flex; align-items: center; gap: 9px; font-size: 13px; color: #2c2a26; cursor: pointer; }
 .pp2-check input { width: 15px; height: 15px; accent-color: #1E5D4A; }
 .pp2-field { display: block; margin-bottom: 12px; }
-.pp2-fieldlabel { display: block; font-size: 11.5px; color: #7d776c; margin-bottom: 4px; }
+.pp2-fieldlabel { display: block; font-size: 11.5px; color: #6b6459; margin-bottom: 4px; }
 .pp2-in { font: inherit; font-size: 13px; padding: 8px 11px; border: 1px solid #e7e1d6; border-radius: 8px; background: #fff; color: #2c2a26; width: 100%; }
 .pp2-textarea { min-height: 74px; resize: vertical; }
 .pp2-saverow { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }

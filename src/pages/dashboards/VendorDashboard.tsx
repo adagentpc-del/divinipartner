@@ -169,7 +169,7 @@ const READINESS_CSS = `
     conic-gradient(var(--dp-gold, #C9A35B) 0 72%, var(--dp-line, #e7e1d6) 72% 100%);
 }
 .dpdash-readiness-copy { display: flex; flex-direction: column; gap: 9px; }
-.dpdash-readiness-copy p { margin: 0; font-size: 12.5px; color: var(--dp-muted, #7d776c); line-height: 1.5; }
+.dpdash-readiness-copy p { margin: 0; font-size: 12.5px; color: var(--dp-muted, #6b6459); line-height: 1.5; }
 `;
 
 // Pricing V2 Featured Vendor upsell. Reads /api/featured for the org's status
@@ -248,7 +248,7 @@ const FEATURED_CSS = `
 .dpdash-featured-body { min-width: 260px; flex: 1 1 340px; }
 .dpdash-featured-kicker { font-size: 10.5px; letter-spacing: 1.4px; text-transform: uppercase; font-weight: 700; color: #8a6d27; }
 .dpdash-featured h3 { margin: 4px 0 6px; font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 600; font-size: 22px; color: var(--dp-emerald, #123c2e); }
-.dpdash-featured p { margin: 0; font-size: 12.8px; color: var(--dp-muted, #7d776c); line-height: 1.55; max-width: 560px; }
+.dpdash-featured p { margin: 0; font-size: 12.8px; color: var(--dp-muted, #6b6459); line-height: 1.55; max-width: 560px; }
 .dpdash-featured-err { margin-top: 8px; font-size: 12px; color: #b3261e; }
 .dpdash-featured-cta { flex: 0 0 auto; }
 `;

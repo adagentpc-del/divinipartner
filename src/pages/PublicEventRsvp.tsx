@@ -106,15 +106,15 @@ export default function PublicEventRsvp() {
         .pev{min-height:100vh;background:#f3efe6;color:#2c2a26;font-family:Inter,system-ui,sans-serif;padding:40px 20px}
         .pev .wrap{max-width:560px;margin:0 auto}
         .pev .brand{font-family:'Cormorant Garamond',serif;font-size:22px;color:#123c2e;font-weight:700;text-align:center}
-        .pev .tg{text-align:center;color:#7d776c;font-size:12px;letter-spacing:.5px;text-transform:uppercase;margin-bottom:24px}
+        .pev .tg{text-align:center;color:#6b6459;font-size:12px;letter-spacing:.5px;text-transform:uppercase;margin-bottom:24px}
         .pev .card{background:#fff;border:1px solid #e7e1d6;border-radius:16px;padding:28px;box-shadow:0 30px 60px -40px rgba(18,60,46,.4)}
         .pev .kicker{font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#C9A35B;margin-bottom:8px}
         .pev h1{font-family:'Cormorant Garamond',serif;font-size:32px;color:#123c2e;margin:0 0 12px;line-height:1.1}
         .pev .meta{color:#4b463e;font-size:15px;line-height:1.6;margin-bottom:6px}
         .pev .meta b{color:#123c2e}
-        .pev .host{color:#7d776c;font-size:13px;margin-top:10px}
+        .pev .host{color:#6b6459;font-size:13px;margin-top:10px}
         .pev hr{border:none;border-top:1px solid #eee5d8;margin:22px 0}
-        .pev .lbl{font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#7d776c;margin:16px 0 8px}
+        .pev .lbl{font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#6b6459;margin:16px 0 8px}
         .pev input,.pev textarea{width:100%;padding:12px;border:1px solid #e7e1d6;border-radius:10px;font-size:15px;font-family:Inter;box-sizing:border-box}
         .pev textarea{min-height:70px;resize:vertical}
         .pev input:focus,.pev textarea:focus{outline:none;border-color:#1E5D4A}

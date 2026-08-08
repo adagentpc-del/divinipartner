@@ -27,7 +27,7 @@ type Instruction = {
 };
 
 const STYLES = `
-.mcp{--emerald:#1E5D4A;--emerald-deep:#123c2e;--ink:#2c2a26;--muted:#7d776c;--line:#e7e1d6;--ivory:#f7f4ee;font-family:Inter,system-ui,sans-serif;color:var(--ink)}
+.mcp{--emerald:#1E5D4A;--emerald-deep:#123c2e;--ink:#2c2a26;--muted:#6b6459;--line:#e7e1d6;--ivory:#f7f4ee;font-family:Inter,system-ui,sans-serif;color:var(--ink)}
 .mcp h1{font-family:'Cormorant Garamond',serif;color:var(--emerald-deep);font-size:30px;margin:0}
 .mcp .sub{font-size:13px;color:var(--muted);margin-top:3px}
 .mcp .card{background:#fff;border:1px solid var(--line);border-radius:14px;margin-top:16px;overflow:hidden}

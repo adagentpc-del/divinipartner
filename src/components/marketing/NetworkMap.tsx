@@ -95,7 +95,7 @@ export default function NetworkMap({
               {n.label.length > 12 ? n.label.slice(0, 11) + '…' : n.label}
             </text>
             {n.tag ? (
-              <text x={n.x} y={n.y + 10} textAnchor="middle" fontSize="8" fill="#7d776c" fontFamily="Inter, sans-serif">
+              <text x={n.x} y={n.y + 10} textAnchor="middle" fontSize="8" fill="#6b6459" fontFamily="Inter, sans-serif">
                 {n.tag}
               </text>
             ) : null}

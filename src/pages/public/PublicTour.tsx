@@ -81,12 +81,12 @@ const CSS = `
 .pt-wrap { max-width: 720px; margin: 0 auto; }
 .pt-brand { font-family: Georgia, serif; font-size: 18px; color: #123c2e; font-weight: 700; margin-bottom: 18px; }
 .pt-title { font-family: Georgia, serif; font-size: 32px; color: #123c2e; margin: 0 0 4px; }
-.pt-org { color: #7d776c; margin: 0 0 8px; }
+.pt-org { color: #6b6459; margin: 0 0 8px; }
 .pt-desc { color: #4a463f; margin: 0 0 14px; line-height: 1.6; }
 .pt-count { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: #1E5D4A; margin-bottom: 14px; }
 .pt-card { background: #fff; border: 1px solid #e7e1d6; border-radius: 12px; padding: 22px; }
-.pt-sub { color: #7d776c; margin: 0; }
-.pt-loading { color: #7d776c; }
+.pt-sub { color: #6b6459; margin: 0; }
+.pt-loading { color: #6b6459; }
 .pt-list { display: flex; flex-direction: column; gap: 10px; }
 .pt-stop { display: flex; align-items: center; gap: 14px; background: #fff; border: 1px solid #ece5d8; border-radius: 12px; padding: 14px 16px; text-decoration: none; color: inherit; }
 .pt-stop:hover { border-color: #123c2e; }
