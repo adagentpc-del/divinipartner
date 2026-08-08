@@ -18,6 +18,7 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { recordEmailEvent } from "../db/email-events.js";
 import { PUBLIC_APP_URL, BASE_PATH, getAllowedOrigins } from "../config.js";
+import { verifyResendWebhook, applyResendDeliveryEvent } from "../lib/email.js";
 
 const h =
   (fn: (req: Request, res: Response) => Promise<unknown>) =>
@@ -146,6 +147,25 @@ router.get(
       }
     }
     res.redirect(302, target);
+  }),
+);
+
+// ---- Resend delivery-event webhook (ALFY2 pack Section 10) ----------------
+// Auto-suppresses hard bounces and spam complaints across every email this
+// app sends (not just claim outreach) -- see lib/email.ts's sendEmail() for
+// the suppression check on the send side.
+router.post(
+  "/webhook/resend",
+  h(async (req, res) => {
+    const raw = (req as unknown as { rawBody?: Buffer }).rawBody;
+    const event = verifyResendWebhook(raw ?? "", {
+      id: headerStr(req.headers["svix-id"]) ?? undefined,
+      timestamp: headerStr(req.headers["svix-timestamp"]) ?? undefined,
+      signature: headerStr(req.headers["svix-signature"]) ?? undefined,
+    });
+    if (!event) return res.status(400).json({ error: "invalid signature" });
+    await applyResendDeliveryEvent(event).catch(() => undefined);
+    res.json({ received: true });
   }),
 );
 

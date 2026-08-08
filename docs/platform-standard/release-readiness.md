@@ -18,7 +18,8 @@ format.
 | 07 App/API Perimeter, Input Validation, File Upload, Bot & Malware Security | READY WITH P2 ITEMS — see below | 2026-08-08 |
 | 08 AI Security, Governance, Prompt-Injection Defense & Model Quality | READY WITH P2 ITEMS — see below | 2026-08-08 |
 | 09 Payments, Stripe, Webhooks, Subscriptions, Marketplace & Tax | READY (architecture) WITH ITEMS BLOCKED ON T7 — see below | 2026-08-08 |
-| 10–18 | Not yet started | — |
+| 10 Email, SMS, Push Notifications & Marketing Compliance | **READY** — no open P0/P1 items | 2026-08-08 |
+| 11–18 | Not yet started | — |
 
 ## Section 01 summary
 
@@ -270,11 +271,43 @@ format.
   delay T7 further, only confirmed what still needs to exist (refund/
   dispute capability, real credential testing) before it unblocks.
 
+## Section 10 summary
+
+- Live DNS verification (two independent resolvers) of the real
+  production sending domain confirmed full, correctly-aligned email
+  authentication: DKIM, DMARC (enforcement mode, not monitor-only), and
+  SPF (correctly published on the return-path subdomain — an initial
+  apex-only check looked like a gap and was corrected after deeper
+  verification, worth documenting the "looked wrong, verified right"
+  path explicitly).
+- Confirmed transactional-vs-marketing separation is real and structural
+  (only the one true marketing channel — Claim Engine cold outreach —
+  carries opt-in/opt-out machinery), and that channel already meets
+  every CAN-SPAM item checked: sender ID, non-deceptive framing,
+  functioning opt-out, physical address, plus a "remove my listing"
+  option beyond the legal minimum.
+- **Found and fixed a real P1 gap**: the shared `sendEmail()` transport
+  used by every email this app sends had no bounce/complaint suppression
+  check at all — only the narrower, Claim-Engine-specific suppression
+  list existed, and nothing anywhere auto-populated a bounce reason
+  despite the schema supporting one. Built a general
+  `communication_suppressions` table, wired a per-recipient filter into
+  `sendEmail()` itself, and added a Svix-signed Resend bounce/complaint
+  webhook. Live-verified at every layer: fail-closed signature
+  rejection, direct DB suppression matching, and — most importantly —
+  the actual `sendEmail()` call path filtering a suppressed recipient
+  out of a mixed-recipient send while still delivering to the clean one.
+- SMS and push notifications: confirmed neither exists anywhere in the
+  codebase (not even a stub) — correctly N/A, nothing to test.
+- One P2 documented (RFC 8058 `List-Unsubscribe` header, a deliverability
+  best-practice gap, not a current CAN-SPAM violation).
+- No P0 blockers. Section 10 closes with zero open P0/P1 items.
+
 ## Overall launch readiness (cumulative, updated as sections complete)
 
-**NOT READY** — pending Sections 10–18, plus the standing T7 gate (real
+**NOT READY** — pending Sections 11–18, plus the standing T7 gate (real
 money) which several sections now have concrete pre-requisites tracked
 against (refund/dispute capability, live credential testing). This is
-expected at this stage (nine of eighteen sections complete) and is not
+expected at this stage (ten of eighteen sections complete) and is not
 itself a new finding; it reflects where the multi-section pack currently
 stands, not a regression.

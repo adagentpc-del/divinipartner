@@ -5642,3 +5642,21 @@ create table if not exists webhook_events (
 );
 create index if not exists idx_webhook_events_status on webhook_events(status);
 create index if not exists idx_webhook_events_provider on webhook_events(provider, received_at desc);
+
+-- ====== db/schema-communication-suppressions.sql ======
+-- ---------------------------------------------------------------------------
+-- Communication suppression list, found during the ALFY2 pack Section 10
+-- (email/marketing compliance) audit. See
+-- db/schema-communication-suppressions.sql for the full rationale.
+-- ---------------------------------------------------------------------------
+create table if not exists communication_suppressions (
+  id uuid primary key default gen_random_uuid(),
+  destination text not null,
+  channel text not null default 'email',
+  reason text not null check (reason in ('bounce','complaint','unsubscribe','manual')),
+  source text,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz
+);
+create unique index if not exists idx_comm_suppr_dest
+  on communication_suppressions(lower(destination), channel);

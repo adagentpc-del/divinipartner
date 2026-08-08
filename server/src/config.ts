@@ -166,6 +166,9 @@ export const emailEnabled = (): boolean =>
   (EMAIL_PROVIDER === "resend" && !!EMAIL_API_KEY) ||
   (EMAIL_PROVIDER === "postal" && !!EMAIL_API_KEY && !!POSTAL_API_URL);
 
+/** Resend delivery-event webhook (bounce/complaint -> auto-suppression). Svix-signed. */
+export const RESEND_WEBHOOK_SECRET = process.env.RESEND_WEBHOOK_SECRET || "";
+
 /**
  * Background worker / scheduler. WORKER_INTERVAL_MINUTES > 0 starts an in-process
  * loop; 0 means "off, driven by external cron calling worker.js".

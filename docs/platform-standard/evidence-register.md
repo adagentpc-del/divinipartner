@@ -66,6 +66,10 @@ Bootstrapped at Section 01.
 | S09-06 | Command output | Full-tree grep for a refund API call and `charge.dispute.*` handler — zero matches; `PaymentPolicy.tsx` read in full, confirmed consistent with the code (marketplace-facilitator stance, not a contradiction) | 2026-08-08 |
 | S09-07 | Code | `routes/founding-member.ts` + `db/member-attendee.ts`, read in full — no pricing/fee-rate write found | 2026-08-08 |
 | S09 (all) | File | `docs/platform-standard/section-09-payments-stripe-webhooks.md`, `db/schema-webhook-events.sql`, `server/src/db/webhookEvents.ts` (all new) | 2026-08-08 |
+| S10-01 | Command output | Live DNS lookups (Node's `dns.resolveTxt`/`resolveMx`/`resolveCname`, cross-checked against Cloudflare DNS-over-HTTPS) for `divinipartners.com`, `_dmarc.divinipartners.com`, `resend._domainkey.divinipartners.com`, `send.divinipartners.com` | 2026-08-08 |
+| S10-02, S10-03 | Code | `lib/claim-emails.ts`'s `decideSend()` and `complianceFooter()`, read in full | 2026-08-08 |
+| S10-04 | Command output | Live HTTP test: forged Resend/Svix webhook signature with `RESEND_WEBHOOK_SECRET` unset → 400; direct DB test of the suppression insert + case-insensitive lookup; direct invocation of `sendEmail()` with a seeded suppression row, both single-recipient (`all recipients suppressed`) and mixed-recipient (per-address filtering confirmed via the logged outgoing recipient list) | 2026-08-08 |
+| S10 (all) | File | `docs/platform-standard/section-10-email-sms-push-marketing.md`, `db/schema-communication-suppressions.sql`, `server/src/db/communicationSuppressions.ts` (all new) | 2026-08-08 |
 
 ## Notes
 

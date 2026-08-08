@@ -349,6 +349,17 @@ Prioritized backlog, seeded from the Go-Live runbook remaining items and the V2 
 - Related files: `server/src/routes/payments.ts`, `server/src/lib/processors.ts`.
 - See: `docs/platform-standard/section-09-payments-stripe-webhooks.md`, risk R-33.
 
+## T31 - Add RFC 8058 List-Unsubscribe header to marketing outreach email (found 2026-08-08, ALFY2 pack Section 10)
+
+- Priority: P2
+- Status: NOT STARTED
+- Owner: unassigned
+- Dependencies: none
+- Effort: S (confirm Resend's transactional-send API supports custom headers, then add `List-Unsubscribe`/`List-Unsubscribe-Post`)
+- Acceptance: Claim Engine outreach email (`lib/claim-emails.ts`) already includes a body-embedded unsubscribe link and physical address, satisfying CAN-SPAM's legal minimum -- but does not set the `List-Unsubscribe` / `List-Unsubscribe-Post` headers (RFC 8058 one-click unsubscribe), which Gmail/Yahoo's 2024+ bulk-sender guidelines increasingly expect even at low volume. Add the header, pointed at the same `unsubscribeUrl()` already used in the body, once Resend's send API's header-support is confirmed.
+- Related files: `server/src/lib/claim-emails.ts`, `server/src/lib/email.ts`.
+- See: `docs/platform-standard/section-10-email-sms-push-marketing.md`, risk R-35.
+
 ## ALFY2 / Claude Master Platform Execution Pack (started 2026-08-08)
 
 A separately-uploaded 18-section audit framework is being run against this
@@ -362,11 +373,12 @@ Environments, Secrets, CI/CD & Supply Chain), Section 04
 (Database Integrity, Data Lifecycle, Backups & Recovery), Section 07
 (App/API Perimeter, Input Validation, File Upload, Bot & Malware Security),
 Section 08 (AI Security, Governance, Prompt-Injection Defense & Model
-Quality), and Section 09 (Payments, Stripe, Webhooks, Subscriptions,
-Marketplace & Tax) are complete; see
+Quality), Section 09 (Payments, Stripe, Webhooks, Subscriptions,
+Marketplace & Tax), and Section 10 (Email, SMS, Push Notifications &
+Marketing Compliance) are complete; see
 `docs/platform-standard/release-readiness.md` for cumulative status across
 all 18 sections as they execute. New findings that represent real,
-actionable work (like T13-T30 above) get a task here as they're found, so
+actionable work (like T13-T31 above) get a task here as they're found, so
 this queue stays the single place to look for "what's left to do" --
 `docs/platform-standard/` is where the pack's own required audit/evidence/
 risk trail lives, not a second task list.
