@@ -96,6 +96,9 @@ export type EventRow = {
   attendance_vip: number | null;
   attendance_staff: number | null;
   attendance_vendor_staff: number | null;
+  // Configurable due date for the Final Count Workflow (Phase A item 6). The
+  // count values themselves live in event_final_counts, versioned.
+  final_count_due_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -194,6 +197,7 @@ export type CreateEventInput = {
   attendance_vip?: number | null;
   attendance_staff?: number | null;
   attendance_vendor_staff?: number | null;
+  final_count_due_at?: string | null;
 };
 
 /** Create an event owned by the actor's org; the actor is client or planner by role. */
@@ -207,11 +211,13 @@ export async function createEvent(actor: Actor, input: CreateEventInput): Promis
         load_in_at, setup_at, rehearsal_at, vendor_call_at, doors_at, end_at, strike_at,
         venue_space, venue_notes,
         attendance_estimated, attendance_invited, attendance_rsvp_yes, attendance_confirmed,
-        attendance_guaranteed, attendance_vip, attendance_staff, attendance_vendor_staff)
+        attendance_guaranteed, attendance_vip, attendance_staff, attendance_vendor_staff,
+        final_count_due_at)
      values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'inquiry',
              $13,$14,$15,$16,$17,$18,$19,
              $20,$21,
-             $22,$23,$24,$25,$26,$27,$28,$29)
+             $22,$23,$24,$25,$26,$27,$28,$29,
+             $30)
      returning *`,
     [
       input.name,
@@ -243,6 +249,7 @@ export async function createEvent(actor: Actor, input: CreateEventInput): Promis
       input.attendance_vip ?? null,
       input.attendance_staff ?? null,
       input.attendance_vendor_staff ?? null,
+      input.final_count_due_at ?? null,
     ],
   );
   const ev = row as EventRow;
@@ -300,7 +307,7 @@ const ATTENDANCE_FIELDS = new Set([
   "attendance_confirmed", "attendance_guaranteed", "attendance_vip", "attendance_staff",
   "attendance_vendor_staff",
 ]);
-const REQUIRES_ACK_FIELDS = new Set(["date_time", "end_at", "budget", "venue_id"]);
+const REQUIRES_ACK_FIELDS = new Set(["date_time", "end_at", "budget", "venue_id", "final_count_due_at"]);
 
 /** Category a changed events-table field belongs to, for event_changes (Phase A item 5). */
 function categoryForField(field: string): ChangeCategory {
@@ -347,6 +354,7 @@ export async function updateEvent(
         attendance_vip = coalesce($25, attendance_vip),
         attendance_staff = coalesce($26, attendance_staff),
         attendance_vendor_staff = coalesce($27, attendance_vendor_staff),
+        final_count_due_at = coalesce($28, final_count_due_at),
         updated_at = now()
       where id = $1
       returning *`,
@@ -378,6 +386,7 @@ export async function updateEvent(
       patch.attendance_vip ?? null,
       patch.attendance_staff ?? null,
       patch.attendance_vendor_staff ?? null,
+      patch.final_count_due_at ?? null,
     ],
   );
   const after = row as EventRow;

@@ -5827,3 +5827,29 @@ create table if not exists event_change_acknowledgments (
 );
 create index if not exists idx_event_change_acks_change on event_change_acknowledgments(change_id);
 create index if not exists idx_event_change_acks_user on event_change_acknowledgments(user_id, acknowledged_at);
+
+-- ====== db/schema-final-count.sql ======
+-- ---------------------------------------------------------------------------
+-- Final Count Workflow, P0, found while building the Divini Partners
+-- 63-section Event Operations spec Phase A item 6 (2026-08-09). See
+-- db/schema-final-count.sql for the full rationale.
+-- ---------------------------------------------------------------------------
+alter table events add column if not exists final_count_due_at timestamptz;
+
+create table if not exists event_final_counts (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references events(id) on delete cascade,
+  version int not null,
+  count int not null,
+  -- Signed difference from the previous version's count, or null for version 1.
+  delta int,
+  -- count - the authoritative attendance figure on record at set-time
+  -- (attendance_confirmed, falling back to attendance_estimated), or null
+  -- when neither exists yet to compare against.
+  discrepancy int,
+  notes text,
+  set_by uuid references users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  unique (event_id, version)
+);
+create index if not exists idx_event_final_counts_event on event_final_counts(event_id, version desc);
