@@ -11,11 +11,12 @@
  * discrepancy against the authoritative attendance figure already on the
  * event record (attendance_confirmed, falling back to attendance_estimated).
  *
- * "Packet refresh" from the spec is intentionally not wired here: the
- * Execution Packet (Phase A item 8) does not exist yet in this codebase, so
- * there is nothing real to refresh -- fabricating that call would violate
- * the no-fabrication rule this whole engagement runs under. It will be wired
- * when Phase A item 8 lands.
+ * "Packet refresh" is now wired (completion phase, Part 18): if an
+ * Execution Packet was already issued for this event, a final-count
+ * revision flips it to 'update_required' via checkAndMarkPacketStale()
+ * rather than silently leaving it looking current. It does not
+ * auto-regenerate or auto-send a new version -- that stays an explicit
+ * planner action, per the spec's caution against uncontrolled auto-sends.
  *
  * Zero em dashes.
  */
@@ -128,6 +129,14 @@ export async function setFinalCount(
       where event_id = $1 and status = 'active' and role = any($2::text[])`,
     [eventId, VENDOR_SCOPES],
   );
+
+  // Event Change -> Packet Invalidation (completion phase, Part 18).
+  // Dynamic import to avoid a static circular import (packetInvalidation.ts
+  // imports FROM executionPacket.ts, which does not import this module, but
+  // keeping the pattern consistent with events.ts avoids two different
+  // import styles for the same cross-cutting concern).
+  const { checkAndMarkPacketStale } = await import("./packetInvalidation.js");
+  await checkAndMarkPacketStale(eventId);
 
   return { version, affected_vendor_count: Number(vendorCount[0]?.n ?? 0) };
 }

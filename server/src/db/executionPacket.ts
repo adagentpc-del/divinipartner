@@ -26,6 +26,29 @@ import { recordEventChange } from "./eventChanges.js";
 import { getEventRole } from "./eventMembers.js";
 import type { EventRole } from "../lib/eventRoles.js";
 
+/**
+ * node-pg returns `timestamptz` columns as native Date objects, not
+ * strings, even though EventRow's TypeScript type declares them as
+ * `string | null` (the type matches what a JSON response over the wire
+ * actually looks like, since Express's res.json() implicitly stringifies
+ * Dates -- but that stringification never happens for values compared
+ * in-process before serialization). A snapshot stored to jsonb and read
+ * back is always a plain string; a snapshot freshly built from a raw
+ * EventRow was a Date object until this coercion. Without it,
+ * diffPacketSnapshots() (lib/packetDiff.ts) would report every single
+ * timestamp field as "changed" on every comparison between a stored
+ * snapshot and a live rebuild, even when nothing actually changed --
+ * exactly the bug packetInvalidation.ts's checkAndMarkPacketStale()
+ * exposed live-testing Part 18. Always normalize to ISO string (or null)
+ * here so a snapshot's shape never depends on whether it just came out of
+ * the DB raw or round-tripped through jsonb.
+ */
+function toIso(v: unknown): string | null {
+  if (v == null) return null;
+  if (v instanceof Date) return v.toISOString();
+  return String(v);
+}
+
 export type KeyContact = {
   user_id: string;
   name: string | null;
@@ -189,14 +212,14 @@ export async function buildExecutionPacket(
       id: ev.id,
       name: ev.name,
       status: ev.status,
-      date_time: ev.date_time,
-      end_at: ev.end_at,
-      load_in_at: ev.load_in_at,
-      setup_at: ev.setup_at,
-      rehearsal_at: ev.rehearsal_at,
-      vendor_call_at: ev.vendor_call_at,
-      doors_at: ev.doors_at,
-      strike_at: ev.strike_at,
+      date_time: toIso(ev.date_time),
+      end_at: toIso(ev.end_at),
+      load_in_at: toIso(ev.load_in_at),
+      setup_at: toIso(ev.setup_at),
+      rehearsal_at: toIso(ev.rehearsal_at),
+      vendor_call_at: toIso(ev.vendor_call_at),
+      doors_at: toIso(ev.doors_at),
+      strike_at: toIso(ev.strike_at),
       timezone: ev.timezone,
       emergency_contact_name: ev.emergency_contact_name,
       emergency_contact_phone: ev.emergency_contact_phone,
@@ -209,7 +232,7 @@ export async function buildExecutionPacket(
       region: venue?.region ?? null,
       space: ev.venue_space,
       notes: ev.venue_notes,
-      access_time: ev.venue_access_time,
+      access_time: toIso(ev.venue_access_time),
       parking_info: ev.venue_parking_info,
       loading_dock: ev.venue_loading_dock,
       vendor_entrance: ev.venue_vendor_entrance,
@@ -252,7 +275,7 @@ export async function buildProjectedPreview(
   return projectPacket(snapshot, role, actor.org?.id ?? null);
 }
 
-export type PacketStatus = "draft" | "issued" | "superseded" | "final";
+export type PacketStatus = "draft" | "issued" | "superseded" | "final" | "update_required";
 
 export type ExecutionPacketRow = {
   id: string;

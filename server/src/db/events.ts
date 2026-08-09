@@ -484,6 +484,16 @@ export async function updateEvent(
       )
       .catch(() => undefined);
   }
+  // Event Change -> Packet Invalidation (completion phase, Part 18): if an
+  // Execution Packet was already issued for this event, source-of-truth
+  // fields (date/time, venue, key location, status) changing underneath it
+  // must not leave that packet silently looking current. Dynamic import to
+  // avoid a static circular import (packetInvalidation.ts imports FROM
+  // executionPacket.ts, which imports FROM this module).
+  if (patchedFields.length) {
+    const { checkAndMarkPacketStale } = await import("./packetInvalidation.js");
+    await checkAndMarkPacketStale(id);
+  }
   return after;
 }
 

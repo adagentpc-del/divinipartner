@@ -244,6 +244,12 @@ export async function submitVendorFinalQuantity(
       comparison.discrepancy_status === "over" || comparison.discrepancy_status === "under",
   }).catch(() => undefined);
 
+  // Event Change -> Packet Invalidation (completion phase, Part 18): a
+  // vendor's own quantity is part of the issued packet's snapshot, so a
+  // revision must not leave that packet silently looking current.
+  const { checkAndMarkPacketStale } = await import("./packetInvalidation.js");
+  await checkAndMarkPacketStale(eventId);
+
   return version;
 }
 

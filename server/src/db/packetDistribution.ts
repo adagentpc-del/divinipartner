@@ -22,7 +22,7 @@
  * Zero em dashes.
  */
 import { q, q1, pool } from "../pool.js";
-import { ForbiddenError, NotFoundError, type Actor, type DbUser } from "../db.js";
+import { ForbiddenError, NotFoundError, type Actor } from "../db.js";
 import { getEvent, canManageEvent } from "./events.js";
 import { computeReadiness } from "./readiness.js";
 import { generatePacketVersion, projectPacket } from "./executionPacket.js";
@@ -36,28 +36,7 @@ import {
 } from "../lib/distributionSchedule.js";
 import { sendEmail } from "../lib/email.js";
 import { PUBLIC_APP_URL, BASE_PATH } from "../config.js";
-
-/**
- * Background job acts as the platform, not a specific user. Unlike
- * lib/scheduleDistribution.ts's SYSTEM_ACTOR (read-only use, id "system"
- * never touches a uuid column), generatePacketVersion() below WRITES
- * actor.user.id into generated_by, a uuid-typed foreign key -- so this uses
- * the real seeded system user row (db/schema-system-user.sql) instead of a
- * placeholder string. Never exposed to a real request.
- */
-const SYSTEM_USER_ID = "00000000-0000-0000-0000-000000000001";
-const SYSTEM_ACTOR: Actor = {
-  user: {
-    id: SYSTEM_USER_ID,
-    oidc_sub: "system",
-    email: null,
-    name: "Divini Partners",
-    role: "super_admin",
-    organization_id: null,
-    status: "active",
-  } as DbUser,
-  org: null,
-};
+import { SYSTEM_ACTOR } from "../lib/systemActor.js";
 
 function appBase(): string {
   return (PUBLIC_APP_URL || "https://divinipartners.com") + (BASE_PATH || "");

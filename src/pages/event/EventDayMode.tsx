@@ -186,6 +186,7 @@ export default function EventDayMode() {
   const [myAck, setMyAck] = useState<MyAcknowledgment>(null);
   const [ackBusy, setAckBusy] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
+  const [regenBusy, setRegenBusy] = useState(false);
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -343,6 +344,19 @@ export default function EventDayMode() {
     }
   }
 
+  async function regeneratePacket() {
+    setRegenBusy(true);
+    setErr(null);
+    try {
+      await apiSend('POST', `/execution-packet/event/${id}/generate`);
+      await load();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setRegenBusy(false);
+    }
+  }
+
   // Split the itinerary into past / current / upcoming around the live clock.
   const timeline = useMemo(() => {
     const items = (itinerary?.items ?? [])
@@ -464,6 +478,16 @@ export default function EventDayMode() {
           {packetProjection ? (
             <section className="dm-block dm-fes">
               <h2 className="dm-blockhead">Final event schedule</h2>
+              {packetVersion?.status === 'update_required' ? (
+                <div className="dm-fesstale">
+                  <span>Final event schedule needs an update. Event details changed since this version was issued.</span>
+                  {packetProjection.audience === 'full' ? (
+                    <button type="button" className="dm-fesstalebtn" onClick={() => void regeneratePacket()} disabled={regenBusy}>
+                      {regenBusy ? 'Generating...' : 'Generate new version'}
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
               <div className="dm-fesgrid">
                 <div className="dm-fesstat">
                   <span className="dm-fesnum">
@@ -879,6 +903,16 @@ const DM_CSS = `
 .dm-fespdf { background: var(--dp-emerald); color: #fff; }
 .dm-fespdf:disabled { opacity: .6; cursor: default; }
 .dm-fesmeta { margin-top: 10px; font-size: 11px; color: var(--dp-muted); text-align: center; }
+
+.dm-fesstale {
+  display: flex; flex-direction: column; gap: 8px; background: #f6eaea; border: 1px solid #e2caca;
+  border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; font-size: 12.5px; color: #8a3a3a; line-height: 1.4;
+}
+.dm-fesstalebtn {
+  align-self: flex-start; min-height: 40px; padding: 8px 16px; border-radius: 10px; border: 0;
+  background: #8a3a3a; color: #fff; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.dm-fesstalebtn:disabled { opacity: .6; cursor: default; }
 
 @media (min-width: 560px) {
   .dm-statusgrid { grid-template-columns: repeat(3, 1fr); }
