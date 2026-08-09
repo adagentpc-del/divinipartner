@@ -5878,3 +5878,35 @@ create table if not exists vendor_final_quantities (
 );
 create index if not exists idx_vendor_final_quantities_event
   on vendor_final_quantities(event_id, vendor_id, scope, version desc);
+
+-- ====== db/schema-execution-packet.sql ======
+-- ---------------------------------------------------------------------------
+-- Final Event Schedule / Event Execution Packet FOUNDATION, found while
+-- building the Divini Partners 63-section Event Operations spec Phase A
+-- item 8 (2026-08-09). See db/schema-execution-packet.sql for the full
+-- rationale (this is deliberately assembly of already-existing systems,
+-- not a new source of truth).
+-- ---------------------------------------------------------------------------
+create table if not exists event_execution_packets (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references events(id) on delete cascade,
+  version int not null,
+  status text not null default 'generated' check (status in ('generated', 'superseded')),
+  snapshot jsonb not null,
+  generated_by uuid references users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  unique (event_id, version)
+);
+create index if not exists idx_event_execution_packets_event
+  on event_execution_packets(event_id, version desc);
+
+create table if not exists event_execution_packet_acknowledgments (
+  id uuid primary key default gen_random_uuid(),
+  packet_id uuid not null references event_execution_packets(id) on delete cascade,
+  user_id uuid not null references users(id) on delete cascade,
+  acknowledged_at timestamptz,
+  created_at timestamptz not null default now(),
+  unique (packet_id, user_id)
+);
+create index if not exists idx_event_execution_packet_acks_packet
+  on event_execution_packet_acknowledgments(packet_id);
