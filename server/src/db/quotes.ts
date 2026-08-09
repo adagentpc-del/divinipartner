@@ -13,6 +13,9 @@ import { getBid } from "./bids.js";
 import { PRICING_V2 } from "../config.js";
 import { getEvent } from "./events.js";
 import { computePlatformFee } from "../lib/platformFees.js";
+import { computeSubtotal, type LineItem } from "../lib/quoteMath.js";
+
+export { computeSubtotal, type LineItem };
 
 // Money model: the CLIENT pays; their org tier sets the platform fee %. The fee
 // is capped at $2,500 PER EVENT, cumulative across all bookings on that event,
@@ -95,15 +98,6 @@ export function isQuoteStatus(v: unknown): v is QuoteStatus {
   return typeof v === "string" && QUOTE_STATUS_KEYS.has(v);
 }
 
-export type LineItem = {
-  label: string;
-  qty?: number;
-  unit_price?: number;
-  amount?: number;
-  kind?: "service" | "add_on" | "exclusion" | "rental";
-  note?: string;
-};
-
 export type QuoteRow = {
   id: string;
   bid_id: string | null;
@@ -119,19 +113,6 @@ export type QuoteRow = {
   standardized_pdf: string | null;
   created_at: string;
 };
-
-/** Sum of priced line items (amount, or qty*unit_price). */
-function computeSubtotal(items: LineItem[]): number {
-  return items
-    .filter((li) => li.kind !== "exclusion")
-    .reduce((sum, li) => {
-      if (typeof li.amount === "number") return sum + li.amount;
-      if (typeof li.qty === "number" && typeof li.unit_price === "number") {
-        return sum + li.qty * li.unit_price;
-      }
-      return sum;
-    }, 0);
-}
 
 export async function getQuote(id: string): Promise<QuoteRow> {
   const row = await q1<QuoteRow>(`select * from quotes where id = $1`, [id]);
@@ -304,6 +285,15 @@ export async function createQuote(actor: Actor, input: CreateQuoteInput): Promis
   }
   if (!eventId) throw new ForbiddenError("event_id or bid_id required");
 
+  // Resolve the submitting vendor's identity server-side from the actor's
+  // own org, never from a client-supplied vendor_id -- the real production
+  // caller (AutoQuoteDraft.tsx) never sends one at all (so it always landed
+  // on null before this fix, permanently breaking the vendor's own access to
+  // their own quote via authorizeQuoteAccess's ownership check), and trusting
+  // a client-supplied value would let one vendor misattribute a quote to a
+  // different vendor's identity.
+  const vendorId = actor.org?.id ? (await orgVendorIds(actor))[0] ?? null : null;
+
   const items = Array.isArray(input.line_items) ? input.line_items : [];
   const subtotal = computeSubtotal(items);
   // Money model (client pays): the platform fee is ADDED ON TOP of the vendor
@@ -330,7 +320,7 @@ export async function createQuote(actor: Actor, input: CreateQuoteInput): Promis
      returning *`,
     [
       input.bid_id ?? null,
-      input.vendor_id ?? null,
+      vendorId,
       eventId,
       JSON.stringify(items),
       subtotal,
@@ -341,6 +331,24 @@ export async function createQuote(actor: Actor, input: CreateQuoteInput): Promis
       input.expiration_date ?? null,
     ],
   );
+
+  // Self-attach the submitting vendor to the event's event_vendors so they
+  // can subsequently see the event and their own quote (authorizeQuoteAccess
+  // gates on event access first, then vendor ownership -- without this a
+  // vendor who successfully submitted a quote against an open marketplace
+  // bid could never view or download it again). This is the vendor acting on
+  // their own behalf, not addEventVendor's owner-only "add someone else"
+  // action, so it deliberately bypasses that ownership check. Best-effort:
+  // never fails quote creation.
+  if (actor.org?.id) {
+    await q1(
+      `insert into event_vendors (event_id, organization_id, vendor_id, role, status)
+         values ($1, $2, $3, 'bidder', 'added')
+       on conflict (event_id, organization_id) do nothing`,
+      [eventId, actor.org.id, vendorId],
+    ).catch(() => undefined);
+  }
+
   return row as QuoteRow;
 }
 
@@ -413,7 +421,10 @@ export async function getStandardizedQuote(id: string) {
       )
     : null;
 
-  const items = quote.line_items ?? [];
+  // Normalize label: real submissions (e.g. AutoQuoteDraft.tsx) send `name`,
+  // not `label` -- fall back so every consumer (this payload, the PDF
+  // renderer) always sees a real display string.
+  const items = (quote.line_items ?? []).map((li) => ({ ...li, label: li.label ?? li.name ?? "Item" }));
   const services = items.filter((li) => li.kind === "service" || !li.kind);
   const addOns = items.filter((li) => li.kind === "add_on");
   const rentals = items.filter((li) => li.kind === "rental");

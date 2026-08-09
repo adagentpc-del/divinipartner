@@ -360,6 +360,15 @@ export async function addOrganization(
       )
     ).rows[0];
 
+    // Same vendor-identity-row requirement as registerOrganization above --
+    // an additional vendor-role org needs one too.
+    if (payload.role === "vendor") {
+      await client.query(
+        `insert into vendors (organization_id, status) values ($1, 'active')`,
+        [org.id],
+      );
+    }
+
     await client.query(
       `insert into organization_memberships (user_id, organization_id, role, is_default)
        values ($1, $2, $3, false)
@@ -495,6 +504,23 @@ export async function registerOrganization(
         [payload.orgName, payload.role, tier, feeRate],
       )
     ).rows[0];
+
+    // A vendor-role org needs a `vendors` identity row -- 55+ files across
+    // this codebase (marketplace search, quote vendor_id resolution,
+    // scorecards, compliance, requirements) join or filter against it, but
+    // nothing ever created one: found live-tracing the vendor quote flow
+    // (ALFY2 pack post-audit product work, 2026-08-09) that a freshly
+    // registered vendor org had zero rows in `vendors`, so every one of
+    // those features silently had nothing to find for them. Category/
+    // services/etc. stay null here and get filled in as the vendor
+    // completes onboarding (profiles.ts); this establishes the identity
+    // row those later writes need to exist first.
+    if (payload.role === "vendor") {
+      await client.query(
+        `insert into vendors (organization_id, status) values ($1, 'active')`,
+        [org.id],
+      );
+    }
 
     await client.query(
       `update users set role = $2, organization_id = $3, account_type = $2, status = 'active', updated_at = now()
