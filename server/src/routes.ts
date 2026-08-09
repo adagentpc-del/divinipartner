@@ -69,6 +69,8 @@ import eventInvitations from "./routes/eventInvitations.js";
 import eventChanges from "./routes/eventChanges.js";
 // Final Count Workflow
 import finalCount from "./routes/finalCount.js";
+// Vendor Final Count / Final Quantity Workflow
+import vendorFinalQuantity from "./routes/vendorFinalQuantity.js";
 // Visitor signals (fingerprint/IP logging) + landing personalization
 import signals from "./routes/signals.js";
 import personalize from "./routes/personalize.js";
@@ -236,6 +238,7 @@ router.use("/invites", invites);
 router.use("/event-invitations", eventInvitations);
 router.use("/event-changes", eventChanges);
 router.use("/final-count", finalCount);
+router.use("/vendor-final-quantity", vendorFinalQuantity);
 router.use("/signals", signals);
 router.use("/personalize", personalize);
 router.use("/signatures", signatures);

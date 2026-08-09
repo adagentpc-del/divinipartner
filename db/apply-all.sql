@@ -5853,3 +5853,28 @@ create table if not exists event_final_counts (
   unique (event_id, version)
 );
 create index if not exists idx_event_final_counts_event on event_final_counts(event_id, version desc);
+
+-- ====== db/schema-vendor-final-quantity.sql ======
+-- ---------------------------------------------------------------------------
+-- Vendor Final Count / Final Quantity Workflow, found while building the
+-- Divini Partners 63-section Event Operations spec Phase A item 7
+-- (2026-08-09). See db/schema-vendor-final-quantity.sql for the full
+-- rationale.
+-- ---------------------------------------------------------------------------
+create table if not exists vendor_final_quantities (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references events(id) on delete cascade,
+  vendor_id uuid not null references vendors(id) on delete cascade,
+  organization_id uuid not null references organizations(id) on delete cascade,
+  scope text not null,
+  version int not null,
+  quantity numeric not null,
+  unit text not null default 'guests',
+  notes text,
+  discrepancy numeric,
+  submitted_by uuid references users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  unique (event_id, vendor_id, scope, version)
+);
+create index if not exists idx_vendor_final_quantities_event
+  on vendor_final_quantities(event_id, vendor_id, scope, version desc);
