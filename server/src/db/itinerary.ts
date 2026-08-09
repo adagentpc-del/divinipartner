@@ -12,27 +12,23 @@
  */
 import { q, q1, pool } from "../pool.js";
 import { NotFoundError, ForbiddenError, type Actor } from "../db.js";
-import { getEvent, type EventRow } from "./events.js";
+import { getEvent, canManageEvent, type EventRow } from "./events.js";
 
 async function canSee(actor: Actor, eventId: string): Promise<void> {
   await getEvent(actor, eventId);
 }
-async function owns(actor: Actor, eventId: string): Promise<boolean> {
-  if (actor.user.role === "super_admin" || actor.user.role === "admin") return true;
-  const row = await q1<{ ok: boolean }>(
-    `select true as ok from events
-      where id = $1
-        and (($2::uuid is not null and organization_id = $2)
-             or client_id = $3 or planner_id = $3)
-      limit 1`,
-    [eventId, actor.org?.id ?? null, actor.user.id],
-  );
-  return !!row?.ok;
-}
+/**
+ * Owner or planner-role member (canManageEvent, Phase A item 3) may edit the
+ * itinerary -- previously this duplicated a pre-Phase-A owner-only check
+ * that had no idea an invited planner-role event_members row exists, so a
+ * Planner/Event Manager who could edit the event itself still could not
+ * build its Run of Show. Reuses the canonical check from events.ts rather
+ * than keeping a second, drifted copy.
+ */
 async function requireOwner(actor: Actor, eventId: string): Promise<void> {
   await canSee(actor, eventId);
-  if (!(await owns(actor, eventId))) {
-    throw new ForbiddenError("only the event owner can edit the itinerary");
+  if (!(await canManageEvent(actor, eventId))) {
+    throw new ForbiddenError("only the event owner or planner can edit the itinerary");
   }
 }
 
@@ -121,7 +117,25 @@ export type ItineraryItemInput = {
   sort_order?: number | null;
   is_public?: boolean | null;
   track?: string | null;
+  /** The vendor org this item is attributed to (arrival/delivery/service
+   *  windows). Must already be attached to the event -- validated below --
+   *  so an arrival record can never be attributed to an unrelated org. */
+  responsible_org_id?: string | null;
 };
+
+/** True when orgId is attached to the event as a vendor (event_vendors, or
+ *  an active event_members row with a vendor role). */
+async function isAttachedVendorOrg(eventId: string, orgId: string): Promise<boolean> {
+  const row = await q1<{ ok: boolean }>(
+    `select true as ok from event_vendors where event_id = $1 and organization_id = $2
+     union select true from event_members
+      where event_id = $1 and organization_id = $2 and status = 'active'
+        and role in ('vendor_owner','vendor_staff')
+     limit 1`,
+    [eventId, orgId],
+  );
+  return !!row?.ok;
+}
 
 export async function addItineraryItem(
   actor: Actor,
@@ -129,12 +143,19 @@ export async function addItineraryItem(
   input: ItineraryItemInput,
 ): Promise<ItineraryItemRow> {
   await requireOwner(actor, eventId);
+  let responsibleOrgId: string | null = null;
+  if (input.responsible_org_id) {
+    if (!(await isAttachedVendorOrg(eventId, input.responsible_org_id))) {
+      throw new ForbiddenError("responsible_org_id must be a vendor already attached to this event");
+    }
+    responsibleOrgId = input.responsible_org_id;
+  }
   const row = await q1<ItineraryItemRow>(
     `insert into itinerary_items
        (event_id, organization_id, title, description, category, start_time, end_time,
         duration_minutes, location, owner_role, owner_label, source, status, pinned, sort_order,
-        is_public, track, created_by)
-     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'manual',$12,$13,$14,$15,$16,$17)
+        is_public, track, created_by, responsible_org_id)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'manual',$12,$13,$14,$15,$16,$17,$18)
      returning *`,
     [
       eventId,
@@ -154,6 +175,7 @@ export async function addItineraryItem(
       input.is_public ?? false,
       input.track ?? null,
       actor.user.id,
+      responsibleOrgId,
     ],
   );
   return row as ItineraryItemRow;
@@ -174,6 +196,13 @@ export async function updateItineraryItem(
 ): Promise<ItineraryItemRow> {
   const eventId = await loadItemEvent(itemId);
   await requireOwner(actor, eventId);
+  let responsibleOrgId: string | null = null;
+  if (patch.responsible_org_id) {
+    if (!(await isAttachedVendorOrg(eventId, patch.responsible_org_id))) {
+      throw new ForbiddenError("responsible_org_id must be a vendor already attached to this event");
+    }
+    responsibleOrgId = patch.responsible_org_id;
+  }
   const row = await q1<ItineraryItemRow>(
     `update itinerary_items set
         title = coalesce($2, title),
@@ -190,6 +219,7 @@ export async function updateItineraryItem(
         sort_order = coalesce($13, sort_order),
         is_public = coalesce($14, is_public),
         track = coalesce($15, track),
+        responsible_org_id = coalesce($16, responsible_org_id),
         updated_at = now()
       where id = $1 returning *`,
     [
@@ -208,6 +238,7 @@ export async function updateItineraryItem(
       patch.sort_order ?? null,
       patch.is_public ?? null,
       patch.track ?? null,
+      responsibleOrgId,
     ],
   );
   return row as ItineraryItemRow;

@@ -5926,3 +5926,19 @@ alter table vendor_final_quantities add column if not exists comparison_ratio nu
 alter table vendor_final_quantities add column if not exists expected_quantity numeric;
 alter table vendor_final_quantities add column if not exists discrepancy_status text
   check (discrepancy_status in ('not_applicable', 'unresolved', 'match', 'over', 'under'));
+
+-- ====== db/schema-event-logistics.sql ======
+-- ---------------------------------------------------------------------------
+-- Final Event Schedule data-model completion, found while building the
+-- Final Event Schedule / Event Execution Packet completion phase
+-- (2026-08-09). See db/schema-event-logistics.sql for the full rationale.
+-- ---------------------------------------------------------------------------
+alter table events add column if not exists timezone text;
+alter table events add column if not exists venue_access_time timestamptz;
+alter table events add column if not exists venue_parking_info text;
+alter table events add column if not exists venue_loading_dock text;
+alter table events add column if not exists venue_vendor_entrance text;
+alter table events add column if not exists venue_guest_entrance text;
+alter table events add column if not exists venue_restrictions text;
+alter table events add column if not exists emergency_contact_name text;
+alter table events add column if not exists emergency_contact_phone text;

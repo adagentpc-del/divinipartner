@@ -99,6 +99,18 @@ export type EventRow = {
   // Configurable due date for the Final Count Workflow (Phase A item 6). The
   // count values themselves live in event_final_counts, versioned.
   final_count_due_at: string | null;
+  // Final Event Schedule data-model completion: timezone (IANA zone name)
+  // and structured venue logistics / emergency contact, previously nowhere
+  // (or only findable inside freeform venue_notes).
+  timezone: string | null;
+  venue_access_time: string | null;
+  venue_parking_info: string | null;
+  venue_loading_dock: string | null;
+  venue_vendor_entrance: string | null;
+  venue_guest_entrance: string | null;
+  venue_restrictions: string | null;
+  emergency_contact_name: string | null;
+  emergency_contact_phone: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -198,6 +210,15 @@ export type CreateEventInput = {
   attendance_staff?: number | null;
   attendance_vendor_staff?: number | null;
   final_count_due_at?: string | null;
+  timezone?: string | null;
+  venue_access_time?: string | null;
+  venue_parking_info?: string | null;
+  venue_loading_dock?: string | null;
+  venue_vendor_entrance?: string | null;
+  venue_guest_entrance?: string | null;
+  venue_restrictions?: string | null;
+  emergency_contact_name?: string | null;
+  emergency_contact_phone?: string | null;
 };
 
 /** Create an event owned by the actor's org; the actor is client or planner by role. */
@@ -212,12 +233,16 @@ export async function createEvent(actor: Actor, input: CreateEventInput): Promis
         venue_space, venue_notes,
         attendance_estimated, attendance_invited, attendance_rsvp_yes, attendance_confirmed,
         attendance_guaranteed, attendance_vip, attendance_staff, attendance_vendor_staff,
-        final_count_due_at)
+        final_count_due_at,
+        timezone, venue_access_time, venue_parking_info, venue_loading_dock,
+        venue_vendor_entrance, venue_guest_entrance, venue_restrictions,
+        emergency_contact_name, emergency_contact_phone)
      values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'inquiry',
              $13,$14,$15,$16,$17,$18,$19,
              $20,$21,
              $22,$23,$24,$25,$26,$27,$28,$29,
-             $30)
+             $30,
+             $31,$32,$33,$34,$35,$36,$37,$38,$39)
      returning *`,
     [
       input.name,
@@ -250,6 +275,15 @@ export async function createEvent(actor: Actor, input: CreateEventInput): Promis
       input.attendance_staff ?? null,
       input.attendance_vendor_staff ?? null,
       input.final_count_due_at ?? null,
+      input.timezone ?? null,
+      input.venue_access_time ?? null,
+      input.venue_parking_info ?? null,
+      input.venue_loading_dock ?? null,
+      input.venue_vendor_entrance ?? null,
+      input.venue_guest_entrance ?? null,
+      input.venue_restrictions ?? null,
+      input.emergency_contact_name ?? null,
+      input.emergency_contact_phone ?? null,
     ],
   );
   const ev = row as EventRow;
@@ -301,7 +335,11 @@ const SCHEDULE_FIELDS = new Set([
   "name", "type", "date_time", "end_at", "load_in_at", "setup_at",
   "rehearsal_at", "vendor_call_at", "doors_at", "strike_at",
 ]);
-const VENUE_FIELDS = new Set(["venue_id", "venue_space", "venue_notes"]);
+const VENUE_FIELDS = new Set([
+  "venue_id", "venue_space", "venue_notes", "venue_access_time", "venue_parking_info",
+  "venue_loading_dock", "venue_vendor_entrance", "venue_guest_entrance", "venue_restrictions",
+  "emergency_contact_name", "emergency_contact_phone", "timezone",
+]);
 const ATTENDANCE_FIELDS = new Set([
   "guest_count", "attendance_estimated", "attendance_invited", "attendance_rsvp_yes",
   "attendance_confirmed", "attendance_guaranteed", "attendance_vip", "attendance_staff",
@@ -355,6 +393,15 @@ export async function updateEvent(
         attendance_staff = coalesce($26, attendance_staff),
         attendance_vendor_staff = coalesce($27, attendance_vendor_staff),
         final_count_due_at = coalesce($28, final_count_due_at),
+        timezone = coalesce($29, timezone),
+        venue_access_time = coalesce($30, venue_access_time),
+        venue_parking_info = coalesce($31, venue_parking_info),
+        venue_loading_dock = coalesce($32, venue_loading_dock),
+        venue_vendor_entrance = coalesce($33, venue_vendor_entrance),
+        venue_guest_entrance = coalesce($34, venue_guest_entrance),
+        venue_restrictions = coalesce($35, venue_restrictions),
+        emergency_contact_name = coalesce($36, emergency_contact_name),
+        emergency_contact_phone = coalesce($37, emergency_contact_phone),
         updated_at = now()
       where id = $1
       returning *`,
@@ -387,6 +434,15 @@ export async function updateEvent(
       patch.attendance_staff ?? null,
       patch.attendance_vendor_staff ?? null,
       patch.final_count_due_at ?? null,
+      patch.timezone ?? null,
+      patch.venue_access_time ?? null,
+      patch.venue_parking_info ?? null,
+      patch.venue_loading_dock ?? null,
+      patch.venue_vendor_entrance ?? null,
+      patch.venue_guest_entrance ?? null,
+      patch.venue_restrictions ?? null,
+      patch.emergency_contact_name ?? null,
+      patch.emergency_contact_phone ?? null,
     ],
   );
   const after = row as EventRow;

@@ -73,6 +73,8 @@ import finalCount from "./routes/finalCount.js";
 import vendorFinalQuantity from "./routes/vendorFinalQuantity.js";
 // Event Execution Packet foundation
 import executionPacket from "./routes/executionPacket.js";
+// Event Execution Readiness Engine
+import readiness from "./routes/readiness.js";
 // Visitor signals (fingerprint/IP logging) + landing personalization
 import signals from "./routes/signals.js";
 import personalize from "./routes/personalize.js";
@@ -242,6 +244,7 @@ router.use("/event-changes", eventChanges);
 router.use("/final-count", finalCount);
 router.use("/vendor-final-quantity", vendorFinalQuantity);
 router.use("/execution-packet", executionPacket);
+router.use("/readiness", readiness);
 router.use("/signals", signals);
 router.use("/personalize", personalize);
 router.use("/signatures", signatures);
