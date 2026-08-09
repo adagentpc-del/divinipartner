@@ -6,6 +6,8 @@
 import PDFDocument from "pdfkit";
 import type { InvoiceRow, InvoiceLineItem } from "../db/invoices.js";
 import { PRICING_V2, PLATFORM_FEE_RATE_V2 } from "../config.js";
+import type { PacketProjection } from "./packetProjection.js";
+import type { PacketDiffEntry } from "./packetDiff.js";
 
 const EMERALD = "#123c2e";
 const EMERALD2 = "#1E5D4A";
@@ -336,6 +338,262 @@ export async function renderSignedAgreementPdf(data: SignedAgreementPdfData): Pr
 
   doc.fillColor(MUT).font("Helvetica").fontSize(8).text(
     "Divini Partners by Divini Group. This signature was captured natively and is bound to the content hash above for tamper-evidence.",
+    48, 790, { width: 499, align: "center" },
+  );
+  doc.end();
+  return out;
+}
+
+// --- Final Event Schedule / Execution Packet PDF (completion phase, Part 12) ---
+
+/**
+ * Manually add a page when the next block would run past the bottom margin.
+ * pdfkit auto-paginates plain .text() calls, but not the rect/line-drawn
+ * bands used elsewhere in this file, so section headers and table rows
+ * check remaining space explicitly.
+ */
+function ensureSpace(doc: PDFKit.PDFDocument, needed: number): void {
+  if (doc.y + needed > 780) doc.addPage();
+}
+
+function sectionTitle(doc: PDFKit.PDFDocument, title: string): void {
+  ensureSpace(doc, 40);
+  doc.moveDown(0.8);
+  doc.rect(48, doc.y, 499, 20).fill(IVORY);
+  doc.fillColor(EMERALD).font("Helvetica-Bold").fontSize(10.5).text(title.toUpperCase(), 56, doc.y + 5);
+  doc.y += 20;
+  doc.moveDown(0.4);
+}
+
+function emptyNote(doc: PDFKit.PDFDocument, text: string): void {
+  doc.fillColor(MUT).font("Helvetica-Oblique").fontSize(9).text(text, 48, doc.y, { width: 499 });
+  doc.moveDown(0.3);
+}
+
+function fmtDate(v: string | null, timezone: string | null): string {
+  if (!v) return "TBD";
+  try {
+    return new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone || "UTC",
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(v));
+  } catch {
+    return new Date(v).toLocaleString();
+  }
+}
+
+export interface ExecutionPacketPdfData {
+  projection: PacketProjection;
+  version: number;
+  status: string;
+  /** WHAT CHANGED since the previous version. Omitted (not fabricated) when
+   *  this is the first version or the caller did not request a diff. */
+  changes?: PacketDiffEntry[];
+}
+
+/**
+ * Render the Final Event Schedule as a branded, versioned PDF -- a frozen
+ * snapshot of exactly what `projection` (already role-projected and
+ * backend-enforced, see lib/packetProjection.ts) contains. The caller is
+ * responsible for authorization and for choosing which projection to render
+ * (the actor's own real event role); this function never widens visibility,
+ * it only lays out whatever it is given. No sponsor-ops section is rendered
+ * because no structured sponsor data model exists yet (same honesty note as
+ * lib/packetDiff.ts) -- fabricating one would violate "do not put fabricated
+ * data in a document a recipient will treat as authoritative."
+ */
+export async function renderExecutionPacketPdf(data: ExecutionPacketPdfData): Promise<Buffer> {
+  const doc = new PDFDocument({ size: "A4", margin: 48 });
+  const out = toBuffer(doc);
+  const p = data.projection;
+  const tz = p.event.timezone;
+
+  header(doc, "", null, "Final Event Schedule");
+  metaRow(doc, [
+    ["Event", p.event.name],
+    ["Version", `v${data.version}${data.status === "final" ? " (final)" : ""}`],
+    ["Status", (data.status ?? "issued").replace(/_/g, " ")],
+    ["Generated", fmtDate(p.generated_at, tz)],
+  ]);
+
+  // --- Event Overview ---
+  sectionTitle(doc, "Event Overview");
+  const overviewPairs: [string, string][] = [
+    ["Date / time", fmtDate(p.event.date_time, tz)],
+    ["Load-in", fmtDate(p.event.load_in_at, tz)],
+    ["Setup", fmtDate(p.event.setup_at, tz)],
+    ["Vendor call", fmtDate(p.event.vendor_call_at, tz)],
+    ["Doors", fmtDate(p.event.doors_at, tz)],
+    ["Strike", fmtDate(p.event.strike_at, tz)],
+  ];
+  for (let i = 0; i < overviewPairs.length; i += 2) {
+    ensureSpace(doc, 16);
+    metaRow(doc, overviewPairs.slice(i, i + 2));
+  }
+  if (p.event.emergency_contact_name || p.event.emergency_contact_phone) {
+    doc.fillColor(MUT).font("Helvetica").fontSize(9).text(
+      `Emergency contact: ${p.event.emergency_contact_name ?? "-"}${p.event.emergency_contact_phone ? ` (${p.event.emergency_contact_phone})` : ""}`,
+      48, doc.y, { width: 499 },
+    );
+    doc.moveDown(0.3);
+  }
+
+  // --- Key Contacts ---
+  sectionTitle(doc, "Key Contacts");
+  if (p.key_contacts.length === 0) {
+    emptyNote(doc, "No contacts on record yet.");
+  } else {
+    for (const c of p.key_contacts) {
+      ensureSpace(doc, 16);
+      doc.fillColor(INK).font("Helvetica-Bold").fontSize(9.5).text(
+        `${c.name || "(name pending)"} - ${c.role.replace(/_/g, " ")}`,
+        48, doc.y, { width: 499 },
+      );
+      doc.fillColor(MUT).font("Helvetica").fontSize(8.5).text(
+        [c.organization_name, c.email, c.phone].filter(Boolean).join("  |  "),
+        48, doc.y, { width: 499 },
+      );
+      doc.moveDown(0.3);
+    }
+  }
+
+  // --- Venue Info ---
+  sectionTitle(doc, "Venue Info");
+  if (!p.venue.name) {
+    emptyNote(doc, "No venue selected yet.");
+  } else {
+    doc.fillColor(INK).font("Helvetica-Bold").fontSize(10).text(p.venue.name, 48, doc.y, { width: 499 });
+    const addr = [p.venue.address, p.venue.city, p.venue.region].filter(Boolean).join(", ");
+    if (addr) doc.fillColor(MUT).font("Helvetica").fontSize(9).text(addr, 48, doc.y, { width: 499 });
+    if (p.venue.space) doc.fillColor(MUT).font("Helvetica").fontSize(9).text(`Space: ${p.venue.space}`, 48, doc.y, { width: 499 });
+    doc.moveDown(0.3);
+  }
+
+  // --- Final Counts ---
+  sectionTitle(doc, "Final Counts");
+  if (!p.final_count) {
+    emptyNote(doc, "No final count has been set yet.");
+  } else {
+    doc.fillColor(INK).font("Helvetica-Bold").fontSize(11).text(
+      `${p.final_count.count} guests (v${p.final_count.version})`,
+      48, doc.y,
+    );
+    doc.moveDown(0.3);
+  }
+  if (p.my_final_quantity && p.my_final_quantity.length) {
+    for (const q of p.my_final_quantity) {
+      ensureSpace(doc, 14);
+      const status = q.discrepancy_status && q.discrepancy_status !== "not_applicable" ? ` [${q.discrepancy_status}]` : "";
+      doc.fillColor(MUT).font("Helvetica").fontSize(9).text(
+        `${q.scope}: ${q.quantity} ${q.unit}${status}`,
+        48, doc.y, { width: 499 },
+      );
+    }
+    doc.moveDown(0.3);
+  }
+
+  // --- Run of Show ---
+  sectionTitle(doc, "Run of Show");
+  if (p.schedule_items.length === 0) {
+    emptyNote(doc, "No schedule items yet.");
+  } else {
+    for (const item of p.schedule_items) {
+      ensureSpace(doc, 16);
+      const when = item.start_time
+        ? `${fmtDate(item.start_time, tz)}${item.end_time ? ` - ${fmtDate(item.end_time, tz)}` : ""}`
+        : "Time TBD";
+      doc.fillColor(EMERALD2).font("Helvetica-Bold").fontSize(9).text(when, 48, doc.y, { width: 150 });
+      doc.fillColor(INK).font("Helvetica").fontSize(9).text(item.title, 200, doc.y - 11, { width: 347 });
+      if (item.location) {
+        doc.fillColor(MUT).font("Helvetica").fontSize(8).text(item.location, 200, doc.y, { width: 347 });
+      }
+      doc.moveDown(0.35);
+    }
+  }
+
+  // --- Vendor Schedule ---
+  sectionTitle(doc, "Vendor Schedule");
+  if (!p.vendor_assignments || p.vendor_assignments.length === 0) {
+    emptyNote(doc, p.vendor_assignments === null ? "Vendor roster not shown for this view." : "No vendors attached yet.");
+  } else {
+    for (const v of p.vendor_assignments) {
+      ensureSpace(doc, 14);
+      doc.fillColor(INK).font("Helvetica").fontSize(9).text(
+        `${v.vendor_name}${v.role ? ` - ${v.role.replace(/_/g, " ")}` : ""}${v.status ? ` (${v.status})` : ""}`,
+        48, doc.y, { width: 499 },
+      );
+    }
+    doc.moveDown(0.3);
+  }
+
+  // --- Setup / Access ---
+  sectionTitle(doc, "Setup / Access");
+  const accessPairs: [string, string | null][] = [
+    ["Access time", fmtDate(p.venue.access_time, tz)],
+    ["Vendor entrance", p.venue.vendor_entrance],
+    ["Guest entrance", p.venue.guest_entrance],
+    ["Loading dock", p.venue.loading_dock],
+    ["Parking", p.venue.parking_info],
+  ];
+  const knownAccess = accessPairs.filter(([, v]) => v);
+  if (knownAccess.length === 0) {
+    emptyNote(doc, "No setup/access details recorded for this view.");
+  } else {
+    for (const [label, value] of knownAccess) {
+      ensureSpace(doc, 14);
+      doc.fillColor(MUT).font("Helvetica-Bold").fontSize(8.5).text(`${label}: `, 48, doc.y, { continued: true, width: 499 });
+      doc.fillColor(INK).font("Helvetica").fontSize(8.5).text(value as string);
+    }
+    doc.moveDown(0.3);
+  }
+
+  // --- Maps / Plans ---
+  sectionTitle(doc, "Maps / Plans");
+  if (p.floorplans.length === 0) {
+    emptyNote(doc, "No floorplans uploaded yet.");
+  } else {
+    for (const fp of p.floorplans) {
+      ensureSpace(doc, 14);
+      doc.fillColor(INK).font("Helvetica").fontSize(9).text(
+        `${fp.name || "Floorplan"}${fp.is_primary ? " (primary)" : ""}`,
+        48, doc.y, { width: 499 },
+      );
+    }
+    doc.moveDown(0.3);
+  }
+
+  // --- Special Instructions ---
+  sectionTitle(doc, "Special Instructions");
+  if (p.venue.restrictions || p.venue.notes) {
+    if (p.venue.restrictions) {
+      doc.fillColor(INK).font("Helvetica").fontSize(9).text(p.venue.restrictions, 48, doc.y, { width: 499 });
+      doc.moveDown(0.2);
+    }
+    if (p.venue.notes) {
+      doc.fillColor(INK).font("Helvetica").fontSize(9).text(p.venue.notes, 48, doc.y, { width: 499 });
+    }
+    doc.moveDown(0.3);
+  } else {
+    emptyNote(doc, "No special instructions on record for this view.");
+  }
+
+  // --- Change Summary (WHAT CHANGED since the previous version) ---
+  if (data.changes) {
+    sectionTitle(doc, "Change Summary");
+    if (data.changes.length === 0) {
+      emptyNote(doc, "No changes since the previous version.");
+    } else {
+      for (const c of data.changes) {
+        ensureSpace(doc, 14);
+        doc.fillColor(EMERALD).font("Helvetica-Bold").fontSize(8.5).text(`${c.label}: `, 48, doc.y, { continued: true, width: 499 });
+        doc.fillColor(INK).font("Helvetica").fontSize(8.5).text(`${c.old_value} -> ${c.new_value}`);
+      }
+    }
+  }
+
+  doc.fillColor(MUT).font("Helvetica").fontSize(8).text(
+    "Divini Partners by Divini Group. This is a frozen snapshot of the Final Event Schedule at the version noted above; the live app view is always authoritative for anything after this version.",
     48, 790, { width: 499, align: "center" },
   );
   doc.end();

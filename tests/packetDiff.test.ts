@@ -26,6 +26,9 @@ function baseSnapshot(overrides: Partial<ExecutionPacketSnapshot> = {}): Executi
       vendor_call_at: "2026-11-05T14:00:00Z",
       doors_at: null,
       strike_at: null,
+      timezone: "America/New_York",
+      emergency_contact_name: null,
+      emergency_contact_phone: null,
     },
     venue: {
       id: "venue-1",
@@ -35,6 +38,12 @@ function baseSnapshot(overrides: Partial<ExecutionPacketSnapshot> = {}): Executi
       region: "NY",
       space: "Ballroom B",
       notes: "Loading dock code 4471",
+      access_time: null,
+      parking_info: null,
+      loading_dock: null,
+      vendor_entrance: null,
+      guest_entrance: null,
+      restrictions: null,
     },
     schedule: {
       event: { id: "event-1", name: "Test Gala", date_time: null, guest_count: null },

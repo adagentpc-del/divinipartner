@@ -9,6 +9,7 @@ import * as db from "../db.js";
 import * as packet from "../db/executionPacket.js";
 import { canManageEvent } from "../db/events.js";
 import { ForbiddenError } from "../db.js";
+import { renderExecutionPacketPdf } from "../lib/pdf.js";
 
 const h =
   (fn: (req: Request, res: Response) => Promise<unknown>) =>
@@ -124,6 +125,35 @@ router.get(
     const a = await actor(req);
     const since = typeof req.query.since === "string" ? Number(req.query.since) : undefined;
     res.json(await packet.diffPacketVersion(a, req.params.id, Number.isFinite(since) ? since : undefined));
+  }),
+);
+
+/**
+ * Branded, versioned PDF of a packet version, projected for the caller's
+ * own event role (Part 12). Generated on the fly and streamed inline --
+ * never persisted to storage, so there is no permanent public URL: every
+ * download re-runs the same authenticated authorization check
+ * (getProjectedPacketVersion) that the JSON packet routes use, and the PDF
+ * can never show more than that same projection would.
+ */
+router.get(
+  "/:id/pdf",
+  h(async (req, res) => {
+    const a = await actor(req);
+    const projected = await packet.getProjectedPacketVersion(a, req.params.id);
+    const diff = await packet.diffPacketVersion(a, req.params.id).catch(() => null);
+    const pdf = await renderExecutionPacketPdf({
+      projection: projected,
+      version: projected.version,
+      status: projected.status,
+      changes: diff?.changes,
+    });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="final-event-schedule-v${projected.version}.pdf"`,
+    );
+    res.send(pdf);
   }),
 );
 

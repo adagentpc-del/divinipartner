@@ -10,7 +10,8 @@
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { projectPacket, audienceForRole } from "../server/src/lib/packetProjection.ts";
+import { projectPacket, audienceForRole, scopeSnapshotForDiff } from "../server/src/lib/packetProjection.ts";
+import { diffPacketSnapshots } from "../server/src/lib/packetDiff.ts";
 import type { ExecutionPacketSnapshot } from "../server/src/db/executionPacket.ts";
 
 function fixtureSnapshot(): ExecutionPacketSnapshot {
@@ -27,6 +28,9 @@ function fixtureSnapshot(): ExecutionPacketSnapshot {
       vendor_call_at: null,
       doors_at: null,
       strike_at: null,
+      timezone: "America/New_York",
+      emergency_contact_name: "Jamie Rivera",
+      emergency_contact_phone: "555-0100",
     },
     venue: {
       id: "venue-1",
@@ -36,6 +40,12 @@ function fixtureSnapshot(): ExecutionPacketSnapshot {
       region: "NY",
       space: "Main Ballroom",
       notes: "Loading dock code 4471 -- sensitive logistics detail",
+      access_time: "2026-11-05T14:00:00Z",
+      parking_info: "Valet at the west entrance",
+      loading_dock: "Rear alley, dock B",
+      vendor_entrance: "Service door 2",
+      guest_entrance: "Main lobby",
+      restrictions: "No open flame",
     },
     schedule: {
       event: { id: "event-1", name: "Test Gala", date_time: null, guest_count: null },
@@ -161,6 +171,23 @@ test("sponsor gets no vendor roster, no vendor quantities, and no venue logistic
   assert.equal(p.venue.notes, null);
   // Sponsor still sees basic venue identity (name/address) for logistics.
   assert.equal(p.venue.name, "Grand Hall");
+  // Setup/access logistics (loading dock, vendor entrance, restrictions)
+  // withheld from the minimal sponsor projection -- same audience gate as notes.
+  assert.equal(p.venue.loading_dock, null);
+  assert.equal(p.venue.vendor_entrance, null);
+  assert.equal(p.venue.restrictions, null);
+});
+
+test("vendor and venue see full setup/access logistics, needed for day-of coordination", () => {
+  const snapshot = fixtureSnapshot();
+  const vendor = projectPacket(snapshot, "vendor_owner", "org-caterer");
+  assert.equal(vendor.venue.loading_dock, "Rear alley, dock B");
+  assert.equal(vendor.venue.vendor_entrance, "Service door 2");
+  assert.equal(vendor.venue.restrictions, "No open flame");
+
+  const venue = projectPacket(snapshot, "venue", "org-grandhall");
+  assert.equal(venue.venue.parking_info, "Valet at the west entrance");
+  assert.equal(venue.venue.guest_entrance, "Main lobby");
 });
 
 test("event_staff (and the finance/guest_manager/read_only fallback) gets the same minimal projection as sponsor", () => {
@@ -181,6 +208,71 @@ test("key_contacts is always narrowed to event_owner/planner (+ venue for the ve
 
   const venue = projectPacket(snapshot, "venue", "org-grandhall");
   assert.equal(venue.key_contacts.some((c) => c.role === "venue"), true);
+});
+
+// --- scopeSnapshotForDiff: the WHAT CHANGED diff must never leak more than
+// the recipient's own projection would show (a real gap found while wiring
+// the diff into the packet PDF's Change Summary section -- the raw,
+// unprojected diffPacketVersion() would otherwise expose another vendor's
+// quantity change, the full roster, and the full contact list). ---
+
+test("scopeSnapshotForDiff: a vendor's diff never reveals another vendor's quantity change", () => {
+  const before = fixtureSnapshot();
+  const after: ExecutionPacketSnapshot = {
+    ...before,
+    vendor_final_quantities: [
+      { organization_id: "org-caterer", vendor_name: "Caterer Co", scope: "catering", version: 1, quantity: "488", unit: "meals", discrepancy: "13", discrepancy_status: "over" },
+      { organization_id: "org-av", vendor_name: "AV Co", scope: "av", version: 2, quantity: "480", unit: "seats", discrepancy: "5", discrepancy_status: "over" },
+    ],
+  };
+  // Vendor B (AV Co) changed their own quantity -- Vendor A (Caterer) must not see it.
+  const scopedBefore = scopeSnapshotForDiff(before, "vendor_owner", "org-caterer");
+  const scopedAfter = scopeSnapshotForDiff(after, "vendor_owner", "org-caterer");
+  const diff = diffPacketSnapshots(scopedBefore, scopedAfter);
+  assert.equal(diff.some((d) => d.label.includes("AV CO")), false);
+
+  // AV Co's own projection DOES see their own change.
+  const avBefore = scopeSnapshotForDiff(before, "vendor_owner", "org-av");
+  const avAfter = scopeSnapshotForDiff(after, "vendor_owner", "org-av");
+  const avDiff = diffPacketSnapshots(avBefore, avAfter);
+  assert.equal(avDiff.some((d) => d.label.includes("AV CO")), true);
+});
+
+test("scopeSnapshotForDiff: sponsor's diff never reveals vendor roster adds/removes or venue notes changes", () => {
+  const before = fixtureSnapshot();
+  const after: ExecutionPacketSnapshot = {
+    ...before,
+    vendor_assignments: [
+      ...before.vendor_assignments,
+      { organization_id: "org-new-vendor", vendor_name: "New Vendor Co", role: "vendor_owner", status: "active" },
+    ],
+    venue: { ...before.venue, notes: "Updated sensitive loading dock code 9911" },
+  };
+  const scopedBefore = scopeSnapshotForDiff(before, "sponsor", null);
+  const scopedAfter = scopeSnapshotForDiff(after, "sponsor", null);
+  const diff = diffPacketSnapshots(scopedBefore, scopedAfter);
+  assert.equal(diff.some((d) => d.category === "vendor"), false);
+  assert.equal(diff.some((d) => d.category === "logistics"), false);
+
+  // The same underlying change IS visible to the owner/planner's own diff.
+  const ownerDiff = diffPacketSnapshots(before, after);
+  assert.equal(ownerDiff.some((d) => d.category === "vendor"), true);
+  assert.equal(ownerDiff.some((d) => d.category === "logistics"), true);
+});
+
+test("scopeSnapshotForDiff: a vendor's diff never reveals another vendor's contact being added or removed", () => {
+  const before = fixtureSnapshot();
+  const after: ExecutionPacketSnapshot = {
+    ...before,
+    key_contacts: [
+      ...before.key_contacts,
+      { user_id: "u-new-vendor", name: "New Vendor Person", email: "new@vendor.local", phone: null, role: "vendor_owner", organization_name: "New Vendor Co" },
+    ],
+  };
+  const scopedBefore = scopeSnapshotForDiff(before, "vendor_owner", "org-caterer");
+  const scopedAfter = scopeSnapshotForDiff(after, "vendor_owner", "org-caterer");
+  const diff = diffPacketSnapshots(scopedBefore, scopedAfter);
+  assert.equal(diff.some((d) => d.category === "contact"), false);
 });
 
 test("schedule_items is filtered per audience using the itinerary system's own by_role views", () => {

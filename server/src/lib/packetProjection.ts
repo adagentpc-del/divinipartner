@@ -80,6 +80,15 @@ export type PacketProjection = {
     /** Freeform venue_notes may carry sensitive logistics -- withheld from
      *  sponsor/event_staff, who have no operational need for it. */
     notes: string | null;
+    /** Setup/access logistics -- same audience gate as notes: an
+     *  operational necessity for full/venue/vendor, not for sponsor or the
+     *  minimal event_staff view. */
+    access_time: string | null;
+    parking_info: string | null;
+    loading_dock: string | null;
+    vendor_entrance: string | null;
+    guest_entrance: string | null;
+    restrictions: string | null;
   };
   schedule_items: ExecutionPacketSnapshot["schedule"]["items"];
   floorplans: FloorplanRef[];
@@ -114,6 +123,7 @@ export function projectPacket(
   if (audience === "venue") visibleContactRoles.add("venue");
   const key_contacts = snapshot.key_contacts.filter((c) => visibleContactRoles.has(c.role));
 
+  const minimalAudience = audience === "sponsor" || audience === "event_staff";
   const venue = {
     id: snapshot.venue.id,
     name: snapshot.venue.name,
@@ -121,7 +131,13 @@ export function projectPacket(
     city: snapshot.venue.city,
     region: snapshot.venue.region,
     space: snapshot.venue.space,
-    notes: audience === "sponsor" || audience === "event_staff" ? null : snapshot.venue.notes,
+    notes: minimalAudience ? null : snapshot.venue.notes,
+    access_time: minimalAudience ? null : snapshot.venue.access_time,
+    parking_info: minimalAudience ? null : snapshot.venue.parking_info,
+    loading_dock: minimalAudience ? null : snapshot.venue.loading_dock,
+    vendor_entrance: minimalAudience ? null : snapshot.venue.vendor_entrance,
+    guest_entrance: minimalAudience ? null : snapshot.venue.guest_entrance,
+    restrictions: minimalAudience ? null : snapshot.venue.restrictions,
   };
 
   if (audience === "full") {
@@ -187,6 +203,51 @@ export function projectPacket(
     final_count: snapshot.final_count,
     my_final_quantity: null,
     key_contacts,
+    generated_at: snapshot.generated_at,
+  };
+}
+
+/**
+ * Reshape a full snapshot back into an ExecutionPacketSnapshot-shaped
+ * object narrowed to what `role`/`ownOrgId` may see, by delegating entirely
+ * to projectPacket()'s existing audience decisions rather than duplicating
+ * them. Exists so diffPacketSnapshots (lib/packetDiff.ts) can be fed two
+ * SCOPED snapshots instead of two raw ones -- otherwise a WHAT CHANGED diff
+ * would leak other vendors' quantity changes, the full vendor roster, and
+ * the full contact list to any event member who can call the diff
+ * endpoint, defeating the same isolation projectPacket enforces everywhere
+ * else (a real gap found while wiring the diff into the Execution Packet
+ * PDF's Change Summary section).
+ */
+export function scopeSnapshotForDiff(
+  snapshot: ExecutionPacketSnapshot,
+  role: EventRole,
+  ownOrgId: string | null,
+): ExecutionPacketSnapshot {
+  const projection = projectPacket(snapshot, role, ownOrgId);
+  return {
+    event: snapshot.event,
+    venue: {
+      id: projection.venue.id,
+      name: projection.venue.name,
+      address: projection.venue.address,
+      city: projection.venue.city,
+      region: projection.venue.region,
+      space: projection.venue.space,
+      notes: projection.venue.notes,
+      access_time: projection.venue.access_time,
+      parking_info: projection.venue.parking_info,
+      loading_dock: projection.venue.loading_dock,
+      vendor_entrance: projection.venue.vendor_entrance,
+      guest_entrance: projection.venue.guest_entrance,
+      restrictions: projection.venue.restrictions,
+    },
+    schedule: snapshot.schedule,
+    floorplans: projection.floorplans,
+    vendor_assignments: projection.vendor_assignments ?? [],
+    final_count: projection.final_count,
+    vendor_final_quantities: projection.my_final_quantity ?? [],
+    key_contacts: projection.key_contacts,
     generated_at: snapshot.generated_at,
   };
 }

@@ -63,6 +63,9 @@ export type ExecutionPacketSnapshot = {
     vendor_call_at: string | null;
     doors_at: string | null;
     strike_at: string | null;
+    timezone: string | null;
+    emergency_contact_name: string | null;
+    emergency_contact_phone: string | null;
   };
   venue: {
     id: string | null;
@@ -72,6 +75,12 @@ export type ExecutionPacketSnapshot = {
     region: string | null;
     space: string | null;
     notes: string | null;
+    access_time: string | null;
+    parking_info: string | null;
+    loading_dock: string | null;
+    vendor_entrance: string | null;
+    guest_entrance: string | null;
+    restrictions: string | null;
   };
   schedule: BuiltItinerary;
   floorplans: FloorplanRef[];
@@ -188,6 +197,9 @@ export async function buildExecutionPacket(
       vendor_call_at: ev.vendor_call_at,
       doors_at: ev.doors_at,
       strike_at: ev.strike_at,
+      timezone: ev.timezone,
+      emergency_contact_name: ev.emergency_contact_name,
+      emergency_contact_phone: ev.emergency_contact_phone,
     },
     venue: {
       id: venue?.id ?? null,
@@ -197,6 +209,12 @@ export async function buildExecutionPacket(
       region: venue?.region ?? null,
       space: ev.venue_space,
       notes: ev.venue_notes,
+      access_time: ev.venue_access_time,
+      parking_info: ev.venue_parking_info,
+      loading_dock: ev.venue_loading_dock,
+      vendor_entrance: ev.venue_vendor_entrance,
+      guest_entrance: ev.venue_guest_entrance,
+      restrictions: ev.venue_restrictions,
     },
     schedule,
     floorplans,
@@ -219,7 +237,7 @@ export {
   type PacketAudience,
   type PacketProjection,
 } from "../lib/packetProjection.js";
-import { projectPacket, type PacketProjection } from "../lib/packetProjection.js";
+import { projectPacket, scopeSnapshotForDiff, type PacketProjection } from "../lib/packetProjection.js";
 // WHAT CHANGED diff (Part 6): pure narrowing logic lives in lib/packetDiff.ts.
 export { diffPacketSnapshots, type PacketDiffEntry, type PacketDiffCategory } from "../lib/packetDiff.js";
 import { diffPacketSnapshots, type PacketDiffEntry } from "../lib/packetDiff.js";
@@ -342,6 +360,13 @@ export async function getPacketVersion(actor: Actor, packetId: string): Promise<
  * versions must belong to the SAME event -- sinceVersion is a version
  * number scoped to this packet's own event, never a cross-event id, so
  * there is no way to diff against another event's data.
+ *
+ * Both snapshots are scoped to the actor's OWN real event role before
+ * diffing (scopeSnapshotForDiff, delegating to the same projectPacket used
+ * everywhere else) -- diffing the raw, unprojected snapshots would leak
+ * other vendors' quantity changes, the full vendor roster, and the full
+ * contact list to any event member who can call this endpoint, defeating
+ * the isolation Part 4 enforces on every other packet route.
  */
 export async function diffPacketVersion(
   actor: Actor,
@@ -349,6 +374,8 @@ export async function diffPacketVersion(
   sinceVersion?: number,
 ): Promise<{ from_version: number | null; to_version: number; changes: PacketDiffEntry[] }> {
   const to = await getPacketVersion(actor, packetId);
+  const role = (await getEventRole(actor, to.event_id)) ?? "read_only";
+  const ownOrgId = actor.org?.id ?? null;
   const fromVersionNumber = sinceVersion ?? to.version - 1;
   if (fromVersionNumber < 1) {
     return { from_version: null, to_version: to.version, changes: [] };
@@ -363,7 +390,10 @@ export async function diffPacketVersion(
   return {
     from_version: from.version,
     to_version: to.version,
-    changes: diffPacketSnapshots(from.snapshot, to.snapshot),
+    changes: diffPacketSnapshots(
+      scopeSnapshotForDiff(from.snapshot, role, ownOrgId),
+      scopeSnapshotForDiff(to.snapshot, role, ownOrgId),
+    ),
   };
 }
 
