@@ -567,6 +567,15 @@ export async function setEventStatus(
       },
     ).catch(() => undefined);
   }
+  if (before.status !== after.status) {
+    const { recordActivity } = await import("./eventActivity.js");
+    await recordActivity(actor, id, {
+      category: "status",
+      message: `Event status changed: ${before.status ?? "unknown"} -> ${after.status ?? "unknown"}`,
+      relatedEntityType: "event",
+      relatedEntityId: id,
+    });
+  }
   return after;
 }
 

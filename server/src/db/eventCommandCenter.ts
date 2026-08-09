@@ -37,6 +37,7 @@ import { getEventRole } from "./eventMembers.js";
 import { buildItinerary, getVendorArrivalSchedule, type DerivedItem } from "./itinerary.js";
 import { audienceForRole, type PacketAudience, type VendorScheduleRow } from "../lib/packetProjection.js";
 import { vendorArrivalsSummary, type VendorArrivalSummaryRow } from "./checkIns.js";
+import { listActivity } from "./eventActivity.js";
 
 export type CommandCenterScheduleItem = {
   title: string;
@@ -66,7 +67,7 @@ export type CommandCenterProjection = {
   sponsors: null;
   /** Awaiting Part 17-20 (event inventory model). */
   inventory: null;
-  timeline: Array<{ at: string; label: string; kind: "change" }>;
+  timeline: Array<{ at: string; label: string; kind: string }>;
   generated_at: string;
 };
 
@@ -187,14 +188,11 @@ export async function getCommandCenter(actor: Actor, eventId: string): Promise<C
     };
   }
 
-  // Changes + timeline: owner/planner only -- event_changes rows can carry
+  // Changes: owner/planner only -- event_changes rows can carry
   // financial_impact and cross-scope field detail (budget, vendor terms)
   // that the packet system already treats as owner/planner-sensitive
-  // everywhere else. Part 11 will replace/extend this with the real
-  // per-role event_activity feed (visibility_scope-aware); until then this
-  // is the honest subset of what already exists.
+  // everywhere else.
   let changes: CommandCenterProjection["changes"] = null;
-  let timeline: CommandCenterProjection["timeline"] = [];
   if (audience === "full") {
     const row = await q1<{ today_count: string; impact: string | null }>(
       `select count(*) as today_count, sum(financial_impact) filter (where financial_impact is not null) as impact
@@ -205,17 +203,20 @@ export async function getCommandCenter(actor: Actor, eventId: string): Promise<C
       today_count: Number(row?.today_count ?? 0),
       today_financial_impact: row?.impact != null ? Number(row.impact) : null,
     };
-    const recent = await q<{ field: string; category: string; created_at: string }>(
-      `select field, category, created_at from event_changes where event_id = $1
-        order by created_at desc limit 20`,
-      [eventId],
-    );
-    timeline = recent.map((r) => ({
-      at: r.created_at,
-      label: `${r.category.replace(/_/g, " ")}: ${r.field.replace(/_/g, " ")} changed`,
-      kind: "change" as const,
-    }));
   }
+
+  // Timeline (Part 11-12): the real, authoritative event_activity feed --
+  // listActivity already applies the per-category visibility projection
+  // (lib/activityVisibility.ts), so this is never a full-audience-only
+  // view like the old event_changes-derived version was; a vendor sees
+  // their own check-ins and broadly-visible activity, never another
+  // vendor's or a finance/incident-restricted row.
+  const activity = await listActivity(actor, eventId, 20);
+  const timeline: CommandCenterProjection["timeline"] = activity.map((a) => ({
+    at: a.created_at,
+    label: a.message,
+    kind: a.category,
+  }));
 
   return {
     audience,

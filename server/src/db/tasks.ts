@@ -10,6 +10,7 @@
 import { q, q1, pool } from "../pool.js";
 import { NotFoundError, ForbiddenError, type Actor } from "../db.js";
 import { getEvent } from "./events.js";
+import { recordActivity } from "./eventActivity.js";
 
 async function canSee(actor: Actor, eventId: string): Promise<void> {
   await getEvent(actor, eventId);
@@ -232,6 +233,7 @@ export async function setTaskStatus(actor: Actor, taskId: string, status: string
   const eventId = await loadTaskEvent(taskId);
   await requireOwner(actor, eventId);
   if (!STATUS_KEYS.has(status)) throw new ForbiddenError("invalid task status");
+  const before = await q1<{ status: string | null }>(`select status from tasks where id = $1`, [taskId]);
   const row = await q1<TaskRow>(
     `update tasks set status = $2,
         completed_at = case when $2 = 'done' then now() else null end,
@@ -239,7 +241,16 @@ export async function setTaskStatus(actor: Actor, taskId: string, status: string
       where id = $1 returning *`,
     [taskId, status],
   );
-  return row as TaskRow;
+  const after = row as TaskRow;
+  if (status === "done" && before?.status !== "done") {
+    await recordActivity(actor, eventId, {
+      category: "task",
+      message: `Task completed: ${after.name ?? "Untitled task"}`,
+      relatedEntityType: "task",
+      relatedEntityId: after.id,
+    });
+  }
+  return after;
 }
 
 export async function deleteTask(actor: Actor, taskId: string): Promise<void> {

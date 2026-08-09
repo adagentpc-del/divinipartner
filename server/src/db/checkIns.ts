@@ -30,6 +30,7 @@ import { getVendorArrivalSchedule } from "./itinerary.js";
 import { audienceForRole } from "../lib/packetProjection.js";
 import { deriveArrivalStatus, type ArrivalStatus } from "../lib/arrivalStatus.js";
 import type { EventRole } from "../lib/eventRoles.js";
+import { recordActivity } from "./eventActivity.js";
 
 export type CheckInRow = {
   id: string;
@@ -102,7 +103,17 @@ export async function checkIn(actor: Actor, eventId: string, opts: CheckInInput 
       actor.user.id,
     ],
   );
-  if (inserted) return inserted;
+  if (inserted) {
+    await recordActivity(actor, eventId, {
+      category: "check_in",
+      message: `${member.role.replace(/_/g, " ")} checked in`,
+      relatedEntityType: "event_check_in",
+      relatedEntityId: inserted.id,
+      actorId: targetUserId,
+      actorOrgId: member.organization_id,
+    });
+    return inserted;
+  }
 
   // Lost the race to a concurrent check-in (or this is a plain re-tap while
   // already checked in): return the open row rather than erroring.
@@ -129,6 +140,14 @@ export async function checkOut(actor: Actor, eventId: string, opts: { userId?: s
     [eventId, targetUserId, actor.user.id],
   );
   if (!row) throw new NotFoundError("no open check-in found for this user");
+  await recordActivity(actor, eventId, {
+    category: "check_in",
+    message: `${member.role.replace(/_/g, " ")} checked out`,
+    relatedEntityType: "event_check_in",
+    relatedEntityId: row.id,
+    actorId: targetUserId,
+    actorOrgId: member.organization_id,
+  });
   return row;
 }
 
