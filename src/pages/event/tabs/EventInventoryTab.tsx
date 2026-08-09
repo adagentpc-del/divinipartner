@@ -364,7 +364,7 @@ const INV_CSS = `
 .ew-inv-locs li { background: #F7F4EE; border-radius: 999px; padding: 2px 10px; }
 .ew-inv-counts { background: #fff; border: 1px solid #e7e1d6; border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; display: flex; flex-direction: column; gap: 8px; }
 .ew-inv-counts h3 { margin: 0 0 4px; font-family: 'Cormorant Garamond', Georgia, serif; font-size: 17px; color: #123c2e; }
-.ew-inv-countrow { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: #2c2a26; padding: 6px 0; border-top: 1px solid #f0ece2; }
+.ew-inv-countrow { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 12.5px; color: #2c2a26; padding: 6px 0; border-top: 1px solid #f0ece2; }
 .ew-inv-countrow:first-of-type { border-top: none; }
 .ew-inv-countstatus { font-size: 10.5px; text-transform: uppercase; letter-spacing: .4px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: rgba(155,44,44,.1); color: #9b2c2c; white-space: nowrap; }
 .ew-inv-countrow[data-status="resolved"] .ew-inv-countstatus { background: rgba(18,60,46,.1); color: #123c2e; }

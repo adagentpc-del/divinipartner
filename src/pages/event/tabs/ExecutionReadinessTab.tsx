@@ -310,7 +310,7 @@ export default function ExecutionReadinessTab({ eventId, onNavigateTab }: { even
 const RDY_CSS = `
 .ew-rdy { display: flex; flex-direction: column; gap: 18px; }
 .ew-rdy-hero {
-  display: flex; align-items: baseline; gap: 16px; padding: 18px 20px; border: 1.5px solid; border-radius: 14px;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 16px; padding: 18px 20px; border: 1.5px solid; border-radius: 14px;
   background: rgba(247,244,238,.5);
 }
 .ew-rdy-pct { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 40px; font-weight: 600; line-height: 1; }

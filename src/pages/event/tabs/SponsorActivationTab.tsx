@@ -151,10 +151,10 @@ const SPACT_CSS = `
 .ew-spact-input { font: inherit; font-size: 13.5px; padding: 8px 10px; border: 1px solid #e7e1d6; border-radius: 8px; }
 .ew-spact-group { margin-bottom: 18px; }
 .ew-spact-grouphead { font-size: 15px; color: #123c2e; margin-bottom: 8px; }
-.ew-spact-row { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border: 1px solid #f0ebe0; border-radius: 10px; margin-bottom: 6px; background: #fff; }
+.ew-spact-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 9px 10px; border: 1px solid #f0ebe0; border-radius: 10px; margin-bottom: 6px; background: #fff; }
 .ew-spact-status { font-size: 10.5px; text-transform: uppercase; letter-spacing: .4px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: rgba(154,142,94,.15); color: #9a8a5e; white-space: nowrap; }
 .ew-spact-row[data-status="complete"] .ew-spact-status { background: rgba(18,60,46,.1); color: #123c2e; }
 .ew-spact-row[data-status="issue"] .ew-spact-status { background: rgba(155,44,44,.1); color: #9b2c2c; }
-.ew-spact-label { flex: 1 1 auto; font-size: 13px; color: #2c2a26; }
+.ew-spact-label { flex: 1 1 160px; min-width: 160px; font-size: 13px; color: #2c2a26; }
 .ew-spact-acts { display: flex; gap: 6px; }
 `;

@@ -213,7 +213,7 @@ export default function ReconciliationTab({ eventId }: { eventId: string }) {
 
 const REC_CSS = `
 .ew-rec { display: flex; flex-direction: column; gap: 18px; }
-.ew-rec-hero { display: flex; align-items: baseline; gap: 16px; padding: 18px 20px; border: 1.5px solid; border-radius: 14px; background: rgba(247,244,238,.5); }
+.ew-rec-hero { display: flex; flex-wrap: wrap; align-items: baseline; gap: 16px; padding: 18px 20px; border: 1.5px solid; border-radius: 14px; background: rgba(247,244,238,.5); }
 .ew-rec-state { font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
 .ew-rec-heroacts { margin-left: auto; align-self: center; display: flex; align-items: center; gap: 10px; }
 .ew-rec-settleok { margin: 0; padding: 10px 14px; border-radius: 10px; background: rgba(30,93,74,.08); color: #1E5D4A; font-size: 13px; font-weight: 600; }

@@ -235,26 +235,42 @@ export async function markEventSettled(
     overrode = true;
   }
 
-  const row = await q1<EventSettlementRow>(
-    `insert into event_settlements
-       (event_id, settled_by, invoiced_total, paid_total, outstanding_total,
-        platform_fees_total, processing_fees_total, net_payable_total, state, overrode_blocking, notes)
-     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-     returning *`,
-    [
-      eventId,
-      actor.user.id,
-      report.totals.invoiced_total,
-      report.totals.paid_total,
-      report.totals.outstanding_total,
-      report.totals.platform_fees_total,
-      report.totals.processing_fees_total,
-      report.totals.net_payable_total,
-      report.state,
-      overrode,
-      input.notes ?? null,
-    ],
-  );
+  // The existence check above is a TOCTOU race under real concurrency --
+  // two simultaneous settle requests can both pass it before either
+  // commits its insert. The unique constraint on event_settlements.event_id
+  // is the actual source of truth that prevents a duplicate row (verified
+  // live: concurrent settle attempts always leave exactly one row), but
+  // without this catch the loser saw a raw, unhandled 23505 as a 500
+  // instead of the same clean "already settled" message the pre-check
+  // gives a caller who loses a slower race.
+  let row: EventSettlementRow | null;
+  try {
+    row = await q1<EventSettlementRow>(
+      `insert into event_settlements
+         (event_id, settled_by, invoiced_total, paid_total, outstanding_total,
+          platform_fees_total, processing_fees_total, net_payable_total, state, overrode_blocking, notes)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+       returning *`,
+      [
+        eventId,
+        actor.user.id,
+        report.totals.invoiced_total,
+        report.totals.paid_total,
+        report.totals.outstanding_total,
+        report.totals.platform_fees_total,
+        report.totals.processing_fees_total,
+        report.totals.net_payable_total,
+        report.state,
+        overrode,
+        input.notes ?? null,
+      ],
+    );
+  } catch (e) {
+    if ((e as { code?: string })?.code === "23505") {
+      throw new ForbiddenError("this event has already been settled");
+    }
+    throw e;
+  }
   const settlement = row as EventSettlementRow;
 
   await recordActivity(actor, eventId, {

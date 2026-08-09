@@ -17,6 +17,7 @@ import {
   type TrustInputs,
 } from "../lib/trust.js";
 import { refreshAfterReview } from "../lib/score-refresh.js";
+import { getEvent } from "./events.js";
 
 // ---- Relationship + criteria model (blueprint 27.1 / 27.2) -----------------
 export type ReviewRelationship =
@@ -149,10 +150,28 @@ export type CreateReviewInput = {
 /**
  * Create (submit) a review. The reviewer is the acting user/org. A rating is
  * derived from the criteria map when not supplied explicitly.
+ *
+ * Found via live adversarial testing of the live-ops phase's event-scoped
+ * review flow (Part 34, 2026-08-09): this function accepted any caller-
+ * supplied event_id with no check that the actor actually had any real
+ * access to that event -- an unaffiliated stranger with zero relationship
+ * to an event could submit a review claiming to be about it (rating,
+ * body, and an arbitrary reviewee_org_id all attacker-controlled, no
+ * verification the reviewee even participated in that event either). The
+ * relationship model narrows WHO the review is between, but never
+ * verified WHETHER the claimed event actually connects them. When
+ * event_id is provided, getEvent()'s IDOR gate (the same one every other
+ * event-scoped read/write in this codebase already goes through) now
+ * requires the actor to have real access to that event before the review
+ * can be created; a caller with no relationship to the event never
+ * reaches the insert.
  */
 export async function createReview(actor: Actor, input: CreateReviewInput): Promise<ReviewRow> {
   if (!isReviewRelationship(input.relationship)) {
     throw new ForbiddenError("invalid review relationship");
+  }
+  if (input.event_id) {
+    await getEvent(actor, input.event_id);
   }
   const targetType = targetTypeForRelationship(input.relationship);
   const rating = input.rating ?? ratingFromCriteria(input.criteria) ?? null;

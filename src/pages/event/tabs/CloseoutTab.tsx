@@ -224,7 +224,7 @@ export default function CloseoutTab({ eventId }: { eventId: string }) {
 
 const CLO_CSS = `
 .ew-clo { display: flex; flex-direction: column; gap: 18px; }
-.ew-clo-hero { display: flex; align-items: baseline; gap: 16px; padding: 18px 20px; border: 1.5px solid; border-radius: 14px; background: rgba(247,244,238,.5); }
+.ew-clo-hero { display: flex; flex-wrap: wrap; align-items: baseline; gap: 16px; padding: 18px 20px; border: 1.5px solid; border-radius: 14px; background: rgba(247,244,238,.5); }
 .ew-clo-state { font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
 .ew-clo-heroacts { margin-left: auto; align-self: center; display: flex; align-items: center; gap: 10px; }
 .ew-clo-notlive { font-size: 12px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #6b6459; }
