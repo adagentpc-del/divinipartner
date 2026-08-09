@@ -27,11 +27,27 @@ router.post(
   "/event/:eventId",
   h(async (req, res) => {
     const a = await actor(req);
-    const { scope, quantity, unit, notes } = req.body ?? {};
+    const {
+      scope,
+      quantity,
+      unit,
+      notes,
+      comparison_type,
+      comparison_ratio,
+      custom_expected_quantity,
+    } = req.body ?? {};
     if (typeof quantity !== "number") return res.status(400).json({ error: "quantity required" });
-    res
-      .status(201)
-      .json({ quantity: await vfq.submitVendorFinalQuantity(a, req.params.eventId, { scope, quantity, unit, notes }) });
+    res.status(201).json({
+      quantity: await vfq.submitVendorFinalQuantity(a, req.params.eventId, {
+        scope,
+        quantity,
+        unit,
+        notes,
+        comparison_type,
+        comparison_ratio,
+        custom_expected_quantity,
+      }),
+    });
   }),
 );
 

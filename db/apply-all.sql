@@ -5910,3 +5910,19 @@ create table if not exists event_execution_packet_acknowledgments (
 );
 create index if not exists idx_event_execution_packet_acks_packet
   on event_execution_packet_acknowledgments(packet_id);
+
+-- ====== db/schema-quantity-comparison.sql ======
+-- ---------------------------------------------------------------------------
+-- Unit-aware vendor final quantity discrepancy semantics, found while
+-- completing the Final Event Schedule / Execution Packet phase (2026-08-09).
+-- See db/schema-quantity-comparison.sql for the full rationale.
+-- ---------------------------------------------------------------------------
+alter table vendor_final_quantities add column if not exists comparison_type text
+  check (comparison_type in (
+    'event_final_count', 'awarded_quantity', 'contract_quantity',
+    'scope_requirement', 'custom_expected_quantity', 'none'));
+alter table vendor_final_quantities add column if not exists comparison_reference jsonb;
+alter table vendor_final_quantities add column if not exists comparison_ratio numeric not null default 1;
+alter table vendor_final_quantities add column if not exists expected_quantity numeric;
+alter table vendor_final_quantities add column if not exists discrepancy_status text
+  check (discrepancy_status in ('not_applicable', 'unresolved', 'match', 'over', 'under'));

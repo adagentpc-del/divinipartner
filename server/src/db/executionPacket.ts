@@ -82,6 +82,7 @@ export type ExecutionPacketSnapshot = {
     quantity: string;
     unit: string;
     discrepancy: string | null;
+    discrepancy_status: string | null;
   }>;
   key_contacts: KeyContact[];
   generated_at: string;
@@ -148,10 +149,11 @@ export async function buildExecutionPacket(
     quantity: string;
     unit: string;
     discrepancy: string | null;
+    discrepancy_status: string | null;
   }>(
     `select distinct on (vfq.vendor_id, vfq.scope)
             coalesce(o.name, 'Vendor') as vendor_name, vfq.scope, vfq.version, vfq.quantity,
-            vfq.unit, vfq.discrepancy
+            vfq.unit, vfq.discrepancy, vfq.discrepancy_status
        from vendor_final_quantities vfq
        left join organizations o on o.id = vfq.organization_id
       where vfq.event_id = $1

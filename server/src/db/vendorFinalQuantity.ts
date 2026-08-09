@@ -15,6 +15,13 @@ import { q, q1 } from "../pool.js";
 import { ForbiddenError, type Actor } from "../db.js";
 import { getEvent, canManageEvent } from "./events.js";
 import { recordEventChange } from "./eventChanges.js";
+import {
+  computeComparison,
+  isComparisonType,
+  COMPARISON_TYPES_REQUIRING_EXPLICIT_VALUE,
+  type ComparisonType,
+  type DiscrepancyStatus,
+} from "../lib/quantityComparison.js";
 
 export type VendorFinalQuantityRow = {
   id: string;
@@ -29,6 +36,11 @@ export type VendorFinalQuantityRow = {
   discrepancy: string | null;
   submitted_by: string | null;
   created_at: string;
+  comparison_type: ComparisonType | null;
+  comparison_reference: unknown;
+  comparison_ratio: string;
+  expected_quantity: string | null;
+  discrepancy_status: DiscrepancyStatus | null;
 };
 
 /** The submitting actor's own vendor identity (their org's vendors.id), or null. */
@@ -45,7 +57,74 @@ export type SubmitQuantityInput = {
   quantity: number;
   unit?: string | null;
   notes?: string | null;
+  /** Defaults to "none" -- a discrepancy is only ever computed when the
+   *  submitter explicitly opts into a semantically valid comparison. */
+  comparison_type?: string | null;
+  /** Multiplier applied to the resolved reference value, e.g. 1.15 for
+   *  "bar servings run 15% over guest count". Defaults to 1. */
+  comparison_ratio?: number | null;
+  /** Required for contract_quantity / scope_requirement /
+   *  custom_expected_quantity -- there is no structured source for these in
+   *  this schema, so the caller must supply the number being compared
+   *  against rather than the system inventing or silently skipping it. */
+  custom_expected_quantity?: number | null;
 };
+
+/**
+ * Resolve the reference NUMBER for a comparison_type from real stored data.
+ * Returns null when the comparison was requested but nothing to compare
+ * against exists yet (e.g. no final count set) -- computeComparison turns
+ * that into an "unresolved" status rather than a fabricated discrepancy.
+ */
+async function resolveReference(
+  comparisonType: ComparisonType,
+  eventId: string,
+  vendorId: string,
+  customValue: number | null,
+): Promise<{ value: number | null; reference: Record<string, unknown> | null }> {
+  if (comparisonType === "event_final_count") {
+    const row = await q1<{ version: number; count: number }>(
+      `select version, count from event_final_counts where event_id = $1 order by version desc limit 1`,
+      [eventId],
+    );
+    return row
+      ? { value: Number(row.count), reference: { source: "event_final_count", version: row.version } }
+      : { value: null, reference: { source: "event_final_count" } };
+  }
+  if (comparisonType === "awarded_quantity") {
+    // Sum the quantity fields across this vendor's own accepted/converted
+    // quote line items for this event -- real stored data, not fabricated.
+    const rows = await q<{ line_items: unknown }>(
+      `select line_items from quotes
+        where event_id = $1 and vendor_id = $2 and status in ('accepted','converted')`,
+      [eventId, vendorId],
+    );
+    let total = 0;
+    let found = false;
+    for (const r of rows) {
+      const items = Array.isArray(r.line_items) ? r.line_items : [];
+      for (const li of items) {
+        if (li && typeof li === "object") {
+          const q = (li as Record<string, unknown>).quantity;
+          if (typeof q === "number") {
+            total += q;
+            found = true;
+          }
+        }
+      }
+    }
+    return found
+      ? { value: total, reference: { source: "awarded_quantity", quote_count: rows.length } }
+      : { value: null, reference: { source: "awarded_quantity" } };
+  }
+  // contract_quantity / scope_requirement / custom_expected_quantity: the
+  // caller-supplied value IS the reference -- validated as present before
+  // this function is ever called (see submitVendorFinalQuantity below).
+  return {
+    value: customValue,
+    reference: { source: comparisonType, custom: true },
+  };
+}
 
 /**
  * Submit (version) a vendor's own final quantity for a scope on this event.
@@ -78,6 +157,22 @@ export async function submitVendorFinalQuantity(
   }
   const unit = input.unit?.trim() || "guests";
 
+  const comparisonType: ComparisonType = isComparisonType(input.comparison_type)
+    ? input.comparison_type
+    : "none";
+  const ratio =
+    typeof input.comparison_ratio === "number" && input.comparison_ratio > 0
+      ? input.comparison_ratio
+      : 1;
+  if (
+    COMPARISON_TYPES_REQUIRING_EXPLICIT_VALUE.includes(comparisonType) &&
+    typeof input.custom_expected_quantity !== "number"
+  ) {
+    throw new ForbiddenError(
+      `comparison_type "${comparisonType}" requires custom_expected_quantity -- there is no structured source for it`,
+    );
+  }
+
   const previous = await q1<{ version: number }>(
     `select version from vendor_final_quantities
       where event_id = $1 and vendor_id = $2 and scope = $3
@@ -86,17 +181,20 @@ export async function submitVendorFinalQuantity(
   );
   const nextVersion = (previous?.version ?? 0) + 1;
 
-  const authoritative = await q1<{ count: number }>(
-    `select count from event_final_counts where event_id = $1 order by version desc limit 1`,
-    [eventId],
+  const { value: referenceValue, reference } = await resolveReference(
+    comparisonType,
+    eventId,
+    vendorId,
+    typeof input.custom_expected_quantity === "number" ? input.custom_expected_quantity : null,
   );
-  const discrepancy = authoritative ? input.quantity - Number(authoritative.count) : null;
+  const comparison = computeComparison(comparisonType, referenceValue, ratio, input.quantity);
 
   const row = await q1<VendorFinalQuantityRow>(
     `insert into vendor_final_quantities
        (event_id, vendor_id, organization_id, scope, version, quantity, unit, notes,
-        discrepancy, submitted_by)
-     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+        discrepancy, submitted_by, comparison_type, comparison_reference, comparison_ratio,
+        expected_quantity, discrepancy_status)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
      returning *`,
     [
       eventId,
@@ -107,23 +205,43 @@ export async function submitVendorFinalQuantity(
       input.quantity,
       unit,
       input.notes?.trim() || null,
-      discrepancy,
+      comparison.discrepancy,
       actor.user.id,
+      comparisonType,
+      comparisonType === "none" ? null : JSON.stringify(reference),
+      ratio,
+      comparison.expected_quantity,
+      comparison.discrepancy_status,
     ],
   );
   const version = row as VendorFinalQuantityRow;
 
   // Propagate to the owner-side roles who need to see and act on a
   // discrepancy -- deliberately NOT to every active member (that would spam
-  // other vendors with a submission that has nothing to do with them).
+  // other vendors with a submission that has nothing to do with them). Only
+  // a real, resolved, non-zero discrepancy requires acknowledgment -- an
+  // "unresolved" or "not_applicable" comparison is not something anyone
+  // needs to act on yet.
   await recordEventChange(actor, eventId, {
     category: "attendance",
     field: "vendor_final_quantity",
     old_value: previous ? { scope, version: previous.version } : null,
-    new_value: { scope, version: nextVersion, quantity: input.quantity, unit, discrepancy },
-    reason: `${scope}: ${input.quantity} ${unit}${discrepancy != null ? ` (discrepancy ${discrepancy > 0 ? "+" : ""}${discrepancy})` : ""}`,
+    new_value: {
+      scope,
+      version: nextVersion,
+      quantity: input.quantity,
+      unit,
+      discrepancy: comparison.discrepancy,
+      discrepancy_status: comparison.discrepancy_status,
+    },
+    reason:
+      `${scope}: ${input.quantity} ${unit}` +
+      (comparison.discrepancy_status === "over" || comparison.discrepancy_status === "under"
+        ? ` (${comparison.discrepancy_status} by ${Math.abs(comparison.discrepancy as number)}, vs ${comparisonType})`
+        : ""),
     affected_scopes: ["event_owner", "planner", "finance"],
-    requires_acknowledgment: discrepancy != null && discrepancy !== 0,
+    requires_acknowledgment:
+      comparison.discrepancy_status === "over" || comparison.discrepancy_status === "under",
   }).catch(() => undefined);
 
   return version;
