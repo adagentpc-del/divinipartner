@@ -11,6 +11,7 @@
 import { q, q1, pool } from "../pool.js";
 import { NotFoundError, ForbiddenError, type Actor } from "../db.js";
 import { buildItinerary } from "./itinerary.js";
+import { upsertEventMember } from "./eventMembers.js";
 
 // ---- Status model (blueprint section 13) -----------------------------------
 export type EventStatus =
@@ -74,8 +75,9 @@ export type EventRow = {
   updated_at: string;
 };
 
-/** True when the actor may see this event (owner org, client, planner, or attached vendor). */
-async function actorCanSee(actor: Actor, eventId: string): Promise<boolean> {
+/** True when the actor may see this event (owner org, client, planner, attached
+ *  vendor org, or an active per-human event_members row -- Phase A item 2). */
+export async function actorCanSee(actor: Actor, eventId: string): Promise<boolean> {
   if (actor.user.role === "super_admin" || actor.user.role === "admin") return true;
   const row = await q1<{ ok: boolean }>(
     `select true as ok
@@ -88,6 +90,10 @@ async function actorCanSee(actor: Actor, eventId: string): Promise<boolean> {
           or exists (
             select 1 from event_vendors ev
              where ev.event_id = e.id and ev.organization_id = $2
+          )
+          or exists (
+            select 1 from event_members em
+             where em.event_id = e.id and em.user_id = $3 and em.status = 'active'
           )
         )
       limit 1`,
@@ -105,10 +111,12 @@ export async function listMyEvents(actor: Actor): Promise<EventRow[]> {
     `select distinct e.*
        from events e
        left join event_vendors ev on ev.event_id = e.id
+       left join event_members em on em.event_id = e.id and em.user_id = $2 and em.status = 'active'
       where ($1::uuid is not null and e.organization_id = $1)
          or e.client_id = $2
          or e.planner_id = $2
          or ($1::uuid is not null and ev.organization_id = $1)
+         or em.id is not null
       order by e.created_at desc
       limit 500`,
     [actor.org?.id ?? null, actor.user.id],
@@ -171,11 +179,23 @@ export async function createEvent(actor: Actor, input: CreateEventInput): Promis
       input.branding_opportunity_id ?? null,
     ],
   );
-  return row as EventRow;
+  const ev = row as EventRow;
+  // Seed the creator's own roster row (event_members, Phase A item 2) so the
+  // membership list is complete from the start. Best-effort: getEventRole
+  // already resolves the owner correctly via actorOwns regardless of this
+  // row's presence, so a failure here never breaks event creation or access.
+  await upsertEventMember({
+    event_id: ev.id,
+    user_id: actor.user.id,
+    organization_id: actor.org?.id ?? null,
+    role: "event_owner",
+    status: "active",
+  }).catch(() => undefined);
+  return ev;
 }
 
 /** True when the actor owns the event (org match, named planner/client, or admin). */
-async function actorOwns(actor: Actor, eventId: string): Promise<boolean> {
+export async function actorOwns(actor: Actor, eventId: string): Promise<boolean> {
   if (actor.user.role === "super_admin" || actor.user.role === "admin") return true;
   const row = await q1<{ ok: boolean }>(
     `select true as ok from events

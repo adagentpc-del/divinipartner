@@ -63,6 +63,8 @@ import seats from "./routes/seats.js";
 import worker from "./routes/worker.js";
 // Vendor network invites
 import invites from "./routes/invites.js";
+// Counterparty event invitations + event membership roster
+import eventInvitations from "./routes/eventInvitations.js";
 // Visitor signals (fingerprint/IP logging) + landing personalization
 import signals from "./routes/signals.js";
 import personalize from "./routes/personalize.js";
@@ -227,6 +229,7 @@ router.use("/claim", claim);
 router.use("/seats", seats);
 router.use("/worker", worker);
 router.use("/invites", invites);
+router.use("/event-invitations", eventInvitations);
 router.use("/signals", signals);
 router.use("/personalize", personalize);
 router.use("/signatures", signatures);
