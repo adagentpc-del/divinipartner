@@ -84,6 +84,26 @@ type Headcount = {
   checked_in: number;
 };
 
+// --- Vendor arrival/delivery schedule (completion phase, Part 3) -----------
+// The same Time/Vendor/Action/Location/Contact/Status rows the desktop
+// packet's Vendor Schedule section and GET /itinerary/event/:id/vendor-
+// schedule both already resolve -- role-scoped server-side (a vendor sees
+// only their own org's rows), so this view never needs its own filtering.
+
+type VendorScheduleRow = {
+  start_time: string | null;
+  end_time: string | null;
+  vendor_org_id: string;
+  vendor_name: string;
+  action: string;
+  category: string;
+  location: string | null;
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  status: string;
+};
+
 // --- Final Event Schedule / Execution Packet (Part 14) ----------------------
 // Deliberately NOT a compressed copy of the desktop packet: only the four
 // things someone checks on their phone before/during the event -- final
@@ -174,6 +194,7 @@ export default function EventDayMode() {
   const [contacts, setContacts] = useState<EventVendor[]>([]);
   const [guests, setGuests] = useState<Guest[]>([]);
   const [headcount, setHeadcount] = useState<Headcount | null>(null);
+  const [vendorSchedule, setVendorSchedule] = useState<VendorScheduleRow[]>([]);
   const [now, setNow] = useState<number>(() => Date.now());
   const [busy, setBusy] = useState(false);
   const [statusBusy, setStatusBusy] = useState(false);
@@ -192,7 +213,7 @@ export default function EventDayMode() {
     setBusy(true);
     setErr(null);
     try {
-      const [e, meta, it, tk, vendors, gl, hc, versions] = await Promise.all([
+      const [e, meta, it, tk, vendors, gl, hc, versions, vs] = await Promise.all([
         apiGet<{ event: EventRow }>(`/events/${id}`),
         apiGet<{ statuses: StatusMeta[] }>(`/events/meta`).catch(() => ({ statuses: [] })),
         apiGet<{ itinerary: BuiltItinerary }>(`/itinerary/event/${id}/build`).catch(() => null),
@@ -201,6 +222,7 @@ export default function EventDayMode() {
         apiGet<{ guests: Guest[] }>(`/guests/event/${id}`).catch(() => ({ guests: [] })),
         apiGet<{ headcount: Headcount }>(`/guests/event/${id}/headcount`).catch(() => null),
         apiGet<{ versions: PacketVersionSummary[] }>(`/execution-packet/event/${id}`).catch(() => ({ versions: [] })),
+        apiGet<{ schedule: VendorScheduleRow[] }>(`/itinerary/event/${id}/vendor-schedule`).catch(() => ({ schedule: [] })),
       ]);
       setEv(e.event);
       setStatuses(meta.statuses);
@@ -209,6 +231,7 @@ export default function EventDayMode() {
       setContacts(vendors.vendors);
       setGuests(gl.guests);
       setHeadcount(hc ? hc.headcount : null);
+      setVendorSchedule(vs.schedule);
       setNow(Date.now());
 
       const latest = versions.versions[0] ?? null;
@@ -569,6 +592,32 @@ export default function EventDayMode() {
             )}
           </section>
 
+          {/* Vendor arrival/delivery schedule (Part 3): Time/Vendor/Action/
+              Location/Contact/Status, server-scoped per role -- a vendor
+              sees only their own org's rows here. Omitted entirely when
+              empty rather than showing a hollow section. */}
+          {vendorSchedule.length > 0 ? (
+            <section className="dm-block">
+              <h2 className="dm-blockhead">Vendor arrivals</h2>
+              <ul className="dm-vendorsched">
+                {vendorSchedule.map((v, idx) => (
+                  <li key={`${v.vendor_org_id}-${idx}`} className="dm-vsrow">
+                    <div className="dm-vstime">{fmtTime(v.start_time)}</div>
+                    <div className="dm-vsbody">
+                      <div className="dm-vsname">{v.vendor_name} - {v.action}</div>
+                      <div className="dm-vsmeta">
+                        {[v.location, v.status.replace(/_/g, ' ')].filter(Boolean).join(' · ')}
+                      </div>
+                    </div>
+                    <div className="dm-vsacts">
+                      {v.contact_phone ? <a className="dm-cact" href={`tel:${v.contact_phone}`}>Call</a> : null}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+
           {/* Today's tasks */}
           <section className="dm-block">
             <h2 className="dm-blockhead">
@@ -844,6 +893,17 @@ const DM_CSS = `
 }
 .dm-cact:active { background: var(--dp-emerald-2); }
 .dm-cactnone { font-size: 11.5px; color: var(--dp-muted); align-self: center; }
+
+.dm-vendorsched { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.dm-vsrow {
+  display: flex; align-items: flex-start; gap: 12px;
+  min-height: 60px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--dp-line); background: #fff;
+}
+.dm-vstime { flex: 0 0 70px; font-size: 13.5px; font-weight: 600; color: var(--dp-emerald); padding-top: 1px; }
+.dm-vsbody { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.dm-vsname { font-size: 14.5px; font-weight: 600; color: var(--dp-ink); }
+.dm-vsmeta { font-size: 12px; color: var(--dp-muted); text-transform: capitalize; }
+.dm-vsacts { flex: 0 0 auto; }
 
 .dm-statusgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .dm-statusbtn {

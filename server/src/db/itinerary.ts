@@ -14,7 +14,7 @@ import { q, q1, pool } from "../pool.js";
 import { NotFoundError, ForbiddenError, type Actor } from "../db.js";
 import { getEvent, canManageEvent, type EventRow } from "./events.js";
 import { getEventRole } from "./eventMembers.js";
-import { audienceForRole } from "../lib/packetProjection.js";
+import { audienceForRole, deriveVendorSchedule, type VendorScheduleRow } from "../lib/packetProjection.js";
 import { toIso } from "../lib/dates.js";
 
 async function canSee(actor: Actor, eventId: string): Promise<void> {
@@ -784,19 +784,38 @@ async function onItineraryItemMutated(eventId: string): Promise<void> {
 // VENDOR ARRIVAL / DELIVERY SCHEDULE (completion phase, Part 16)
 // ============================================================================
 
-export type VendorArrivalRow = {
-  start_time: string | null;
-  end_time: string | null;
-  vendor_org_id: string;
+export type VendorContact = {
+  organization_id: string;
   vendor_name: string;
-  action: string;
-  category: string;
-  location: string | null;
   contact_name: string | null;
   contact_email: string | null;
   contact_phone: string | null;
-  status: string;
 };
+
+/**
+ * vendor_name (always resolved, from `organizations`) plus contact info
+ * (nullable, from the org's active vendor_owner member if one exists) for a
+ * set of org ids. Shared by getVendorArrivalSchedule below and
+ * executionPacket.ts's buildExecutionPacket, so there is exactly one query
+ * that resolves "who do I call for vendor X" -- previously
+ * getVendorArrivalSchedule required an active vendor_owner member just to
+ * resolve the vendor's NAME (falling back to "Vendor" otherwise), even
+ * though the org's real name is always available independent of who has
+ * joined; the LEFT JOIN here fixes that for every caller at once.
+ */
+export async function getVendorContactsForOrgs(eventId: string, orgIds: string[]): Promise<VendorContact[]> {
+  if (orgIds.length === 0) return [];
+  return q<VendorContact>(
+    `select o.id as organization_id, coalesce(o.name, 'Vendor') as vendor_name,
+            u.name as contact_name, u.email as contact_email, u.phone as contact_phone
+       from organizations o
+       left join event_members em
+         on em.event_id = $1 and em.organization_id = o.id and em.status = 'active' and em.role = 'vendor_owner'
+       left join users u on u.id = em.user_id
+      where o.id = any($2::uuid[])`,
+    [eventId, orgIds],
+  );
+}
 
 /**
  * A unified Time/Vendor/Action/Location/Contact/Status table -- every
@@ -806,66 +825,27 @@ export type VendorArrivalRow = {
  * packet's vendor roster both already read the same underlying
  * responsible_org_id data directly from itinerary_items; this endpoint is
  * the single place that JOINS it with vendor contact info and lays it out
- * as one operational table -- the natural home for a future Event Command
- * Center view or a packet Vendor Schedule enrichment, without either of
- * those needing to duplicate this join themselves.
+ * as one operational table. The row-shaping and audience narrowing itself
+ * live in lib/packetProjection.ts's deriveVendorSchedule() -- the exact
+ * same function the Execution Packet's own vendor_schedule projection
+ * uses, so a future Event Command Center view can reuse either without a
+ * third copy of this logic.
  *
  * Role-scoped the same way projectPacket() scopes the packet's own vendor
  * roster: owner/planner/venue see every vendor's rows (they need to
  * coordinate all of them), a vendor sees only their own org's rows (never
  * another vendor's contact or schedule), sponsor/event_staff get none.
  */
-export async function getVendorArrivalSchedule(actor: Actor, eventId: string): Promise<VendorArrivalRow[]> {
+export async function getVendorArrivalSchedule(actor: Actor, eventId: string): Promise<VendorScheduleRow[]> {
   const built = await buildItinerary(actor, eventId);
   const role = (await getEventRole(actor, eventId)) ?? "read_only";
   const audience = audienceForRole(role);
+  const ownOrgId = actor.org?.id ?? null;
 
-  let relevant = built.items.filter((i): i is DerivedItem & { responsible_org_id: string } => !!i.responsible_org_id);
-  if (audience === "sponsor" || audience === "event_staff") return [];
-  if (audience === "vendor" || audience === "vendor_staff") {
-    const ownOrgId = actor.org?.id ?? null;
-    relevant = relevant.filter((i) => i.responsible_org_id === ownOrgId);
-  }
-  if (relevant.length === 0) return [];
+  const orgIds = [...new Set(built.items.map((i) => i.responsible_org_id).filter((x): x is string => !!x))];
+  const contacts = await getVendorContactsForOrgs(eventId, orgIds);
+  const vendorNames = new Map(contacts.map((c) => [c.organization_id, c.vendor_name]));
+  const contactMap = new Map(contacts.map((c) => [c.organization_id, c]));
 
-  const orgIds = [...new Set(relevant.map((i) => i.responsible_org_id))];
-  const contacts = await q<{
-    organization_id: string;
-    vendor_name: string | null;
-    contact_name: string | null;
-    email: string | null;
-    phone: string | null;
-  }>(
-    `select em.organization_id, o.name as vendor_name, u.name as contact_name, u.email, u.phone
-       from event_members em
-       join users u on u.id = em.user_id
-       left join organizations o on o.id = em.organization_id
-      where em.event_id = $1 and em.status = 'active' and em.role = 'vendor_owner'
-        and em.organization_id = any($2::uuid[])`,
-    [eventId, orgIds],
-  );
-  const byOrg = new Map(contacts.map((c) => [c.organization_id, c]));
-
-  return relevant
-    .map((item) => {
-      const c = byOrg.get(item.responsible_org_id);
-      return {
-        start_time: item.start_time,
-        end_time: item.end_time,
-        vendor_org_id: item.responsible_org_id,
-        vendor_name: c?.vendor_name ?? "Vendor",
-        action: item.title,
-        category: item.category,
-        location: item.location,
-        contact_name: c?.contact_name ?? null,
-        contact_email: c?.email ?? null,
-        contact_phone: c?.phone ?? null,
-        status: item.status,
-      };
-    })
-    .sort((a, b) => {
-      const ta = a.start_time ? new Date(a.start_time).getTime() : Number.POSITIVE_INFINITY;
-      const tb = b.start_time ? new Date(b.start_time).getTime() : Number.POSITIVE_INFINITY;
-      return ta - tb;
-    });
+  return deriveVendorSchedule(built.items, vendorNames, contactMap, audience, ownOrgId);
 }

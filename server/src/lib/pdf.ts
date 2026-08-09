@@ -512,8 +512,8 @@ export async function renderExecutionPacketPdf(data: ExecutionPacketPdfData): Pr
     }
   }
 
-  // --- Vendor Schedule ---
-  sectionTitle(doc, "Vendor Schedule");
+  // --- Vendor Roster ---
+  sectionTitle(doc, "Vendor Roster");
   if (!p.vendor_assignments || p.vendor_assignments.length === 0) {
     emptyNote(doc, p.vendor_assignments === null ? "Vendor roster not shown for this view." : "No vendors attached yet.");
   } else {
@@ -523,6 +523,37 @@ export async function renderExecutionPacketPdf(data: ExecutionPacketPdfData): Pr
         `${v.vendor_name}${v.role ? ` - ${v.role.replace(/_/g, " ")}` : ""}${v.status ? ` (${v.status})` : ""}`,
         48, doc.y, { width: 499 },
       );
+    }
+    doc.moveDown(0.3);
+  }
+
+  // --- Vendor Schedule (Part 3): the unified Time / Vendor / Action /
+  // Location / Contact / Status arrival-delivery table, derived from the
+  // same responsible_org_id itinerary data as the Run of Show above -- not
+  // a second schedule, just this audience's own rows from it. ---
+  sectionTitle(doc, "Vendor Schedule");
+  if (p.vendor_schedule.length === 0) {
+    emptyNote(doc, "No vendor arrival or delivery times scheduled yet.");
+  } else {
+    for (const v of p.vendor_schedule) {
+      ensureSpace(doc, 26);
+      const when = v.start_time
+        ? `${fmtDate(v.start_time, tz)}${v.end_time ? ` - ${fmtDate(v.end_time, tz)}` : ""}`
+        : "Time TBD";
+      doc.fillColor(EMERALD2).font("Helvetica-Bold").fontSize(9).text(when, 48, doc.y, { width: 150 });
+      doc.fillColor(INK).font("Helvetica-Bold").fontSize(9).text(
+        `${v.vendor_name} - ${v.action}`,
+        200, doc.y - 11, { width: 347 },
+      );
+      const subParts = [v.location, v.status.replace(/_/g, " ")].filter(Boolean);
+      if (subParts.length) {
+        doc.fillColor(MUT).font("Helvetica").fontSize(8).text(subParts.join("  |  "), 200, doc.y, { width: 347 });
+      }
+      const contactParts = [v.contact_name, v.contact_phone, v.contact_email].filter(Boolean);
+      if (contactParts.length) {
+        doc.fillColor(MUT).font("Helvetica").fontSize(8).text(contactParts.join("  |  "), 200, doc.y, { width: 347 });
+      }
+      doc.moveDown(0.35);
     }
     doc.moveDown(0.3);
   }

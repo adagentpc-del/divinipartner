@@ -21,7 +21,7 @@
 import { q, q1, pool } from "../pool.js";
 import { NotFoundError, ForbiddenError, type Actor } from "../db.js";
 import { getEvent, canManageEvent, type EventRow } from "./events.js";
-import { buildItinerary, type BuiltItinerary } from "./itinerary.js";
+import { buildItinerary, getVendorContactsForOrgs, type BuiltItinerary } from "./itinerary.js";
 import { recordEventChange } from "./eventChanges.js";
 import { getEventRole } from "./eventMembers.js";
 import type { EventRole } from "../lib/eventRoles.js";
@@ -41,6 +41,13 @@ export type VendorAssignment = {
   vendor_name: string;
   role: string | null;
   status: string | null;
+};
+
+export type VendorContact = {
+  organization_id: string;
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
 };
 
 export type FloorplanRef = {
@@ -86,6 +93,10 @@ export type ExecutionPacketSnapshot = {
   schedule: BuiltItinerary;
   floorplans: FloorplanRef[];
   vendor_assignments: VendorAssignment[];
+  /** vendor_owner contact info for every attached vendor org, frozen into
+   *  the snapshot like everything else -- feeds the vendor_schedule
+   *  projection (lib/packetProjection.ts's deriveVendorSchedule). */
+  vendor_contacts: VendorContact[];
   final_count: { version: number; count: number; discrepancy: number | null } | null;
   vendor_final_quantities: Array<{
     organization_id: string;
@@ -148,6 +159,15 @@ export async function buildExecutionPacket(
      order by created_at asc`,
     [eventId],
   );
+
+  const vendorOrgIds = [...new Set(vendor_assignments.map((v) => v.organization_id))];
+  const vendorContactRows = await getVendorContactsForOrgs(eventId, vendorOrgIds);
+  const vendor_contacts: VendorContact[] = vendorContactRows.map((c) => ({
+    organization_id: c.organization_id,
+    contact_name: c.contact_name,
+    contact_email: c.contact_email,
+    contact_phone: c.contact_phone,
+  }));
 
   const finalCountRow = await q1<{ version: number; count: number; discrepancy: number | null }>(
     `select version, count, discrepancy from event_final_counts
@@ -220,6 +240,7 @@ export async function buildExecutionPacket(
     schedule,
     floorplans,
     vendor_assignments,
+    vendor_contacts,
     final_count: finalCountRow
       ? { version: finalCountRow.version, count: Number(finalCountRow.count), discrepancy: finalCountRow.discrepancy != null ? Number(finalCountRow.discrepancy) : null }
       : null,

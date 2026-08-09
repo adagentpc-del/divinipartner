@@ -82,6 +82,10 @@ function fixtureSnapshot(): ExecutionPacketSnapshot {
       { organization_id: "org-caterer", vendor_name: "Caterer Co", role: "vendor_owner", status: "active" },
       { organization_id: "org-av", vendor_name: "AV Co", role: "vendor_owner", status: "active" },
     ],
+    vendor_contacts: [
+      { organization_id: "org-caterer", contact_name: "Caterer Lead", contact_email: "lead@caterer.local", contact_phone: "555-0111" },
+      { organization_id: "org-av", contact_name: "AV Lead", contact_email: "lead@av.local", contact_phone: "555-0122" },
+    ],
     final_count: { version: 2, count: 475, discrepancy: 0 },
     vendor_final_quantities: [
       { organization_id: "org-caterer", vendor_name: "Caterer Co", scope: "catering", version: 1, quantity: "488", unit: "meals", discrepancy: "13", discrepancy_status: "over" },
@@ -305,4 +309,65 @@ test("scopeSnapshotForDiff narrows schedule.items to the audience's own by_role 
 
   const scopedForOwner = scopeSnapshotForDiff(snapshot, "event_owner", null);
   assert.equal(scopedForOwner.schedule.items.length, 3);
+});
+
+// --- vendor_schedule (completion phase, Part 3): the unified Time/Vendor/
+// Action/Location/Contact/Status arrival table, derived from
+// responsible_org_id itinerary items. Vendor isolation applies here exactly
+// like everywhere else -- a vendor must only ever see their own rows. ---
+
+function snapshotWithVendorScheduleItems(): ExecutionPacketSnapshot {
+  const base = fixtureSnapshot();
+  return {
+    ...base,
+    schedule: {
+      ...base.schedule,
+      items: [
+        ...base.schedule.items,
+        { key: "d", title: "Caterer load-in", description: null, category: "load_in", start_time: "2026-11-05T15:00:00Z", end_time: null, location: "Dock B", owner_role: "vendor", owner_label: null, source: "manual", source_ref: null, status: "planned", responsible_org_id: "org-caterer" },
+        { key: "e", title: "AV load-in", description: null, category: "load_in", start_time: "2026-11-05T14:00:00Z", end_time: null, location: "Dock A", owner_role: "vendor", owner_label: null, source: "manual", source_ref: null, status: "planned", responsible_org_id: "org-av" },
+      ],
+    },
+  };
+}
+
+test("vendor_schedule is derived from responsible_org_id items and audience-narrowed the same way vendor isolation is enforced everywhere else", () => {
+  const snapshot = snapshotWithVendorScheduleItems();
+
+  const full = projectPacket(snapshot, "event_owner", null);
+  assert.equal(full.vendor_schedule.length, 2);
+  // Sorted by start_time: AV (14:00) before Caterer (15:00).
+  assert.equal(full.vendor_schedule[0].vendor_org_id, "org-av");
+  assert.equal(full.vendor_schedule[0].vendor_name, "AV Co");
+  assert.equal(full.vendor_schedule[0].contact_phone, "555-0122");
+
+  const venue = projectPacket(snapshot, "venue", "org-grandhall");
+  assert.equal(venue.vendor_schedule.length, 2);
+
+  const caterer = projectPacket(snapshot, "vendor_owner", "org-caterer");
+  assert.equal(caterer.vendor_schedule.length, 1);
+  assert.equal(caterer.vendor_schedule[0].vendor_org_id, "org-caterer");
+  assert.equal(
+    caterer.vendor_schedule.some((v) => v.vendor_org_id === "org-av"),
+    false,
+  );
+
+  const sponsor = projectPacket(snapshot, "sponsor", null);
+  assert.deepEqual(sponsor.vendor_schedule, []);
+  const eventStaff = projectPacket(snapshot, "event_staff", null);
+  assert.deepEqual(eventStaff.vendor_schedule, []);
+});
+
+test("scopeSnapshotForDiff narrows vendor_contacts to only the orgs visible in the audience's own vendor_schedule", () => {
+  const snapshot = snapshotWithVendorScheduleItems();
+
+  const scopedForCaterer = scopeSnapshotForDiff(snapshot, "vendor_owner", "org-caterer");
+  assert.equal(scopedForCaterer.vendor_contacts.length, 1);
+  assert.equal(scopedForCaterer.vendor_contacts[0].organization_id, "org-caterer");
+
+  const scopedForOwner = scopeSnapshotForDiff(snapshot, "event_owner", null);
+  assert.equal(scopedForOwner.vendor_contacts.length, 2);
+
+  const scopedForSponsor = scopeSnapshotForDiff(snapshot, "sponsor", null);
+  assert.deepEqual(scopedForSponsor.vendor_contacts, []);
 });

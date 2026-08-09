@@ -22,8 +22,10 @@ import type {
   ExecutionPacketSnapshot,
   KeyContact,
   VendorAssignment,
+  VendorContact,
   FloorplanRef,
 } from "../db/executionPacket.js";
+import type { DerivedItem } from "../db/itinerary.js";
 
 export type PacketAudience = "full" | "venue" | "vendor" | "vendor_staff" | "sponsor" | "event_staff";
 
@@ -67,6 +69,68 @@ const SCHEDULE_ROLE_FOR_AUDIENCE: Record<
   event_staff: "all",
 };
 
+export type VendorScheduleRow = {
+  start_time: string | null;
+  end_time: string | null;
+  vendor_org_id: string;
+  vendor_name: string;
+  action: string;
+  category: string;
+  location: string | null;
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  status: string;
+};
+
+/**
+ * The unified vendor arrival/delivery Time/Vendor/Action/Location/Contact/
+ * Status table (completion phase Part 3), derived purely from itinerary
+ * items already attributed to a responsible_org_id plus vendor name/contact
+ * lookups -- never a second source of truth for schedule data. Shared by
+ * both the packet projection below and the standalone vendor-arrival-
+ * schedule endpoint (db/itinerary.ts's getVendorArrivalSchedule), so the
+ * audience narrowing lives in exactly one place: full/venue coordinate
+ * every vendor and see every row; vendor/vendor_staff see only their own
+ * org's rows, matching the vendor-isolation rule enforced everywhere else
+ * in the packet system; sponsor/event_staff see none.
+ */
+export function deriveVendorSchedule(
+  items: readonly DerivedItem[],
+  vendorNames: ReadonlyMap<string, string>,
+  contacts: ReadonlyMap<string, VendorContact>,
+  audience: PacketAudience,
+  ownOrgId: string | null,
+): VendorScheduleRow[] {
+  if (audience === "sponsor" || audience === "event_staff") return [];
+  let relevant = items.filter((i): i is DerivedItem & { responsible_org_id: string } => !!i.responsible_org_id);
+  if (audience === "vendor" || audience === "vendor_staff") {
+    relevant = relevant.filter((i) => i.responsible_org_id === ownOrgId);
+  }
+  return relevant
+    .map((item) => {
+      const c = contacts.get(item.responsible_org_id);
+      return {
+        start_time: item.start_time,
+        end_time: item.end_time,
+        vendor_org_id: item.responsible_org_id,
+        vendor_name: vendorNames.get(item.responsible_org_id) ?? "Vendor",
+        action: item.title,
+        category: item.category,
+        location: item.location,
+        contact_name: c?.contact_name ?? null,
+        contact_email: c?.contact_email ?? null,
+        contact_phone: c?.contact_phone ?? null,
+        status: item.status,
+      };
+    })
+    .sort((a, b) => {
+      const ta = a.start_time ? new Date(a.start_time).getTime() : Number.POSITIVE_INFINITY;
+      const tb = b.start_time ? new Date(b.start_time).getTime() : Number.POSITIVE_INFINITY;
+      return ta - tb;
+    });
+}
+
 export type PacketProjection = {
   audience: PacketAudience;
   event: ExecutionPacketSnapshot["event"];
@@ -93,6 +157,9 @@ export type PacketProjection = {
   schedule_items: ExecutionPacketSnapshot["schedule"]["items"];
   floorplans: FloorplanRef[];
   vendor_assignments: VendorAssignment[] | null;
+  /** Unified arrival/delivery table, audience-narrowed by deriveVendorSchedule
+   *  above (never the same as vendor_assignments, which is a roster only). */
+  vendor_schedule: VendorScheduleRow[];
   final_count: ExecutionPacketSnapshot["final_count"];
   /** The viewer's OWN vendor's final quantities only -- never another
    *  vendor's. Null for non-vendor audiences. */
@@ -123,6 +190,10 @@ export function projectPacket(
   if (audience === "venue") visibleContactRoles.add("venue");
   const key_contacts = snapshot.key_contacts.filter((c) => visibleContactRoles.has(c.role));
 
+  const vendorNames = new Map(snapshot.vendor_assignments.map((v) => [v.organization_id, v.vendor_name]));
+  const vendorContacts = new Map(snapshot.vendor_contacts.map((c) => [c.organization_id, c]));
+  const vendor_schedule = deriveVendorSchedule(snapshot.schedule.items, vendorNames, vendorContacts, audience, ownOrgId);
+
   const minimalAudience = audience === "sponsor" || audience === "event_staff";
   const venue = {
     id: snapshot.venue.id,
@@ -148,6 +219,7 @@ export function projectPacket(
       schedule_items,
       floorplans: snapshot.floorplans,
       vendor_assignments: snapshot.vendor_assignments,
+      vendor_schedule,
       final_count: snapshot.final_count,
       my_final_quantity: snapshot.vendor_final_quantities,
       key_contacts: snapshot.key_contacts,
@@ -167,6 +239,7 @@ export function projectPacket(
       schedule_items,
       floorplans: snapshot.floorplans,
       vendor_assignments: snapshot.vendor_assignments,
+      vendor_schedule,
       final_count: snapshot.final_count,
       my_final_quantity: null,
       key_contacts,
@@ -184,6 +257,7 @@ export function projectPacket(
       // vendor_staff does not need the full roster of other vendors --
       // vendor (owner) does, for day-of coordination.
       vendor_assignments: audience === "vendor" ? snapshot.vendor_assignments : null,
+      vendor_schedule,
       final_count: snapshot.final_count,
       my_final_quantity: myQuantities,
       key_contacts,
@@ -200,6 +274,7 @@ export function projectPacket(
     schedule_items,
     floorplans: snapshot.floorplans,
     vendor_assignments: null,
+    vendor_schedule,
     final_count: snapshot.final_count,
     my_final_quantity: null,
     key_contacts,
@@ -249,6 +324,12 @@ export function scopeSnapshotForDiff(
     schedule: { ...snapshot.schedule, items: projection.schedule_items },
     floorplans: projection.floorplans,
     vendor_assignments: projection.vendor_assignments ?? [],
+    // Narrowed to only the org ids that survived vendor_schedule's own
+    // audience narrowing -- the same rule applied to vendor_assignments
+    // above, so a vendor's diff can never surface another vendor's contact.
+    vendor_contacts: snapshot.vendor_contacts.filter((c) =>
+      projection.vendor_schedule.some((v) => v.vendor_org_id === c.organization_id),
+    ),
     final_count: projection.final_count,
     vendor_final_quantities: projection.my_final_quantity ?? [],
     key_contacts: projection.key_contacts,
