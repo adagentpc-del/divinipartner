@@ -81,12 +81,21 @@ router.post(
   requireUser,
   h(async (req, res) => {
     const auth = getAuth(req);
-    const { role, orgName, tier, name, phone, invite } = req.body ?? {};
+    const { role, orgName, tier, name, phone, invite, ageConfirmed } = req.body ?? {};
     if (!role || !ROLES.includes(role)) {
       return res.status(400).json({ error: "valid role required" });
     }
     if (!orgName || typeof orgName !== "string") {
       return res.status(400).json({ error: "orgName required" });
+    }
+    // Age affirmation (ALFY2 pack Section 17, COPPA row / risk R-01): the
+    // product is not child-directed and has no known minor userbase, so this
+    // is hygiene rather than a live violation -- but there was previously
+    // zero technical barrier to a minor signing up. Enforced server-side
+    // (not just a client-side checkbox) since the server is the actual
+    // authority on what registration requires.
+    if (ageConfirmed !== true) {
+      return res.status(400).json({ error: "age confirmation required" });
     }
     const ip =
       (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() ||

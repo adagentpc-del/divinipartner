@@ -100,6 +100,10 @@ Bootstrapped at Section 01.
 | S16-02, S16-03 | Code | `capacitor.config.ts` (read in full), grep of Pricing/account pages for steering language | 2026-08-09 |
 | S16-04 | Command output | Full-tree grep for `isNativePlatform`/`Capacitor.` usage in `src/` — zero matches | 2026-08-09 |
 | S16 (all) | File | `docs/platform-standard/section-16-mobile-ios-android-app-store.md` (new) | 2026-08-09 |
+| S17-01, S17-03 | Cross-reference | Explicit re-check of every Section 01 regulatory determination against Sections 02-16's findings, documented row-by-row in the Section 17 report | 2026-08-09 |
+| S17-02 | Command output | Live test against a real, disposable Postgres instance: `POST /register` without `ageConfirmed` (400), with `ageConfirmed:false` (400), with `ageConfirmed:true` (201, org created) | 2026-08-09 |
+| S17-02 | Code | `server/src/routes/foundation.ts` (`POST /register`), `src/pages/GetStarted.tsx` (age checkbox) | 2026-08-09 |
+| S17 (all) | File | `docs/platform-standard/section-17-conditional-regulatory-overlays.md` (new) | 2026-08-09 |
 
 ## Notes
 

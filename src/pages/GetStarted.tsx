@@ -72,6 +72,7 @@ export default function GetStarted() {
   const [pricingV2, setPricingV2] = useState(false);
   const [catalog, setCatalog] = useState<RoleCatalog[]>([]);
   const [agree, setAgree] = useState(false);
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
@@ -102,12 +103,14 @@ export default function GetStarted() {
     if (!role) return setErr('Choose an account type.');
     if (!orgName.trim()) return setErr('Enter your business or account name.');
     if (!agree) return setErr('Please accept the policies to continue.');
+    if (!ageConfirmed) return setErr('Please confirm you are 18 or older to continue.');
     setBusy(true);
     try {
       await apiSend('POST', '/register', {
         role,
         orgName: orgName.trim(),
         tier: effectiveTier,
+        ageConfirmed: true,
         ...(contactName.trim() ? { name: contactName.trim() } : {}),
         ...(phone.trim() ? { phone: phone.trim() } : {}),
         ...(inviteToken ? { invite: inviteToken } : {}),
@@ -274,6 +277,11 @@ export default function GetStarted() {
             <label className="agree">
               <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
               <span>I agree to the Divini Partners <a href="/terms" target="_blank" rel="noopener noreferrer">Terms of Service</a>, <a href="/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>, <a href="/payment-policy" target="_blank" rel="noopener noreferrer">Payment Policy</a>, <a href="/marketplace-conduct" target="_blank" rel="noopener noreferrer">Marketplace Conduct Policy</a>, and <a href="/non-circumvention" target="_blank" rel="noopener noreferrer">Non-Circumvention Policy</a>. I understand Divini Partners is a lead-generation and networking platform, is not a party to transactions between users, and that payments are handled by third-party processors under the platform fee and payment policies.</span>
+            </label>
+
+            <label className="agree">
+              <input type="checkbox" checked={ageConfirmed} onChange={(e) => setAgeConfirmed(e.target.checked)} />
+              <span>I confirm that I am 18 years of age or older.</span>
             </label>
 
             <button className="btn" disabled={busy}>{busy ? 'Setting up...' : 'Continue'}</button>

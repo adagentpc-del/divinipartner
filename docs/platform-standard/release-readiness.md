@@ -25,7 +25,8 @@ format.
 | 14 Observability, Incident Response & Disaster Recovery | READY WITH P2 ITEMS — see below | 2026-08-09 |
 | 15 QA, E2E, Load Testing, Pentest & Regression | **READY** — no open P0/P1/P2 items | 2026-08-09 |
 | 16 Mobile: iOS, Android & App Store | READY (scoped) — native build/submission BLOCKED (needs Mac/Xcode, tracked as T9) | 2026-08-09 |
-| 17–18 | Not yet started | — |
+| 17 Conditional Regulatory Overlays | **READY** — no open P0/P1/P2 items | 2026-08-09 |
+| 18 | Not yet started | — |
 
 ## Section 01 summary
 
@@ -535,11 +536,33 @@ format.
   gap both correctly require Mac/Xcode or a business decision this
   environment cannot make.
 
+## Section 17 summary
+
+- Instruction from Section 01: apply the existing N/A determinations from
+  the applicability matrix, don't re-open the "hard N/A" regimes
+  (HIPAA/COPPA/FERPA/FCRA/GLBA/securities/biometric/CJIS/export-control/
+  FDA/telehealth/employment-AI) unless new facts change applicability.
+  Explicitly re-checked every one against everything discovered in
+  Sections 02-16 (including specifically distinguishing Section 13's
+  canvas device-fingerprinting finding from actual biometric data, which
+  the two "fingerprint" terms are easy to conflate) — none changed.
+- Closed the one already-tracked gap that fell squarely within this
+  section's own subject matter: no age-affirmation step existed at
+  registration (COPPA hygiene row, risk R-01, task T13), open since
+  Section 01. Added server-side enforcement (`ageConfirmed === true`
+  required on `POST /register`, not just a client checkbox) plus a
+  matching UI checkbox; live-verified against a real database.
+- Confirmed the CONDITIONAL/UNKNOWN rows (money transmission, PCI,
+  CCPA/CPRA, other state privacy, GDPR, marketplace-facilitator tax, 1099)
+  remain correctly gated on counsel/owner review — not resolved or
+  re-litigated here, which would exceed what this session can determine.
+- No P0/P1/P2 items remain open for this section.
+
 ## Overall launch readiness (cumulative, updated as sections complete)
 
-**NOT READY** — pending Sections 17–18, plus the standing T7 gate (real
+**NOT READY** — pending Section 18, plus the standing T7 gate (real
 money) which several sections now have concrete pre-requisites tracked
 against (refund/dispute capability, live credential testing). This is
-expected at this stage (sixteen of eighteen sections complete) and is not
+expected at this stage (seventeen of eighteen sections complete) and is not
 itself a new finding; it reflects where the multi-section pack currently
 stands, not a regression.

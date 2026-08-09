@@ -140,15 +140,11 @@ Prioritized backlog, seeded from the Go-Live runbook remaining items and the V2 
 - Acceptance: DONE -- `server/src/scripts/backup-db.ts` (pg_dump --clean --if-exists -> gzip -> the app's own object storage, encrypted at rest when `STORAGE_ENCRYPTION_KEY` is set, retention-pruned via a manifest) and `restore-db.ts` (with a real confirmation guard), live-verified end to end including a full restore into a scratch database with matching table/row counts and an idempotent second restore. REMAINING: install the cron job on the server (see `23_DEPLOYMENT.md`'s "Automated database backups" section) and decide retention days / S3 vs local-disk -- nothing runs this on a schedule until that cron line is added.
 - Related files: `server/src/scripts/backup-db.ts`, `server/src/scripts/restore-db.ts`, `server/src/config.ts` (`BACKUP_RETENTION_DAYS`), `21_DATABASE.md`, `23_DEPLOYMENT.md`
 
-## T13 - Age-affirmation step at registration (found 2026-08-08, ALFY2 pack Section 01)
+## T13 - Age-affirmation step at registration (RESOLVED 2026-08-09, ALFY2 pack Section 17)
 
-- Priority: P2
-- Status: NOT STARTED
-- Owner: unassigned
-- Dependencies: none
-- Effort: S
-- Acceptance: registration collects an explicit age/13+ (or applicable minimum) affirmation. The product is not child-directed and has no known minor userbase, so this is hygiene rather than a live COPPA violation -- but there is currently zero technical barrier to a minor signing up, which grows "knowingly collects" exposure over time the longer it goes unaddressed.
-- Related files: `server/src/routes/auth-native.ts` (registration), `src/pages/GetStarted.tsx`
+- Status: DONE. `POST /register` (`server/src/routes/foundation.ts`) now requires `ageConfirmed === true` in the request body, returning 400 otherwise -- enforced server-side, not just a client-side checkbox, matching the "server is authority" pattern used throughout this audit. `src/pages/GetStarted.tsx` gained a matching UI checkbox ("I confirm that I am 18 years of age or older") styled and wired identically to the existing, already-live Terms/Privacy acceptance checkbox next to it; client-side validation blocks submission with an inline error if unchecked. Confirmed no other code path calls `POST /register` (every other reference is a `<Link to="/register">` navigation to this same page, including the invite-acceptance flow). Live-verified against a real, disposable Postgres instance: no `ageConfirmed` field -> 400, `ageConfirmed:false` -> 400, `ageConfirmed:true` -> 201 with the organization created.
+- Related files: `server/src/routes/foundation.ts`, `src/pages/GetStarted.tsx`.
+- See: `docs/platform-standard/section-17-conditional-regulatory-overlays.md`, risk R-01.
 - See: `docs/platform-standard/applicability-register.md` (COPPA row), `docs/platform-standard/risk-register.md` R-01.
 
 ## T14 - Define retention policy for `audit_logs` (found 2026-08-08, ALFY2 pack Section 01)
@@ -455,11 +451,12 @@ Engines: Profiles, Organizations, Admin, Products/Services, Calendar,
 Video & Documents), Section 13 (Analytics, Behavior Tracking &
 Personalization), Section 14 (Observability, Incident Response &
 Disaster Recovery), Section 15 (QA, E2E, Load Testing, Pentest &
-Regression), and Section 16 (Mobile: iOS, Android & App Store) are
-complete; see `docs/platform-standard/release-readiness.md` for
-cumulative status across all 18 sections as they execute. New findings
-that represent real, actionable work (like T13-T39 above) get a task here
-as they're found, so
+Regression), Section 16 (Mobile: iOS, Android & App Store), and Section
+17 (Conditional Regulatory Overlays) are complete; see
+`docs/platform-standard/release-readiness.md` for cumulative status
+across all 18 sections as they execute. New findings that represent
+real, actionable work (like T13-T39 above) get a task here as they're
+found, so
 this queue stays the single place to look for "what's left to do" --
 `docs/platform-standard/` is where the pack's own required audit/evidence/
 risk trail lives, not a second task list.

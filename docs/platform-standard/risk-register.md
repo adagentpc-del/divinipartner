@@ -6,7 +6,7 @@ later section.
 
 | Risk ID | Description | Severity | Owner | Current Mitigation | Target State | Section |
 |---|---|---|---|---|---|---|
-| R-01 | No age-affirmation step at registration | Low | Owner | None today | Add an age-affirmation field/checkbox | 01 (COPPA hygiene row) |
+| R-01 | **RESOLVED 2026-08-09.** No age-affirmation step at registration | Was Low (hygiene, not a live violation given non-child-directed positioning) | N/A — fixed | Server-side `ageConfirmed === true` requirement on `POST /register` (not just a client checkbox) plus a matching UI checkbox next to the existing Terms acceptance; live-verified against a real database (missing/false both 400, true succeeds) | N/A — resolved | 01 (COPPA hygiene row), closed in Section 17 |
 | R-02 | `audit_logs` retention period not centrally defined | Low | Owner | Table exists and is actively written; no automatic purge/retention policy found | Define retention in the data-retention matrix (Section 02) and enforce it | 01 → 02/06 |
 | R-03 | Money-transmission / marketplace-facilitator sales-tax / 1099 exposure not yet resolved by counsel | Medium (blocks T7, not a current live-money risk since Stripe is unconfigured) | Owner + counsel | `STRIPE_SECRET_KEY` intentionally unset — no real money moves today | Counsel review before T7 unblocks | 01 → 09/17 (already tracked as T7/T8 in `AI_PROJECT_OS/12_TASK_QUEUE.md`) |
 | R-04 | No independent penetration test performed | Medium | Owner | Internal adversarial testing exists for several controls (CSRF, IDOR-style checks noted in `AI_PROJECT_OS/51_SECURITY.md`) but no third-party pen test | Commission an independent pen test before T7 (real money) or first enterprise deal | 01 → 15/18 |
