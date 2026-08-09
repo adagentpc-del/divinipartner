@@ -11,6 +11,7 @@ import assert from "node:assert/strict";
 import {
   quantityAtLocation,
   totalQuantity,
+  cumulativeArrived,
   quantitiesByLocation,
   inventoryAlerts,
   type Movement,
@@ -95,4 +96,37 @@ test("inventoryAlerts: fully delivered (meets or exceeds expected) never alerts"
 
 test("inventoryAlerts: no expected_quantity set means nothing to compare against, no alert", () => {
   assert.deepEqual(inventoryAlerts({ id: ITEM, name: "Champagne", expected_quantity: null }, 0), []);
+});
+
+test("cumulativeArrived: only counts arrivals from outside, ignores transfers and departures", () => {
+  const movements: Movement[] = [
+    { item_id: ITEM, quantity: 144, from_location_id: null, to_location_id: MAIN_BAR },
+    { item_id: ITEM, quantity: 12, from_location_id: MAIN_BAR, to_location_id: VIP_BAR },
+    { item_id: ITEM, quantity: 100, from_location_id: MAIN_BAR, to_location_id: null },
+  ];
+  assert.equal(cumulativeArrived(movements, ITEM), 144);
+  assert.equal(totalQuantity(movements, ITEM), 44);
+});
+
+test("Part 21-22 regression: a fully counted-out item (arrived, then fully returned) does not re-trigger a false never-arrived alert", () => {
+  const movements: Movement[] = [
+    { item_id: ITEM, quantity: 144, from_location_id: null, to_location_id: MAIN_BAR },
+    { item_id: ITEM, quantity: 144, from_location_id: MAIN_BAR, to_location_id: null },
+  ];
+  assert.equal(totalQuantity(movements, ITEM), 0);
+  const arrived = cumulativeArrived(movements, ITEM);
+  assert.equal(arrived, 144);
+  assert.deepEqual(inventoryAlerts({ id: ITEM, name: "Champagne", expected_quantity: 144 }, arrived), []);
+});
+
+test("Part 21-22 regression: a partially delivered item that is later fully returned still reflects the real delivery shortfall, not zero", () => {
+  const movements: Movement[] = [
+    { item_id: ITEM, quantity: 100, from_location_id: null, to_location_id: MAIN_BAR },
+    { item_id: ITEM, quantity: 100, from_location_id: MAIN_BAR, to_location_id: null },
+  ];
+  const arrived = cumulativeArrived(movements, ITEM);
+  assert.equal(arrived, 100);
+  const alerts = inventoryAlerts({ id: ITEM, name: "Champagne", expected_quantity: 144 }, arrived);
+  assert.equal(alerts.length, 1);
+  assert.equal(alerts[0].severity, "warning");
 });

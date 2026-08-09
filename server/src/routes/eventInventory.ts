@@ -92,4 +92,50 @@ router.post(
   }),
 );
 
+router.post(
+  "/event/:eventId/count-in",
+  h(async (req, res) => {
+    const a = await actor(req);
+    const { item_id, location_id, counted_quantity, notes } = req.body ?? {};
+    res.status(201).json(
+      await inv.countIn(a, req.params.eventId, { item_id, location_id, counted_quantity: Number(counted_quantity), notes }),
+    );
+  }),
+);
+
+router.post(
+  "/event/:eventId/count-out",
+  h(async (req, res) => {
+    const a = await actor(req);
+    const { item_id, location_id, returned_quantity, damaged_quantity, missing_quantity, notes } = req.body ?? {};
+    res.status(201).json(
+      await inv.countOut(a, req.params.eventId, {
+        item_id,
+        location_id,
+        returned_quantity: Number(returned_quantity),
+        damaged_quantity: damaged_quantity != null ? Number(damaged_quantity) : undefined,
+        missing_quantity: missing_quantity != null ? Number(missing_quantity) : undefined,
+        notes,
+      }),
+    );
+  }),
+);
+
+router.get(
+  "/event/:eventId/counts",
+  h(async (req, res) => {
+    const a = await actor(req);
+    res.json({ counts: await inv.listInventoryCounts(a, req.params.eventId) });
+  }),
+);
+
+router.patch(
+  "/event/:eventId/counts/:countId",
+  h(async (req, res) => {
+    const a = await actor(req);
+    const { status, resolution_note } = req.body ?? {};
+    res.json({ count: await inv.resolveInventoryCount(a, req.params.eventId, req.params.countId, { status, resolution_note }) });
+  }),
+);
+
 export default router;

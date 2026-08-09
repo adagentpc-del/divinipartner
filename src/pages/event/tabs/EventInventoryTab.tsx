@@ -25,6 +25,16 @@ type InventoryItem = {
   by_location: Array<{ location_id: string; quantity: number }>;
 };
 type Alert = { severity: string; message: string };
+type CountIssue = {
+  id: string;
+  item_id: string;
+  kind: string;
+  expected_quantity: string | null;
+  counted_quantity: string;
+  status: string;
+  notes: string | null;
+  resolution_note: string | null;
+};
 
 const CATEGORIES = ['consumables', 'rentals', 'production', 'decor', 'guest_materials', 'sponsor_inventory'];
 
@@ -32,9 +42,13 @@ export default function EventInventoryTab({ eventId }: { eventId: string }) {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [counts, setCounts] = useState<CountIssue[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionErr, setActionErr] = useState<string | null>(null);
+
+  const [showCountForm, setShowCountForm] = useState<'in' | 'out' | null>(null);
+  const [countForm, setCountForm] = useState({ item_id: '', location_id: '', quantity: '', damaged: '', missing: '' });
 
   const [showItemForm, setShowItemForm] = useState(false);
   const [itemForm, setItemForm] = useState({ name: '', category: 'consumables', unit: 'unit', expected_quantity: '' });
@@ -51,8 +65,9 @@ export default function EventInventoryTab({ eventId }: { eventId: string }) {
       apiGet<{ items: InventoryItem[] }>(`/event-inventory/event/${eventId}/items`),
       apiGet<{ locations: Location[] }>(`/event-inventory/event/${eventId}/locations`),
       apiGet<{ alerts: Alert[] }>(`/event-inventory/event/${eventId}/alerts`).catch(() => ({ alerts: [] })),
+      apiGet<{ counts: CountIssue[] }>(`/event-inventory/event/${eventId}/counts`).catch(() => ({ counts: [] })),
     ])
-      .then(([i, l, a]) => { setItems(i.items); setLocations(l.locations); setAlerts(a.alerts); })
+      .then(([i, l, a, c]) => { setItems(i.items); setLocations(l.locations); setAlerts(a.alerts); setCounts(c.counts); })
       .catch((e) => setError(e?.message ?? 'Failed to load inventory'))
       .finally(() => setLoading(false));
   }, [eventId]);
@@ -124,6 +139,53 @@ export default function EventInventoryTab({ eventId }: { eventId: string }) {
     return locations.find((l) => l.id === id)?.name ?? id.slice(0, 8);
   }
 
+  async function submitCount() {
+    if (!countForm.item_id || !countForm.location_id) { setActionErr('Item and location are required.'); return; }
+    setBusy(true);
+    setActionErr(null);
+    try {
+      if (showCountForm === 'in') {
+        await apiSend('POST', `/event-inventory/event/${eventId}/count-in`, {
+          item_id: countForm.item_id,
+          location_id: countForm.location_id,
+          counted_quantity: Number(countForm.quantity || 0),
+        });
+      } else {
+        await apiSend('POST', `/event-inventory/event/${eventId}/count-out`, {
+          item_id: countForm.item_id,
+          location_id: countForm.location_id,
+          returned_quantity: Number(countForm.quantity || 0),
+          damaged_quantity: countForm.damaged ? Number(countForm.damaged) : undefined,
+          missing_quantity: countForm.missing ? Number(countForm.missing) : undefined,
+        });
+      }
+      setCountForm({ item_id: '', location_id: '', quantity: '', damaged: '', missing: '' });
+      setShowCountForm(null);
+      load();
+    } catch (e) {
+      setActionErr(e instanceof ApiError ? e.message : (e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function resolveCount(id: string, status: string) {
+    setBusy(true);
+    setActionErr(null);
+    try {
+      await apiSend('PATCH', `/event-inventory/event/${eventId}/counts/${id}`, { status });
+      load();
+    } catch (e) {
+      setActionErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function itemName(id: string): string {
+    return items.find((i) => i.id === id)?.name ?? id.slice(0, 8);
+  }
+
   if (loading) return <p className="ew-muted">Loading inventory...</p>;
   if (error) return <p className="ew-error">{error}</p>;
 
@@ -147,7 +209,61 @@ export default function EventInventoryTab({ eventId }: { eventId: string }) {
         <button type="button" className="ew-btn ghost sm" onClick={() => setShowLocForm((s) => !s)}>
           {showLocForm ? 'Cancel' : 'Add location'}
         </button>
+        <button type="button" className="ew-btn ghost sm" onClick={() => setShowCountForm((s) => (s === 'in' ? null : 'in'))}>
+          {showCountForm === 'in' ? 'Cancel' : 'Count in'}
+        </button>
+        <button type="button" className="ew-btn ghost sm" onClick={() => setShowCountForm((s) => (s === 'out' ? null : 'out'))}>
+          {showCountForm === 'out' ? 'Cancel' : 'Count out'}
+        </button>
       </div>
+
+      {showCountForm ? (
+        <div className="ew-inv-form">
+          <h3>{showCountForm === 'in' ? 'Count in (vendor delivery)' : 'Count out (closeout)'}</h3>
+          <div className="ew-inv-formrow">
+            <select className="ew-inv-input" value={countForm.item_id} onChange={(e) => setCountForm((f) => ({ ...f, item_id: e.target.value }))}>
+              <option value="">Item</option>
+              {items.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
+            </select>
+            <select className="ew-inv-input" value={countForm.location_id} onChange={(e) => setCountForm((f) => ({ ...f, location_id: e.target.value }))}>
+              <option value="">Location</option>
+              {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+            </select>
+          </div>
+          <input
+            className="ew-inv-input"
+            type="number"
+            placeholder={showCountForm === 'in' ? 'Counted quantity' : 'Returned quantity'}
+            value={countForm.quantity}
+            onChange={(e) => setCountForm((f) => ({ ...f, quantity: e.target.value }))}
+          />
+          {showCountForm === 'out' ? (
+            <div className="ew-inv-formrow">
+              <input className="ew-inv-input" type="number" placeholder="Damaged" value={countForm.damaged} onChange={(e) => setCountForm((f) => ({ ...f, damaged: e.target.value }))} />
+              <input className="ew-inv-input" type="number" placeholder="Missing" value={countForm.missing} onChange={(e) => setCountForm((f) => ({ ...f, missing: e.target.value }))} />
+            </div>
+          ) : null}
+          <button type="button" className="ew-btn sm" onClick={() => void submitCount()} disabled={busy}>Record</button>
+        </div>
+      ) : null}
+
+      {counts.length > 0 ? (
+        <div className="ew-inv-counts">
+          <h3>Count issues</h3>
+          {counts.map((c) => (
+            <div key={c.id} className="ew-inv-countrow" data-status={c.status}>
+              <span className="ew-inv-countstatus">{c.status}</span>
+              <span>{itemName(c.item_id)}: {c.counted_quantity}{c.expected_quantity ? ` of ${c.expected_quantity} expected` : ''}</span>
+              {c.status !== 'resolved' ? (
+                <div className="ew-inv-countacts">
+                  <button type="button" className="ew-btn ghost sm" onClick={() => void resolveCount(c.id, 'disputed')} disabled={busy}>Dispute</button>
+                  <button type="button" className="ew-btn sm" onClick={() => void resolveCount(c.id, 'resolved')} disabled={busy}>Resolve</button>
+                </div>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
 
       {showItemForm ? (
         <div className="ew-inv-form">
@@ -246,4 +362,11 @@ const INV_CSS = `
 .ew-inv-nums { display: flex; gap: 10px; font-size: 12.5px; color: #6b6459; margin-top: 4px; }
 .ew-inv-locs { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; font-size: 12px; color: #2c2a26; }
 .ew-inv-locs li { background: #F7F4EE; border-radius: 999px; padding: 2px 10px; }
+.ew-inv-counts { background: #fff; border: 1px solid #e7e1d6; border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; display: flex; flex-direction: column; gap: 8px; }
+.ew-inv-counts h3 { margin: 0 0 4px; font-family: 'Cormorant Garamond', Georgia, serif; font-size: 17px; color: #123c2e; }
+.ew-inv-countrow { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: #2c2a26; padding: 6px 0; border-top: 1px solid #f0ece2; }
+.ew-inv-countrow:first-of-type { border-top: none; }
+.ew-inv-countstatus { font-size: 10.5px; text-transform: uppercase; letter-spacing: .4px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: rgba(155,44,44,.1); color: #9b2c2c; white-space: nowrap; }
+.ew-inv-countrow[data-status="resolved"] .ew-inv-countstatus { background: rgba(18,60,46,.1); color: #123c2e; }
+.ew-inv-countacts { display: flex; gap: 6px; margin-left: auto; }
 `;

@@ -15,13 +15,24 @@
  * at the source location (never negative), and both locations must
  * belong to the SAME event as the item (never a cross-event transfer).
  *
+ * Part 21-22 adds count-in/count-out reconciliation (countIn, countOut,
+ * listInventoryCounts, resolveInventoryCount). Every count ALWAYS writes a
+ * real movement via recordMovement (the one quantity ledger) -- counts are
+ * never a second, disconnected tally. A tracking row in
+ * event_inventory_counts is created ONLY when there is something to
+ * reconcile: a count-in short of expected_quantity, or a count-out with
+ * damaged/missing quantity. A clean count creates no row (no noisy
+ * alerts). countOut() never auto-creates a change order or financial
+ * charge for damaged/missing quantity -- resolution_note is a free-text
+ * record of what was decided, not a liability assignment.
+ *
  * Zero em dashes.
  */
 import { q, q1, pool } from "../pool.js";
 import { NotFoundError, ForbiddenError, type Actor } from "../db.js";
 import { getEvent, canManageEvent } from "./events.js";
 import { getEventRole } from "./eventMembers.js";
-import { quantityAtLocation, totalQuantity, quantitiesByLocation, inventoryAlerts, type Movement, type InventoryAlert } from "../lib/inventoryMath.js";
+import { quantityAtLocation, totalQuantity, cumulativeArrived, quantitiesByLocation, inventoryAlerts, type Movement, type InventoryAlert } from "../lib/inventoryMath.js";
 import { recordActivity } from "./eventActivity.js";
 
 export type LocationRow = {
@@ -139,15 +150,23 @@ export async function listInventoryItems(actor: Actor, eventId: string): Promise
   });
 }
 
-/** Alerts (Part 20) derived from the same movement ledger, never stored. */
+/** Alerts (Part 20, corrected Part 21-22) derived from the same movement
+ *  ledger, never stored. Uses cumulative arrivals, not current on-site
+ *  total, so an item that fully arrived and was later returned/departed
+ *  (Part 21-22 count-out) does not falsely re-trigger "none has arrived
+ *  yet." */
 export async function listInventoryAlerts(actor: Actor, eventId: string): Promise<InventoryAlert[]> {
-  const items = await listInventoryItems(actor, eventId);
+  await getEvent(actor, eventId);
+  const [items, movements] = await Promise.all([
+    q<InventoryItemRow>(`select * from event_inventory_items where event_id = $1 order by created_at asc`, [eventId]),
+    movementsForEvent(eventId),
+  ]);
   const alerts: InventoryAlert[] = [];
   for (const item of items) {
     alerts.push(
       ...inventoryAlerts(
         { id: item.id, name: item.name, expected_quantity: item.expected_quantity != null ? Number(item.expected_quantity) : null },
-        item.current_total,
+        cumulativeArrived(movements, item.id),
       ),
     );
   }
@@ -182,7 +201,7 @@ async function canMoveItem(actor: Actor, eventId: string, item: { source_vendor_
  * event as the item, and an actor with no authority to move this
  * specific item.
  */
-export async function recordMovement(actor: Actor, eventId: string, input: MovementInput): Promise<Movement> {
+export async function recordMovement(actor: Actor, eventId: string, input: MovementInput): Promise<Movement & { id: string }> {
   await getEvent(actor, eventId);
   if (!(input.quantity > 0)) throw new ForbiddenError("quantity must be a positive number");
 
@@ -230,6 +249,7 @@ export async function recordMovement(actor: Actor, eventId: string, input: Movem
 
     const row = (
       await client.query<{
+        id: string;
         item_id: string;
         quantity: string;
         from_location_id: string | null;
@@ -238,7 +258,7 @@ export async function recordMovement(actor: Actor, eventId: string, input: Movem
         `insert into event_inventory_movements
            (event_id, item_id, quantity, from_location_id, to_location_id, kind, moved_by, reason)
          values ($1,$2,$3,$4,$5,$6,$7,$8)
-         returning item_id, quantity, from_location_id, to_location_id`,
+         returning id, item_id, quantity, from_location_id, to_location_id`,
         [
           eventId,
           input.item_id,
@@ -260,11 +280,190 @@ export async function recordMovement(actor: Actor, eventId: string, input: Movem
       relatedEntityId: input.item_id,
     }).catch(() => undefined);
 
-    return { item_id: row.item_id, quantity: Number(row.quantity), from_location_id: row.from_location_id, to_location_id: row.to_location_id };
+    return {
+      id: row.id,
+      item_id: row.item_id,
+      quantity: Number(row.quantity),
+      from_location_id: row.from_location_id,
+      to_location_id: row.to_location_id,
+    };
   } catch (e) {
     await client.query("rollback").catch(() => undefined);
     throw e;
   } finally {
     client.release();
   }
+}
+
+// ============================================================================
+// COUNT-IN / COUNT-OUT (Part 21-22)
+// ============================================================================
+//
+// A count-in/count-out always writes a real recordMovement() row first --
+// the quantity ledger stays single-sourced. event_inventory_counts is only
+// created when there is something to reconcile: a count-in short of
+// expected, or a count-out with damaged/missing quantity. A clean count
+// needs no resolution workflow and creates no row here.
+
+export type InventoryCountRow = {
+  id: string;
+  event_id: string;
+  item_id: string;
+  movement_id: string | null;
+  kind: string;
+  expected_quantity: string | null;
+  counted_quantity: string;
+  status: string;
+  notes: string | null;
+  resolution_note: string | null;
+  counted_by: string | null;
+  resolved_by: string | null;
+  created_at: string;
+  resolved_at: string | null;
+};
+
+/**
+ * Count In (Part 21): the formal vendor-delivery count against
+ * expected_quantity. Always records a real arrival movement
+ * (from=null -> to=location). If the item's cumulative arrived total
+ * after this count is still short of expected_quantity, opens a
+ * trackable shortage record (status 'open') for owner/planner
+ * acknowledgment/resolution -- a clean, fully-delivered count opens no
+ * such record.
+ */
+export async function countIn(
+  actor: Actor,
+  eventId: string,
+  input: { item_id: string; location_id: string; counted_quantity: number; notes?: string | null },
+): Promise<{ movement: Movement & { id: string }; count: InventoryCountRow | null }> {
+  const movement = await recordMovement(actor, eventId, {
+    item_id: input.item_id,
+    quantity: input.counted_quantity,
+    to_location_id: input.location_id,
+    kind: "count_in",
+    reason: input.notes ?? "count-in",
+  });
+
+  const item = await q1<{ expected_quantity: string | null }>(
+    `select expected_quantity from event_inventory_items where id = $1`,
+    [input.item_id],
+  );
+  const expected = item?.expected_quantity != null ? Number(item.expected_quantity) : null;
+  const movements = await q<Movement>(
+    `select item_id, quantity::float8 as quantity, from_location_id, to_location_id
+       from event_inventory_movements where event_id = $1 and item_id = $2`,
+    [eventId, input.item_id],
+  );
+  const arrivedSoFar = cumulativeArrived(movements, input.item_id);
+
+  let count: InventoryCountRow | null = null;
+  if (expected != null && arrivedSoFar < expected) {
+    count = await q1<InventoryCountRow>(
+      `insert into event_inventory_counts
+         (event_id, item_id, movement_id, kind, expected_quantity, counted_quantity, status, notes, counted_by)
+       values ($1,$2,$3,'count_in',$4,$5,'open',$6,$7)
+       returning *`,
+      [eventId, input.item_id, movement.id, expected, arrivedSoFar, input.notes ?? null, actor.user.id],
+    );
+  }
+  return { movement, count };
+}
+
+/**
+ * Count Out (Part 22): at close, record what actually came back.
+ * returned_quantity + damaged_quantity + missing_quantity together leave
+ * the location in one departure movement (to=null). Damaged and missing
+ * quantities each open a trackable record for the resolution workflow --
+ * NEVER an automatic financial charge (spec constraint: "do not
+ * automatically assign financial liability"). A fully clean return opens
+ * no record.
+ */
+export async function countOut(
+  actor: Actor,
+  eventId: string,
+  input: {
+    item_id: string;
+    location_id: string;
+    returned_quantity: number;
+    damaged_quantity?: number;
+    missing_quantity?: number;
+    notes?: string | null;
+  },
+): Promise<{ movement: Movement & { id: string }; counts: InventoryCountRow[] }> {
+  const damaged = input.damaged_quantity ?? 0;
+  const missing = input.missing_quantity ?? 0;
+  const total = input.returned_quantity + damaged + missing;
+  if (!(total > 0)) throw new ForbiddenError("count-out total must be a positive number");
+
+  const movement = await recordMovement(actor, eventId, {
+    item_id: input.item_id,
+    quantity: total,
+    from_location_id: input.location_id,
+    kind: "count_out",
+    reason: input.notes ?? "count-out",
+  });
+
+  const counts: InventoryCountRow[] = [];
+  for (const [status, qty] of [
+    ["damaged", damaged],
+    ["missing", missing],
+  ] as const) {
+    if (qty <= 0) continue;
+    const row = await q1<InventoryCountRow>(
+      `insert into event_inventory_counts
+         (event_id, item_id, movement_id, kind, counted_quantity, status, notes, counted_by)
+       values ($1,$2,$3,'count_out',$4,$5,$6,$7)
+       returning *`,
+      [eventId, input.item_id, movement.id, qty, status, input.notes ?? null, actor.user.id],
+    );
+    if (row) counts.push(row);
+  }
+  return { movement, counts };
+}
+
+/** Role-scoped: owner/planner/venue see every count issue; a vendor sees
+ *  only issues on items they sourced -- the same isolation rule
+ *  recordMovement()'s canMoveItem already enforces for the underlying
+ *  movements. */
+export async function listInventoryCounts(actor: Actor, eventId: string): Promise<InventoryCountRow[]> {
+  await getEvent(actor, eventId);
+  const role = await getEventRole(actor, eventId);
+  if (role === "vendor_owner" || role === "vendor_staff") {
+    if (!actor.org?.id) return [];
+    return q<InventoryCountRow>(
+      `select c.* from event_inventory_counts c
+         join event_inventory_items i on i.id = c.item_id
+        where c.event_id = $1 and i.source_vendor_org_id = $2
+        order by c.created_at desc`,
+      [eventId, actor.org.id],
+    );
+  }
+  if (role !== "venue" && !(await canManageEvent(actor, eventId))) return [];
+  return q<InventoryCountRow>(`select * from event_inventory_counts where event_id = $1 order by created_at desc`, [
+    eventId,
+  ]);
+}
+
+/** Resolve/acknowledge/dispute a count issue -- owner/planner only. Never
+ *  creates a financial record; resolution_note is a free-text decision
+ *  log, not a charge. */
+export async function resolveInventoryCount(
+  actor: Actor,
+  eventId: string,
+  countId: string,
+  input: { status: "acknowledged" | "disputed" | "resolved" | "confirmed_returned"; resolution_note?: string | null },
+): Promise<InventoryCountRow> {
+  if (!(await canManageEvent(actor, eventId))) {
+    throw new ForbiddenError("only the event owner or planner can resolve an inventory count issue");
+  }
+  const row = await q1<InventoryCountRow>(
+    `update event_inventory_counts
+        set status = $3, resolution_note = coalesce($4, resolution_note),
+            resolved_by = $5, resolved_at = case when $3 = 'resolved' then now() else resolved_at end
+      where id = $1 and event_id = $2
+      returning *`,
+    [countId, eventId, input.status, input.resolution_note ?? null, actor.user.id],
+  );
+  if (!row) throw new NotFoundError("inventory count issue not found");
+  return row;
 }
