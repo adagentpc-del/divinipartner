@@ -2,15 +2,17 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { apiGet } from '../../../lib/api';
 
 /**
- * Event Command Center (live-ops phase, Part 5-6). The live event-day
- * operating view: current/next Run of Show item, guest headcount, the
- * vendor arrival schedule, task status counts, and today's event changes --
- * every number here comes straight from server/src/db/eventCommandCenter.ts,
- * which derives it fresh from the real underlying systems on each call.
- * Sections with no underlying system yet (Staff check-in, Incidents,
- * Sponsor activations, Inventory alerts) render an honest "not tracked yet"
- * note rather than a fabricated number -- they will fill in as those parts
- * of the live-ops phase ship, in this same tab.
+ * Event Command Center (live-ops phase, Part 5-6, extended in Part 7-8 for
+ * real vendor/staff arrival status). The live event-day operating view:
+ * current/next Run of Show item, guest headcount, the vendor arrival
+ * schedule with derived arrival status, staff check-in counts, task status
+ * counts, and today's event changes -- every number here comes straight
+ * from server/src/db/eventCommandCenter.ts, which derives it fresh from
+ * the real underlying systems on each call.
+ * Sections with no underlying system yet (Incidents, Sponsor activations,
+ * Inventory alerts) render an honest "not tracked yet" note rather than a
+ * fabricated number -- they will fill in as those parts of the live-ops
+ * phase ship, in this same tab.
  *
  * Distinct from the pre-existing "Divini Command Center" (the org-level AI
  * COO ask-a-question feature) -- this is a per-event live operations view,
@@ -37,13 +39,24 @@ type VendorScheduleRow = {
   status: string;
 };
 
+type ArrivalStatus = 'not_due' | 'due_soon' | 'on_time' | 'early' | 'late' | 'checked_in' | 'completed' | 'no_show';
+
+type VendorArrivalSummaryRow = {
+  organization_id: string;
+  vendor_name: string;
+  scheduled_at: string | null;
+  checked_in_at: string | null;
+  checked_out_at: string | null;
+  status: ArrivalStatus;
+};
+
 type CommandCenter = {
   audience: PacketAudience;
   event: { id: string; name: string; status: string | null; date_time: string | null; timezone: string | null };
   current_status: { current_item: ScheduleItem | null; next_item: ScheduleItem | null; elapsed_minutes: number | null };
   guests: { checked_in: number; vip_checked_in: number; total: number } | null;
-  vendors: { expected: number; rows: VendorScheduleRow[] } | null;
-  staff: null;
+  vendors: { expected: number; rows: VendorScheduleRow[]; arrivals: VendorArrivalSummaryRow[] } | null;
+  staff: { expected: number; checked_in: number } | null;
   tasks: { complete: number; active: number; blocked: number; total: number } | null;
   changes: { today_count: number; today_financial_impact: number | null } | null;
   incidents: null;
@@ -52,6 +65,22 @@ type CommandCenter = {
   timeline: Array<{ at: string; label: string; kind: string }>;
   generated_at: string;
 };
+
+const ARRIVAL_LABEL: Record<ArrivalStatus, string> = {
+  not_due: 'Not due',
+  due_soon: 'Due soon',
+  on_time: 'On time',
+  early: 'Early',
+  late: 'Late',
+  checked_in: 'Checked in',
+  completed: 'Completed',
+  no_show: 'No show',
+};
+function arrivalColor(s: ArrivalStatus): string {
+  if (s === 'completed' || s === 'on_time' || s === 'checked_in' || s === 'early') return '#1E5D4A';
+  if (s === 'due_soon' || s === 'not_due') return '#6b6459';
+  return '#b4451f';
+}
 
 function fmtTime(v: string | null): string {
   if (!v) return 'TBD';
@@ -145,13 +174,22 @@ export default function EventCommandCenterTab({ eventId }: { eventId: string }) 
             <h3>Vendors</h3>
             <div className="ew-cc-nums">
               <div><span className="ew-cc-num">{cc.vendors.expected}</span><span className="ew-cc-num-lbl">Expected</span></div>
+              <div>
+                <span className="ew-cc-num">{cc.vendors.arrivals.filter((a) => a.status === 'checked_in' || a.status === 'on_time' || a.status === 'early' || a.status === 'completed').length}</span>
+                <span className="ew-cc-num-lbl">On site</span>
+              </div>
+              <div>
+                <span className="ew-cc-num ew-cc-num-warn">{cc.vendors.arrivals.filter((a) => a.status === 'late' || a.status === 'no_show').length}</span>
+                <span className="ew-cc-num-lbl">Late / no show</span>
+              </div>
             </div>
-            {cc.vendors.rows.length > 0 ? (
+            {cc.vendors.arrivals.length > 0 ? (
               <ul className="ew-cc-list">
-                {cc.vendors.rows.slice(0, 6).map((v, i) => (
-                  <li key={`${v.vendor_org_id}-${i}`}>
-                    <span className="ew-cc-listtime">{fmtTime(v.start_time)}</span>
-                    <span>{v.vendor_name} - {v.action}</span>
+                {cc.vendors.arrivals.map((a) => (
+                  <li key={a.organization_id}>
+                    <span className="ew-cc-listtime">{fmtTime(a.scheduled_at)}</span>
+                    <span>{a.vendor_name}</span>
+                    <span className="ew-cc-badge" style={{ color: arrivalColor(a.status) }}>{ARRIVAL_LABEL[a.status]}</span>
                   </li>
                 ))}
               </ul>
@@ -161,10 +199,20 @@ export default function EventCommandCenterTab({ eventId }: { eventId: string }) 
           </section>
         ) : null}
 
-        <section className="ew-cc-card">
-          <h3>Staff</h3>
-          <p className="ew-cc-empty">Not tracked yet -- staff check-in ships in a later part of this phase.</p>
-        </section>
+        {cc.staff ? (
+          <section className="ew-cc-card">
+            <h3>Staff</h3>
+            <div className="ew-cc-nums">
+              <div><span className="ew-cc-num">{cc.staff.checked_in}</span><span className="ew-cc-num-lbl">Checked in</span></div>
+              <div><span className="ew-cc-num">{cc.staff.expected}</span><span className="ew-cc-num-lbl">Expected</span></div>
+            </div>
+          </section>
+        ) : (
+          <section className="ew-cc-card">
+            <h3>Staff</h3>
+            <p className="ew-cc-empty">Not visible from this role.</p>
+          </section>
+        )}
 
         {cc.tasks ? (
           <section className="ew-cc-card">
@@ -247,4 +295,5 @@ const CC_CSS = `
 .ew-cc-list, .ew-cc-timeline { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .ew-cc-list li, .ew-cc-timeline li { display: flex; gap: 10px; font-size: 12.5px; color: var(--dp-ink); }
 .ew-cc-listtime { flex: 0 0 62px; font-weight: 600; color: var(--dp-emerald); }
+.ew-cc-badge { margin-left: auto; font-size: 10.5px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; }
 `;

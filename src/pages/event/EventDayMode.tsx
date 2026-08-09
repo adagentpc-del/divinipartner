@@ -104,6 +104,24 @@ type VendorScheduleRow = {
   status: string;
 };
 
+// --- Check-in / check-out (completion phase, Part 7-8) ---------------------
+
+type CheckInRow = {
+  id: string;
+  event_id: string;
+  user_id: string;
+  organization_id: string | null;
+  role: string;
+  assigned_location: string | null;
+  source_device: string | null;
+  notes: string | null;
+  checked_in_at: string;
+  checked_in_by: string | null;
+  checked_out_at: string | null;
+  checked_out_by: string | null;
+  created_at: string;
+};
+
 // --- Final Event Schedule / Execution Packet (Part 14) ----------------------
 // Deliberately NOT a compressed copy of the desktop packet: only the four
 // things someone checks on their phone before/during the event -- final
@@ -195,6 +213,8 @@ export default function EventDayMode() {
   const [guests, setGuests] = useState<Guest[]>([]);
   const [headcount, setHeadcount] = useState<Headcount | null>(null);
   const [vendorSchedule, setVendorSchedule] = useState<VendorScheduleRow[]>([]);
+  const [myCheckIn, setMyCheckIn] = useState<CheckInRow | null>(null);
+  const [checkInBusy, setCheckInBusy] = useState(false);
   const [now, setNow] = useState<number>(() => Date.now());
   const [busy, setBusy] = useState(false);
   const [statusBusy, setStatusBusy] = useState(false);
@@ -213,7 +233,7 @@ export default function EventDayMode() {
     setBusy(true);
     setErr(null);
     try {
-      const [e, meta, it, tk, vendors, gl, hc, versions, vs] = await Promise.all([
+      const [e, meta, it, tk, vendors, gl, hc, versions, vs, mci] = await Promise.all([
         apiGet<{ event: EventRow }>(`/events/${id}`),
         apiGet<{ statuses: StatusMeta[] }>(`/events/meta`).catch(() => ({ statuses: [] })),
         apiGet<{ itinerary: BuiltItinerary }>(`/itinerary/event/${id}/build`).catch(() => null),
@@ -223,6 +243,7 @@ export default function EventDayMode() {
         apiGet<{ headcount: Headcount }>(`/guests/event/${id}/headcount`).catch(() => null),
         apiGet<{ versions: PacketVersionSummary[] }>(`/execution-packet/event/${id}`).catch(() => ({ versions: [] })),
         apiGet<{ schedule: VendorScheduleRow[] }>(`/itinerary/event/${id}/vendor-schedule`).catch(() => ({ schedule: [] })),
+        apiGet<{ check_in: CheckInRow | null }>(`/check-ins/event/${id}/mine`).catch(() => ({ check_in: null })),
       ]);
       setEv(e.event);
       setStatuses(meta.statuses);
@@ -232,6 +253,7 @@ export default function EventDayMode() {
       setGuests(gl.guests);
       setHeadcount(hc ? hc.headcount : null);
       setVendorSchedule(vs.schedule);
+      setMyCheckIn(mci.check_in);
       setNow(Date.now());
 
       const latest = versions.versions[0] ?? null;
@@ -305,6 +327,20 @@ export default function EventDayMode() {
       setHeadcount((cur) =>
         cur ? { ...cur, checked_in: Math.max(0, cur.checked_in + (next ? -1 : 1)) } : cur,
       );
+    }
+  }
+
+  async function toggleMyCheckIn() {
+    setCheckInBusy(true);
+    setErr(null);
+    try {
+      const isOpen = !!myCheckIn && !myCheckIn.checked_out_at;
+      const r = await apiSend<{ check_in: CheckInRow }>('POST', `/check-ins/event/${id}/${isOpen ? 'check-out' : 'check-in'}`);
+      setMyCheckIn(r.check_in);
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setCheckInBusy(false);
     }
   }
 
@@ -484,6 +520,18 @@ export default function EventDayMode() {
               <span className="dm-pill">{currentStatusLabel}</span>
               {ev?.guest_count != null ? <span className="dm-pill alt">{ev.guest_count} guests</span> : null}
             </div>
+            <button
+              type="button"
+              className={`dm-checkinbtn${myCheckIn && !myCheckIn.checked_out_at ? ' is-in' : ''}`}
+              onClick={() => void toggleMyCheckIn()}
+              disabled={checkInBusy}
+            >
+              {checkInBusy
+                ? 'Updating...'
+                : myCheckIn && !myCheckIn.checked_out_at
+                ? 'Checked in -- tap to check out'
+                : 'Check in'}
+            </button>
             <AddToCalendar
               title={ev?.name ?? 'Event'}
               start={ev?.date_time}
@@ -816,6 +864,13 @@ const DM_CSS = `
 .dm-heroline { font-size: 15.5px; color: rgba(255,255,255,.9); line-height: 1.4; }
 .dm-venue { color: rgba(255,255,255,.7); }
 .dm-herostat { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.dm-checkinbtn {
+  margin-top: 14px; min-height: 52px; width: 100%; padding: 12px 16px; border-radius: 12px;
+  background: var(--dp-gold); border: 0; color: var(--dp-emerald); font: inherit; font-size: 15px; font-weight: 700;
+  cursor: pointer;
+}
+.dm-checkinbtn.is-in { background: rgba(255,255,255,.14); color: #fff; border: 1px solid rgba(255,255,255,.35); }
+.dm-checkinbtn:disabled { opacity: .6; cursor: default; }
 .dm-pill {
   font-size: 12.5px; font-weight: 600; text-transform: capitalize; color: var(--dp-emerald);
   background: var(--dp-gold); padding: 6px 13px; border-radius: 999px;

@@ -9,14 +9,16 @@
  * underlying tables on each call, so it can never drift from the systems it
  * describes.
  *
- * Several sections the full 48-part spec eventually wants (Staff check-in,
- * Incidents, Sponsor activations, Inventory alerts) do not have an
- * underlying system YET -- those parts of the live-ops phase come later in
- * the execution order (Part 7/8 check-in, Part 15/16 incidents, Part 24
- * sponsor activation, Part 17-20 inventory). This file is the one place
- * those sections will be filled in as each system ships; the honest
- * placeholder is `null`, never a fabricated number. Do not add a second
- * command-center aggregator when those parts land -- extend this one.
+ * Vendor and staff arrival status (Part 7/8) is now real, layered on top of
+ * getVendorArrivalSchedule via db/checkIns.ts's vendorArrivalsSummary and a
+ * fresh event_members/event_check_ins aggregate. Sections the full 48-part
+ * spec eventually wants but that still have no underlying system YET
+ * (Incidents, Sponsor activations, Inventory alerts) come later in the
+ * execution order (Part 15/16 incidents, Part 24 sponsor activation, Part
+ * 17-20 inventory). This file is the one place those sections will be
+ * filled in as each system ships; the honest placeholder is `null`, never
+ * a fabricated number. Do not add a second command-center aggregator when
+ * those parts land -- extend this one.
  *
  * Authorization (Part 6): every section is narrowed to the actor's real
  * event role, backend-enforced, before the response is built -- the same
@@ -34,6 +36,7 @@ import { getEvent } from "./events.js";
 import { getEventRole } from "./eventMembers.js";
 import { buildItinerary, getVendorArrivalSchedule, type DerivedItem } from "./itinerary.js";
 import { audienceForRole, type PacketAudience, type VendorScheduleRow } from "../lib/packetProjection.js";
+import { vendorArrivalsSummary, type VendorArrivalSummaryRow } from "./checkIns.js";
 
 export type CommandCenterScheduleItem = {
   title: string;
@@ -53,9 +56,8 @@ export type CommandCenterProjection = {
     elapsed_minutes: number | null;
   };
   guests: { checked_in: number; vip_checked_in: number; total: number } | null;
-  vendors: { expected: number; rows: VendorScheduleRow[] } | null;
-  /** Awaiting Part 7/8 (vendor/staff check-in + arrival status). */
-  staff: null;
+  vendors: { expected: number; rows: VendorScheduleRow[]; arrivals: VendorArrivalSummaryRow[] } | null;
+  staff: { expected: number; checked_in: number } | null;
   tasks: { complete: number; active: number; blocked: number; total: number } | null;
   changes: { today_count: number; today_financial_impact: number | null } | null;
   /** Awaiting Part 15/16 (incident management). */
@@ -115,9 +117,34 @@ export async function getCommandCenter(actor: Actor, eventId: string): Promise<C
   // audience narrowing this projection uses (full/venue see every vendor,
   // vendor/vendor_staff see only their own org, sponsor/event_staff see
   // none) -- calling it here instead of re-deriving is what keeps this a
-  // single source of truth for that isolation rule.
+  // single source of truth for that isolation rule. arrivals (Part 7/8)
+  // layers real check-in-derived status on top via the same narrowing.
   const vendorRows = await getVendorArrivalSchedule(actor, eventId);
-  const vendors = audience === "sponsor" || audience === "event_staff" ? null : { expected: vendorRows.length, rows: vendorRows };
+  const vendorArrivals = await vendorArrivalsSummary(actor, eventId);
+  const vendors =
+    audience === "sponsor" || audience === "event_staff"
+      ? null
+      : { expected: vendorRows.length, rows: vendorRows, arrivals: vendorArrivals };
+
+  // Staff (Part 7/8): owner/planner/venue only -- an operational headcount
+  // of assigned event_staff members and how many have checked in, derived
+  // straight from event_members + event_check_ins, never a stored counter.
+  let staff: CommandCenterProjection["staff"] = null;
+  if (audience === "full" || audience === "venue") {
+    const row = await q1<{ expected: string; checked_in: string }>(
+      `select count(*) as expected,
+              count(*) filter (
+                where exists (
+                  select 1 from event_check_ins c
+                   where c.event_id = em.event_id and c.user_id = em.user_id
+                )
+              ) as checked_in
+         from event_members em
+        where em.event_id = $1 and em.status = 'active' and em.role = 'event_staff'`,
+      [eventId],
+    );
+    staff = { expected: Number(row?.expected ?? 0), checked_in: Number(row?.checked_in ?? 0) };
+  }
 
   // Guests: owner/planner only -- guest identity/VIP status is not
   // operational information a vendor, venue, or sponsor needs from this
@@ -200,7 +227,7 @@ export async function getCommandCenter(actor: Actor, eventId: string): Promise<C
     },
     guests,
     vendors,
-    staff: null,
+    staff,
     tasks,
     changes,
     incidents: null,
