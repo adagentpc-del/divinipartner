@@ -18,7 +18,6 @@ individually in `AI_PROJECT_OS/` before this pack existed.
 | Commission an independent third-party penetration test | Requires budget/vendor selection | `docs/platform-standard/risk-register.md` R-04 | P1, before real money or first enterprise deal |
 | Decide SOC 2 / ISO 27001 formal-certification timing and budget, name an ISMS owner | Business decision | `AI_PROJECT_OS/52_COMPLIANCE.md` | P2 |
 | Review and approve (or redline) the DRAFT policies in `compliance/policies/` | Requires a named, accountable owner signing off | `compliance/policies/README.md` | P1 |
-| Add an age-affirmation step at registration | Small product decision + build, listed here because it needs an explicit "yes, do this" from the owner before a Section 02+ pass implements it | `docs/platform-standard/risk-register.md` R-01 | P2 |
 | Confirm branch protection on the default branch (require PR review + passing CI before merge) | GitHub repo-settings UI, admin-only, not visible or settable from repo contents | `docs/platform-standard/section-03-repo-supply-chain.md` | P2 |
 | Push the `v0.1.0` tag (`git push origin v0.1.0`) | Created locally this session; the push was rejected with a 403 — this session's push access covers branch refs, not tag refs | `docs/platform-standard/section-03-repo-supply-chain.md` | P2 |
 | Verify `npm audit fix --force` against a real iOS/Android build before applying it to `package.json` | Needs Xcode/Android Studio, unavailable in this environment | `AI_PROJECT_OS/12_TASK_QUEUE.md` T19 | P2 |

@@ -104,6 +104,10 @@ Bootstrapped at Section 01.
 | S17-02 | Command output | Live test against a real, disposable Postgres instance: `POST /register` without `ageConfirmed` (400), with `ageConfirmed:false` (400), with `ageConfirmed:true` (201, org created) | 2026-08-09 |
 | S17-02 | Code | `server/src/routes/foundation.ts` (`POST /register`), `src/pages/GetStarted.tsx` (age checkbox) | 2026-08-09 |
 | S17 (all) | File | `docs/platform-standard/section-17-conditional-regulatory-overlays.md` (new) | 2026-08-09 |
+| S18-01 | Cross-reference | Full read of `12_TASK_QUEUE.md` (all T1-T39), `risk-register.md` (48 rows), and `operator-actions.md` at close of Section 17 | 2026-08-09 |
+| S18-02 | Command output | Final `npm run lint` / `npm run build` / `npm --prefix server run build` / `npm test` re-run at close of Section 17 -- 0 errors, clean builds, 72/72 passing | 2026-08-09 |
+| S18-03 | File | `docs/platform-standard/operator-actions.md` (stale age-affirmation row removed) | 2026-08-09 |
+| S18 (all) | File | `docs/platform-standard/section-18-final-launch-readiness.md` (new) | 2026-08-09 |
 
 ## Notes
 

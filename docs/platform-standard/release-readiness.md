@@ -26,7 +26,7 @@ format.
 | 15 QA, E2E, Load Testing, Pentest & Regression | **READY** — no open P0/P1/P2 items | 2026-08-09 |
 | 16 Mobile: iOS, Android & App Store | READY (scoped) — native build/submission BLOCKED (needs Mac/Xcode, tracked as T9) | 2026-08-09 |
 | 17 Conditional Regulatory Overlays | **READY** — no open P0/P1/P2 items | 2026-08-09 |
-| 18 | Not yet started | — |
+| 18 Final Launch Readiness, Certification & Sign-off | Complete — synthesis + final determination, see below | 2026-08-09 |
 
 ## Section 01 summary
 
@@ -558,11 +558,47 @@ format.
   re-litigated here, which would exceed what this session can determine.
 - No P0/P1/P2 items remain open for this section.
 
-## Overall launch readiness (cumulative, updated as sections complete)
+## Section 18 summary
 
-**NOT READY** — pending Section 18, plus the standing T7 gate (real
-money) which several sections now have concrete pre-requisites tracked
-against (refund/dispute capability, live credential testing). This is
-expected at this stage (seventeen of eighteen sections complete) and is not
-itself a new finding; it reflects where the multi-section pack currently
-stands, not a regression.
+- Cumulative, synthesis-only section: no new code audit, pulls Sections
+  01-17 into one final readiness statement. Full detail:
+  `docs/platform-standard/section-18-final-launch-readiness.md`.
+- No P0 item remains open that this pack is capable of resolving. The only
+  P0s in the entire backlog (T7 live Stripe key, T8 counsel review of
+  Terms + 5 policies) were P0 before this pack started, remain correctly
+  gated on counsel/owner judgment, and nothing in this session changed
+  that — matching Section 01's own prediction that the real launch
+  blockers were never code questions.
+- Final regression baseline re-confirmed: `npm run lint` 0 errors, SPA
+  build clean, server build clean, 72/72 tests passing. 48 tracked risk
+  rows (26 RESOLVED with live evidence), 119 tracked control checks (98
+  PASS outright, the remainder correctly BLOCKED/CONDITIONAL/N/A/tracked-
+  FAIL, none silently dropped).
+- Cleaned up one stale operator-action row (age-affirmation, resolved in
+  Section 17) found stale during this section's synthesis pass.
+- Explicitly stated: this document is an AI-generated audit synthesis, not
+  a legal/financial/security sign-off — it requires a named human owner
+  to read, act on or accept the P1/P2 list, and countersign before being
+  treated as an organizational "launch ready" record.
+
+## Overall launch readiness (cumulative — FINAL, all 18 sections complete)
+
+**NOT READY for real money** — T7 (live Stripe/PayPal keys) remains
+correctly, deliberately gated on counsel review of money-transmission,
+PCI SAQ level, marketplace-facilitator sales tax, and 1099 reporting
+exposure, none of which are resolvable from code alone. This was true
+before this pack started and nothing discovered across all 18 sections
+changed it.
+
+**READY, with a tracked P1/P2 list and no code-fixable P0 items, for
+everything short of real money** — a research-preview or design-partner
+launch on free/test tiers, Stripe/PayPal left unconfigured, is not
+blocked by anything this audit found across all 18 sections.
+
+This is the pack's final determination. Real launch beyond this point
+requires the P1 operator actions to be acted on or explicitly accepted,
+counsel resolution of T7/T8, and — for anything requiring independent
+verification (penetration test, formal SOC 2/ISO 27001, Apple/Google App
+Store review) — the actual named human party to perform it. See
+`docs/platform-standard/section-18-final-launch-readiness.md` for the
+complete synthesis and sign-off framing.

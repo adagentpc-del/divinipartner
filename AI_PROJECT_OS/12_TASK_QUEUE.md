@@ -451,12 +451,15 @@ Engines: Profiles, Organizations, Admin, Products/Services, Calendar,
 Video & Documents), Section 13 (Analytics, Behavior Tracking &
 Personalization), Section 14 (Observability, Incident Response &
 Disaster Recovery), Section 15 (QA, E2E, Load Testing, Pentest &
-Regression), Section 16 (Mobile: iOS, Android & App Store), and Section
-17 (Conditional Regulatory Overlays) are complete; see
-`docs/platform-standard/release-readiness.md` for cumulative status
-across all 18 sections as they execute. New findings that represent
-real, actionable work (like T13-T39 above) get a task here as they're
-found, so
+Regression), Section 16 (Mobile: iOS, Android & App Store), Section 17
+(Conditional Regulatory Overlays), and Section 18 (Final Launch
+Readiness, Certification & Sign-off) are **all complete — the full
+18-section pack has finished executing**. See
+`docs/platform-standard/release-readiness.md` for the final cumulative
+status and `docs/platform-standard/section-18-final-launch-readiness.md`
+for the closing synthesis. New findings that represent real, actionable
+work (like T13-T39 above) still get a task here as they're found in
+future passes, so
 this queue stays the single place to look for "what's left to do" --
 `docs/platform-standard/` is where the pack's own required audit/evidence/
 risk trail lives, not a second task list.
