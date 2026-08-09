@@ -11,14 +11,17 @@
  *
  * Vendor and staff arrival status (Part 7/8) is now real, layered on top of
  * getVendorArrivalSchedule via db/checkIns.ts's vendorArrivalsSummary and a
- * fresh event_members/event_check_ins aggregate. Sections the full 48-part
- * spec eventually wants but that still have no underlying system YET
- * (Incidents, Sponsor activations, Inventory alerts) come later in the
- * execution order (Part 15/16 incidents, Part 24 sponsor activation, Part
- * 17-20 inventory). This file is the one place those sections will be
- * filled in as each system ships; the honest placeholder is `null`, never
- * a fabricated number. Do not add a second command-center aggregator when
- * those parts land -- extend this one.
+ * fresh event_members/event_check_ins aggregate. Incidents (Part 15-16) is
+ * now real too, via db/incidents.ts's listIncidents (already visibility-
+ * projected, so a restricted incident never inflates a count an
+ * unauthorized audience can see). Sections the full 48-part spec
+ * eventually wants but that still have no underlying system YET (Sponsor
+ * activations, Inventory alerts) come later in the execution order (Part
+ * 24 sponsor activation, Part 17-20 inventory). This file is the one
+ * place those sections will be filled in as each system ships; the
+ * honest placeholder is `null`, never a fabricated number. Do not add a
+ * second command-center aggregator when those parts land -- extend this
+ * one.
  *
  * Authorization (Part 6): every section is narrowed to the actor's real
  * event role, backend-enforced, before the response is built -- the same
@@ -38,6 +41,7 @@ import { buildItinerary, getVendorArrivalSchedule, type DerivedItem } from "./it
 import { audienceForRole, type PacketAudience, type VendorScheduleRow } from "../lib/packetProjection.js";
 import { vendorArrivalsSummary, type VendorArrivalSummaryRow } from "./checkIns.js";
 import { listActivity } from "./eventActivity.js";
+import { listIncidents } from "./incidents.js";
 
 export type CommandCenterScheduleItem = {
   title: string;
@@ -61,8 +65,7 @@ export type CommandCenterProjection = {
   staff: { expected: number; checked_in: number } | null;
   tasks: { complete: number; active: number; blocked: number; total: number } | null;
   changes: { today_count: number; today_financial_impact: number | null } | null;
-  /** Awaiting Part 15/16 (incident management). */
-  incidents: null;
+  incidents: { open: number; high_priority: number } | null;
   /** Awaiting Part 24 (sponsor activation status). */
   sponsors: null;
   /** Awaiting Part 17-20 (event inventory model). */
@@ -218,6 +221,16 @@ export async function getCommandCenter(actor: Actor, eventId: string): Promise<C
     kind: a.category,
   }));
 
+  // Incidents (Part 15-16): listIncidents already applies the visibility
+  // projection (lib/incidentVisibility.ts), so a restricted incident's
+  // existence never inflates a count this audience should not know about.
+  const visibleIncidents = await listIncidents(actor, eventId);
+  const openIncidents = visibleIncidents.filter((i) => i.status !== "resolved" && i.status !== "closed");
+  const incidents: CommandCenterProjection["incidents"] = {
+    open: openIncidents.length,
+    high_priority: openIncidents.filter((i) => i.severity === "high" || i.severity === "critical").length,
+  };
+
   return {
     audience,
     event: { id: ev.id, name: ev.name, status: ev.status, date_time: ev.date_time, timezone: ev.timezone },
@@ -231,7 +244,7 @@ export async function getCommandCenter(actor: Actor, eventId: string): Promise<C
     staff,
     tasks,
     changes,
-    incidents: null,
+    incidents,
     sponsors: null,
     inventory: null,
     timeline,

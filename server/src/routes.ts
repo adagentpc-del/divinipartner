@@ -83,6 +83,8 @@ import eventCommandCenter from "./routes/eventCommandCenter.js";
 import checkIns from "./routes/checkIns.js";
 // Live Activity Timeline (live-ops phase, Part 11-12)
 import eventActivity from "./routes/eventActivity.js";
+// Incident Management (live-ops phase, Part 15-16)
+import incidents from "./routes/incidents.js";
 // Execution Packet distribution settings
 import packetDistribution from "./routes/packetDistribution.js";
 // Visitor signals (fingerprint/IP logging) + landing personalization
@@ -258,6 +260,7 @@ router.use("/readiness", readiness);
 router.use("/event-command-center", eventCommandCenter);
 router.use("/check-ins", checkIns);
 router.use("/event-activity", eventActivity);
+router.use("/incidents", incidents);
 router.use("/packet-distribution", packetDistribution);
 router.use("/signals", signals);
 router.use("/personalize", personalize);

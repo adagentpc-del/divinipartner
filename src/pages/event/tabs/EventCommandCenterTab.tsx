@@ -9,8 +9,9 @@ import { apiGet } from '../../../lib/api';
  * counts, and today's event changes -- every number here comes straight
  * from server/src/db/eventCommandCenter.ts, which derives it fresh from
  * the real underlying systems on each call.
- * Sections with no underlying system yet (Incidents, Sponsor activations,
- * Inventory alerts) render an honest "not tracked yet" note rather than a
+ * Incidents (Part 15-16) is real too, visibility-projected server-side.
+ * Sections with no underlying system yet (Sponsor activations, Inventory
+ * alerts) render an honest "not tracked yet" note rather than a
  * fabricated number -- they will fill in as those parts of the live-ops
  * phase ship, in this same tab.
  *
@@ -59,7 +60,7 @@ type CommandCenter = {
   staff: { expected: number; checked_in: number } | null;
   tasks: { complete: number; active: number; blocked: number; total: number } | null;
   changes: { today_count: number; today_financial_impact: number | null } | null;
-  incidents: null;
+  incidents: { open: number; high_priority: number } | null;
   sponsors: null;
   inventory: null;
   timeline: Array<{ at: string; label: string; kind: string }>;
@@ -240,10 +241,20 @@ export default function EventCommandCenterTab({ eventId }: { eventId: string }) 
           </section>
         ) : null}
 
-        <section className="ew-cc-card">
-          <h3>Incidents</h3>
-          <p className="ew-cc-empty">Not tracked yet -- incident management ships in a later part of this phase.</p>
-        </section>
+        {cc.incidents ? (
+          <section className="ew-cc-card">
+            <h3>Incidents</h3>
+            <div className="ew-cc-nums">
+              <div><span className="ew-cc-num">{cc.incidents.open}</span><span className="ew-cc-num-lbl">Open</span></div>
+              <div><span className="ew-cc-num ew-cc-num-warn">{cc.incidents.high_priority}</span><span className="ew-cc-num-lbl">High priority</span></div>
+            </div>
+          </section>
+        ) : (
+          <section className="ew-cc-card">
+            <h3>Incidents</h3>
+            <p className="ew-cc-empty">No incidents visible to you for this event.</p>
+          </section>
+        )}
 
         <section className="ew-cc-card">
           <h3>Sponsors</h3>
