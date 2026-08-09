@@ -67,9 +67,12 @@ test("an explicit visibility_scope narrows the category default rather than repl
   assert.equal(isActivityVisible(r, "full", null, "someone-else"), true);
 });
 
-test("sponsor category defaults to full + sponsor only, not venue or vendor", () => {
+test("sponsor category is full + own-org-only, never venue, vendor, or a DIFFERENT sponsor org (Part 23-24 regression: a rival sponsor must never see another sponsor's activation activity via the shared timeline)", () => {
   const r = row({ category: "sponsor", actor_org_id: "org-sponsor" });
-  assert.equal(isActivityVisible(r, "sponsor", "org-other-sponsor", "someone-else"), true);
+  assert.equal(isActivityVisible(r, "full", null, "someone-else"), true);
+  assert.equal(isActivityVisible(r, "sponsor", "org-sponsor", "someone-else"), true);
+  assert.equal(isActivityVisible(r, "sponsor", "org-other-sponsor", "someone-else"), false);
+  assert.equal(isActivityVisible(r, "sponsor", null, "someone-else"), false);
   assert.equal(isActivityVisible(r, "venue", null, "someone-else"), false);
   assert.equal(isActivityVisible(r, "vendor", null, "someone-else"), false);
 });

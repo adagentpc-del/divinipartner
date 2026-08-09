@@ -56,6 +56,13 @@ type Task = {
   assigned_role: string | null;
 };
 
+type SponsorActivation = {
+  id: string;
+  sponsor_org_id: string;
+  label: string;
+  status: string;
+};
+
 type EventVendor = {
   id: string;
   organization_id: string;
@@ -238,6 +245,7 @@ export default function EventDayMode() {
   const [statuses, setStatuses] = useState<StatusMeta[]>([]);
   const [itinerary, setItinerary] = useState<BuiltItinerary | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [sponsorActivations, setSponsorActivations] = useState<SponsorActivation[]>([]);
   const [contacts, setContacts] = useState<EventVendor[]>([]);
   const [guests, setGuests] = useState<Guest[]>([]);
   const [headcount, setHeadcount] = useState<Headcount | null>(null);
@@ -263,7 +271,7 @@ export default function EventDayMode() {
     setBusy(true);
     setErr(null);
     try {
-      const [e, meta, it, tk, vendors, gl, hc, versions, vs, mci, fp] = await Promise.all([
+      const [e, meta, it, tk, vendors, gl, hc, versions, vs, mci, fp, spa] = await Promise.all([
         apiGet<{ event: EventRow }>(`/events/${id}`),
         apiGet<{ statuses: StatusMeta[] }>(`/events/meta`).catch(() => ({ statuses: [] })),
         apiGet<{ itinerary: BuiltItinerary }>(`/itinerary/event/${id}/build`).catch(() => null),
@@ -275,6 +283,7 @@ export default function EventDayMode() {
         apiGet<{ schedule: VendorScheduleRow[] }>(`/itinerary/event/${id}/vendor-schedule`).catch(() => ({ schedule: [] })),
         apiGet<{ check_in: CheckInRow | null }>(`/check-ins/event/${id}/mine`).catch(() => ({ check_in: null })),
         apiGet<{ floorplans: Floorplan[] }>(`/seating/floorplans/event/${id}`).catch(() => ({ floorplans: [] })),
+        apiGet<{ activations: SponsorActivation[] }>(`/event-sponsor-activation/event/${id}`).catch(() => ({ activations: [] })),
       ]);
       setEv(e.event);
       setStatuses(meta.statuses);
@@ -286,6 +295,7 @@ export default function EventDayMode() {
       setVendorSchedule(vs.schedule);
       setMyCheckIn(mci.check_in);
       setFloorplans(fp.floorplans);
+      setSponsorActivations(spa.activations);
       setNow(Date.now());
 
       const latest = versions.versions[0] ?? null;
@@ -328,6 +338,22 @@ export default function EventDayMode() {
     } catch (e) {
       setErr((e as Error).message);
       setTasks((cur) => cur.map((x) => (x.id === t.id ? { ...x, status: t.status } : x)));
+    }
+  }
+
+  // Sponsor activation self-check-off (Part 24): mirrors toggleTask's
+  // optimistic-flip pattern. Only the sponsor's own org's items are ever
+  // in `sponsorActivations` to begin with (server-side visibility,
+  // lib/sponsorActivationVisibility.ts) so there is nothing to filter
+  // client-side here.
+  async function toggleActivation(a: SponsorActivation) {
+    const next = a.status === 'complete' ? 'not_started' : 'complete';
+    setSponsorActivations((cur) => cur.map((x) => (x.id === a.id ? { ...x, status: next } : x)));
+    try {
+      await apiSend('PATCH', `/event-sponsor-activation/event/${id}/${a.id}`, { status: next });
+    } catch (e) {
+      setErr((e as Error).message);
+      setSponsorActivations((cur) => cur.map((x) => (x.id === a.id ? { ...x, status: a.status } : x)));
     }
   }
 
@@ -759,42 +785,91 @@ export default function EventDayMode() {
             </section>
           ) : null}
 
-          {/* Today's tasks */}
-          <section className="dm-block">
-            <h2 className="dm-blockhead">
-              Tasks
-              {dayTasks.length > 0 ? <span className="dm-count">{tasksDone}/{dayTasks.length} done</span> : null}
-            </h2>
-            {dayTasks.length === 0 ? (
-              <div className="dm-empty">No tasks to action right now. You are clear.</div>
-            ) : (
-              <ul className="dm-tasks">
-                {dayTasks.map((t) => {
-                  const done = t.status === 'done';
-                  return (
-                    <li key={t.id}>
-                      <button
-                        type="button"
-                        className={`dm-task${done ? ' is-done' : ''}`}
-                        onClick={() => void toggleTask(t)}
-                        aria-pressed={done}
-                      >
-                        <span className="dm-checkbox" aria-hidden="true">{done ? '✓' : ''}</span>
-                        <span className="dm-taskbody">
-                          <span className="dm-taskname">{t.name ?? 'Untitled task'}</span>
-                          <span className="dm-taskmeta">
-                            {t.priority ? <span className={`dm-pri pri-${t.priority}`}>{t.priority}</span> : null}
-                            {t.milestone ? <span className="dm-ms">Milestone</span> : null}
-                            {t.assigned_role ? <span className="dm-trole">{t.assigned_role}</span> : null}
+          {/* Today's tasks -- omitted for the sponsor audience (Part
+              23-24): the Command Center already treats sponsors as having
+              no general task visibility ("Sponsor own activation only"),
+              so the sponsor's mobile view gets its own activation
+              checklist below instead of the generic ops task list. */}
+          {packetProjection?.audience !== 'sponsor' ? (
+            <section className="dm-block">
+              <h2 className="dm-blockhead">
+                Tasks
+                {dayTasks.length > 0 ? <span className="dm-count">{tasksDone}/{dayTasks.length} done</span> : null}
+              </h2>
+              {dayTasks.length === 0 ? (
+                <div className="dm-empty">No tasks to action right now. You are clear.</div>
+              ) : (
+                <ul className="dm-tasks">
+                  {dayTasks.map((t) => {
+                    const done = t.status === 'done';
+                    return (
+                      <li key={t.id}>
+                        <button
+                          type="button"
+                          className={`dm-task${done ? ' is-done' : ''}`}
+                          onClick={() => void toggleTask(t)}
+                          aria-pressed={done}
+                        >
+                          <span className="dm-checkbox" aria-hidden="true">{done ? '✓' : ''}</span>
+                          <span className="dm-taskbody">
+                            <span className="dm-taskname">{t.name ?? 'Untitled task'}</span>
+                            <span className="dm-taskmeta">
+                              {t.priority ? <span className={`dm-pri pri-${t.priority}`}>{t.priority}</span> : null}
+                              {t.milestone ? <span className="dm-ms">Milestone</span> : null}
+                              {t.assigned_role ? <span className="dm-trole">{t.assigned_role}</span> : null}
+                            </span>
                           </span>
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </section>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
+          ) : null}
+
+          {/* Your activation (Part 24): a sponsor's own booth/banner/
+              signage checklist for THIS event, self-checkable exactly like
+              the ops "Today's tasks" list above -- server-side visibility
+              already guarantees sponsorActivations only ever contains this
+              sponsor's own org's items. */}
+          {packetProjection?.audience === 'sponsor' ? (
+            <section className="dm-block">
+              <h2 className="dm-blockhead">
+                Your activation
+                {sponsorActivations.length > 0 ? (
+                  <span className="dm-count">
+                    {sponsorActivations.filter((a) => a.status === 'complete').length}/{sponsorActivations.length} done
+                  </span>
+                ) : null}
+              </h2>
+              {sponsorActivations.length === 0 ? (
+                <div className="dm-empty">No activation items set up for you yet. Check with the event planner.</div>
+              ) : (
+                <ul className="dm-tasks">
+                  {sponsorActivations.map((a) => {
+                    const done = a.status === 'complete';
+                    return (
+                      <li key={a.id}>
+                        <button
+                          type="button"
+                          className={`dm-task${done ? ' is-done' : ''}`}
+                          onClick={() => void toggleActivation(a)}
+                          aria-pressed={done}
+                        >
+                          <span className="dm-checkbox" aria-hidden="true">{done ? '✓' : ''}</span>
+                          <span className="dm-taskbody">
+                            <span className="dm-taskname">{a.label}</span>
+                            {a.status === 'issue' ? <span className="dm-taskmeta"><span className="dm-pri pri-urgent">issue flagged</span></span> : null}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
+          ) : null}
 
           {/* Key contacts */}
           <section className="dm-block" id="dm-contacts">

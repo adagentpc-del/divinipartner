@@ -80,6 +80,17 @@ export function isActivityVisible(
 ): boolean {
   if (row.actor_id && row.actor_id === ownUserId) return true;
   if (row.actor_org_id && ownOrgId && row.actor_org_id === ownOrgId) return true;
+  // "sponsor" (Part 23-24) is unlike check_in/schedule/task/status, whose
+  // broad default scopes are deliberate "operational awareness" across
+  // every vendor/venue -- a sponsor's own activation progress is
+  // competitively sensitive between sponsor orgs ("Sponsor own activation
+  // only"). The generic scope.includes(audience) check below would let
+  // ANY sponsor org see ANY OTHER sponsor org's activation activity, since
+  // the sponsor bucket has no row-level org distinction on its own. Once
+  // the own-org check above has already failed to match, a sponsor viewer
+  // must never be granted access to another org's sponsor-category row by
+  // the scope check alone.
+  if (audience === "sponsor" && row.category === "sponsor") return false;
   const scope = row.visibility_scope ?? (isKnownCategory(row.category) ? DEFAULT_CATEGORY_SCOPE[row.category] : ["full"]);
   return scope.includes(audience);
 }

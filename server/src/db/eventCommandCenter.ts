@@ -16,11 +16,11 @@
  * projected, so a restricted incident never inflates a count an
  * unauthorized audience can see). Inventory (Part 17-20) is now real too,
  * via db/eventInventory.ts's listInventoryAlerts (thresholded, deterministic,
- * never a fabricated number). Sponsor activations still has no underlying
- * system yet (Part 24). This file is the one place that section will be
- * filled in when it ships; the honest placeholder is `null`, never a
- * fabricated number. Do not add a second command-center aggregator when
- * that part lands -- extend this one.
+ * never a fabricated number). Sponsor activations (Part 23-24) is now real
+ * too, via db/eventSponsorActivation.ts's activationSummary (same
+ * visibility rule as the activation list itself -- a sponsor's counters
+ * never leak another sponsor's activation state). Do not add a second
+ * command-center aggregator for a future part -- extend this one.
  *
  * Authorization (Part 6): every section is narrowed to the actor's real
  * event role, backend-enforced, before the response is built -- the same
@@ -42,6 +42,7 @@ import { vendorArrivalsSummary, type VendorArrivalSummaryRow } from "./checkIns.
 import { listActivity } from "./eventActivity.js";
 import { listIncidents } from "./incidents.js";
 import { listInventoryAlerts } from "./eventInventory.js";
+import { activationSummary } from "./eventSponsorActivation.js";
 
 export type CommandCenterScheduleItem = {
   title: string;
@@ -66,8 +67,11 @@ export type CommandCenterProjection = {
   tasks: { complete: number; active: number; blocked: number; total: number } | null;
   changes: { today_count: number; today_financial_impact: number | null } | null;
   incidents: { open: number; high_priority: number } | null;
-  /** Awaiting Part 24 (sponsor activation status). */
-  sponsors: null;
+  /** full/venue see every sponsor's activation counters; a sponsor caller
+   *  sees only their own org's ("Sponsor own activation only", Part 24).
+   *  Every other audience gets null, matching how tasks/inventory are
+   *  also scoped away from roles that have no operational need for them. */
+  sponsors: { total_sponsors: number; activations_total: number; activations_complete: number; activations_issue: number } | null;
   inventory: { alert_count: number; alerts: Array<{ severity: string; message: string }> } | null;
   timeline: Array<{ at: string; label: string; kind: string }>;
   generated_at: string;
@@ -238,6 +242,14 @@ export async function getCommandCenter(actor: Actor, eventId: string): Promise<C
     inventory = { alert_count: alerts.length, alerts: alerts.slice(0, 10).map((a) => ({ severity: a.severity, message: a.message })) };
   }
 
+  // Sponsors (Part 23-24): activationSummary already applies the same
+  // visibility rule (lib/sponsorActivationVisibility.ts) listActivations
+  // uses, so a sponsor caller's counters only ever reflect their own org.
+  let sponsors: CommandCenterProjection["sponsors"] = null;
+  if (audience === "full" || audience === "venue" || audience === "sponsor") {
+    sponsors = await activationSummary(actor, eventId);
+  }
+
   return {
     audience,
     event: { id: ev.id, name: ev.name, status: ev.status, date_time: ev.date_time, timezone: ev.timezone },
@@ -252,7 +264,7 @@ export async function getCommandCenter(actor: Actor, eventId: string): Promise<C
     tasks,
     changes,
     incidents,
-    sponsors: null,
+    sponsors,
     inventory,
     timeline,
     generated_at: new Date().toISOString(),

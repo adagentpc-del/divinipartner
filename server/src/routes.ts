@@ -87,6 +87,8 @@ import eventActivity from "./routes/eventActivity.js";
 import incidents from "./routes/incidents.js";
 // Event Inventory Model + Locations + Transfers (live-ops phase, Part 17-20)
 import eventInventory from "./routes/eventInventory.js";
+// Event Sponsor Activation (live-ops phase, Part 23-24)
+import eventSponsorActivation from "./routes/eventSponsorActivation.js";
 // Execution Packet distribution settings
 import packetDistribution from "./routes/packetDistribution.js";
 // Visitor signals (fingerprint/IP logging) + landing personalization
@@ -264,6 +266,7 @@ router.use("/check-ins", checkIns);
 router.use("/event-activity", eventActivity);
 router.use("/incidents", incidents);
 router.use("/event-inventory", eventInventory);
+router.use("/event-sponsor-activation", eventSponsorActivation);
 router.use("/packet-distribution", packetDistribution);
 router.use("/signals", signals);
 router.use("/personalize", personalize);
