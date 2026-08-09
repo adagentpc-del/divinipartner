@@ -417,6 +417,12 @@ Prioritized backlog, seeded from the Go-Live runbook remaining items and the V2 
 - Related files: `server/src/lib/audit.ts`, `server/src/lib/scheduler.ts`, `server/src/worker.ts`, `server/src/lib/logger.ts`.
 - See: `docs/platform-standard/section-14-observability-incident-response-dr.md`, `compliance/policies/incident-response-plan.md`.
 
+## T38 - Return 400 (not 500) for malformed :id path params (RESOLVED 2026-08-09, ALFY2 pack Section 15)
+
+- Status: DONE. Live adversarial testing against a real running server + database found that malformed `:id`-shaped path params (SQL-injection-style payloads and simple typos alike) produced a raw 500 with a generic body -- reproduced on two independent public routes (`GET /api/calendar/:orgId/availability`, `GET /api/public/tour/:tourId`). Confirmed this was never an injection risk: the query is parameterized, so the payload never became SQL syntax -- Postgres rejected it at the type-cast layer (error code `22P02`), and that rejection fell through to the generic 500 branch instead of a clean 4xx. Fixed with one central check in `server/src/routes.ts`'s `errorHandler` recognizing `22P02` and returning `400 {"error":"invalid id"}` -- covers every route with this shape app-wide, not just the two confirmed. Live re-verified: both original routes now 400, a benign malformed ID also 400, and a real not-found UUID still correctly 404s (fix is precise, not over-broad).
+- Related files: `server/src/routes.ts` (`errorHandler`).
+- See: `docs/platform-standard/section-15-qa-e2e-load-pentest-regression.md`, risk R-46.
+
 ## ALFY2 / Claude Master Platform Execution Pack (started 2026-08-08)
 
 A separately-uploaded 18-section audit framework is being run against this
@@ -436,11 +442,12 @@ Marketing Compliance), Section 11 (UX, Accessibility, Onboarding,
 Forms, Navigation & Content Quality), Section 12 (Core Product
 Engines: Profiles, Organizations, Admin, Products/Services, Calendar,
 Video & Documents), Section 13 (Analytics, Behavior Tracking &
-Personalization), and Section 14 (Observability, Incident Response &
-Disaster Recovery) are complete; see
+Personalization), Section 14 (Observability, Incident Response &
+Disaster Recovery), and Section 15 (QA, E2E, Load Testing, Pentest &
+Regression) are complete; see
 `docs/platform-standard/release-readiness.md` for cumulative status across
 all 18 sections as they execute. New findings that represent real,
-actionable work (like T13-T37 above) get a task here as they're found, so
+actionable work (like T13-T38 above) get a task here as they're found, so
 this queue stays the single place to look for "what's left to do" --
 `docs/platform-standard/` is where the pack's own required audit/evidence/
 risk trail lives, not a second task list.

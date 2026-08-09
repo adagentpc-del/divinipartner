@@ -23,7 +23,8 @@ format.
 | 12 Core Product Engines (Profiles, Orgs, Admin, Products/Services, Calendar, Video, Documents) | **READY** — no open P0/P1 items (one P2 operator action) | 2026-08-09 |
 | 13 Analytics, Behavior Tracking & Personalization | **READY** — no open P0/P1/P2 items | 2026-08-09 |
 | 14 Observability, Incident Response & Disaster Recovery | READY WITH P2 ITEMS — see below | 2026-08-09 |
-| 15–18 | Not yet started | — |
+| 15 QA, E2E, Load Testing, Pentest & Regression | **READY** — no open P0/P1/P2 items | 2026-08-09 |
+| 16–18 | Not yet started | — |
 
 ## Section 01 summary
 
@@ -467,11 +468,43 @@ format.
   needs a real dry-run exercise plus confirmation of its off-host
   storage/secrets preconditions (operator action).
 
+## Section 15 summary
+
+- Method: stood up a real, disposable Postgres 16 instance and the actual
+  built server in this sandbox — not code reading, not unit tests in
+  isolation — ran live adversarial probes, then fully tore the environment
+  down. An independent third-party penetration test remains a separately-
+  tracked operator action (risk R-04), not something this section performs
+  or substitutes for.
+- Confirmed (already honestly documented, re-verified accurate rather than
+  newly discovered) that no E2E framework and no load-testing tooling are
+  project dependencies — appropriate at this stage given no live traffic
+  yet, tracked in `AI_PROJECT_OS/50_TESTING.md`'s own "Gaps" section.
+- Found and fixed a real, systemic robustness gap, live-triggered on two
+  independent routes: malformed `:id`-shaped path params (both
+  SQL-injection-style payloads and simple typos) returned a raw 500 instead
+  of a clean 400. Confirmed this was never an injection risk (parameterized
+  queries mean the payload never became SQL; Postgres rejected it at the
+  type-cast layer) — fixed with one central Express-error-handler check
+  covering every route with this shape, live re-verified across both
+  original routes, a benign malformed ID, and a real not-found case
+  (confirmed unaffected).
+- Live-verified, with no fix needed, that several previously-built controls
+  actually work under adversarial pressure rather than just reading
+  correct in source: auth-bypass resistance (401 on missing/malformed
+  tokens), rate limiting (429 triggers at exactly the configured
+  threshold), cross-tenant IDOR protection (two real, independently
+  registered accounts; Org B blocked 404 on read/update/delete of Org A's
+  data, confirmed unmodified afterward), and CSRF double-submit-cookie
+  enforcement (missing/correct/wrong token all behaved exactly as
+  designed against a real session).
+- No P0/P1/P2 items remain open for this section.
+
 ## Overall launch readiness (cumulative, updated as sections complete)
 
-**NOT READY** — pending Sections 15–18, plus the standing T7 gate (real
+**NOT READY** — pending Sections 16–18, plus the standing T7 gate (real
 money) which several sections now have concrete pre-requisites tracked
 against (refund/dispute capability, live credential testing). This is
-expected at this stage (fourteen of eighteen sections complete) and is not
+expected at this stage (fifteen of eighteen sections complete) and is not
 itself a new finding; it reflects where the multi-section pack currently
 stands, not a regression.

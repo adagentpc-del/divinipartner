@@ -331,6 +331,19 @@ export function errorHandler(err: any, req: Request, res: Response, _next: NextF
   if (err instanceof AccountDeletedError) return res.status(401).json({ error: "unauthorized" });
   if (err instanceof ForbiddenError) return res.status(403).json({ error: err.message });
   if (err instanceof NotFoundError) return res.status(404).json({ error: err.message });
+  // Postgres 22P02 (invalid_text_representation): the client sent a
+  // malformed value for a typed column -- most commonly a non-UUID string
+  // in an :id-shaped path param (e.g. GET /api/public/tour/not-a-real-id).
+  // Found via live adversarial testing (ALFY2 pack Section 15, 2026-08-09):
+  // dozens of routes across the app pass a path param straight into a
+  // parameterized query with no format check first, so any malformed ID --
+  // not just an attack payload, a simple typo reaches the same path --
+  // surfaced as an opaque 500 instead of a clean 400. The malformed value
+  // never becomes SQL syntax (it's a bind parameter, not string-concatenated
+  // SQL) so this was never an injection risk, only a robustness/API-quality
+  // gap. One central fix here covers every route with this shape, instead
+  // of adding per-route validation to dozens of files individually.
+  if (err?.code === "22P02") return res.status(400).json({ error: "invalid id" });
   const auth = getAuth(req);
   logger.error("unhandled api error", {
     error: err?.message || String(err),

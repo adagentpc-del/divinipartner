@@ -91,6 +91,10 @@ Bootstrapped at Section 01.
 | S14-03 | File | `compliance/policies/incident-response-plan.md` (Detection section rewritten) | 2026-08-09 |
 | S14-04 | File | `compliance/policies/disaster-recovery-runbook.md` (new) | 2026-08-09 |
 | S14 (all) | File | `docs/platform-standard/section-14-observability-incident-response-dr.md` (new) | 2026-08-09 |
+| S15-01 | Command output | Live `curl` probes against a real running server + disposable Postgres instance: malformed-UUID payload on 2 independent public routes (500 before, 400 after the fix), a benign malformed ID (400), and a well-formed-but-nonexistent UUID (still 404, unaffected) | 2026-08-09 |
+| S15-01 | Code | `server/src/routes.ts` (`errorHandler`, Postgres `22P02` branch) | 2026-08-09 |
+| S15-02 to S15-05 | Command output | Live adversarial test session: auth-bypass probes, 25-request rate-limit trigger, real two-org IDOR test (register/verify/login both accounts, create a package as Org A, attempt read/update/delete as Org B), and CSRF probe (missing/correct/wrong token against a real session+CSRF cookie pair) -- all against a real running server and a disposable Postgres 16 instance started and torn down for this session only | 2026-08-09 |
+| S15 (all) | File | `docs/platform-standard/section-15-qa-e2e-load-pentest-regression.md` (new) | 2026-08-09 |
 
 ## Notes
 
