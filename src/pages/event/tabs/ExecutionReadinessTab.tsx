@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { apiGet, apiSend } from '../../../lib/api';
+import { apiGet, apiSend, ApiError } from '../../../lib/api';
 
 /**
  * EVENT READINESS panel for the Final Event Schedule / Event Execution
@@ -112,6 +112,12 @@ const CHECK_ACTION_LABEL: Record<string, string> = {
   'packet.acknowledgments': 'Send Reminder',
 };
 
+type EventRow = { id: string; status: string | null };
+
+/** Statuses at or beyond LIVE -- once reached, the Start Event action is
+ *  retired for this event rather than offered a second time. */
+const LIVE_OR_LATER = new Set(['event_day', 'completed', 'closed', 'archived']);
+
 function stateColor(state: ReadinessReport['state']): string {
   if (state === 'ready') return '#1E5D4A';
   if (state === 'ready_with_warnings') return '#1E5D4A';
@@ -121,16 +127,27 @@ function stateColor(state: ReadinessReport['state']): string {
 
 export default function ExecutionReadinessTab({ eventId, onNavigateTab }: { eventId: string; onNavigateTab?: (tab: string) => void }) {
   const [report, setReport] = useState<ReadinessReport | null>(null);
+  const [ev, setEv] = useState<EventRow | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [reminderBusy, setReminderBusy] = useState(false);
+
+  // Start Event (Part 4): the readiness gate the backend enforces, surfaced
+  // here since this is the panel that already shows the exact blockers.
+  const [startBusy, setStartBusy] = useState(false);
+  const [startBlocked, setStartBlocked] = useState<ReadinessCheck[] | null>(null);
+  const [startedOk, setStartedOk] = useState(false);
 
   const load = useCallback(async () => {
     setBusy(true);
     setErr(null);
     try {
-      const r = await apiGet<{ readiness: ReadinessReport }>(`/readiness/event/${eventId}`);
+      const [r, e] = await Promise.all([
+        apiGet<{ readiness: ReadinessReport }>(`/readiness/event/${eventId}`),
+        apiGet<{ event: EventRow }>(`/events/${eventId}`).catch(() => null),
+      ]);
       setReport(r.readiness);
+      if (e) setEv(e.event);
     } catch (e) {
       setErr((e as Error).message);
     } finally {
@@ -141,6 +158,27 @@ export default function ExecutionReadinessTab({ eventId, onNavigateTab }: { even
   useEffect(() => {
     void load();
   }, [load]);
+
+  async function startEvent(override: boolean) {
+    setStartBusy(true);
+    setErr(null);
+    try {
+      const r = await apiSend<{ event: EventRow }>('POST', `/events/${eventId}/start`, { override });
+      setEv(r.event);
+      setStartBlocked(null);
+      setStartedOk(true);
+      await load();
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 409) {
+        const blocking = (e.body as { blocking?: ReadinessCheck[] } | null)?.blocking;
+        setStartBlocked(blocking ?? []);
+      } else {
+        setErr((e as Error).message);
+      }
+    } finally {
+      setStartBusy(false);
+    }
+  }
 
   async function sendReminder() {
     setReminderBusy(true);
@@ -188,10 +226,49 @@ export default function ExecutionReadinessTab({ eventId, onNavigateTab }: { even
       <div className="ew-rdy-hero" style={{ borderColor: stateColor(report.state) }}>
         <div className="ew-rdy-pct" style={{ color: stateColor(report.state) }}>{report.percent}%</div>
         <div className="ew-rdy-state" style={{ color: stateColor(report.state) }}>{STATE_LABEL[report.state]}</div>
-        <button type="button" className="ew-btn ghost sm ew-rdy-refresh" onClick={() => void load()} disabled={busy}>
-          {busy ? 'Refreshing...' : 'Refresh'}
-        </button>
+        <div className="ew-rdy-heroacts">
+          {ev && !LIVE_OR_LATER.has(ev.status ?? '') ? (
+            <button
+              type="button"
+              className="ew-btn sm ew-rdy-start"
+              onClick={() => void startEvent(false)}
+              disabled={startBusy}
+            >
+              {startBusy ? 'Starting...' : 'Start Event'}
+            </button>
+          ) : ev ? (
+            <span className="ew-rdy-live">Event is live</span>
+          ) : null}
+          <button type="button" className="ew-btn ghost sm ew-rdy-refresh" onClick={() => void load()} disabled={busy}>
+            {busy ? 'Refreshing...' : 'Refresh'}
+          </button>
+        </div>
       </div>
+
+      {startedOk ? <p className="ew-rdy-startok">Event started. It is now live.</p> : null}
+
+      {startBlocked ? (
+        <div className="ew-rdy-block">
+          <div className="ew-rdy-blockhead">EVENT NOT FULLY READY</div>
+          <p className="ew-rdy-blocksub">
+            {startBlocked.length} blocking issue{startBlocked.length === 1 ? '' : 's'} must be resolved before this
+            event can start, or an owner/planner may start anyway.
+          </p>
+          <ul>
+            {startBlocked.map((c) => (
+              <li key={c.id}>{c.message}</li>
+            ))}
+          </ul>
+          <div className="ew-rdy-blockacts">
+            <button type="button" className="ew-btn ghost sm" onClick={() => setStartBlocked(null)} disabled={startBusy}>
+              Resolve First
+            </button>
+            <button type="button" className="ew-btn sm ew-rdy-danger" onClick={() => void startEvent(true)} disabled={startBusy}>
+              {startBusy ? 'Starting...' : 'Start Anyway'}
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {CATEGORY_ORDER.filter((cat) => byCategory.has(cat)).map((cat) => {
         const checks = (byCategory.get(cat) ?? []).slice().sort((a, b) => {
@@ -238,7 +315,16 @@ const RDY_CSS = `
 }
 .ew-rdy-pct { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 40px; font-weight: 600; line-height: 1; }
 .ew-rdy-state { font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
-.ew-rdy-refresh { margin-left: auto; align-self: center; }
+.ew-rdy-heroacts { margin-left: auto; align-self: center; display: flex; align-items: center; gap: 10px; }
+.ew-rdy-live { font-size: 12px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #1E5D4A; }
+.ew-rdy-startok { margin: 0; padding: 10px 14px; border-radius: 10px; background: rgba(30,93,74,.08); color: #1E5D4A; font-size: 13px; font-weight: 600; }
+.ew-rdy-block { border: 1.5px solid #b4451f; border-radius: 14px; padding: 16px 18px; background: rgba(180,69,31,.05); }
+.ew-rdy-blockhead { font-size: 13px; font-weight: 700; letter-spacing: 1px; color: #b4451f; margin-bottom: 6px; }
+.ew-rdy-blocksub { margin: 0 0 10px; font-size: 12.5px; color: var(--dp-muted); line-height: 1.5; }
+.ew-rdy-block ul { margin: 0 0 14px; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+.ew-rdy-block li { font-size: 13px; color: var(--dp-ink); }
+.ew-rdy-blockacts { display: flex; gap: 10px; }
+.ew-rdy-danger { background: #b4451f; border-color: #b4451f; color: #fff; }
 .ew-rdy-cat h3 { margin: 0 0 10px; font-family: 'Cormorant Garamond', Georgia, serif; font-size: 19px; color: var(--dp-emerald); }
 .ew-rdy-cat ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .ew-rdy-cat li {

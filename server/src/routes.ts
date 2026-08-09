@@ -3,6 +3,7 @@
  */
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { ForbiddenError, NotFoundError, AccountDeletedError } from "./db.js";
+import { ReadinessBlockedError } from "./db/readiness.js";
 import { logger } from "./lib/logger.js";
 import { getAuth } from "./auth.js";
 
@@ -350,6 +351,8 @@ router.use("/price-guide", priceGuide);
 
 export function errorHandler(err: any, req: Request, res: Response, _next: NextFunction) {
   if (err instanceof AccountDeletedError) return res.status(401).json({ error: "unauthorized" });
+  if (err instanceof ReadinessBlockedError)
+    return res.status(409).json({ error: err.message, blocking: err.blocking, state: err.state });
   if (err instanceof ForbiddenError) return res.status(403).json({ error: err.message });
   if (err instanceof NotFoundError) return res.status(404).json({ error: err.message });
   // Postgres 22P02 (invalid_text_representation): the client sent a

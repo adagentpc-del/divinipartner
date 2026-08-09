@@ -87,9 +87,9 @@ router.post(
   "/:id/status",
   h(async (req, res) => {
     const a = await actor(req);
-    const { status } = req.body ?? {};
+    const { status, override } = req.body ?? {};
     if (!events.isEventStatus(status)) return res.status(400).json({ error: "invalid status" });
-    const ev = await events.setEventStatus(a, req.params.id, status);
+    const ev = await events.setEventStatus(a, req.params.id, status, { override: !!override });
     // Notify the event participants (owner side + attached vendors), excluding
     // the actor who changed the status. Best-effort.
     const to = recipients.excluding(
@@ -105,6 +105,33 @@ router.post(
         console.error(`[WS-1] onEventCompleted failed for ${ev.id}`, err),
       );
     }
+    res.json({ event: ev });
+  }),
+);
+
+/**
+ * Start Event (Part 4 of the live-ops phase): the explicit owner/planner
+ * action that moves an event into 'event_day' (LIVE). A thin wrapper over
+ * setEventStatus, which is where the actual readiness gate + override
+ * audit trail live -- this route exists for a clear, dedicated button/API
+ * contract, not a second copy of the gate. On a blocked attempt (blocking
+ * readiness issues, no override), setEventStatus throws
+ * ReadinessBlockedError, translated by the shared error handler into a 409
+ * carrying the real blocking checks so the frontend can render "EVENT NOT
+ * FULLY READY" with the actual list rather than a generic message.
+ */
+router.post(
+  "/:id/start",
+  h(async (req, res) => {
+    const a = await actor(req);
+    const { override } = req.body ?? {};
+    const ev = await events.setEventStatus(a, req.params.id, "event_day", { override: !!override });
+    const to = recipients.excluding(
+      await recipients.eventParticipantEmails(ev.id).catch(() => [] as string[]),
+      a.user.email,
+    );
+    if (to.length)
+      await notify.eventStatusChanged(to, ev.name, "event_day", { eventId: ev.id }).catch(() => undefined);
     res.json({ event: ev });
   }),
 );

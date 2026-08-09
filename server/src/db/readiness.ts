@@ -33,6 +33,27 @@ export type ReadinessCheck = {
 
 export type ReadinessState = "not_ready" | "needs_attention" | "ready" | "ready_with_warnings";
 
+/**
+ * Thrown by db/events.ts's setEventStatus() (Part 4: Start Event / LIVE
+ * transition) when a caller tries to move an event to 'event_day' while
+ * blocking readiness issues are outstanding and no override was passed.
+ * Carries the actual blocking checks so the caller (route -> frontend) can
+ * render "EVENT NOT FULLY READY" with the real list, not a generic message
+ * -- the same ReadinessCheck shape the Readiness UI (Part 1) already
+ * renders, so nothing here is a second, divergent readiness surface.
+ */
+export class ReadinessBlockedError extends Error {
+  status = 409;
+  blocking: ReadinessCheck[];
+  state: ReadinessState;
+  constructor(report: ReadinessReport) {
+    super(`event is not fully ready: ${report.blocking.length} blocking issue(s)`);
+    this.name = "ReadinessBlockedError";
+    this.blocking = report.blocking;
+    this.state = report.state;
+  }
+}
+
 export type ReadinessReport = {
   event_id: string;
   state: ReadinessState;

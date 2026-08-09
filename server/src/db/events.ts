@@ -13,6 +13,7 @@ import { NotFoundError, ForbiddenError, type Actor } from "../db.js";
 import { buildItinerary } from "./itinerary.js";
 import { upsertEventMember, getEventRole } from "./eventMembers.js";
 import { recordFieldChanges, recordEventChange, type ChangeCategory } from "./eventChanges.js";
+import { logAction } from "../lib/audit.js";
 
 // ---- Status model (blueprint section 13) -----------------------------------
 export type EventStatus =
@@ -497,15 +498,42 @@ export async function updateEvent(
   return after;
 }
 
-/** Move an event to a new lifecycle status (owner or planner-role member). */
+/**
+ * Move an event to a new lifecycle status (owner or planner-role member).
+ *
+ * Starting the event (Part 4 of the live-ops phase, 2026-08-09) is the one
+ * transition in this lifecycle with a real operational consequence if the
+ * event genuinely is not ready, so a transition INTO 'event_day' is gated
+ * by the same readiness engine (db/readiness.ts) the Readiness UI already
+ * shows -- never a second, looser check. This gate lives here, in the one
+ * function every status-change path (the generic /status route and the
+ * dedicated /start route) already calls, so there is no way to reach
+ * 'event_day' without passing through it. An owner/planner may still
+ * proceed with an explicit override; that override is always audited
+ * (audit_logs: who, when, which blockers were live at the time).
+ */
 export async function setEventStatus(
   actor: Actor,
   id: string,
   status: EventStatus,
+  opts: { override?: boolean } = {},
 ): Promise<EventRow> {
   const before = await getEvent(actor, id);
   if (!(await canManageEvent(actor, id))) throw new ForbiddenError("only the event owner can transition status");
   if (!isEventStatus(status)) throw new ForbiddenError("invalid status");
+
+  let readinessAtStart: { state: string; blocking_count: number } | null = null;
+  let overrodeReadiness = false;
+  if (status === "event_day" && before.status !== "event_day") {
+    const { computeReadiness, ReadinessBlockedError } = await import("./readiness.js");
+    const readiness = await computeReadiness(actor, id);
+    readinessAtStart = { state: readiness.state, blocking_count: readiness.blocking.length };
+    if (readiness.blocking.length > 0) {
+      if (!opts.override) throw new ReadinessBlockedError(readiness);
+      overrodeReadiness = true;
+    }
+  }
+
   const row = await q1<EventRow>(
     `update events set status = $2, updated_at = now() where id = $1 returning *`,
     [id, status],
@@ -523,6 +551,21 @@ export async function setEventStatus(
       new_value: after.status,
       requires_acknowledgment: true,
     }).catch(() => undefined);
+  }
+  if (readinessAtStart) {
+    await logAction(
+      actor,
+      overrodeReadiness ? "event.started_with_readiness_override" : "event.started",
+      "event",
+      id,
+      { status: before.status, readiness: readinessAtStart },
+      { status: after.status },
+      {
+        summary: overrodeReadiness
+          ? `Started event with ${readinessAtStart.blocking_count} blocking readiness issue(s) overridden`
+          : "Started event",
+      },
+    ).catch(() => undefined);
   }
   return after;
 }
