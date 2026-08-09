@@ -11,7 +11,7 @@
 import { q, q1, pool } from "../pool.js";
 import { NotFoundError, ForbiddenError, type Actor } from "../db.js";
 import { buildItinerary } from "./itinerary.js";
-import { upsertEventMember } from "./eventMembers.js";
+import { upsertEventMember, getEventRole } from "./eventMembers.js";
 
 // ---- Status model (blueprint section 13) -----------------------------------
 export type EventStatus =
@@ -208,16 +208,30 @@ export async function actorOwns(actor: Actor, eventId: string): Promise<boolean>
   return !!row?.ok;
 }
 
+/**
+ * True when the actor may operationally manage this event: the owner, or an
+ * event_members row with the 'planner' role (Phase A item 3 -- Event-Level
+ * RBAC). This is intentionally broader than actorOwns (which stays a strict
+ * "is this literally the owner" check used elsewhere, e.g. quotes.ts's
+ * ownership-side branch) so a Planner/Event Manager invited onto the event
+ * can run it day-to-day without being the owning org, named client, or the
+ * single legacy events.planner_id.
+ */
+export async function canManageEvent(actor: Actor, eventId: string): Promise<boolean> {
+  if (await actorOwns(actor, eventId)) return true;
+  return (await getEventRole(actor, eventId)) === "planner";
+}
+
 export type UpdateEventInput = Partial<CreateEventInput>;
 
-/** Patch core event fields (owner only). */
+/** Patch core event fields (owner or planner-role member). */
 export async function updateEvent(
   actor: Actor,
   id: string,
   patch: UpdateEventInput,
 ): Promise<EventRow> {
   await getEvent(actor, id);
-  if (!(await actorOwns(actor, id))) throw new ForbiddenError("only the event owner can edit");
+  if (!(await canManageEvent(actor, id))) throw new ForbiddenError("only the event owner can edit");
   const row = await q1<EventRow>(
     `update events set
         name = coalesce($2, name),
@@ -248,14 +262,14 @@ export async function updateEvent(
   return row as EventRow;
 }
 
-/** Move an event to a new lifecycle status (owner only). */
+/** Move an event to a new lifecycle status (owner or planner-role member). */
 export async function setEventStatus(
   actor: Actor,
   id: string,
   status: EventStatus,
 ): Promise<EventRow> {
   await getEvent(actor, id);
-  if (!(await actorOwns(actor, id))) throw new ForbiddenError("only the event owner can transition status");
+  if (!(await canManageEvent(actor, id))) throw new ForbiddenError("only the event owner can transition status");
   if (!isEventStatus(status)) throw new ForbiddenError("invalid status");
   const row = await q1<EventRow>(
     `update events set status = $2, updated_at = now() where id = $1 returning *`,
@@ -292,14 +306,14 @@ export async function listEventVendors(actor: Actor, eventId: string): Promise<E
   );
 }
 
-/** Attach a vendor org to an event (owner only). Idempotent per (event, org). */
+/** Attach a vendor org to an event (owner or planner-role member). Idempotent per (event, org). */
 export async function addEventVendor(
   actor: Actor,
   eventId: string,
   input: { organization_id: string; vendor_id?: string | null; role?: string | null },
 ): Promise<EventVendorRow> {
   await getEvent(actor, eventId);
-  if (!(await actorOwns(actor, eventId))) throw new ForbiddenError("only the event owner can add vendors");
+  if (!(await canManageEvent(actor, eventId))) throw new ForbiddenError("only the event owner can add vendors");
   const row = await q1<EventVendorRow>(
     `insert into event_vendors (event_id, organization_id, vendor_id, role, status)
        values ($1,$2,$3,$4,'added')
@@ -312,14 +326,14 @@ export async function addEventVendor(
   return row as EventVendorRow;
 }
 
-/** Detach a vendor org from an event (owner only). */
+/** Detach a vendor org from an event (owner or planner-role member). */
 export async function removeEventVendor(
   actor: Actor,
   eventId: string,
   eventVendorId: string,
 ): Promise<void> {
   await getEvent(actor, eventId);
-  if (!(await actorOwns(actor, eventId))) throw new ForbiddenError("only the event owner can remove vendors");
+  if (!(await canManageEvent(actor, eventId))) throw new ForbiddenError("only the event owner can remove vendors");
   await pool.query(`delete from event_vendors where id = $1 and event_id = $2`, [
     eventVendorId,
     eventId,
