@@ -178,6 +178,7 @@ export async function addItineraryItem(
       responsibleOrgId,
     ],
   );
+  await revertApprovalOnEdit(eventId);
   return row as ItineraryItemRow;
 }
 
@@ -241,6 +242,7 @@ export async function updateItineraryItem(
       responsibleOrgId,
     ],
   );
+  await revertApprovalOnEdit(eventId);
   return row as ItineraryItemRow;
 }
 
@@ -248,6 +250,7 @@ export async function deleteItineraryItem(actor: Actor, itemId: string): Promise
   const eventId = await loadItemEvent(itemId);
   await requireOwner(actor, eventId);
   await pool.query(`delete from itinerary_items where id = $1`, [itemId]);
+  await revertApprovalOnEdit(eventId);
 }
 
 // ============================================================================
@@ -266,6 +269,11 @@ export type DerivedItem = {
   source: string;
   source_ref: string | null;
   status: string;
+  /** The vendor org this item is attributed to, when known (persisted items
+   *  only -- auto-derived items have no single org). Null for everything
+   *  else. Used by the overlap check below: the same vendor org cannot be
+   *  scheduled in two places at once. */
+  responsible_org_id: string | null;
 };
 
 export type ItineraryCheck = {
@@ -273,6 +281,12 @@ export type ItineraryCheck = {
   severity: "info" | "warning" | "error";
   message: string;
   field?: string;
+};
+
+export type ItineraryApproval = {
+  status: "draft" | "approved";
+  approved_at: string | null;
+  approved_by: string | null;
 };
 
 export type BuiltItinerary = {
@@ -283,6 +297,11 @@ export type BuiltItinerary = {
   checks: ItineraryCheck[];
   statuses: { key: string; label: string }[];
   categories: { key: string; label: string }[];
+  /** Run of Show finalization (Part 15): whether this Run of Show has been
+   *  explicitly approved. Reverts to 'draft' automatically the next time any
+   *  itinerary item is added, edited, or removed -- an "approved" label that
+   *  survives silent edits underneath it would be misleading. */
+  approval: ItineraryApproval;
 };
 
 function addMinutes(iso: string | null, minutes: number): string | null {
@@ -364,6 +383,7 @@ export async function buildItinerary(actor: Actor, eventId: string): Promise<Bui
       source: "auto:event",
       source_ref: null,
       status: "planned",
+      responsible_org_id: null,
     });
     items.push({
       key: "auto_setup",
@@ -378,6 +398,7 @@ export async function buildItinerary(actor: Actor, eventId: string): Promise<Bui
       source: "auto:event",
       source_ref: null,
       status: "planned",
+      responsible_org_id: null,
     });
     items.push({
       key: "auto_doors",
@@ -392,6 +413,7 @@ export async function buildItinerary(actor: Actor, eventId: string): Promise<Bui
       source: "auto:event",
       source_ref: null,
       status: "planned",
+      responsible_org_id: null,
     });
     items.push({
       key: "auto_program",
@@ -406,6 +428,7 @@ export async function buildItinerary(actor: Actor, eventId: string): Promise<Bui
       source: "auto:event",
       source_ref: null,
       status: "planned",
+      responsible_org_id: null,
     });
     items.push({
       key: "auto_breakdown",
@@ -420,6 +443,7 @@ export async function buildItinerary(actor: Actor, eventId: string): Promise<Bui
       source: "auto:event",
       source_ref: null,
       status: "planned",
+      responsible_org_id: null,
     });
     items.push({
       key: "auto_load_out",
@@ -434,6 +458,7 @@ export async function buildItinerary(actor: Actor, eventId: string): Promise<Bui
       source: "auto:event",
       source_ref: null,
       status: "planned",
+      responsible_org_id: null,
     });
   }
 
@@ -463,6 +488,7 @@ export async function buildItinerary(actor: Actor, eventId: string): Promise<Bui
       source: "auto:quote",
       source_ref: qt.id,
       status: qt.status === "accepted" || qt.status === "converted" ? "confirmed" : "planned",
+      responsible_org_id: null,
     });
   }
   if (quotes.length === 0) {
@@ -496,6 +522,7 @@ export async function buildItinerary(actor: Actor, eventId: string): Promise<Bui
       source: "auto:payment",
       source_ref: inv.id,
       status: inv.status === "paid" ? "done" : "planned",
+      responsible_org_id: null,
     });
   }
 
@@ -517,6 +544,7 @@ export async function buildItinerary(actor: Actor, eventId: string): Promise<Bui
       source: p.source ?? "manual",
       source_ref: p.source_ref,
       status: p.status ?? "planned",
+      responsible_org_id: p.responsible_org_id,
     });
   }
 
@@ -534,6 +562,106 @@ export async function buildItinerary(actor: Actor, eventId: string): Promise<Bui
         message: `Delivery "${d.title ?? "item"}" is scheduled after vendor load-in begins. Deliveries should arrive before or at load-in.`,
       });
     }
+  }
+
+  // --- Run of Show finalization checks (completion phase, Part 15) -----------
+  // Deterministic only -- every check below is a plain comparison of real
+  // stored/derived timestamps, never an inferred or AI-generated suggestion.
+
+  // Impossible timing: an item that ends before it starts.
+  for (const item of items) {
+    if (!item.start_time || !item.end_time) continue;
+    const s = new Date(item.start_time).getTime();
+    const e = new Date(item.end_time).getTime();
+    if (Number.isNaN(s) || Number.isNaN(e)) continue;
+    if (e < s) {
+      checks.push({
+        id: `impossible_timing_${item.key}`,
+        severity: "warning",
+        message: `"${item.title}" is scheduled to end before it starts. Check its start/end time.`,
+      });
+    }
+  }
+
+  // Overlapping activities for the SAME responsible vendor org -- the same
+  // vendor cannot be scheduled in two places at once. Deliberately scoped to
+  // shared responsible_org_id rather than flagging every time-overlap in the
+  // day, since independent teams (e.g. venue setup and vendor load-in)
+  // legitimately run in parallel.
+  const byOrg = new Map<string, DerivedItem[]>();
+  for (const item of items) {
+    if (!item.responsible_org_id || !item.start_time) continue;
+    const bucket = byOrg.get(item.responsible_org_id) ?? [];
+    bucket.push(item);
+    byOrg.set(item.responsible_org_id, bucket);
+  }
+  for (const bucket of byOrg.values()) {
+    const sorted = bucket
+      .slice()
+      .sort((a, b) => new Date(a.start_time as string).getTime() - new Date(b.start_time as string).getTime());
+    for (let i = 0; i < sorted.length - 1; i += 1) {
+      const cur = sorted[i];
+      const next = sorted[i + 1];
+      const curEnd = cur.end_time ? new Date(cur.end_time).getTime() : new Date(cur.start_time as string).getTime();
+      const nextStart = new Date(next.start_time as string).getTime();
+      if (Number.isFinite(curEnd) && Number.isFinite(nextStart) && nextStart < curEnd) {
+        checks.push({
+          id: `overlap_${cur.key}_${next.key}`,
+          severity: "warning",
+          message: `"${cur.title}" and "${next.title}" overlap for the same vendor. The same team cannot be in two places at once.`,
+        });
+      }
+    }
+  }
+
+  // Category-level timing sanity: vendor arrival before setup, setup ending
+  // before doors, and strike not starting until the program/service window
+  // ends. Reads from the FULL assembled items list (auto-derived + manual),
+  // so a manual override of any of these windows is respected.
+  const categoryTime = (
+    category: string,
+    field: "start_time" | "end_time",
+    agg: "min" | "max",
+  ): number | null => {
+    const values = items
+      .filter((i) => i.category === category && i[field])
+      .map((i) => new Date(i[field] as string).getTime())
+      .filter((n) => Number.isFinite(n));
+    if (!values.length) return null;
+    return agg === "min" ? Math.min(...values) : Math.max(...values);
+  };
+
+  const earliestLoadIn = categoryTime("load_in", "start_time", "min");
+  const earliestSetupStart = categoryTime("setup", "start_time", "min");
+  const latestSetupEnd = categoryTime("setup", "end_time", "max");
+  const doorsTime = start ? new Date(start).getTime() : null;
+  const latestServiceEnd = [categoryTime("program", "end_time", "max"), categoryTime("service", "end_time", "max")]
+    .filter((v): v is number => v != null)
+    .reduce((max, v) => (v > max ? v : max), Number.NEGATIVE_INFINITY);
+  const earliestStrike = [categoryTime("breakdown", "start_time", "min"), categoryTime("load_out", "start_time", "min")]
+    .filter((v): v is number => v != null)
+    .reduce((min, v) => (v < min ? v : min), Number.POSITIVE_INFINITY);
+
+  if (earliestLoadIn != null && earliestSetupStart != null && earliestLoadIn > earliestSetupStart) {
+    checks.push({
+      id: "vendor_arrival_after_setup",
+      severity: "warning",
+      message: "Vendor load-in is scheduled to start after setup begins. Vendors should arrive before setup starts.",
+    });
+  }
+  if (latestSetupEnd != null && doorsTime != null && latestSetupEnd > doorsTime) {
+    checks.push({
+      id: "setup_after_doors",
+      severity: "warning",
+      message: "Setup is scheduled to run past doors / guest arrival. Setup should finish before guests arrive.",
+    });
+  }
+  if (Number.isFinite(latestServiceEnd) && Number.isFinite(earliestStrike) && earliestStrike < latestServiceEnd) {
+    checks.push({
+      id: "strike_before_service_ends",
+      severity: "warning",
+      message: "Breakdown / strike is scheduled to begin before the program or service window ends.",
+    });
   }
 
   // --- Sort all items chronologically (untimed last) -------------------------
@@ -558,5 +686,56 @@ export async function buildItinerary(actor: Actor, eventId: string): Promise<Bui
     checks,
     statuses: ITINERARY_STATUSES,
     categories: ITINERARY_CATEGORIES,
+    approval: {
+      status: ev.itinerary_status,
+      approved_at: ev.itinerary_approved_at,
+      approved_by: ev.itinerary_approved_by,
+    },
   };
+}
+
+/**
+ * Approve the Run of Show. Owner or planner-role member only. Does not
+ * block on the deterministic checks above (blocking, uncontrolled approval
+ * is not this feature's job -- the packet's own pre-send readiness gate,
+ * Part 9, is where "not ready yet" actually blocks a send); this simply
+ * records that a human reviewed and signed off on the current schedule.
+ */
+export async function approveItinerary(actor: Actor, eventId: string): Promise<ItineraryApproval> {
+  await requireOwner(actor, eventId);
+  const row = await q1<{ itinerary_status: "draft" | "approved"; itinerary_approved_at: string | null; itinerary_approved_by: string | null }>(
+    `update events set itinerary_status = 'approved', itinerary_approved_at = now(), itinerary_approved_by = $2
+      where id = $1
+      returning itinerary_status, itinerary_approved_at, itinerary_approved_by`,
+    [eventId, actor.user.id],
+  );
+  if (!row) throw new NotFoundError("event not found");
+  return { status: row.itinerary_status, approved_at: row.itinerary_approved_at, approved_by: row.itinerary_approved_by };
+}
+
+/** Explicit manual revert to draft. Owner or planner-role member only. */
+export async function revertItineraryToDraft(actor: Actor, eventId: string): Promise<ItineraryApproval> {
+  await requireOwner(actor, eventId);
+  const row = await q1<{ itinerary_status: "draft" | "approved"; itinerary_approved_at: string | null; itinerary_approved_by: string | null }>(
+    `update events set itinerary_status = 'draft', itinerary_approved_at = null, itinerary_approved_by = null
+      where id = $1
+      returning itinerary_status, itinerary_approved_at, itinerary_approved_by`,
+    [eventId],
+  );
+  if (!row) throw new NotFoundError("event not found");
+  return { status: row.itinerary_status, approved_at: row.itinerary_approved_at, approved_by: row.itinerary_approved_by };
+}
+
+/** An "approved" label that silently survives an edit underneath it would
+ *  be misleading, so any itinerary item mutation reverts an approved Run
+ *  of Show back to draft automatically. Best-effort: never blocks the
+ *  actual mutation if this side effect fails. */
+async function revertApprovalOnEdit(eventId: string): Promise<void> {
+  await pool
+    .query(
+      `update events set itinerary_status = 'draft', itinerary_approved_at = null, itinerary_approved_by = null
+        where id = $1 and itinerary_status = 'approved'`,
+      [eventId],
+    )
+    .catch(() => undefined);
 }

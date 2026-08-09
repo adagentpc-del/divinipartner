@@ -111,6 +111,13 @@ export type EventRow = {
   venue_restrictions: string | null;
   emergency_contact_name: string | null;
   emergency_contact_phone: string | null;
+  // Run of Show finalization (completion phase, Part 15). Owned by
+  // db/itinerary.ts's approveItinerary()/revertItineraryToDraft(), never
+  // set through the generic updateEvent() patch path -- a distinct
+  // workflow action, same pattern as executionPacket.ts's markPacketFinal.
+  itinerary_status: "draft" | "approved";
+  itinerary_approved_at: string | null;
+  itinerary_approved_by: string | null;
   created_at: string;
   updated_at: string;
 };

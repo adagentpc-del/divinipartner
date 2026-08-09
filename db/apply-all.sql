@@ -6040,3 +6040,17 @@ create table if not exists event_packet_reminders (
   unique (packet_id, recipient_user_id, offset_minutes)
 );
 create index if not exists idx_event_packet_reminders_event on event_packet_reminders(event_id);
+
+-- ====== db/schema-itinerary-approval.sql ======
+-- ---------------------------------------------------------------------------
+-- Run of Show finalization (Final Event Schedule / Event Execution Packet
+-- completion phase, Part 15, 2026-08-09). Extends the existing
+-- itinerary_items / buildItinerary() system (Phase 6) rather than
+-- duplicating it: a draft/approved status lives directly on the event,
+-- alongside the other Shared Authoritative Event Record fields.
+-- ---------------------------------------------------------------------------
+
+alter table events add column if not exists itinerary_status text not null default 'draft'
+  check (itinerary_status in ('draft', 'approved'));
+alter table events add column if not exists itinerary_approved_at timestamptz;
+alter table events add column if not exists itinerary_approved_by uuid references users(id) on delete set null;

@@ -82,4 +82,22 @@ router.delete(
   }),
 );
 
+/** Approve the Run of Show (Part 15). Owner or planner-role member only. */
+router.post(
+  "/event/:eventId/approve",
+  h(async (req, res) => {
+    const a = await actor(req);
+    res.json({ approval: await itinerary.approveItinerary(a, req.params.eventId) });
+  }),
+);
+
+/** Manually revert the Run of Show to draft. Owner or planner-role member only. */
+router.post(
+  "/event/:eventId/revert-to-draft",
+  h(async (req, res) => {
+    const a = await actor(req);
+    res.json({ approval: await itinerary.revertItineraryToDraft(a, req.params.eventId) });
+  }),
+);
+
 export default router;
