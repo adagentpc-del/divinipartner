@@ -61,6 +61,15 @@ router.post(
   }),
 );
 
+/** Manual "Send Reminder" action from the Readiness panel. Owner/planner only. */
+router.post(
+  "/event/:eventId/remind-now",
+  h(async (req, res) => {
+    const a = await actor(req);
+    res.json(await dist.remindNow(a, req.params.eventId));
+  }),
+);
+
 /** Admin-only manual trigger for the distribution pass (mirrors routes/worker.ts's pattern). */
 router.post(
   "/run",

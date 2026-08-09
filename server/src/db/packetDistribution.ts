@@ -451,3 +451,54 @@ export async function runPacketReminders(now: Date = new Date()): Promise<Remind
 
   return { candidates: candidates.length, reminders_sent: remindersSent, failed };
 }
+
+/**
+ * Manual "Send Reminder" action for one event, triggered from the
+ * Readiness panel. Owner/planner only. Unlike runPacketReminders() (a
+ * scheduled tick that must never double-send on a retry), this is a
+ * single, deliberate, explicit HTTP request the planner just made, so it
+ * sends directly to every still-pending recipient of the CURRENT packet
+ * version rather than going through the offset-based idempotency table --
+ * there is no "retry" to protect against here, and a planner clicking the
+ * button again later is a legitimate second reminder, not a duplicate.
+ */
+export async function remindNow(actor: Actor, eventId: string): Promise<{ sent: number }> {
+  if (!(await canManageEvent(actor, eventId))) {
+    throw new ForbiddenError("only the event owner can send a reminder");
+  }
+  const packet = await q1<{ id: string; version: number }>(
+    `select id, version from event_execution_packets
+      where event_id = $1 and status in ('issued', 'final', 'update_required')
+      order by version desc limit 1`,
+    [eventId],
+  );
+  if (!packet) return { sent: 0 };
+
+  const pending = await q<{ user_id: string; email: string | null }>(
+    `select a.user_id, u.email
+       from event_execution_packet_acknowledgments a
+       join event_members em on em.event_id = $1 and em.user_id = a.user_id and em.status = 'active'
+       join users u on u.id = a.user_id
+      where a.packet_id = $2 and a.acknowledged_at is null`,
+    [eventId, packet.id],
+  );
+
+  let sent = 0;
+  const link = `${appBase()}/events/${eventId}`;
+  for (const r of pending) {
+    if (!r.email) continue;
+    try {
+      await sendEmail({
+        to: r.email,
+        subject: `Reminder: confirm receipt of the final event schedule`,
+        text:
+          `You have not yet confirmed receipt of the final event schedule (version ${packet.version}).\n\n` +
+          `Please review and confirm here:\n${link}`,
+      });
+      sent++;
+    } catch {
+      // best-effort: one failed send should not block the others
+    }
+  }
+  return { sent };
+}
