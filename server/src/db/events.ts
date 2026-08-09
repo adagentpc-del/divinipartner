@@ -71,6 +71,30 @@ export type EventRow = {
   itinerary: unknown;
   /** Host opt-in: automatically email guests the /agenda/:id link before the event. */
   notify_guests_schedule: boolean;
+  // ---- Shared Authoritative Event Record (Phase A item 4) ------------------
+  // Timing beyond the single date_time "start". end_at, together with
+  // date_time, is what makes a multi-day event representable.
+  load_in_at: string | null;
+  setup_at: string | null;
+  rehearsal_at: string | null;
+  vendor_call_at: string | null;
+  doors_at: string | null;
+  end_at: string | null;
+  strike_at: string | null;
+  // Per-event venue booking detail (venues table stays the venue's general profile).
+  venue_space: string | null;
+  venue_notes: string | null;
+  // Structured attendance breakdown, additive alongside the legacy guest_count.
+  // attendance_final deliberately does not exist here -- Phase A item 6 (Final
+  // Count Workflow) owns that value and versions it instead of a plain column.
+  attendance_estimated: number | null;
+  attendance_invited: number | null;
+  attendance_rsvp_yes: number | null;
+  attendance_confirmed: number | null;
+  attendance_guaranteed: number | null;
+  attendance_vip: number | null;
+  attendance_staff: number | null;
+  attendance_vendor_staff: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -152,6 +176,23 @@ export type CreateEventInput = {
   venue_id?: string | null;
   branding_opportunity_id?: string | null;
   notify_guests_schedule?: boolean | null;
+  load_in_at?: string | null;
+  setup_at?: string | null;
+  rehearsal_at?: string | null;
+  vendor_call_at?: string | null;
+  doors_at?: string | null;
+  end_at?: string | null;
+  strike_at?: string | null;
+  venue_space?: string | null;
+  venue_notes?: string | null;
+  attendance_estimated?: number | null;
+  attendance_invited?: number | null;
+  attendance_rsvp_yes?: number | null;
+  attendance_confirmed?: number | null;
+  attendance_guaranteed?: number | null;
+  attendance_vip?: number | null;
+  attendance_staff?: number | null;
+  attendance_vendor_staff?: number | null;
 };
 
 /** Create an event owned by the actor's org; the actor is client or planner by role. */
@@ -161,8 +202,15 @@ export async function createEvent(actor: Actor, input: CreateEventInput): Promis
     `insert into events
        (name, type, client_id, planner_id, venue_id, organization_id,
         date_time, guest_count, budget, event_goals, required_services,
-        branding_opportunity_id, status)
-     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'inquiry')
+        branding_opportunity_id, status,
+        load_in_at, setup_at, rehearsal_at, vendor_call_at, doors_at, end_at, strike_at,
+        venue_space, venue_notes,
+        attendance_estimated, attendance_invited, attendance_rsvp_yes, attendance_confirmed,
+        attendance_guaranteed, attendance_vip, attendance_staff, attendance_vendor_staff)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'inquiry',
+             $13,$14,$15,$16,$17,$18,$19,
+             $20,$21,
+             $22,$23,$24,$25,$26,$27,$28,$29)
      returning *`,
     [
       input.name,
@@ -177,6 +225,23 @@ export async function createEvent(actor: Actor, input: CreateEventInput): Promis
       input.event_goals ?? null,
       input.required_services ?? null,
       input.branding_opportunity_id ?? null,
+      input.load_in_at ?? null,
+      input.setup_at ?? null,
+      input.rehearsal_at ?? null,
+      input.vendor_call_at ?? null,
+      input.doors_at ?? null,
+      input.end_at ?? null,
+      input.strike_at ?? null,
+      input.venue_space ?? null,
+      input.venue_notes ?? null,
+      input.attendance_estimated ?? null,
+      input.attendance_invited ?? null,
+      input.attendance_rsvp_yes ?? null,
+      input.attendance_confirmed ?? null,
+      input.attendance_guaranteed ?? null,
+      input.attendance_vip ?? null,
+      input.attendance_staff ?? null,
+      input.attendance_vendor_staff ?? null,
     ],
   );
   const ev = row as EventRow;
@@ -243,6 +308,23 @@ export async function updateEvent(
         required_services = coalesce($8, required_services),
         venue_id = coalesce($9, venue_id),
         notify_guests_schedule = coalesce($10, notify_guests_schedule),
+        load_in_at = coalesce($11, load_in_at),
+        setup_at = coalesce($12, setup_at),
+        rehearsal_at = coalesce($13, rehearsal_at),
+        vendor_call_at = coalesce($14, vendor_call_at),
+        doors_at = coalesce($15, doors_at),
+        end_at = coalesce($16, end_at),
+        strike_at = coalesce($17, strike_at),
+        venue_space = coalesce($18, venue_space),
+        venue_notes = coalesce($19, venue_notes),
+        attendance_estimated = coalesce($20, attendance_estimated),
+        attendance_invited = coalesce($21, attendance_invited),
+        attendance_rsvp_yes = coalesce($22, attendance_rsvp_yes),
+        attendance_confirmed = coalesce($23, attendance_confirmed),
+        attendance_guaranteed = coalesce($24, attendance_guaranteed),
+        attendance_vip = coalesce($25, attendance_vip),
+        attendance_staff = coalesce($26, attendance_staff),
+        attendance_vendor_staff = coalesce($27, attendance_vendor_staff),
         updated_at = now()
       where id = $1
       returning *`,
@@ -257,6 +339,23 @@ export async function updateEvent(
       patch.required_services ?? null,
       patch.venue_id ?? null,
       patch.notify_guests_schedule ?? null,
+      patch.load_in_at ?? null,
+      patch.setup_at ?? null,
+      patch.rehearsal_at ?? null,
+      patch.vendor_call_at ?? null,
+      patch.doors_at ?? null,
+      patch.end_at ?? null,
+      patch.strike_at ?? null,
+      patch.venue_space ?? null,
+      patch.venue_notes ?? null,
+      patch.attendance_estimated ?? null,
+      patch.attendance_invited ?? null,
+      patch.attendance_rsvp_yes ?? null,
+      patch.attendance_confirmed ?? null,
+      patch.attendance_guaranteed ?? null,
+      patch.attendance_vip ?? null,
+      patch.attendance_staff ?? null,
+      patch.attendance_vendor_staff ?? null,
     ],
   );
   return row as EventRow;

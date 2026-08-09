@@ -5760,3 +5760,32 @@ create table if not exists event_members (
 create index if not exists idx_event_members_event on event_members(event_id);
 create index if not exists idx_event_members_user on event_members(user_id);
 create index if not exists idx_event_members_org on event_members(organization_id);
+
+-- ====== db/schema-event-record.sql ======
+-- ---------------------------------------------------------------------------
+-- Shared Authoritative Event Record additive columns, found while building
+-- the Divini Partners 63-section Event Operations spec Phase A item 4
+-- (2026-08-09). See db/schema-event-record.sql for the full rationale.
+-- ---------------------------------------------------------------------------
+alter table events add column if not exists load_in_at timestamptz;
+alter table events add column if not exists setup_at timestamptz;
+alter table events add column if not exists rehearsal_at timestamptz;
+alter table events add column if not exists vendor_call_at timestamptz;
+alter table events add column if not exists doors_at timestamptz;
+alter table events add column if not exists end_at timestamptz;
+alter table events add column if not exists strike_at timestamptz;
+
+-- Venue details specific to this event's booking (the venues table itself
+-- stays the venue's general profile, not per-event booking detail).
+alter table events add column if not exists venue_space text;
+alter table events add column if not exists venue_notes text;
+
+-- Attendance breakdown, additive alongside the legacy guest_count.
+alter table events add column if not exists attendance_estimated int;
+alter table events add column if not exists attendance_invited int;
+alter table events add column if not exists attendance_rsvp_yes int;
+alter table events add column if not exists attendance_confirmed int;
+alter table events add column if not exists attendance_guaranteed int;
+alter table events add column if not exists attendance_vip int;
+alter table events add column if not exists attendance_staff int;
+alter table events add column if not exists attendance_vendor_staff int;
