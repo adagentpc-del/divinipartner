@@ -220,6 +220,9 @@ export {
   type PacketProjection,
 } from "../lib/packetProjection.js";
 import { projectPacket, type PacketProjection } from "../lib/packetProjection.js";
+// WHAT CHANGED diff (Part 6): pure narrowing logic lives in lib/packetDiff.ts.
+export { diffPacketSnapshots, type PacketDiffEntry, type PacketDiffCategory } from "../lib/packetDiff.js";
+import { diffPacketSnapshots, type PacketDiffEntry } from "../lib/packetDiff.js";
 
 /** Live preview, projected for the actor's real event role. Not persisted. */
 export async function buildProjectedPreview(
@@ -231,22 +234,32 @@ export async function buildProjectedPreview(
   return projectPacket(snapshot, role, actor.org?.id ?? null);
 }
 
+export type PacketStatus = "draft" | "issued" | "superseded" | "final";
+
 export type ExecutionPacketRow = {
   id: string;
   event_id: string;
   version: number;
-  status: "generated" | "superseded";
+  status: PacketStatus;
   snapshot: ExecutionPacketSnapshot;
   generated_by: string | null;
+  /** The version that replaced this one, set only once this row transitions
+   *  to 'superseded'. Null for the current/latest version. */
+  superseded_by: string | null;
   created_at: string;
 };
 
 /**
  * Generate a new packet version: snapshot the current live data, mark the
- * previous version superseded, seed one acknowledgment row per active
- * member, and record an event_changes entry (Phase A item 5) so a new
- * packet is exactly as visible as any other high-impact event change.
- * Owner/planner only.
+ * previous version superseded (pointing forward at this one via
+ * superseded_by), seed one acknowledgment row per active member, and record
+ * an event_changes entry (Phase A item 5) so a new packet is exactly as
+ * visible as any other high-impact event change. Owner/planner only.
+ *
+ * Issues immediately (status 'issued') rather than a separate draft step:
+ * the pre-send distribution gate (Part 9) is where "not ready yet" blocking
+ * actually lives, so a second draft/issue split here would just duplicate
+ * that gate without adding a real capability.
  */
 export async function generatePacketVersion(
   actor: Actor,
@@ -256,15 +269,15 @@ export async function generatePacketVersion(
     throw new ForbiddenError("only the event owner can generate the execution packet");
   }
   const snapshot = await buildExecutionPacket(actor, eventId);
-  const previous = await q1<{ version: number }>(
-    `select version from event_execution_packets where event_id = $1 order by version desc limit 1`,
+  const previous = await q1<{ id: string; version: number }>(
+    `select id, version from event_execution_packets where event_id = $1 order by version desc limit 1`,
     [eventId],
   );
   const nextVersion = (previous?.version ?? 0) + 1;
 
   const row = await q1<ExecutionPacketRow>(
-    `insert into event_execution_packets (event_id, version, snapshot, generated_by)
-     values ($1,$2,$3,$4)
+    `insert into event_execution_packets (event_id, version, snapshot, generated_by, status)
+     values ($1,$2,$3,$4,'issued')
      returning *`,
     [eventId, nextVersion, JSON.stringify(snapshot), actor.user.id],
   );
@@ -272,9 +285,9 @@ export async function generatePacketVersion(
 
   if (previous) {
     await pool.query(
-      `update event_execution_packets set status = 'superseded'
+      `update event_execution_packets set status = 'superseded', superseded_by = $3
         where event_id = $1 and version = $2`,
-      [eventId, previous.version],
+      [eventId, previous.version, packet.id],
     );
   }
 
@@ -324,6 +337,37 @@ export async function getPacketVersion(actor: Actor, packetId: string): Promise<
 }
 
 /**
+ * WHAT CHANGED for a packet version, against either the immediately
+ * preceding version (default) or an explicit earlier version number. Both
+ * versions must belong to the SAME event -- sinceVersion is a version
+ * number scoped to this packet's own event, never a cross-event id, so
+ * there is no way to diff against another event's data.
+ */
+export async function diffPacketVersion(
+  actor: Actor,
+  packetId: string,
+  sinceVersion?: number,
+): Promise<{ from_version: number | null; to_version: number; changes: PacketDiffEntry[] }> {
+  const to = await getPacketVersion(actor, packetId);
+  const fromVersionNumber = sinceVersion ?? to.version - 1;
+  if (fromVersionNumber < 1) {
+    return { from_version: null, to_version: to.version, changes: [] };
+  }
+  const from = await q1<ExecutionPacketRow>(
+    `select * from event_execution_packets where event_id = $1 and version = $2`,
+    [to.event_id, fromVersionNumber],
+  );
+  if (!from) {
+    return { from_version: null, to_version: to.version, changes: [] };
+  }
+  return {
+    from_version: from.version,
+    to_version: to.version,
+    changes: diffPacketSnapshots(from.snapshot, to.snapshot),
+  };
+}
+
+/**
  * A specific historical packet version, projected for the actor's real
  * event role. This is the route every non-owner recipient should use --
  * the raw getPacketVersion() (full snapshot) is for owner/planner tooling
@@ -361,4 +405,27 @@ export async function acknowledgePacket(
     throw new ForbiddenError("you are not a recipient of this packet version");
   }
   return row;
+}
+
+/**
+ * Mark the latest packet version 'final' -- the version that was actually
+ * used to execute the event, no further revisions expected. Owner/planner
+ * only. Does not affect the snapshot itself (still immutable); this is a
+ * status-only transition, and only ever applies to the current (highest-
+ * version, non-superseded) packet.
+ */
+export async function markPacketFinal(actor: Actor, eventId: string): Promise<ExecutionPacketRow> {
+  if (!(await canManageEvent(actor, eventId))) {
+    throw new ForbiddenError("only the event owner can mark the execution packet final");
+  }
+  const row = await q1<ExecutionPacketRow>(
+    `update event_execution_packets set status = 'final'
+      where event_id = $1 and version = (
+        select max(version) from event_execution_packets where event_id = $1
+      )
+      returning *`,
+    [eventId],
+  );
+  if (!row) throw new NotFoundError("no execution packet has been generated for this event yet");
+  return row as ExecutionPacketRow;
 }

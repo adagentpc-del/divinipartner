@@ -5942,3 +5942,18 @@ alter table events add column if not exists venue_guest_entrance text;
 alter table events add column if not exists venue_restrictions text;
 alter table events add column if not exists emergency_contact_name text;
 alter table events add column if not exists emergency_contact_phone text;
+
+-- ====== db/schema-packet-versioning.sql ======
+-- ---------------------------------------------------------------------------
+-- Packet versioning completion, found while building the Final Event
+-- Schedule / Event Execution Packet completion phase Part 5 (2026-08-09).
+-- See db/schema-packet-versioning.sql for the full rationale.
+-- ---------------------------------------------------------------------------
+alter table event_execution_packets drop constraint if exists event_execution_packets_status_check;
+alter table event_execution_packets add constraint event_execution_packets_status_check
+  check (status in ('draft', 'issued', 'superseded', 'final'));
+update event_execution_packets set status = 'issued' where status = 'generated';
+alter table event_execution_packets alter column status set default 'issued';
+
+alter table event_execution_packets add column if not exists superseded_by uuid
+  references event_execution_packets(id) on delete set null;

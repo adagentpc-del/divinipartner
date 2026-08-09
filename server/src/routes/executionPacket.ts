@@ -100,4 +100,26 @@ router.post(
   }),
 );
 
+/**
+ * WHAT CHANGED (Part 6): a categorized, human-readable diff against the
+ * immediately preceding version, or an explicit ?since=<version number>.
+ */
+router.get(
+  "/:id/diff",
+  h(async (req, res) => {
+    const a = await actor(req);
+    const since = typeof req.query.since === "string" ? Number(req.query.since) : undefined;
+    res.json(await packet.diffPacketVersion(a, req.params.id, Number.isFinite(since) ? since : undefined));
+  }),
+);
+
+/** Mark the latest packet version 'final'. Owner or planner-role member only. */
+router.post(
+  "/event/:eventId/final",
+  h(async (req, res) => {
+    const a = await actor(req);
+    res.json({ packet: await packet.markPacketFinal(a, req.params.eventId) });
+  }),
+);
+
 export default router;
