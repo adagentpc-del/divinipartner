@@ -40,27 +40,47 @@ faster and more consistent than improvising under pressure.
 
 ## 4. Detection
 
-Real, current detection capability, honestly stated:
+Real, current detection capability, honestly stated (updated 2026-08-09 --
+the previous version of this section was written before structured
+logging/error-monitoring shipped and was stale about what already exists):
 
 - `audit_logs` (`server/src/lib/audit.ts`) records 45+ sensitive-action
   call sites with actor, action, before/after state, and IP -- but nothing
   actively monitors it for anomalies today. Detection currently depends on
   someone thinking to query it.
+- **Structured JSON logging and optional real-time error alerting exist**
+  (`server/src/lib/logger.ts`, shipped 2026-08-03): every `logger.error()`
+  call -- wired into the central Express error handler and both process
+  crash handlers (`uncaughtException`/`unhandledRejection`) -- writes one
+  JSON line per event, trivially ingestible by any log aggregator, and
+  optionally POSTs the same payload to `ERROR_MONITORING_WEBHOOK_URL` in
+  real time when that variable is set. **This still requires an operator to
+  point it at a real destination** (a Slack incoming webhook, a collector,
+  a Sentry-compatible ingestion proxy) -- unset, logs still write to
+  stdout/stderr but nobody is paged. Tracked as an open operator action in
+  `docs/platform-standard/operator-actions.md`.
+- `GET /api/healthz` now performs a real readiness check (a `select 1`
+  against the database with a 1.5s cap), not just a liveness check --
+  live-verified this session to correctly return `200 {db:true}` with the
+  database reachable and `503 {db:false}` within the cap when it is not.
+  Wire this into whatever uptime/load-balancer monitoring is deployed so a
+  database outage pages someone instead of silently serving a healthy-
+  looking process.
 - Rate-limit 429 responses (`server/src/lib/rateLimit.ts`) throttle
-  credential-stuffing attempts but do not alert anyone when they trigger.
-- There is no error-monitoring or SIEM-style alerting integrated
-  (`AI_PROJECT_OS/53_SOC2_ISO27001_AUDIT.md` gap #3). This is the single
-  biggest reason this plan cannot yet promise a specific detection-to-
-  response time.
+  credential-stuffing attempts but still do not log or alert anyone when
+  they trigger -- this specific gap remains open.
+- Nothing actively scans `audit_logs` for anomalies (no scheduled job, no
+  alerting rule) -- this specific gap also remains open. Detection for
+  anything not covered by an error-log line or a user report still depends
+  on someone thinking to query `audit_logs` by hand.
 - User reports (e.g. "I got a password-changed email I didn't request" --
-  now possible to detect thanks to the 2026-08-03 password-reset
-  notification fix) are, realistically, the most likely detection path
-  today.
+  possible to detect thanks to the 2026-08-03 password-reset notification
+  fix) remain a realistic detection path, now alongside the above.
 
-**Action required before this plan is fully credible:** build the
-structured logging / monitoring already tracked in
-`AI_PROJECT_OS/16_TECH_DEBT.md`, and set up at least basic alerting on
-`audit_logs` anomalies and repeated 429s.
+**Action still required before this plan is fully credible:** point
+`ERROR_MONITORING_WEBHOOK_URL` at a real destination (operator action, not
+a code gap); add logging on repeated 429s and at least basic alerting on
+`audit_logs` anomalies (code gaps, not yet built).
 
 ## 5. Response steps
 

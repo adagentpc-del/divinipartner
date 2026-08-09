@@ -22,7 +22,8 @@ format.
 | 11 UX, Accessibility, Onboarding, Forms, Navigation & Content Quality | READY (scoped) WITH P1 ITEMS — see below | 2026-08-08 |
 | 12 Core Product Engines (Profiles, Orgs, Admin, Products/Services, Calendar, Video, Documents) | **READY** — no open P0/P1 items (one P2 operator action) | 2026-08-09 |
 | 13 Analytics, Behavior Tracking & Personalization | **READY** — no open P0/P1/P2 items | 2026-08-09 |
-| 14–18 | Not yet started | — |
+| 14 Observability, Incident Response & Disaster Recovery | READY WITH P2 ITEMS — see below | 2026-08-09 |
+| 15–18 | Not yet started | — |
 
 ## Section 01 summary
 
@@ -433,11 +434,44 @@ format.
   at each step).
 - No P0/P1/P2 items remain open for this section.
 
+## Section 14 summary
+
+- Scope: runtime observability (logging, health checks, alerting) and
+  incident response / disaster recovery planning. Database backup/restore
+  itself was already covered in depth in Section 06 and is referenced, not
+  re-audited, per the pack's rule against re-covering already-audited
+  ground.
+- Found and fixed a real P1 gap: `GET /api/healthz` was a liveness check
+  only (proved the process was running) with no readiness check (proved
+  the database — the app's single real dependency — was reachable). Added
+  a capped `select 1` check; live-verified against a real, disposable
+  Postgres instance in both the healthy (200/db:true) and unhealthy
+  (503/db:false, returned promptly) states.
+- Found and fixed a stale-documentation gap: the Incident Response Plan's
+  Detection section still claimed no error-monitoring/alerting existed,
+  which was true when written but false since structured logging + an
+  optional real-time webhook shipped 2026-08-03. Rewrote it to state
+  current capability accurately, while keeping the two genuinely-still-open
+  detection gaps (429s not logged/alerted, no `audit_logs` anomaly
+  scanning) clearly flagged as open, verified still true by reading
+  `rateLimit.ts` and confirming no scheduled anomaly-detection job exists.
+- Closed a documentation gap: no single runbook combined the existing,
+  separately-documented deploy steps and database-restore steps into a
+  "total host loss" recovery sequence. Added
+  `compliance/policies/disaster-recovery-runbook.md`, honestly marked
+  DRAFT and not-yet-exercised end to end.
+- No P0/P1 blockers remain open. Three P2 items carried forward, all
+  pre-existing and now explicitly tracked rather than newly discovered:
+  429 rate-limit hits still aren't logged/alerted (T36), no automated
+  `audit_logs` anomaly scanning exists (T37), and the new DR runbook
+  needs a real dry-run exercise plus confirmation of its off-host
+  storage/secrets preconditions (operator action).
+
 ## Overall launch readiness (cumulative, updated as sections complete)
 
-**NOT READY** — pending Sections 14–18, plus the standing T7 gate (real
+**NOT READY** — pending Sections 15–18, plus the standing T7 gate (real
 money) which several sections now have concrete pre-requisites tracked
 against (refund/dispute capability, live credential testing). This is
-expected at this stage (thirteen of eighteen sections complete) and is not
+expected at this stage (fourteen of eighteen sections complete) and is not
 itself a new finding; it reflects where the multi-section pack currently
 stands, not a regression.

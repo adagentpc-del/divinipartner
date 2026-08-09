@@ -11,6 +11,7 @@ import { PRICING_V2 } from "../config.js";
 import { clearSessionCookie } from "./auth-native.js";
 import { clearCsrfCookie } from "../lib/csrf.js";
 import { logAction } from "../lib/audit.js";
+import { pool } from "../pool.js";
 
 const h =
   (fn: (req: Request, res: Response) => Promise<unknown>) =>
@@ -19,8 +20,27 @@ const h =
 
 const router = Router();
 
-router.get("/healthz", (_req, res) => {
-  res.json({ ok: true, service: "divini-partners", ts: Date.now() });
+// Readiness check, not just a liveness check: a bare 200 here previously
+// meant only "the Node process is running," which stays true even while the
+// database (this app's single real dependency) is fully unreachable -- the
+// most likely real outage mode. Deploy scripts and any uptime/load-balancer
+// check that treats this as "the app is healthy" deserve an honest answer.
+// A 1.5s cap keeps a hung DB from making this endpoint hang too.
+router.get("/healthz", async (_req, res) => {
+  try {
+    let timer: NodeJS.Timeout;
+    const timeout = new Promise<never>((_resolve, reject) => {
+      timer = setTimeout(() => reject(new Error("db health check timed out")), 1500);
+    });
+    try {
+      await Promise.race([pool.query("select 1"), timeout]);
+    } finally {
+      clearTimeout(timer!);
+    }
+    res.json({ ok: true, service: "divini-partners", db: true, ts: Date.now() });
+  } catch {
+    res.status(503).json({ ok: false, service: "divini-partners", db: false, ts: Date.now() });
+  }
 });
 
 router.get("/pricing", (_req, res) => {

@@ -395,6 +395,28 @@ Prioritized backlog, seeded from the Go-Live runbook remaining items and the V2 
 - Related files: `src/components/CookieBanner.tsx`, `src/pages/Cookies.tsx`.
 - See: `docs/platform-standard/section-13-analytics-personalization.md`, risk R-42.
 
+## T36 - Log and alert on repeated 429 rate-limit hits (found 2026-08-09, ALFY2 pack Section 14)
+
+- Priority: P2
+- Status: NOT STARTED
+- Owner: unassigned
+- Dependencies: none
+- Effort: S
+- Acceptance: `server/src/lib/rateLimit.ts` throttles credential-stuffing/abuse attempts with a 429 response but does not log or alert when a client repeatedly triggers it -- a real detection blind spot called out honestly in `incident-response-plan.md`'s Detection section. Add a `logger.warn`/`logger.error` call (with enough context -- IP, route, limiter label -- to investigate) when a client repeatedly hits a limit within a short window, so this becomes visible in the existing structured-logging/error-monitoring pipeline (`lib/logger.ts`) rather than silent.
+- Related files: `server/src/lib/rateLimit.ts`, `server/src/lib/logger.ts`.
+- See: `docs/platform-standard/section-14-observability-incident-response-dr.md`, `compliance/policies/incident-response-plan.md`.
+
+## T37 - Automated `audit_logs` anomaly scanning (found 2026-08-09, ALFY2 pack Section 14)
+
+- Priority: P2
+- Status: NOT STARTED
+- Owner: unassigned
+- Dependencies: none
+- Effort: M
+- Acceptance: `audit_logs` (`server/src/lib/audit.ts`) records 45+ sensitive-action call sites with actor/action/before-after state/IP, but nothing actively monitors it -- detection depends entirely on someone thinking to query it by hand. Build a scheduled job (the existing `server/src/lib/scheduler.ts`/`worker.ts` cron pattern) that flags obvious anomalies (e.g. an unusual spike in admin actions from one actor, repeated failed-then-succeeded sensitive actions, activity from a newly-added admin email) and routes a flag through the existing `logger.error`/webhook pipeline so it surfaces the same way any other error does.
+- Related files: `server/src/lib/audit.ts`, `server/src/lib/scheduler.ts`, `server/src/worker.ts`, `server/src/lib/logger.ts`.
+- See: `docs/platform-standard/section-14-observability-incident-response-dr.md`, `compliance/policies/incident-response-plan.md`.
+
 ## ALFY2 / Claude Master Platform Execution Pack (started 2026-08-08)
 
 A separately-uploaded 18-section audit framework is being run against this
@@ -413,11 +435,12 @@ Marketplace & Tax), Section 10 (Email, SMS, Push Notifications &
 Marketing Compliance), Section 11 (UX, Accessibility, Onboarding,
 Forms, Navigation & Content Quality), Section 12 (Core Product
 Engines: Profiles, Organizations, Admin, Products/Services, Calendar,
-Video & Documents), and Section 13 (Analytics, Behavior Tracking &
-Personalization) are complete; see
+Video & Documents), Section 13 (Analytics, Behavior Tracking &
+Personalization), and Section 14 (Observability, Incident Response &
+Disaster Recovery) are complete; see
 `docs/platform-standard/release-readiness.md` for cumulative status across
 all 18 sections as they execute. New findings that represent real,
-actionable work (like T13-T35 above) get a task here as they're found, so
+actionable work (like T13-T37 above) get a task here as they're found, so
 this queue stays the single place to look for "what's left to do" --
 `docs/platform-standard/` is where the pack's own required audit/evidence/
 risk trail lives, not a second task list.

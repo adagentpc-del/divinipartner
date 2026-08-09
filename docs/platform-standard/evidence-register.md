@@ -85,6 +85,12 @@ Bootstrapped at Section 01.
 | S13-03 | Command output | Playwright script against the built SPA in a real browser: banner-on-first-load, accept-all hides it + sets storage, client-nav to `/cookies` shows the new button, click reopens the banner, reject-non-essential updates storage — all steps passed | 2026-08-09 |
 | S13-03 | Code | `src/components/CookieBanner.tsx`, `src/pages/Cookies.tsx` | 2026-08-09 |
 | S13 (all) | File | `docs/platform-standard/section-13-analytics-personalization.md` (new) | 2026-08-09 |
+| S14-01 | Command output | Live test against a real, disposable Postgres 16 instance: `/api/healthz` returned `200 {db:true}` with the database up, then `503 {db:false}` promptly after the database was stopped -- same running server process, both states observed directly | 2026-08-09 |
+| S14-01 | Code | `server/src/routes/foundation.ts` (`GET /healthz`) | 2026-08-09 |
+| S14-02 | Command output | Grep confirming `logger.error` call sites in `routes.ts`'s central error handler and `index.ts`'s process crash handlers | 2026-08-09 |
+| S14-03 | File | `compliance/policies/incident-response-plan.md` (Detection section rewritten) | 2026-08-09 |
+| S14-04 | File | `compliance/policies/disaster-recovery-runbook.md` (new) | 2026-08-09 |
+| S14 (all) | File | `docs/platform-standard/section-14-observability-incident-response-dr.md` (new) | 2026-08-09 |
 
 ## Notes
 
