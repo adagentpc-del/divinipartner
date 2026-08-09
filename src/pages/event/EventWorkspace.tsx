@@ -25,6 +25,7 @@ import ReviewsTab from './tabs/ReviewsTab';
 import EventReadinessPanel from '../EventReadinessPanel';
 import EventWarRoom from '../EventWarRoom';
 import ExecutionReadinessTab from './tabs/ExecutionReadinessTab';
+import EventCommandCenterTab from './tabs/EventCommandCenterTab';
 
 /**
  * Divini Event Command (docs/DIVINI_DETERMINISTIC_TOOLS_SPEC.md, build-order
@@ -72,6 +73,7 @@ export default function EventWorkspace() {
     { key: 'exhibitors', label: 'Exhibitors', element: <ExhibitorsTab eventId={id} /> },
     { key: 'readiness', label: 'Readiness', element: <EventReadinessPanel eventId={id} /> },
     { key: 'execution_readiness', label: 'Event Readiness', element: <ExecutionReadinessTab eventId={id} onNavigateTab={setActive} /> },
+    { key: 'event_command_center', label: 'Command Center', element: <EventCommandCenterTab eventId={id} /> },
     { key: 'risk_alerts', label: 'Risk & Alerts', element: <EventWarRoom eventId={id} /> },
     { key: 'venue', label: 'Venue', element: <VenueTab eventId={id} /> },
     { key: 'vendors', label: 'Vendors', element: <VendorsTab eventId={id} /> },

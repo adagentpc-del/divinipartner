@@ -76,6 +76,9 @@ import vendorFinalQuantity from "./routes/vendorFinalQuantity.js";
 import executionPacket from "./routes/executionPacket.js";
 // Event Execution Readiness Engine
 import readiness from "./routes/readiness.js";
+// Event Command Center (live-ops phase, Part 5-6) -- distinct from the
+// unrelated "Divini Command Center" AI COO feature mounted at /command-center.
+import eventCommandCenter from "./routes/eventCommandCenter.js";
 // Execution Packet distribution settings
 import packetDistribution from "./routes/packetDistribution.js";
 // Visitor signals (fingerprint/IP logging) + landing personalization
@@ -248,6 +251,7 @@ router.use("/final-count", finalCount);
 router.use("/vendor-final-quantity", vendorFinalQuantity);
 router.use("/execution-packet", executionPacket);
 router.use("/readiness", readiness);
+router.use("/event-command-center", eventCommandCenter);
 router.use("/packet-distribution", packetDistribution);
 router.use("/signals", signals);
 router.use("/personalize", personalize);
