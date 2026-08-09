@@ -5,6 +5,7 @@ import { Router, type Request, type Response, type NextFunction } from "express"
 import { ForbiddenError, NotFoundError, AccountDeletedError } from "./db.js";
 import { ReadinessBlockedError } from "./db/readiness.js";
 import { CloseoutBlockedError } from "./db/closeout.js";
+import { ReconciliationBlockedError, NotSettledError } from "./db/reconciliation.js";
 import { logger } from "./lib/logger.js";
 import { getAuth } from "./auth.js";
 
@@ -92,6 +93,8 @@ import eventInventory from "./routes/eventInventory.js";
 import eventSponsorActivation from "./routes/eventSponsorActivation.js";
 // Event Closeout (live-ops phase, Part 25-27)
 import closeout from "./routes/closeout.js";
+// Event Financial Reconciliation + Settlement (live-ops phase, Part 28-31)
+import reconciliation from "./routes/reconciliation.js";
 // Execution Packet distribution settings
 import packetDistribution from "./routes/packetDistribution.js";
 // Visitor signals (fingerprint/IP logging) + landing personalization
@@ -271,6 +274,7 @@ router.use("/incidents", incidents);
 router.use("/event-inventory", eventInventory);
 router.use("/event-sponsor-activation", eventSponsorActivation);
 router.use("/closeout", closeout);
+router.use("/reconciliation", reconciliation);
 router.use("/packet-distribution", packetDistribution);
 router.use("/signals", signals);
 router.use("/personalize", personalize);
@@ -378,6 +382,9 @@ export function errorHandler(err: any, req: Request, res: Response, _next: NextF
     return res.status(409).json({ error: err.message, blocking: err.blocking, state: err.state });
   if (err instanceof CloseoutBlockedError)
     return res.status(409).json({ error: err.message, blocking: err.blocking, state: err.state });
+  if (err instanceof ReconciliationBlockedError)
+    return res.status(409).json({ error: err.message, blocking: err.blocking, state: err.state });
+  if (err instanceof NotSettledError) return res.status(409).json({ error: err.message });
   if (err instanceof ForbiddenError) return res.status(403).json({ error: err.message });
   if (err instanceof NotFoundError) return res.status(404).json({ error: err.message });
   // Postgres 22P02 (invalid_text_representation): the client sent a

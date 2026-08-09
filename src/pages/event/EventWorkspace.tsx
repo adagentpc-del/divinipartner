@@ -30,6 +30,7 @@ import IncidentsTab from './tabs/IncidentsTab';
 import EventInventoryTab from './tabs/EventInventoryTab';
 import SponsorActivationTab from './tabs/SponsorActivationTab';
 import CloseoutTab from './tabs/CloseoutTab';
+import ReconciliationTab from './tabs/ReconciliationTab';
 
 /**
  * Divini Event Command (docs/DIVINI_DETERMINISTIC_TOOLS_SPEC.md, build-order
@@ -82,6 +83,7 @@ export default function EventWorkspace() {
     { key: 'event_inventory', label: 'Event Inventory', element: <EventInventoryTab eventId={id} /> },
     { key: 'sponsor_activation', label: 'Sponsor Activation', element: <SponsorActivationTab eventId={id} /> },
     { key: 'closeout', label: 'Closeout', element: <CloseoutTab eventId={id} /> },
+    { key: 'reconciliation', label: 'Reconciliation', element: <ReconciliationTab eventId={id} /> },
     { key: 'risk_alerts', label: 'Risk & Alerts', element: <EventWarRoom eventId={id} /> },
     { key: 'venue', label: 'Venue', element: <VenueTab eventId={id} /> },
     { key: 'vendors', label: 'Vendors', element: <VendorsTab eventId={id} /> },

@@ -550,6 +550,23 @@ export async function setEventStatus(
     }
   }
 
+  // Completion gate (Part 31 of the live-ops phase): the completed ->
+  // closed transition is gated on the event having an event_settlements
+  // record (db/reconciliation.ts's markEventSettled). Deliberately scoped
+  // to ONLY this exact transition (completed -> closed), never a blanket
+  // rule on every event reaching 'closed' -- most events in this app never
+  // enter the live-ops reconciliation flow at all, and a broader gate
+  // would regress those.
+  let overrodeSettlement = false;
+  if (status === "closed" && before.status === "completed") {
+    const { isEventSettled, NotSettledError } = await import("./reconciliation.js");
+    const settled = await isEventSettled(id);
+    if (!settled) {
+      if (!opts.override) throw new NotSettledError();
+      overrodeSettlement = true;
+    }
+  }
+
   const row = await q1<EventRow>(
     `update events set status = $2, updated_at = now() where id = $1 returning *`,
     [id, status],
@@ -596,6 +613,17 @@ export async function setEventStatus(
           ? `Closed event with ${closeoutAtClose.blocking_count} blocking closeout issue(s) overridden`
           : "Closed event",
       },
+    ).catch(() => undefined);
+  }
+  if (overrodeSettlement) {
+    await logAction(
+      actor,
+      "event.closed_with_settlement_override",
+      "event",
+      id,
+      { status: before.status },
+      { status: after.status },
+      { summary: "Closed event without a completed financial settlement (overridden)" },
     ).catch(() => undefined);
   }
   if (before.status !== after.status) {
