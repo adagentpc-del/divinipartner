@@ -95,6 +95,8 @@ import eventSponsorActivation from "./routes/eventSponsorActivation.js";
 import closeout from "./routes/closeout.js";
 // Event Financial Reconciliation + Settlement (live-ops phase, Part 28-31)
 import reconciliation from "./routes/reconciliation.js";
+// Vendor Event Performance + Post-Event Intelligence Digest (live-ops phase, Part 32-38)
+import postEventIntelligence from "./routes/postEventIntelligence.js";
 // Execution Packet distribution settings
 import packetDistribution from "./routes/packetDistribution.js";
 // Visitor signals (fingerprint/IP logging) + landing personalization
@@ -275,6 +277,7 @@ router.use("/event-inventory", eventInventory);
 router.use("/event-sponsor-activation", eventSponsorActivation);
 router.use("/closeout", closeout);
 router.use("/reconciliation", reconciliation);
+router.use("/post-event", postEventIntelligence);
 router.use("/packet-distribution", packetDistribution);
 router.use("/signals", signals);
 router.use("/personalize", personalize);

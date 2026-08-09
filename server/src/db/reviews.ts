@@ -285,6 +285,20 @@ export async function listReviewsAboutOrg(orgId: string): Promise<ReviewRow[]> {
   );
 }
 
+/**
+ * Reviews tied to one specific event (live-ops phase, Part 34,
+ * 2026-08-09). The generic Reviews composer (src/pages/reviews/Reviews.tsx)
+ * has no event filter by design -- reviews are org-relationship-scoped,
+ * not event-scoped. This is the one addition that DOES filter by
+ * event_id, used by the live-ops Post-Event tab to know which
+ * counterparties from THIS event the acting org has already reviewed
+ * (or not), rather than reusing anything from vendorEventPerformance.ts's
+ * own aggregate query.
+ */
+export async function listReviewsForEvent(eventId: string): Promise<ReviewRow[]> {
+  return q<ReviewRow>(`select ${COLS} from reviews where event_id = $1 order by created_at desc`, [eventId]);
+}
+
 /** Pending review requests assigned to the acting user (status = requested). */
 export async function listMyReviewRequests(actor: Actor): Promise<ReviewRow[]> {
   return q<ReviewRow>(
