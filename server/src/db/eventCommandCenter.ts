@@ -14,14 +14,13 @@
  * fresh event_members/event_check_ins aggregate. Incidents (Part 15-16) is
  * now real too, via db/incidents.ts's listIncidents (already visibility-
  * projected, so a restricted incident never inflates a count an
- * unauthorized audience can see). Sections the full 48-part spec
- * eventually wants but that still have no underlying system YET (Sponsor
- * activations, Inventory alerts) come later in the execution order (Part
- * 24 sponsor activation, Part 17-20 inventory). This file is the one
- * place those sections will be filled in as each system ships; the
- * honest placeholder is `null`, never a fabricated number. Do not add a
- * second command-center aggregator when those parts land -- extend this
- * one.
+ * unauthorized audience can see). Inventory (Part 17-20) is now real too,
+ * via db/eventInventory.ts's listInventoryAlerts (thresholded, deterministic,
+ * never a fabricated number). Sponsor activations still has no underlying
+ * system yet (Part 24). This file is the one place that section will be
+ * filled in when it ships; the honest placeholder is `null`, never a
+ * fabricated number. Do not add a second command-center aggregator when
+ * that part lands -- extend this one.
  *
  * Authorization (Part 6): every section is narrowed to the actor's real
  * event role, backend-enforced, before the response is built -- the same
@@ -42,6 +41,7 @@ import { audienceForRole, type PacketAudience, type VendorScheduleRow } from "..
 import { vendorArrivalsSummary, type VendorArrivalSummaryRow } from "./checkIns.js";
 import { listActivity } from "./eventActivity.js";
 import { listIncidents } from "./incidents.js";
+import { listInventoryAlerts } from "./eventInventory.js";
 
 export type CommandCenterScheduleItem = {
   title: string;
@@ -68,8 +68,7 @@ export type CommandCenterProjection = {
   incidents: { open: number; high_priority: number } | null;
   /** Awaiting Part 24 (sponsor activation status). */
   sponsors: null;
-  /** Awaiting Part 17-20 (event inventory model). */
-  inventory: null;
+  inventory: { alert_count: number; alerts: Array<{ severity: string; message: string }> } | null;
   timeline: Array<{ at: string; label: string; kind: string }>;
   generated_at: string;
 };
@@ -231,6 +230,14 @@ export async function getCommandCenter(actor: Actor, eventId: string): Promise<C
     high_priority: openIncidents.filter((i) => i.severity === "high" || i.severity === "critical").length,
   };
 
+  // Inventory (Part 17-20): full/venue only, matching the same default
+  // scope inventory-category activity/incident rows already use.
+  let inventory: CommandCenterProjection["inventory"] = null;
+  if (audience === "full" || audience === "venue") {
+    const alerts = await listInventoryAlerts(actor, eventId);
+    inventory = { alert_count: alerts.length, alerts: alerts.slice(0, 10).map((a) => ({ severity: a.severity, message: a.message })) };
+  }
+
   return {
     audience,
     event: { id: ev.id, name: ev.name, status: ev.status, date_time: ev.date_time, timezone: ev.timezone },
@@ -246,7 +253,7 @@ export async function getCommandCenter(actor: Actor, eventId: string): Promise<C
     changes,
     incidents,
     sponsors: null,
-    inventory: null,
+    inventory,
     timeline,
     generated_at: new Date().toISOString(),
   };

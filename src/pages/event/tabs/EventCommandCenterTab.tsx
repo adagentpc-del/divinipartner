@@ -10,10 +10,11 @@ import { apiGet } from '../../../lib/api';
  * from server/src/db/eventCommandCenter.ts, which derives it fresh from
  * the real underlying systems on each call.
  * Incidents (Part 15-16) is real too, visibility-projected server-side.
- * Sections with no underlying system yet (Sponsor activations, Inventory
- * alerts) render an honest "not tracked yet" note rather than a
- * fabricated number -- they will fill in as those parts of the live-ops
- * phase ship, in this same tab.
+ * Inventory (Part 17-20) is real too, visibility-projected server-side.
+ * Sponsor activations still has no underlying system yet, and renders an
+ * honest "not tracked yet" note rather than a fabricated number -- it
+ * will fill in when that part of the live-ops phase ships, in this same
+ * tab.
  *
  * Distinct from the pre-existing "Divini Command Center" (the org-level AI
  * COO ask-a-question feature) -- this is a per-event live operations view,
@@ -62,7 +63,7 @@ type CommandCenter = {
   changes: { today_count: number; today_financial_impact: number | null } | null;
   incidents: { open: number; high_priority: number } | null;
   sponsors: null;
-  inventory: null;
+  inventory: { alert_count: number; alerts: Array<{ severity: string; message: string }> } | null;
   timeline: Array<{ at: string; label: string; kind: string }>;
   generated_at: string;
 };
@@ -261,10 +262,24 @@ export default function EventCommandCenterTab({ eventId }: { eventId: string }) 
           <p className="ew-cc-empty">Not tracked yet -- sponsor activation status ships in a later part of this phase.</p>
         </section>
 
-        <section className="ew-cc-card">
-          <h3>Inventory</h3>
-          <p className="ew-cc-empty">Not tracked yet -- event inventory ships in a later part of this phase.</p>
-        </section>
+        {cc.inventory ? (
+          <section className="ew-cc-card">
+            <h3>Inventory</h3>
+            <div className="ew-cc-nums">
+              <div><span className="ew-cc-num ew-cc-num-warn">{cc.inventory.alert_count}</span><span className="ew-cc-num-lbl">Alerts</span></div>
+            </div>
+            {cc.inventory.alerts.length > 0 ? (
+              <ul className="ew-cc-list">
+                {cc.inventory.alerts.map((a, i) => <li key={i}>{a.message}</li>)}
+              </ul>
+            ) : null}
+          </section>
+        ) : (
+          <section className="ew-cc-card">
+            <h3>Inventory</h3>
+            <p className="ew-cc-empty">Not visible from this role.</p>
+          </section>
+        )}
       </div>
 
       {cc.timeline.length > 0 ? (
