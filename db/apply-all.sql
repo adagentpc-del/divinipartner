@@ -5789,3 +5789,41 @@ alter table events add column if not exists attendance_guaranteed int;
 alter table events add column if not exists attendance_vip int;
 alter table events add column if not exists attendance_staff int;
 alter table events add column if not exists attendance_vendor_staff int;
+
+-- ====== db/schema-event-changes.sql ======
+-- ---------------------------------------------------------------------------
+-- Event Change Architecture / Propagation, found while building the Divini
+-- Partners 63-section Event Operations spec Phase A item 5 (2026-08-09). See
+-- db/schema-event-changes.sql for the full rationale.
+-- ---------------------------------------------------------------------------
+create table if not exists event_changes (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references events(id) on delete cascade,
+  category text not null check (category in (
+    'schedule', 'venue', 'attendance', 'budget', 'planning', 'vendor', 'status', 'other')),
+  field text not null,
+  old_value jsonb,
+  new_value jsonb,
+  changed_by uuid references users(id) on delete set null,
+  reason text,
+  -- Event roles (see lib/eventRoles.ts) this change is relevant to, or null
+  -- meaning "every active member of the event". Propagation (notifications +
+  -- acknowledgment rows) only ever reaches event_members matching this set,
+  -- never anyone outside the event's roster.
+  affected_scopes text[],
+  requires_acknowledgment boolean not null default false,
+  financial_impact numeric,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_event_changes_event on event_changes(event_id, created_at desc);
+
+create table if not exists event_change_acknowledgments (
+  id uuid primary key default gen_random_uuid(),
+  change_id uuid not null references event_changes(id) on delete cascade,
+  user_id uuid not null references users(id) on delete cascade,
+  acknowledged_at timestamptz,
+  created_at timestamptz not null default now(),
+  unique (change_id, user_id)
+);
+create index if not exists idx_event_change_acks_change on event_change_acknowledgments(change_id);
+create index if not exists idx_event_change_acks_user on event_change_acknowledgments(user_id, acknowledged_at);

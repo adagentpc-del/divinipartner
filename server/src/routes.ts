@@ -65,6 +65,8 @@ import worker from "./routes/worker.js";
 import invites from "./routes/invites.js";
 // Counterparty event invitations + event membership roster
 import eventInvitations from "./routes/eventInvitations.js";
+// Event change architecture / propagation
+import eventChanges from "./routes/eventChanges.js";
 // Visitor signals (fingerprint/IP logging) + landing personalization
 import signals from "./routes/signals.js";
 import personalize from "./routes/personalize.js";
@@ -230,6 +232,7 @@ router.use("/seats", seats);
 router.use("/worker", worker);
 router.use("/invites", invites);
 router.use("/event-invitations", eventInvitations);
+router.use("/event-changes", eventChanges);
 router.use("/signals", signals);
 router.use("/personalize", personalize);
 router.use("/signatures", signatures);

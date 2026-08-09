@@ -12,6 +12,7 @@ import { q, q1, pool } from "../pool.js";
 import { NotFoundError, ForbiddenError, type Actor } from "../db.js";
 import { buildItinerary } from "./itinerary.js";
 import { upsertEventMember, getEventRole } from "./eventMembers.js";
+import { recordFieldChanges, recordEventChange, type ChangeCategory } from "./eventChanges.js";
 
 // ---- Status model (blueprint section 13) -----------------------------------
 export type EventStatus =
@@ -289,13 +290,34 @@ export async function canManageEvent(actor: Actor, eventId: string): Promise<boo
 
 export type UpdateEventInput = Partial<CreateEventInput>;
 
+const SCHEDULE_FIELDS = new Set([
+  "name", "type", "date_time", "end_at", "load_in_at", "setup_at",
+  "rehearsal_at", "vendor_call_at", "doors_at", "strike_at",
+]);
+const VENUE_FIELDS = new Set(["venue_id", "venue_space", "venue_notes"]);
+const ATTENDANCE_FIELDS = new Set([
+  "guest_count", "attendance_estimated", "attendance_invited", "attendance_rsvp_yes",
+  "attendance_confirmed", "attendance_guaranteed", "attendance_vip", "attendance_staff",
+  "attendance_vendor_staff",
+]);
+const REQUIRES_ACK_FIELDS = new Set(["date_time", "end_at", "budget", "venue_id"]);
+
+/** Category a changed events-table field belongs to, for event_changes (Phase A item 5). */
+function categoryForField(field: string): ChangeCategory {
+  if (SCHEDULE_FIELDS.has(field)) return "schedule";
+  if (VENUE_FIELDS.has(field)) return "venue";
+  if (ATTENDANCE_FIELDS.has(field)) return "attendance";
+  if (field === "budget") return "budget";
+  return "planning";
+}
+
 /** Patch core event fields (owner or planner-role member). */
 export async function updateEvent(
   actor: Actor,
   id: string,
   patch: UpdateEventInput,
 ): Promise<EventRow> {
-  await getEvent(actor, id);
+  const before = await getEvent(actor, id);
   if (!(await canManageEvent(actor, id))) throw new ForbiddenError("only the event owner can edit");
   const row = await q1<EventRow>(
     `update events set
@@ -358,7 +380,25 @@ export async function updateEvent(
       patch.attendance_vendor_staff ?? null,
     ],
   );
-  return row as EventRow;
+  const after = row as EventRow;
+  // Change tracking + propagation (Phase A item 5). Only fields actually
+  // present in the patch are diffed, so an untouched field never generates a
+  // spurious change row. Best-effort: recordFieldChanges swallows its own
+  // per-field failures, and a change-log failure must never undo an already-
+  // committed event update.
+  const patchedFields = Object.keys(patch).filter((k) => k in after);
+  if (patchedFields.length) {
+    const beforeSlice: Record<string, unknown> = {};
+    const afterSlice: Record<string, unknown> = {};
+    for (const f of patchedFields) {
+      beforeSlice[f] = (before as unknown as Record<string, unknown>)[f];
+      afterSlice[f] = (after as unknown as Record<string, unknown>)[f];
+    }
+    await recordFieldChanges(actor, id, beforeSlice, afterSlice, categoryForField, {
+      requiresAckFields: REQUIRES_ACK_FIELDS,
+    }).catch(() => undefined);
+  }
+  return after;
 }
 
 /** Move an event to a new lifecycle status (owner or planner-role member). */
@@ -367,14 +407,28 @@ export async function setEventStatus(
   id: string,
   status: EventStatus,
 ): Promise<EventRow> {
-  await getEvent(actor, id);
+  const before = await getEvent(actor, id);
   if (!(await canManageEvent(actor, id))) throw new ForbiddenError("only the event owner can transition status");
   if (!isEventStatus(status)) throw new ForbiddenError("invalid status");
   const row = await q1<EventRow>(
     `update events set status = $2, updated_at = now() where id = $1 returning *`,
     [id, status],
   );
-  return row as EventRow;
+  const after = row as EventRow;
+  // Change tracking + propagation (Phase A item 5). A status transition is
+  // the highest-visibility change an event has, so it always requires
+  // acknowledgment and always reaches every active member (affected_scopes
+  // omitted -- see recordEventChange).
+  if (before.status !== after.status) {
+    await recordEventChange(actor, id, {
+      category: "status",
+      field: "status",
+      old_value: before.status,
+      new_value: after.status,
+      requires_acknowledgment: true,
+    }).catch(() => undefined);
+  }
+  return after;
 }
 
 export type EventVendorRow = {
