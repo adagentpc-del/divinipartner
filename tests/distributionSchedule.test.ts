@@ -13,6 +13,7 @@ import {
   computeSendMoment,
   isDueForDistribution,
   isDistributionPreset,
+  isReminderDue,
   DISTRIBUTION_PRESETS,
 } from "../server/src/lib/distributionSchedule.ts";
 
@@ -76,4 +77,28 @@ test("isDueForDistribution is always false once the event itself has started", (
   const event = new Date("2026-01-22T18:00:00Z");
   const afterEventStart = new Date("2026-01-22T19:00:00Z");
   assert.equal(isDueForDistribution(event, 7 * 24 * 60, "America/New_York", "09:00", afterEventStart), false);
+});
+
+test("isReminderDue is false before the offset moment and true at/after it", () => {
+  const event = new Date("2026-01-22T18:00:00Z");
+  const offsetMinutes = 72 * 60; // 72h reminder
+  const dueAt = new Date(event.getTime() - offsetMinutes * 60_000);
+  const before = new Date(dueAt.getTime() - 60_000);
+  const at = dueAt;
+  const after = new Date(dueAt.getTime() + 60_000);
+  assert.equal(isReminderDue(event, offsetMinutes, before), false);
+  assert.equal(isReminderDue(event, offsetMinutes, at), true);
+  assert.equal(isReminderDue(event, offsetMinutes, after), true);
+});
+
+test("isReminderDue is always false once the event itself has started", () => {
+  const event = new Date("2026-01-22T18:00:00Z");
+  const afterEventStart = new Date("2026-01-22T19:00:00Z");
+  assert.equal(isReminderDue(event, 72 * 60, afterEventStart), false);
+});
+
+test("isReminderDue supports a large offset that is already overdue relative to now (simulates a stale/very-early reminder policy)", () => {
+  const event = new Date("2026-08-20T18:00:00Z");
+  const now = new Date("2026-08-09T06:00:00Z");
+  assert.equal(isReminderDue(event, 999_999, now), true);
 });

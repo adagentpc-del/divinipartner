@@ -96,7 +96,21 @@ router.post(
   "/:id/acknowledge",
   h(async (req, res) => {
     const a = await actor(req);
-    res.json({ acknowledgment: await packet.acknowledgePacket(a, req.params.id) });
+    const method = req.body?.method === "email_link" ? "email_link" : "app";
+    res.json({ acknowledgment: await packet.acknowledgePacket(a, req.params.id, method) });
+  }),
+);
+
+/**
+ * "FINAL SCHEDULE RECEIPT" roster for the current packet version
+ * (Part 10) -- who has confirmed receipt and who is still pending.
+ * Owner/planner only.
+ */
+router.get(
+  "/event/:eventId/receipt-status",
+  h(async (req, res) => {
+    const a = await actor(req);
+    res.json(await packet.getReceiptStatus(a, req.params.eventId));
   }),
 );
 

@@ -383,28 +383,98 @@ export async function getProjectedPacketVersion(
   return { ...projection, id: row.id, version: row.version, status: row.status, created_at: row.created_at };
 }
 
+export type AcknowledgmentMethod = "app" | "email_link";
+
 /** Acknowledge a packet version as the signed-in actor. */
 export async function acknowledgePacket(
   actor: Actor,
   packetId: string,
-): Promise<{ id: string; packet_id: string; user_id: string; acknowledged_at: string | null }> {
+  method: AcknowledgmentMethod = "app",
+): Promise<{ id: string; packet_id: string; user_id: string; acknowledged_at: string | null; method: string }> {
   const packet = await q1<{ event_id: string }>(
     `select event_id from event_execution_packets where id = $1`,
     [packetId],
   );
   if (!packet) throw new NotFoundError("packet version not found");
   await getEvent(actor, packet.event_id);
-  const row = await q1<{ id: string; packet_id: string; user_id: string; acknowledged_at: string | null }>(
+  const safeMethod: AcknowledgmentMethod = method === "email_link" ? "email_link" : "app";
+  const row = await q1<{
+    id: string;
+    packet_id: string;
+    user_id: string;
+    acknowledged_at: string | null;
+    method: string;
+  }>(
     `update event_execution_packet_acknowledgments
-        set acknowledged_at = now()
+        set acknowledged_at = now(), method = $3
       where packet_id = $1 and user_id = $2
       returning *`,
-    [packetId, actor.user.id],
+    [packetId, actor.user.id, safeMethod],
   );
   if (!row) {
     throw new ForbiddenError("you are not a recipient of this packet version");
   }
   return row;
+}
+
+export type ReceiptRow = {
+  user_id: string;
+  name: string | null;
+  email: string | null;
+  role: string;
+  organization_name: string | null;
+  acknowledged_at: string | null;
+  method: string | null;
+};
+
+export type ReceiptStatus = {
+  packet_id: string;
+  version: number;
+  status: PacketStatus;
+  total: number;
+  acknowledged: number;
+  pending: number;
+  recipients: ReceiptRow[];
+};
+
+/**
+ * "FINAL SCHEDULE RECEIPT" roster view for the current (latest) packet
+ * version -- owner/planner only. Grouped by recipient with a name, role, and
+ * organization so a planner can see at a glance who has confirmed receipt
+ * and who is still pending, without cross-referencing raw user ids.
+ */
+export async function getReceiptStatus(actor: Actor, eventId: string): Promise<ReceiptStatus> {
+  if (!(await canManageEvent(actor, eventId))) {
+    throw new ForbiddenError("only the event owner can view the packet receipt roster");
+  }
+  const packet = await q1<ExecutionPacketRow>(
+    `select * from event_execution_packets where event_id = $1 order by version desc limit 1`,
+    [eventId],
+  );
+  if (!packet) throw new NotFoundError("no execution packet has been generated for this event yet");
+
+  const recipients = await q<ReceiptRow>(
+    `select em.user_id, u.name, u.email, em.role,
+            o.name as organization_name,
+            a.acknowledged_at, a.method
+       from event_execution_packet_acknowledgments a
+       join event_members em on em.event_id = $2 and em.user_id = a.user_id and em.status = 'active'
+       join users u on u.id = a.user_id
+       left join organizations o on o.id = em.organization_id
+      where a.packet_id = $1
+      order by (a.acknowledged_at is null) desc, u.name asc`,
+    [packet.id, eventId],
+  );
+  const acknowledged = recipients.filter((r) => r.acknowledged_at).length;
+  return {
+    packet_id: packet.id,
+    version: packet.version,
+    status: packet.status,
+    total: recipients.length,
+    acknowledged,
+    pending: recipients.length - acknowledged,
+    recipients,
+  };
 }
 
 /**

@@ -20,7 +20,12 @@ import * as claim from "../db/claim.js";
 import * as emails from "./claim-emails.js";
 import * as discovery from "./discovery.js";
 import { runEventScheduleDistribution, type ScheduleDistributionSummary } from "./scheduleDistribution.js";
-import { runPacketDistribution, type DistributionRunSummary } from "../db/packetDistribution.js";
+import {
+  runPacketDistribution,
+  runPacketReminders,
+  type DistributionRunSummary,
+  type ReminderRunSummary,
+} from "../db/packetDistribution.js";
 import { WORKER_INTERVAL_MINUTES } from "../config.js";
 
 export type OutreachSummary = {
@@ -39,6 +44,7 @@ export type SchedulerSummary = {
   expansion: ExpansionSummary & { error?: string };
   scheduleDistribution: ScheduleDistributionSummary & { error?: string };
   packetDistribution: DistributionRunSummary & { error?: string };
+  packetReminders: ReminderRunSummary & { error?: string };
   ranAt: string;
 };
 
@@ -161,7 +167,19 @@ export async function runScheduler(): Promise<SchedulerSummary> {
     };
   }
 
-  return { outreach, expansion, scheduleDistribution, packetDistribution, ranAt };
+  let packetReminders: ReminderRunSummary & { error?: string };
+  try {
+    packetReminders = await runPacketReminders();
+  } catch (err) {
+    packetReminders = {
+      candidates: 0,
+      reminders_sent: 0,
+      failed: 0,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+
+  return { outreach, expansion, scheduleDistribution, packetDistribution, packetReminders, ranAt };
 }
 
 let _timer: ReturnType<typeof setInterval> | null = null;

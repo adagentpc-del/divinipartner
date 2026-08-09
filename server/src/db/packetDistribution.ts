@@ -27,7 +27,13 @@ import { getEvent, canManageEvent } from "./events.js";
 import { computeReadiness } from "./readiness.js";
 import { generatePacketVersion, projectPacket } from "./executionPacket.js";
 import type { EventRole } from "./eventMembers.js";
-import { isDistributionPreset, resolveOffsetMinutes, isDueForDistribution, type DistributionPreset } from "../lib/distributionSchedule.js";
+import {
+  isDistributionPreset,
+  resolveOffsetMinutes,
+  isDueForDistribution,
+  isReminderDue,
+  type DistributionPreset,
+} from "../lib/distributionSchedule.js";
 import { sendEmail } from "../lib/email.js";
 import { PUBLIC_APP_URL, BASE_PATH } from "../config.js";
 
@@ -71,6 +77,11 @@ export type DistributionSettingsRow = {
   blocked_reason: unknown;
   override_at: string | null;
   override_by: string | null;
+  /** Minutes-before-event offsets for acknowledgment reminders (Part 11),
+   *  e.g. [4320, 1440] for 72h/24h. Independent of the distribution send
+   *  itself -- a reminder nudges recipients who have not yet confirmed
+   *  receipt of whatever the current packet version is. */
+  reminder_offsets: number[];
   created_by: string | null;
   updated_by: string | null;
   created_at: string;
@@ -105,6 +116,7 @@ export async function getDistributionSettings(
     blocked_reason: null,
     override_at: null,
     override_by: null,
+    reminder_offsets: [4320, 1440],
     created_by: null,
     updated_by: null,
     created_at: "",
@@ -118,7 +130,19 @@ export type UpdateDistributionSettingsInput = {
   custom_offset_minutes?: number | null;
   send_time?: string;
   recipient_roles?: string[];
+  reminder_offsets?: number[];
 };
+
+const DEFAULT_REMINDER_OFFSETS = [4320, 1440];
+
+function sanitizeReminderOffsets(input: unknown): number[] {
+  if (!Array.isArray(input)) return DEFAULT_REMINDER_OFFSETS;
+  const cleaned = input
+    .map((v) => Number(v))
+    .filter((v) => Number.isFinite(v) && v > 0)
+    .map((v) => Math.round(v));
+  return cleaned.length ? Array.from(new Set(cleaned)).sort((a, b) => b - a) : DEFAULT_REMINDER_OFFSETS;
+}
 
 const VALID_ROLES = new Set<string>([
   "event_owner", "planner", "finance", "venue", "vendor_owner", "vendor_staff",
@@ -142,17 +166,19 @@ export async function updateDistributionSettings(
   const roles = (input.recipient_roles ?? ["event_owner", "planner", "venue", "vendor_owner", "vendor_staff", "event_staff"])
     .filter((r) => VALID_ROLES.has(r));
   if (roles.length === 0) throw new ForbiddenError("at least one recipient role is required");
+  const reminderOffsets = sanitizeReminderOffsets(input.reminder_offsets);
 
   const row = await q1<DistributionSettingsRow>(
     `insert into event_packet_distribution_settings
-       (event_id, enabled, offset_preset, offset_minutes, send_time, recipient_roles, created_by, updated_by)
-     values ($1,$2,$3,$4,$5,$6,$7,$7)
+       (event_id, enabled, offset_preset, offset_minutes, send_time, recipient_roles, reminder_offsets, created_by, updated_by)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$8)
      on conflict (event_id) do update set
        enabled = excluded.enabled,
        offset_preset = excluded.offset_preset,
        offset_minutes = excluded.offset_minutes,
        send_time = excluded.send_time,
        recipient_roles = excluded.recipient_roles,
+       reminder_offsets = excluded.reminder_offsets,
        updated_by = excluded.updated_by,
        -- Reconfiguring the schedule means the owner wants the new schedule
        -- to actually take effect, not be silently suppressed by a stale
@@ -160,7 +186,7 @@ export async function updateDistributionSettings(
        distributed_at = null,
        updated_at = now()
      returning *`,
-    [eventId, input.enabled ?? false, preset, offsetMinutes, sendTime, roles, actor.user.id],
+    [eventId, input.enabled ?? false, preset, offsetMinutes, sendTime, roles, reminderOffsets, actor.user.id],
   );
   return row as DistributionSettingsRow;
 }
@@ -335,4 +361,114 @@ export async function runPacketDistribution(now: Date = new Date()): Promise<Dis
   }
 
   return { candidates: candidates.length, sent, blocked, failed };
+}
+
+// ============================================================================
+// ACKNOWLEDGMENT REMINDERS (Part 11)
+// ============================================================================
+
+type ReminderCandidate = {
+  event_id: string;
+  date_time: string;
+  timezone: string | null;
+  status: string | null;
+  reminder_offsets: number[];
+};
+
+async function reminderCandidates(): Promise<ReminderCandidate[]> {
+  return q<ReminderCandidate>(
+    `select e.id as event_id, e.date_time, e.timezone, e.status, s.reminder_offsets
+       from events e
+       join event_packet_distribution_settings s on s.event_id = e.id
+      where e.date_time is not null
+        and e.date_time > now()
+        and e.status not in ('completed','closed','archived')
+        and s.reminder_offsets is not null
+        and array_length(s.reminder_offsets, 1) > 0`,
+  );
+}
+
+export type ReminderRunSummary = {
+  candidates: number;
+  reminders_sent: number;
+  failed: number;
+};
+
+/**
+ * Run one acknowledgment-reminder pass. For each candidate event's CURRENT
+ * (latest issued/final) packet version, for each configured reminder
+ * offset that is now due (event date_time minus the offset has passed, and
+ * the event has not yet started), nudge every recipient who is still
+ * PENDING -- i.e. has not acknowledged this exact packet version. The
+ * event_members status = 'active' join naturally excludes removed or
+ * revoked members, and the acknowledged_at is null filter naturally
+ * excludes anyone who already confirmed receipt. Each (packet, recipient,
+ * offset) reminder is claimed via insert-on-conflict-do-nothing against
+ * event_packet_reminders, the same idempotency pattern as
+ * runPacketDistribution -- a retry or duplicate tick never re-sends the
+ * same reminder twice.
+ */
+export async function runPacketReminders(now: Date = new Date()): Promise<ReminderRunSummary> {
+  const candidates = await reminderCandidates();
+  let remindersSent = 0;
+  let failed = 0;
+
+  for (const c of candidates) {
+    try {
+      const packet = await q1<{ id: string; version: number }>(
+        `select id, version from event_execution_packets
+          where event_id = $1 and status in ('issued','final')
+          order by version desc limit 1`,
+        [c.event_id],
+      );
+      if (!packet) continue;
+
+      const eventDateTime = new Date(c.date_time);
+
+      for (const offsetMinutes of c.reminder_offsets) {
+        if (!isReminderDue(eventDateTime, offsetMinutes, now)) continue;
+
+        const pending = await q<{ user_id: string; email: string | null }>(
+          `select a.user_id, u.email
+             from event_execution_packet_acknowledgments a
+             join event_members em on em.event_id = $1 and em.user_id = a.user_id and em.status = 'active'
+             join users u on u.id = a.user_id
+            where a.packet_id = $2 and a.acknowledged_at is null`,
+          [c.event_id, packet.id],
+        );
+
+        for (const r of pending) {
+          const claim = await q1<{ id: string }>(
+            `insert into event_packet_reminders (packet_id, event_id, recipient_user_id, offset_minutes)
+             values ($1,$2,$3,$4)
+             on conflict (packet_id, recipient_user_id, offset_minutes) do nothing
+             returning id`,
+            [packet.id, c.event_id, r.user_id, offsetMinutes],
+          );
+          if (!claim || !r.email) continue; // already claimed, or nothing to send to
+
+          try {
+            const link = `${appBase()}/events/${c.event_id}`;
+            await sendEmail({
+              to: r.email,
+              subject: `Reminder: confirm receipt of the final event schedule`,
+              text:
+                `You have not yet confirmed receipt of the final event schedule (version ${packet.version}).\n\n` +
+                `Please review and confirm here:\n${link}`,
+            });
+            remindersSent++;
+          } catch {
+            failed++;
+          }
+        }
+      }
+    } catch (err) {
+      failed++;
+      console.error(
+        `[packet-reminders] failed for event ${c.event_id}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
+  return { candidates: candidates.length, reminders_sent: remindersSent, failed };
 }

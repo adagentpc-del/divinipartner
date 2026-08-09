@@ -118,3 +118,19 @@ export function isDueForDistribution(
   const sendMoment = computeSendMoment(eventDateTime, offsetMinutes, timezone, sendTimeOfDay);
   return now.getTime() >= sendMoment.getTime();
 }
+
+/**
+ * True when an acknowledgment-reminder offset (Part 11) is now due: the
+ * event has not started, and `offsetMinutes` before the event has already
+ * passed. Deliberately simpler than isDueForDistribution -- a reminder is
+ * "how long before the event should we nudge stragglers," not a specific
+ * timezone-local send time, so no timezone parameter is needed. The actual
+ * "have we already reminded this recipient at this offset" guarantee lives
+ * in the DB (event_packet_reminders, claimed via insert-on-conflict), so a
+ * wide predicate here (true for the rest of the window) is safe.
+ */
+export function isReminderDue(eventDateTime: Date, offsetMinutes: number, now: Date = new Date()): boolean {
+  if (eventDateTime.getTime() <= now.getTime()) return false;
+  const dueAt = eventDateTime.getTime() - offsetMinutes * 60_000;
+  return now.getTime() >= dueAt;
+}

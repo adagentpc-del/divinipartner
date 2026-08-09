@@ -8,7 +8,7 @@ import { Router, type Request, type Response, type NextFunction } from "express"
 import { getAuth, requireUser, requireAdmin } from "../auth.js";
 import * as db from "../db.js";
 import * as dist from "../db/packetDistribution.js";
-import { runPacketDistribution } from "../db/packetDistribution.js";
+import { runPacketDistribution, runPacketReminders } from "../db/packetDistribution.js";
 
 const h =
   (fn: (req: Request, res: Response) => Promise<unknown>) =>
@@ -37,7 +37,8 @@ router.put(
   "/event/:eventId",
   h(async (req, res) => {
     const a = await actor(req);
-    const { enabled, offset_preset, custom_offset_minutes, send_time, recipient_roles } = req.body ?? {};
+    const { enabled, offset_preset, custom_offset_minutes, send_time, recipient_roles, reminder_offsets } =
+      req.body ?? {};
     res.json({
       settings: await dist.updateDistributionSettings(a, req.params.eventId, {
         enabled,
@@ -45,6 +46,7 @@ router.put(
         custom_offset_minutes,
         send_time,
         recipient_roles,
+        reminder_offsets,
       }),
     });
   }),
@@ -65,6 +67,15 @@ router.post(
   requireAdmin,
   h(async (_req, res) => {
     res.json({ summary: await runPacketDistribution() });
+  }),
+);
+
+/** Admin-only manual trigger for the acknowledgment-reminder pass. */
+router.post(
+  "/run-reminders",
+  requireAdmin,
+  h(async (_req, res) => {
+    res.json({ summary: await runPacketReminders() });
   }),
 );
 
