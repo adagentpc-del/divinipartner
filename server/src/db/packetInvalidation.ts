@@ -28,7 +28,25 @@
  */
 import { q1, pool } from "../pool.js";
 import { buildExecutionPacket, diffPacketSnapshots, type ExecutionPacketSnapshot } from "./executionPacket.js";
+import type { PacketDiffEntry } from "../lib/packetDiff.js";
 import { SYSTEM_ACTOR } from "../lib/systemActor.js";
+
+/**
+ * A short, human-readable summary of WHY a packet went stale, e.g. "Run of
+ * Show changed: DINNER SERVICE TIME: 7:15 PM -> 7:30 PM." (matches the
+ * spec's mockup). Prefers a Run of Show change when one is present (the
+ * most common day-of edit), otherwise the first real change, otherwise a
+ * count of everything that changed.
+ */
+function summarizeReason(changes: PacketDiffEntry[]): string {
+  const ros = changes.find((c) => c.label.startsWith("RUN OF SHOW:") || c.category === "schedule");
+  const first = ros ?? changes[0];
+  const prefix = ros ? "Run of Show changed: " : "";
+  const label = first.label.startsWith("RUN OF SHOW:") ? first.label.slice("RUN OF SHOW:".length).trim() : first.label;
+  const detail = `${label}: ${first.old_value} -> ${first.new_value}`;
+  const rest = changes.length - 1;
+  return rest > 0 ? `${prefix}${detail} (+${rest} more change${rest === 1 ? "" : "s"}).` : `${prefix}${detail}.`;
+}
 
 export async function checkAndMarkPacketStale(eventId: string): Promise<void> {
   try {
@@ -44,9 +62,10 @@ export async function checkAndMarkPacketStale(eventId: string): Promise<void> {
     const changes = diffPacketSnapshots(current.snapshot, live);
     if (changes.length === 0) return; // still matches, nothing to flag
 
-    await pool.query(`update event_execution_packets set status = 'update_required' where id = $1`, [
-      current.id,
-    ]);
+    await pool.query(
+      `update event_execution_packets set status = 'update_required', update_required_reason = $2 where id = $1`,
+      [current.id, summarizeReason(changes)],
+    );
   } catch {
     // Best-effort: a staleness-check failure must never undo or block the
     // actual authoritative-data write that triggered it.

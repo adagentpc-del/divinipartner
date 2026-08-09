@@ -292,3 +292,17 @@ test("schedule_items is filtered per audience using the itinerary system's own b
   const fullItems = projectPacket(snapshot, "event_owner", null).schedule_items;
   assert.equal(fullItems.length, 3);
 });
+
+test("scopeSnapshotForDiff narrows schedule.items to the audience's own by_role view, not the full Run of Show", () => {
+  const snapshot = fixtureSnapshot();
+  const scopedForVendor = scopeSnapshotForDiff(snapshot, "vendor_owner", "org-caterer");
+  assert.equal(scopedForVendor.schedule.items.some((i) => i.key === "b"), true);
+  assert.equal(scopedForVendor.schedule.items.some((i) => i.key === "c"), false); // venue-only item hidden
+
+  const scopedForSponsor = scopeSnapshotForDiff(snapshot, "sponsor", null);
+  assert.equal(scopedForSponsor.schedule.items.length, 1);
+  assert.equal(scopedForSponsor.schedule.items[0].key, "a");
+
+  const scopedForOwner = scopeSnapshotForDiff(snapshot, "event_owner", null);
+  assert.equal(scopedForOwner.schedule.items.length, 3);
+});

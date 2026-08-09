@@ -15,6 +15,7 @@ import { NotFoundError, ForbiddenError, type Actor } from "../db.js";
 import { getEvent, canManageEvent, type EventRow } from "./events.js";
 import { getEventRole } from "./eventMembers.js";
 import { audienceForRole } from "../lib/packetProjection.js";
+import { toIso } from "../lib/dates.js";
 
 async function canSee(actor: Actor, eventId: string): Promise<void> {
   await getEvent(actor, eventId);
@@ -180,7 +181,7 @@ export async function addItineraryItem(
       responsibleOrgId,
     ],
   );
-  await revertApprovalOnEdit(eventId);
+  await onItineraryItemMutated(eventId);
   return row as ItineraryItemRow;
 }
 
@@ -244,7 +245,7 @@ export async function updateItineraryItem(
       responsibleOrgId,
     ],
   );
-  await revertApprovalOnEdit(eventId);
+  await onItineraryItemMutated(eventId);
   return row as ItineraryItemRow;
 }
 
@@ -252,7 +253,7 @@ export async function deleteItineraryItem(actor: Actor, itemId: string): Promise
   const eventId = await loadItemEvent(itemId);
   await requireOwner(actor, eventId);
   await pool.query(`delete from itinerary_items where id = $1`, [itemId]);
-  await revertApprovalOnEdit(eventId);
+  await onItineraryItemMutated(eventId);
 }
 
 // ============================================================================
@@ -407,7 +408,15 @@ export async function buildItinerary(actor: Actor, eventId: string): Promise<Bui
       title: "Doors / guest arrival",
       description: ev.guest_count != null ? `Expecting ${ev.guest_count} guests.` : "Guests arrive.",
       category: "program",
-      start_time: start,
+      // toIso(): `start` is ev.date_time straight off a raw pg query (a
+      // Date object for a timestamptz column, not a string), while every
+      // other item's start_time here already goes through addMinutes()
+      // (which normalizes via .toISOString()). Passing the raw Date object
+      // through would make this ONE item's start_time silently disagree in
+      // TYPE (not value) with a jsonb-round-tripped snapshot's copy of it
+      // -- exactly the bug that made packetInvalidation.ts's staleness
+      // diff falsely report "6:00 PM -> 6:00 PM" as a change.
+      start_time: toIso(start),
       end_time: addMinutes(start, 30),
       location: venueLabel,
       owner_role: "all",
@@ -536,8 +545,13 @@ export async function buildItinerary(actor: Actor, eventId: string): Promise<Bui
       title: p.title ?? "Itinerary item",
       description: p.description,
       category: p.category ?? "program",
-      start_time: p.start_time,
-      end_time: p.end_time,
+      // toIso(): p.start_time/end_time are raw timestamptz columns off
+      // listItineraryItems()'s own query (Date objects), not the strings
+      // ItineraryItemRow's type claims -- the same gap that made
+      // auto_doors's start_time (below) leak a Date object into the
+      // packet snapshot.
+      start_time: toIso(p.start_time),
+      end_time: toIso(p.end_time),
       location: p.location,
       owner_role: (ITINERARY_ROLES as readonly string[]).includes(p.owner_role ?? "")
         ? (p.owner_role as ItineraryRole)
@@ -681,7 +695,11 @@ export async function buildItinerary(actor: Actor, eventId: string): Promise<Bui
   }
 
   return {
-    event: { id: ev.id, name: ev.name, date_time: ev.date_time, guest_count: ev.guest_count },
+    // toIso() for the same reason as the auto_doors item above --
+    // ev.date_time is a raw Date object off a timestamptz column, and this
+    // value ends up inside a packet snapshot that gets jsonb-round-tripped
+    // (always a string) and later compared against a fresh rebuild.
+    event: { id: ev.id, name: ev.name, date_time: toIso(ev.date_time), guest_count: ev.guest_count },
     generated_at: new Date().toISOString(),
     items,
     by_role,
@@ -740,6 +758,26 @@ async function revertApprovalOnEdit(eventId: string): Promise<void> {
       [eventId],
     )
     .catch(() => undefined);
+}
+
+/**
+ * Run of Show item mutations are part of the Execution Packet's own
+ * snapshot (schedule.items), so a time/duration/location/responsible-
+ * vendor change, or an item being added or removed, must not leave an
+ * already-issued packet silently looking current (Live Event Operations
+ * phase, Part 2). Reuses the SAME checkAndMarkPacketStale() the event-
+ * record write paths already call (db/packetInvalidation.ts), via dynamic
+ * import to avoid a static circular import (that module imports FROM
+ * executionPacket.ts, which imports FROM this module).
+ */
+async function onItineraryItemMutated(eventId: string): Promise<void> {
+  await revertApprovalOnEdit(eventId);
+  try {
+    const { checkAndMarkPacketStale } = await import("./packetInvalidation.js");
+    await checkAndMarkPacketStale(eventId);
+  } catch {
+    // best-effort, never blocks the actual itinerary mutation
+  }
 }
 
 // ============================================================================

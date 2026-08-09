@@ -49,6 +49,19 @@ function fmtDate(v: string | null): string {
   return Number.isNaN(d.getTime()) ? String(v) : d.toISOString();
 }
 
+/** A human clock time ("7:15 PM") for Run of Show item changes -- the raw
+ *  ISO timestamp fmtDate() uses elsewhere is correct but not what a
+ *  recipient reads as "moved from 7:15 PM to 7:30 PM". UTC only (no
+ *  per-event timezone is threaded into this pure diff function); good
+ *  enough for a human-readable change summary, not a scheduling source of
+ *  truth. */
+function fmtClock(v: string | null): string {
+  if (!v) return "unscheduled";
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return String(v);
+  return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: "UTC" }).format(d);
+}
+
 /** Compare two snapshots of the SAME event and produce a categorized, human-readable diff. */
 export function diffPacketSnapshots(
   before: ExecutionPacketSnapshot,
@@ -148,6 +161,76 @@ export function diffPacketSnapshots(
   for (const c of before.key_contacts) {
     if (!afterContactIds.has(c.user_id)) {
       entries.push({ category: "contact", label: `${c.role.toUpperCase()} CONTACT`, old_value: fmt(c.name ?? c.email), new_value: "Removed" });
+    }
+  }
+
+  // ---- Run of Show items (added / removed / time / duration / location / ----
+  // ---- responsible vendor changed) -------------------------------------------
+  // Matched by `key`, the stable identifier buildItinerary() already gives
+  // every item (auto-derived items use a fixed key like "auto_doors";
+  // persisted items use `item_<id>`), so a manual edit to an existing item
+  // is recognized as a change to THAT item rather than a remove+add pair.
+  // "Ordering change" and "dependency change" from the spec are not
+  // implemented as separate diff entries: item order is always derived
+  // from start_time (so a pure reorder is already captured as a time
+  // change), and there is no dependency field in the itinerary_items data
+  // model to diff -- inventing one here would not be honest.
+  const beforeItems = new Map(before.schedule.items.map((i) => [i.key, i]));
+  const afterItems = new Map(after.schedule.items.map((i) => [i.key, i]));
+  for (const [key, item] of afterItems) {
+    if (!beforeItems.has(key)) {
+      entries.push({
+        category: "schedule",
+        label: `RUN OF SHOW: ${item.title}`,
+        old_value: "Not scheduled",
+        new_value: item.start_time ? `Added (${fmtClock(item.start_time)})` : "Added",
+      });
+    }
+  }
+  for (const [key, item] of beforeItems) {
+    if (!afterItems.has(key)) {
+      entries.push({
+        category: "schedule",
+        label: `RUN OF SHOW: ${item.title}`,
+        old_value: item.start_time ? `Scheduled (${fmtClock(item.start_time)})` : "Scheduled",
+        new_value: "Removed",
+      });
+    }
+  }
+  for (const [key, a] of afterItems) {
+    const b = beforeItems.get(key);
+    if (!b) continue;
+    if (b.start_time !== a.start_time) {
+      entries.push({
+        category: "schedule",
+        label: `${a.title.toUpperCase()} TIME`,
+        old_value: fmtClock(b.start_time),
+        new_value: fmtClock(a.start_time),
+      });
+    }
+    if (b.end_time !== a.end_time) {
+      entries.push({
+        category: "schedule",
+        label: `${a.title.toUpperCase()} DURATION`,
+        old_value: fmtClock(b.end_time),
+        new_value: fmtClock(a.end_time),
+      });
+    }
+    if (b.location !== a.location) {
+      entries.push({
+        category: "location",
+        label: `${a.title.toUpperCase()} LOCATION`,
+        old_value: fmt(b.location),
+        new_value: fmt(a.location),
+      });
+    }
+    if (b.responsible_org_id !== a.responsible_org_id) {
+      entries.push({
+        category: "vendor",
+        label: `${a.title.toUpperCase()} RESPONSIBLE VENDOR`,
+        old_value: fmt(b.responsible_org_id),
+        new_value: fmt(a.responsible_org_id),
+      });
     }
   }
 

@@ -25,29 +25,7 @@ import { buildItinerary, type BuiltItinerary } from "./itinerary.js";
 import { recordEventChange } from "./eventChanges.js";
 import { getEventRole } from "./eventMembers.js";
 import type { EventRole } from "../lib/eventRoles.js";
-
-/**
- * node-pg returns `timestamptz` columns as native Date objects, not
- * strings, even though EventRow's TypeScript type declares them as
- * `string | null` (the type matches what a JSON response over the wire
- * actually looks like, since Express's res.json() implicitly stringifies
- * Dates -- but that stringification never happens for values compared
- * in-process before serialization). A snapshot stored to jsonb and read
- * back is always a plain string; a snapshot freshly built from a raw
- * EventRow was a Date object until this coercion. Without it,
- * diffPacketSnapshots() (lib/packetDiff.ts) would report every single
- * timestamp field as "changed" on every comparison between a stored
- * snapshot and a live rebuild, even when nothing actually changed --
- * exactly the bug packetInvalidation.ts's checkAndMarkPacketStale()
- * exposed live-testing Part 18. Always normalize to ISO string (or null)
- * here so a snapshot's shape never depends on whether it just came out of
- * the DB raw or round-tripped through jsonb.
- */
-function toIso(v: unknown): string | null {
-  if (v == null) return null;
-  if (v instanceof Date) return v.toISOString();
-  return String(v);
-}
+import { toIso } from "../lib/dates.js";
 
 export type KeyContact = {
   user_id: string;
@@ -365,6 +343,13 @@ export type PacketVersionSummary = {
   status: PacketStatus;
   generated_by: string | null;
   superseded_by: string | null;
+  /** Human-readable "why" when status is 'update_required'. Owner/planner
+   *  only -- the underlying summary is built from the FULL unprojected
+   *  diff (db/packetInvalidation.ts), which can legitimately mention
+   *  another vendor's quantity or roster change, so a non-owner/planner
+   *  caller gets a generic placeholder instead of the specific reason
+   *  text (still knows a new version is needed, never why in detail). */
+  update_required_reason: string | null;
   created_at: string;
 };
 
@@ -384,10 +369,17 @@ export type PacketVersionSummary = {
  */
 export async function listPacketVersions(actor: Actor, eventId: string): Promise<PacketVersionSummary[]> {
   await getEvent(actor, eventId);
-  return q<PacketVersionSummary>(
-    `select id, event_id, version, status, generated_by, superseded_by, created_at
+  const rows = await q<PacketVersionSummary>(
+    `select id, event_id, version, status, generated_by, superseded_by, update_required_reason, created_at
        from event_execution_packets where event_id = $1 order by version desc`,
     [eventId],
+  );
+  const canManage = await canManageEvent(actor, eventId);
+  if (canManage) return rows;
+  return rows.map((r) =>
+    r.update_required_reason
+      ? { ...r, update_required_reason: "Event details changed since this version was issued." }
+      : r,
   );
 }
 

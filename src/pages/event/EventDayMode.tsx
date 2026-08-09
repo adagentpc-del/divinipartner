@@ -91,7 +91,7 @@ type Headcount = {
 // need to confirm receipt. Everything else (full Run of Show, vendor
 // roster, floorplans) lives in the desktop packet / the PDF download below.
 
-type PacketVersionSummary = { id: string; version: number; status: string };
+type PacketVersionSummary = { id: string; version: number; status: string; update_required_reason?: string | null };
 
 type PacketProjectionLite = {
   audience: 'full' | 'venue' | 'vendor' | 'vendor_staff' | 'sponsor' | 'event_staff';
@@ -480,7 +480,7 @@ export default function EventDayMode() {
               <h2 className="dm-blockhead">Final event schedule</h2>
               {packetVersion?.status === 'update_required' ? (
                 <div className="dm-fesstale">
-                  <span>Final event schedule needs an update. Event details changed since this version was issued.</span>
+                  <span>{packetVersion?.update_required_reason || 'Final event schedule needs an update. Event details changed since this version was issued.'}</span>
                   {packetProjection.audience === 'full' ? (
                     <button type="button" className="dm-fesstalebtn" onClick={() => void regeneratePacket()} disabled={regenBusy}>
                       {regenBusy ? 'Generating...' : 'Generate new version'}

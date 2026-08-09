@@ -6070,3 +6070,16 @@ alter table events add column if not exists itinerary_approved_by uuid reference
 alter table event_execution_packets drop constraint if exists event_execution_packets_status_check;
 alter table event_execution_packets add constraint event_execution_packets_status_check
   check (status in ('draft', 'issued', 'superseded', 'final', 'update_required'));
+
+-- ====== db/schema-packet-invalidation-reason.sql ======
+-- ---------------------------------------------------------------------------
+-- Event Change -> Packet Invalidation, human-readable reason (Live Event
+-- Operations phase, Part 2, 2026-08-09).
+--
+-- Extends db/schema-packet-invalidation.sql's update_required status with
+-- WHY: a short, human-readable summary of what changed, so the planner
+-- sees "Run of Show changed: Dinner Service moved from 7:15 PM to 7:30 PM"
+-- instead of just a bare status flag.
+-- ---------------------------------------------------------------------------
+
+alter table event_execution_packets add column if not exists update_required_reason text;

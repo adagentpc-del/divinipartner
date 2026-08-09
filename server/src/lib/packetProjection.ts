@@ -242,7 +242,11 @@ export function scopeSnapshotForDiff(
       guest_entrance: projection.venue.guest_entrance,
       restrictions: projection.venue.restrictions,
     },
-    schedule: snapshot.schedule,
+    // Narrowed to exactly the same items projectPacket() would show this
+    // audience (schedule_items), not the full unfiltered item list -- a
+    // Run of Show diff (lib/packetDiff.ts) built on top of this must never
+    // surface a change to an item outside the viewer's own audience.
+    schedule: { ...snapshot.schedule, items: projection.schedule_items },
     floorplans: projection.floorplans,
     vendor_assignments: projection.vendor_assignments ?? [],
     final_count: projection.final_count,

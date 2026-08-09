@@ -201,3 +201,96 @@ test("multiple simultaneous changes each produce their own correctly-categorized
   assert.equal(categories.has("location"), true);
   assert.equal(diff.length, 3);
 });
+
+// --- Run of Show item diff (Live Event Operations phase, Part 2) ---
+
+function rosItem(overrides: Partial<ExecutionPacketSnapshot["schedule"]["items"][number]> = {}) {
+  return {
+    key: "item-dinner",
+    title: "Dinner Service",
+    description: null,
+    category: "service",
+    start_time: "2026-11-05T19:15:00Z",
+    end_time: "2026-11-05T20:15:00Z",
+    location: "Ballroom",
+    owner_role: "vendor" as const,
+    owner_label: null,
+    source: "manual",
+    source_ref: null,
+    status: "planned",
+    responsible_org_id: "org-caterer",
+    ...overrides,
+  };
+}
+
+test("a Run of Show item time change moves 7:15 PM to 7:30 PM in a human-readable TIME entry", () => {
+  const before = baseSnapshot({ schedule: { ...baseSnapshot().schedule, items: [rosItem()] } });
+  const after = baseSnapshot({
+    schedule: { ...baseSnapshot().schedule, items: [rosItem({ start_time: "2026-11-05T19:30:00Z" })] },
+  });
+  const diff = diffPacketSnapshots(before, after);
+  const entry = diff.find((d) => d.label === "DINNER SERVICE TIME");
+  assert.ok(entry);
+  assert.equal(entry?.category, "schedule");
+  assert.equal(entry?.old_value, "7:15 PM");
+  assert.equal(entry?.new_value, "7:30 PM");
+});
+
+test("a Run of Show item duration (end time) change produces a DURATION entry", () => {
+  const before = baseSnapshot({ schedule: { ...baseSnapshot().schedule, items: [rosItem()] } });
+  const after = baseSnapshot({
+    schedule: { ...baseSnapshot().schedule, items: [rosItem({ end_time: "2026-11-05T21:00:00Z" })] },
+  });
+  const diff = diffPacketSnapshots(before, after);
+  const entry = diff.find((d) => d.label === "DINNER SERVICE DURATION");
+  assert.ok(entry);
+  assert.equal(entry?.old_value, "8:15 PM");
+  assert.equal(entry?.new_value, "9:00 PM");
+});
+
+test("a Run of Show item location change produces a LOCATION category entry", () => {
+  const before = baseSnapshot({ schedule: { ...baseSnapshot().schedule, items: [rosItem()] } });
+  const after = baseSnapshot({
+    schedule: { ...baseSnapshot().schedule, items: [rosItem({ location: "Terrace" })] },
+  });
+  const diff = diffPacketSnapshots(before, after);
+  const entry = diff.find((d) => d.label === "DINNER SERVICE LOCATION");
+  assert.ok(entry);
+  assert.equal(entry?.category, "location");
+  assert.equal(entry?.old_value, "Ballroom");
+  assert.equal(entry?.new_value, "Terrace");
+});
+
+test("a Run of Show item responsible-vendor change produces a VENDOR category entry", () => {
+  const before = baseSnapshot({ schedule: { ...baseSnapshot().schedule, items: [rosItem()] } });
+  const after = baseSnapshot({
+    schedule: { ...baseSnapshot().schedule, items: [rosItem({ responsible_org_id: "org-av" })] },
+  });
+  const diff = diffPacketSnapshots(before, after);
+  const entry = diff.find((d) => d.label === "DINNER SERVICE RESPONSIBLE VENDOR");
+  assert.ok(entry);
+  assert.equal(entry?.category, "vendor");
+  assert.equal(entry?.old_value, "org-caterer");
+  assert.equal(entry?.new_value, "org-av");
+});
+
+test("a newly added Run of Show item produces an Added entry, a removed one produces a Removed entry", () => {
+  const before = baseSnapshot({ schedule: { ...baseSnapshot().schedule, items: [] } });
+  const after = baseSnapshot({ schedule: { ...baseSnapshot().schedule, items: [rosItem()] } });
+  const addedDiff = diffPacketSnapshots(before, after);
+  const added = addedDiff.find((d) => d.label === "RUN OF SHOW: Dinner Service");
+  assert.ok(added);
+  assert.equal(added?.old_value, "Not scheduled");
+  assert.equal(added?.new_value, "Added (7:15 PM)");
+
+  const removedDiff = diffPacketSnapshots(after, before);
+  const removed = removedDiff.find((d) => d.label === "RUN OF SHOW: Dinner Service");
+  assert.ok(removed);
+  assert.equal(removed?.new_value, "Removed");
+});
+
+test("an unchanged Run of Show item produces zero diff entries", () => {
+  const snapshot = baseSnapshot({ schedule: { ...baseSnapshot().schedule, items: [rosItem()] } });
+  const diff = diffPacketSnapshots(snapshot, { ...snapshot, schedule: { ...snapshot.schedule, items: [rosItem()] } });
+  assert.deepEqual(diff, []);
+});
