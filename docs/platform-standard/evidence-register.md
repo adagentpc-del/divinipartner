@@ -76,6 +76,10 @@ Bootstrapped at Section 01.
 | S11-07 | Command output | `grep -rn "<img" src --include=*.tsx \| grep -v "alt="` — zero matches | 2026-08-08 |
 | S11-08 | Code | `src/pages/onboarding/Onboarding.tsx`, read in full | 2026-08-08 |
 | S11 (all) | File | `docs/platform-standard/section-11-ux-accessibility.md` (new) | 2026-08-08 |
+| S12-01 | Command output | Node one-liner importing the compiled `lib/planCatalog.js`, computing the exact `roleTier ? roleTier.platformFeeRate ?? 0 : TIERS[tier].feeRate` expression both fixed call sites now run, across every role x tier combination -- confirms client/installer/sponsor now resolve to 0 at every tier and venue/vendor/supplier/planner are byte-for-byte unchanged | 2026-08-09 |
+| S12-01 | Code | `server/src/db.ts` (`registerOrganization`, `addOrganization`), `db/schema-fix-org-fee-rates.sql` (new), `db/apply-all.sql` (appended) | 2026-08-09 |
+| S12-02 to S12-08 | Code | Full reads of `orgs.ts`, `profiles.ts`, `admin.ts`, `admin-manage.ts` (leading ~400 lines), `packages.ts`, `calendar.ts` + `db/calendar.ts`, `compliance.ts` + relevant `db/compliance.ts` functions, `venue-twin.ts`; cross-checked against `db/schema-org-membership.sql` and `team_seats` schema for the transfer-owner authorization model | 2026-08-09 |
+| S12 (all) | File | `docs/platform-standard/section-12-core-product-engines.md` (new) | 2026-08-09 |
 
 ## Notes
 

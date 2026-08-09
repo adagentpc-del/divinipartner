@@ -343,7 +343,12 @@ export async function addOrganization(
     const tier: Tier = payload.tier && (TIERS as Record<string, unknown>)[payload.tier]
       ? payload.tier
       : "free_partner";
-    const feeRate = TIERS[tier].feeRate;
+    // Role-aware fee rate: lib/planCatalog.ts is authoritative when the role
+    // has a real plan catalog entry (a role with platformFeeRate: null, e.g.
+    // client/installer/sponsor, correctly gets 0 -- never the flat TIERS
+    // rate). Same pattern as applySubscriptionUpdate above.
+    const roleTier = planTierFor(payload.role, tier);
+    const feeRate = roleTier ? roleTier.platformFeeRate ?? 0 : TIERS[tier].feeRate;
     const org = (
       await client.query(
         `insert into organizations (name, type, tier, platform_fee_rate, subscription_status,
@@ -470,7 +475,15 @@ export async function registerOrganization(
     const tier: Tier = requestedTier && requestedIsFree
       ? requestedTier
       : roleDefaultTier[payload.role] ?? "free_partner";
-    const feeRate = TIERS[tier].feeRate;
+    // Role-aware fee rate: lib/planCatalog.ts is authoritative when the role
+    // has a real plan catalog entry (a role with platformFeeRate: null, e.g.
+    // client/installer/sponsor, correctly gets 0 -- never the flat TIERS
+    // rate). Same pattern as applySubscriptionUpdate/addOrganization above --
+    // without this, e.g. an installer or sponsor registering at the free
+    // tier would be silently stamped with the generic 5% free_partner fee
+    // rate instead of the 0% their role's catalog actually specifies.
+    const roleTier = planTierFor(payload.role, tier);
+    const feeRate = roleTier ? roleTier.platformFeeRate ?? 0 : TIERS[tier].feeRate;
     // organizations.type is free text (no DB CHECK); the role maps straight to it,
     // so nonprofit -> type 'nonprofit', donor -> 'donor', volunteer -> 'volunteer'.
     const org = (

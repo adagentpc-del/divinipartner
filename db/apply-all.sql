@@ -5660,3 +5660,15 @@ create table if not exists communication_suppressions (
 );
 create unique index if not exists idx_comm_suppr_dest
   on communication_suppressions(lower(destination), channel);
+
+-- ====== db/schema-fix-org-fee-rates.sql ======
+-- ---------------------------------------------------------------------------
+-- Backfill for organizations.platform_fee_rate stamped from the flat TIERS
+-- table instead of the role-aware planCatalog lookup, found during the
+-- ALFY2 pack Section 12 audit. See db/schema-fix-org-fee-rates.sql for the
+-- full rationale. Idempotent.
+-- ---------------------------------------------------------------------------
+update organizations
+   set platform_fee_rate = 0, updated_at = now()
+ where type in ('client', 'installer', 'sponsor')
+   and platform_fee_rate is distinct from 0;

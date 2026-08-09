@@ -382,6 +382,13 @@ Prioritized backlog, seeded from the Go-Live runbook remaining items and the V2 
 - Related files: `src/App.tsx` (routing), individual page components under `src/pages/`.
 - See: `docs/platform-standard/section-11-ux-accessibility.md`, risk R-39.
 
+## T34 - Fix organization platform_fee_rate at registration and multi-org-add for null-fee-rate roles (RESOLVED 2026-08-09, ALFY2 pack Section 12)
+
+- Status: DONE (code fix). `server/src/db.ts`'s `registerOrganization()` and `addOrganization()` both now call the same `planTierFor(role, tier)?.platformFeeRate ?? 0` lookup that T25 (Section 05) already fixed for the subscription-cancellation path -- previously both used the flat, role-blind `TIERS[tier].feeRate` directly, so a `client`/`installer`/`sponsor` org (every one of which has a 0% platform-fee catalog entry at every tier) could be created with the generic 5%/2.5%/1% rate baked in, reachable specifically through `installer`/`sponsor` registering at any tier and through `addOrganization`'s default tier for any of the three roles. Live-verified numerically against the real compiled `lib/planCatalog.ts` across every role x tier combination: the three affected roles now resolve to 0, and venue/vendor/supplier/planner (whose catalog rates already matched the flat table) are byte-for-byte unchanged.
+- Status: OPEN (operator action). An idempotent backfill (`db/schema-fix-org-fee-rates.sql`, also appended to `db/apply-all.sql`) was written to correct any org row already created with the wrong rate, but has not been run against any live database -- no database was reachable from this session's execution environment. Safe to run any number of times; a no-op if no affected row exists.
+- Related files: `server/src/db.ts` (`registerOrganization`, `addOrganization`), `db/schema-fix-org-fee-rates.sql`, `db/apply-all.sql`.
+- See: `docs/platform-standard/section-12-core-product-engines.md`, risk R-41, `docs/platform-standard/operator-actions.md`.
+
 ## ALFY2 / Claude Master Platform Execution Pack (started 2026-08-08)
 
 A separately-uploaded 18-section audit framework is being run against this
@@ -397,11 +404,13 @@ Environments, Secrets, CI/CD & Supply Chain), Section 04
 Section 08 (AI Security, Governance, Prompt-Injection Defense & Model
 Quality), Section 09 (Payments, Stripe, Webhooks, Subscriptions,
 Marketplace & Tax), Section 10 (Email, SMS, Push Notifications &
-Marketing Compliance), and Section 11 (UX, Accessibility, Onboarding,
-Forms, Navigation & Content Quality) are complete; see
+Marketing Compliance), Section 11 (UX, Accessibility, Onboarding,
+Forms, Navigation & Content Quality), and Section 12 (Core Product
+Engines: Profiles, Organizations, Admin, Products/Services, Calendar,
+Video & Documents) are complete; see
 `docs/platform-standard/release-readiness.md` for cumulative status across
 all 18 sections as they execute. New findings that represent real,
-actionable work (like T13-T33 above) get a task here as they're found, so
+actionable work (like T13-T34 above) get a task here as they're found, so
 this queue stays the single place to look for "what's left to do" --
 `docs/platform-standard/` is where the pack's own required audit/evidence/
 risk trail lives, not a second task list.

@@ -20,7 +20,8 @@ format.
 | 09 Payments, Stripe, Webhooks, Subscriptions, Marketplace & Tax | READY (architecture) WITH ITEMS BLOCKED ON T7 — see below | 2026-08-08 |
 | 10 Email, SMS, Push Notifications & Marketing Compliance | **READY** — no open P0/P1 items | 2026-08-08 |
 | 11 UX, Accessibility, Onboarding, Forms, Navigation & Content Quality | READY (scoped) WITH P1 ITEMS — see below | 2026-08-08 |
-| 12–18 | Not yet started | — |
+| 12 Core Product Engines (Profiles, Orgs, Admin, Products/Services, Calendar, Video, Documents) | **READY** — no open P0/P1 items (one P2 operator action) | 2026-08-09 |
+| 13–18 | Not yet started | — |
 
 ## Section 01 summary
 
@@ -359,11 +360,61 @@ format.
   focus-indicator strength) and one P2 (T33 skip-link), both requiring a
   design/engineering pass beyond what's safely mechanical to bulk-fix.
 
+## Section 12 summary
+
+- Scope: Profiles, Organizations (incl. multi-org switcher), Admin (platform
+  admin + listings/agreements management), Products/Services (Packages),
+  Calendar (availability + `.ics` feed), Video (the interactive venue-tour
+  builder — true video-conferencing was already confirmed N/A in Section
+  01), and Documents (the Compliance page's COI/W-9/e-sign system, the
+  platform's actual document-management feature).
+- Found and fixed a real, live-traced P1 billing-data-integrity defect:
+  `registerOrganization()` and `addOrganization()` (`server/src/db.ts`) both
+  stamped a new organization's `platform_fee_rate` from the flat, role-blind
+  `TIERS` table instead of the role-aware `lib/planCatalog.ts` lookup that
+  Section 05 (T25) had already fixed for the subscription-cancellation path
+  only. Client/installer/sponsor orgs — every one of which has a 0%
+  platform-fee catalog entry at every tier — could be created with the
+  generic 5%/2.5%/1% rate baked in instead. Fixed both call sites to use the
+  same `planTierFor(role, tier)?.platformFeeRate ?? 0` pattern already
+  proven correct elsewhere; live-verified numerically against the real
+  compiled plan catalog across every role x tier combination, confirming
+  the three affected roles now resolve to 0 and every other role (venue/
+  vendor/supplier/planner) is byte-for-byte unchanged. An idempotent backfill
+  script (`db/schema-fix-org-fee-rates.sql`) was added for any org rows
+  already created with the wrong rate; running it against staging/production
+  is tracked as an operator action (no database was reachable from this
+  execution environment to check or apply it directly).
+- Every other route file inspected (`orgs.ts`, `profiles.ts` in full,
+  `admin.ts`, `admin-manage.ts`, `packages.ts` in full, `calendar.ts` +
+  its db layer, `compliance.ts` + its db layer, `venue-twin.ts`) was found
+  correctly organization-scoped, admin-gated where required, and free of
+  SQL-injection patterns (parameterized queries throughout). The
+  profile-ownership-transfer authorization model ("any member of the active
+  org can transfer it") was specifically checked against the multi-org
+  membership system built earlier in this platform and confirmed correct:
+  `organization_memberships` is a one-human-many-orgs ledger, not a
+  many-humans-one-org team model, so it is not a privilege-escalation risk.
+- One minor, non-blocking content note (not fixed): `DocumentsTab.tsx`'s
+  empty-state copy references a "shared document library" that isn't a
+  literally-named page — the real feature is the Compliance page, confirmed
+  to exist and work. Not a broken link, just imprecise prose; left for a
+  future copy pass.
+- Method note: this section is a full read-through of every route file
+  listed above (well over 1,400 lines of route code) with authorization
+  traced into the corresponding db-layer functions, and the one defect
+  found was live-verified numerically — not an exhaustive line-by-line audit
+  of all db-layer code behind these dozen-plus route files, which is a
+  larger undertaking on its own; see the section-12 report's Method note for
+  the precise boundary of what was and wasn't covered.
+- No P0/P1 blockers remain open. One P2 operator action (run the backfill
+  script).
+
 ## Overall launch readiness (cumulative, updated as sections complete)
 
-**NOT READY** — pending Sections 12–18, plus the standing T7 gate (real
+**NOT READY** — pending Sections 13–18, plus the standing T7 gate (real
 money) which several sections now have concrete pre-requisites tracked
 against (refund/dispute capability, live credential testing). This is
-expected at this stage (eleven of eighteen sections complete) and is not
+expected at this stage (twelve of eighteen sections complete) and is not
 itself a new finding; it reflects where the multi-section pack currently
 stands, not a regression.
