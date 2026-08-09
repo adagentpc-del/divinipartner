@@ -13,6 +13,8 @@
 import { q, q1, pool } from "../pool.js";
 import { NotFoundError, ForbiddenError, type Actor } from "../db.js";
 import { getEvent, canManageEvent, type EventRow } from "./events.js";
+import { getEventRole } from "./eventMembers.js";
+import { audienceForRole } from "../lib/packetProjection.js";
 
 async function canSee(actor: Actor, eventId: string): Promise<void> {
   await getEvent(actor, eventId);
@@ -738,4 +740,94 @@ async function revertApprovalOnEdit(eventId: string): Promise<void> {
       [eventId],
     )
     .catch(() => undefined);
+}
+
+// ============================================================================
+// VENDOR ARRIVAL / DELIVERY SCHEDULE (completion phase, Part 16)
+// ============================================================================
+
+export type VendorArrivalRow = {
+  start_time: string | null;
+  end_time: string | null;
+  vendor_org_id: string;
+  vendor_name: string;
+  action: string;
+  category: string;
+  location: string | null;
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  status: string;
+};
+
+/**
+ * A unified Time/Vendor/Action/Location/Contact/Status table -- every
+ * itinerary item attributed to a specific vendor org (responsible_org_id),
+ * built from buildItinerary()'s own item list rather than a second source
+ * of truth. The readiness engine's vendors.arrival_times check and the
+ * packet's vendor roster both already read the same underlying
+ * responsible_org_id data directly from itinerary_items; this endpoint is
+ * the single place that JOINS it with vendor contact info and lays it out
+ * as one operational table -- the natural home for a future Event Command
+ * Center view or a packet Vendor Schedule enrichment, without either of
+ * those needing to duplicate this join themselves.
+ *
+ * Role-scoped the same way projectPacket() scopes the packet's own vendor
+ * roster: owner/planner/venue see every vendor's rows (they need to
+ * coordinate all of them), a vendor sees only their own org's rows (never
+ * another vendor's contact or schedule), sponsor/event_staff get none.
+ */
+export async function getVendorArrivalSchedule(actor: Actor, eventId: string): Promise<VendorArrivalRow[]> {
+  const built = await buildItinerary(actor, eventId);
+  const role = (await getEventRole(actor, eventId)) ?? "read_only";
+  const audience = audienceForRole(role);
+
+  let relevant = built.items.filter((i): i is DerivedItem & { responsible_org_id: string } => !!i.responsible_org_id);
+  if (audience === "sponsor" || audience === "event_staff") return [];
+  if (audience === "vendor" || audience === "vendor_staff") {
+    const ownOrgId = actor.org?.id ?? null;
+    relevant = relevant.filter((i) => i.responsible_org_id === ownOrgId);
+  }
+  if (relevant.length === 0) return [];
+
+  const orgIds = [...new Set(relevant.map((i) => i.responsible_org_id))];
+  const contacts = await q<{
+    organization_id: string;
+    vendor_name: string | null;
+    contact_name: string | null;
+    email: string | null;
+    phone: string | null;
+  }>(
+    `select em.organization_id, o.name as vendor_name, u.name as contact_name, u.email, u.phone
+       from event_members em
+       join users u on u.id = em.user_id
+       left join organizations o on o.id = em.organization_id
+      where em.event_id = $1 and em.status = 'active' and em.role = 'vendor_owner'
+        and em.organization_id = any($2::uuid[])`,
+    [eventId, orgIds],
+  );
+  const byOrg = new Map(contacts.map((c) => [c.organization_id, c]));
+
+  return relevant
+    .map((item) => {
+      const c = byOrg.get(item.responsible_org_id);
+      return {
+        start_time: item.start_time,
+        end_time: item.end_time,
+        vendor_org_id: item.responsible_org_id,
+        vendor_name: c?.vendor_name ?? "Vendor",
+        action: item.title,
+        category: item.category,
+        location: item.location,
+        contact_name: c?.contact_name ?? null,
+        contact_email: c?.email ?? null,
+        contact_phone: c?.phone ?? null,
+        status: item.status,
+      };
+    })
+    .sort((a, b) => {
+      const ta = a.start_time ? new Date(a.start_time).getTime() : Number.POSITIVE_INFINITY;
+      const tb = b.start_time ? new Date(b.start_time).getTime() : Number.POSITIVE_INFINITY;
+      return ta - tb;
+    });
 }

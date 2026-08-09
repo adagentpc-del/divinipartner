@@ -100,4 +100,17 @@ router.post(
   }),
 );
 
+/**
+ * Unified vendor arrival/delivery schedule (Part 16): Time/Vendor/Action/
+ * Location/Contact/Status, role-scoped the same way as the packet's own
+ * vendor roster.
+ */
+router.get(
+  "/event/:eventId/vendor-schedule",
+  h(async (req, res) => {
+    const a = await actor(req);
+    res.json({ schedule: await itinerary.getVendorArrivalSchedule(a, req.params.eventId) });
+  }),
+);
+
 export default router;
