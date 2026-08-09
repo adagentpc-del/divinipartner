@@ -48,6 +48,33 @@ function summarizeReason(changes: PacketDiffEntry[]): string {
   return rest > 0 ? `${prefix}${detail} (+${rest} more change${rest === 1 ? "" : "s"}).` : `${prefix}${detail}.`;
 }
 
+/**
+ * Directly flag the current issued/final packet stale with an explicit
+ * reason, bypassing the diff mechanism above. Exists for callers whose
+ * change is real and packet-relevant but is NOT part of
+ * buildExecutionPacket()'s own data sources -- e.g. an approved change
+ * order's schedule_change_note/requested_new_date lives only in the
+ * change_orders table, which buildExecutionPacket() does not read, so
+ * checkAndMarkPacketStale()'s diff would never detect it (found live
+ * while wiring change-order approval into packet invalidation: the diff
+ * call was a silent no-op every time). This is not a fabricated
+ * "changed" claim -- it is an honest, direct assertion that a specific
+ * real event (named in `reason`) may affect the schedule and the packet
+ * should be reviewed, not a claim that a specific field's value differs.
+ */
+export async function markPacketStale(eventId: string, reason: string): Promise<void> {
+  try {
+    await pool.query(
+      `update event_execution_packets
+          set status = 'update_required', update_required_reason = $2
+        where event_id = $1 and status in ('issued', 'final')`,
+      [eventId, reason],
+    );
+  } catch {
+    // Best-effort, matches checkAndMarkPacketStale's own failure handling.
+  }
+}
+
 export async function checkAndMarkPacketStale(eventId: string): Promise<void> {
   try {
     const current = await q1<{ id: string; snapshot: ExecutionPacketSnapshot }>(
