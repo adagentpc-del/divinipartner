@@ -534,6 +534,22 @@ export async function setEventStatus(
     }
   }
 
+  // Closing transition (Part 25 of the live-ops phase): the other end of
+  // the lifecycle from Start Event, gated on the SAME audited-override
+  // pattern via db/closeout.ts's computeCloseoutReadiness (all vendors
+  // marked complete, no open high-priority incidents).
+  let closeoutAtClose: { state: string; blocking_count: number } | null = null;
+  let overrodeCloseout = false;
+  if (status === "completed" && before.status === "event_day") {
+    const { computeCloseoutReadiness, CloseoutBlockedError } = await import("./closeout.js");
+    const closeout = await computeCloseoutReadiness(actor, id);
+    closeoutAtClose = { state: closeout.state, blocking_count: closeout.blocking.length };
+    if (closeout.blocking.length > 0) {
+      if (!opts.override) throw new CloseoutBlockedError(closeout);
+      overrodeCloseout = true;
+    }
+  }
+
   const row = await q1<EventRow>(
     `update events set status = $2, updated_at = now() where id = $1 returning *`,
     [id, status],
@@ -564,6 +580,21 @@ export async function setEventStatus(
         summary: overrodeReadiness
           ? `Started event with ${readinessAtStart.blocking_count} blocking readiness issue(s) overridden`
           : "Started event",
+      },
+    ).catch(() => undefined);
+  }
+  if (closeoutAtClose) {
+    await logAction(
+      actor,
+      overrodeCloseout ? "event.closed_with_closeout_override" : "event.closed",
+      "event",
+      id,
+      { status: before.status, closeout: closeoutAtClose },
+      { status: after.status },
+      {
+        summary: overrodeCloseout
+          ? `Closed event with ${closeoutAtClose.blocking_count} blocking closeout issue(s) overridden`
+          : "Closed event",
       },
     ).catch(() => undefined);
   }

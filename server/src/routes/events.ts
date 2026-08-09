@@ -136,6 +136,39 @@ router.post(
   }),
 );
 
+/**
+ * Close Event (Part 25 of the live-ops phase): the explicit owner/planner
+ * action that moves a live event from 'event_day' to 'completed'. A thin
+ * wrapper over setEventStatus, symmetric with /:id/start -- the actual
+ * closeout gate + audited override live there (db/closeout.ts's
+ * computeCloseoutReadiness). A blocked attempt with no override throws
+ * CloseoutBlockedError, translated by the shared error handler into a 409
+ * carrying the real blocking closeout issues.
+ */
+router.post(
+  "/:id/close",
+  h(async (req, res) => {
+    const a = await actor(req);
+    const { override } = req.body ?? {};
+    const ev = await events.setEventStatus(a, req.params.id, "completed", { override: !!override });
+    const to = recipients.excluding(
+      await recipients.eventParticipantEmails(ev.id).catch(() => [] as string[]),
+      a.user.email,
+    );
+    if (to.length)
+      await notify.eventStatusChanged(to, ev.name, "completed", { eventId: ev.id }).catch(() => undefined);
+    // 'completed' is a terminal status (db/completion.ts's isTerminalStatus)
+    // -- the generic /:id/status route already archives on any terminal
+    // transition; this dedicated route must do the same so closing via the
+    // Closeout tab's "Close Event" button is not a second, divergent path
+    // that silently skips the durable event_memory/event_history archive.
+    if (isTerminalStatus(ev.status)) {
+      onEventCompleted(a, ev.id).catch((err) => console.error(`[WS-1] onEventCompleted failed for ${ev.id}`, err));
+    }
+    res.json({ event: ev });
+  }),
+);
+
 /** List vendors attached to an event. */
 router.get(
   "/:id/vendors",

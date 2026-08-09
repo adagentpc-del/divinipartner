@@ -4,6 +4,7 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { ForbiddenError, NotFoundError, AccountDeletedError } from "./db.js";
 import { ReadinessBlockedError } from "./db/readiness.js";
+import { CloseoutBlockedError } from "./db/closeout.js";
 import { logger } from "./lib/logger.js";
 import { getAuth } from "./auth.js";
 
@@ -89,6 +90,8 @@ import incidents from "./routes/incidents.js";
 import eventInventory from "./routes/eventInventory.js";
 // Event Sponsor Activation (live-ops phase, Part 23-24)
 import eventSponsorActivation from "./routes/eventSponsorActivation.js";
+// Event Closeout (live-ops phase, Part 25-27)
+import closeout from "./routes/closeout.js";
 // Execution Packet distribution settings
 import packetDistribution from "./routes/packetDistribution.js";
 // Visitor signals (fingerprint/IP logging) + landing personalization
@@ -267,6 +270,7 @@ router.use("/event-activity", eventActivity);
 router.use("/incidents", incidents);
 router.use("/event-inventory", eventInventory);
 router.use("/event-sponsor-activation", eventSponsorActivation);
+router.use("/closeout", closeout);
 router.use("/packet-distribution", packetDistribution);
 router.use("/signals", signals);
 router.use("/personalize", personalize);
@@ -371,6 +375,8 @@ router.use("/price-guide", priceGuide);
 export function errorHandler(err: any, req: Request, res: Response, _next: NextFunction) {
   if (err instanceof AccountDeletedError) return res.status(401).json({ error: "unauthorized" });
   if (err instanceof ReadinessBlockedError)
+    return res.status(409).json({ error: err.message, blocking: err.blocking, state: err.state });
+  if (err instanceof CloseoutBlockedError)
     return res.status(409).json({ error: err.message, blocking: err.blocking, state: err.state });
   if (err instanceof ForbiddenError) return res.status(403).json({ error: err.message });
   if (err instanceof NotFoundError) return res.status(404).json({ error: err.message });
