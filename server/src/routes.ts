@@ -75,6 +75,8 @@ import vendorFinalQuantity from "./routes/vendorFinalQuantity.js";
 import executionPacket from "./routes/executionPacket.js";
 // Event Execution Readiness Engine
 import readiness from "./routes/readiness.js";
+// Execution Packet distribution settings
+import packetDistribution from "./routes/packetDistribution.js";
 // Visitor signals (fingerprint/IP logging) + landing personalization
 import signals from "./routes/signals.js";
 import personalize from "./routes/personalize.js";
@@ -245,6 +247,7 @@ router.use("/final-count", finalCount);
 router.use("/vendor-final-quantity", vendorFinalQuantity);
 router.use("/execution-packet", executionPacket);
 router.use("/readiness", readiness);
+router.use("/packet-distribution", packetDistribution);
 router.use("/signals", signals);
 router.use("/personalize", personalize);
 router.use("/signatures", signatures);

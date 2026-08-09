@@ -463,6 +463,20 @@ export async function updateEvent(
       requiresAckFields: REQUIRES_ACK_FIELDS,
     }).catch(() => undefined);
   }
+  // A date_time change starts a new Execution Packet distribution cycle:
+  // clear distributed_at so the scheduled distribution job (Final Event
+  // Schedule completion phase Part 8) sends again for the new date instead
+  // of staying silently suppressed by a "already sent" flag stamped against
+  // the old date. Best-effort, no-op when distribution was never configured.
+  if ("date_time" in patch && before.date_time !== after.date_time) {
+    await pool
+      .query(
+        `update event_packet_distribution_settings set distributed_at = null, updated_at = now()
+          where event_id = $1`,
+        [id],
+      )
+      .catch(() => undefined);
+  }
   return after;
 }
 

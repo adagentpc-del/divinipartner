@@ -5957,3 +5957,60 @@ alter table event_execution_packets alter column status set default 'issued';
 
 alter table event_execution_packets add column if not exists superseded_by uuid
   references event_execution_packets(id) on delete set null;
+
+-- ====== db/schema-packet-distribution.sql ======
+-- ---------------------------------------------------------------------------
+-- Execution Packet distribution settings + idempotent delivery tracking,
+-- found while building the Final Event Schedule / Event Execution Packet
+-- completion phase Parts 7-9 (2026-08-09). A DIFFERENT job from the
+-- existing event_schedule_sends (lib/scheduleDistribution.ts), which stays
+-- untouched. See db/schema-packet-distribution.sql for the full rationale.
+-- ---------------------------------------------------------------------------
+create table if not exists event_packet_distribution_settings (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null unique references events(id) on delete cascade,
+  enabled boolean not null default false,
+  offset_preset text not null default '7d' check (offset_preset in (
+    '14d', '10d', '7d', '5d', '72h', '48h', '24h', 'custom')),
+  offset_minutes int not null default (7 * 24 * 60),
+  send_time text not null default '09:00',
+  recipient_roles text[] not null default array['event_owner','planner','venue','vendor_owner','vendor_staff','event_staff'],
+  last_run_at timestamptz,
+  distributed_at timestamptz,
+  blocked_at timestamptz,
+  blocked_reason jsonb,
+  override_at timestamptz,
+  override_by uuid references users(id) on delete set null,
+  created_by uuid references users(id) on delete set null,
+  updated_by uuid references users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists event_packet_deliveries (
+  id uuid primary key default gen_random_uuid(),
+  packet_id uuid not null references event_execution_packets(id) on delete cascade,
+  event_id uuid not null references events(id) on delete cascade,
+  recipient_user_id uuid not null references users(id) on delete cascade,
+  recipient_role text,
+  delivery_channel text not null default 'email',
+  status text not null default 'pending' check (status in ('pending', 'sent', 'failed', 'skipped')),
+  sent_at timestamptz,
+  failed_at timestamptz,
+  retry_count int not null default 0,
+  error_classification text,
+  created_at timestamptz not null default now(),
+  unique (packet_id, recipient_user_id)
+);
+create index if not exists idx_event_packet_deliveries_event on event_packet_deliveries(event_id);
+create index if not exists idx_event_packet_deliveries_packet on event_packet_deliveries(packet_id, status);
+
+-- ====== db/schema-system-user.sql ======
+-- ---------------------------------------------------------------------------
+-- System user, found while live-testing runPacketDistribution() in the
+-- Final Event Schedule / Event Execution Packet completion phase Part 8
+-- (2026-08-09). See db/schema-system-user.sql for the full rationale.
+-- ---------------------------------------------------------------------------
+insert into users (id, email, name, role, status)
+values ('00000000-0000-0000-0000-000000000001', null, 'Divini Partners (System)', 'super_admin', 'active')
+on conflict (id) do nothing;
