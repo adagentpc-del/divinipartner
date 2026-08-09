@@ -2,15 +2,28 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 const KEY = 'divini_consent_v1';
+const OPEN_EVENT = 'divini:open-cookie-preferences';
 
 export function consentGranted(): boolean {
   try { return JSON.parse(localStorage.getItem(KEY) || 'null')?.v === 'all'; } catch { return false; }
+}
+
+/** Re-open the cookie banner so a visitor can change a previously-made
+ *  choice. The banner itself is already mounted app-wide (see App.tsx), so
+ *  this dispatches an event it listens for rather than mounting a second
+ *  instance. Used by the "Manage cookie preferences" control on the Cookie
+ *  Policy page -- withdrawing consent should be as easy as giving it. */
+export function openCookiePreferences(): void {
+  try { window.dispatchEvent(new Event(OPEN_EVENT)); } catch { /* ignore */ }
 }
 
 export default function CookieBanner() {
   const [show, setShow] = useState(false);
   useEffect(() => {
     try { if (!JSON.parse(localStorage.getItem(KEY) || 'null')) setShow(true); } catch { setShow(true); }
+    const onOpen = () => setShow(true);
+    window.addEventListener(OPEN_EVENT, onOpen);
+    return () => window.removeEventListener(OPEN_EVENT, onOpen);
   }, []);
   function choose(v: 'all' | 'essential') {
     try { localStorage.setItem(KEY, JSON.stringify({ v, t: Date.now() })); } catch { /* ignore */ }

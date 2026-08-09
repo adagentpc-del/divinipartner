@@ -80,6 +80,11 @@ Bootstrapped at Section 01.
 | S12-01 | Code | `server/src/db.ts` (`registerOrganization`, `addOrganization`), `db/schema-fix-org-fee-rates.sql` (new), `db/apply-all.sql` (appended) | 2026-08-09 |
 | S12-02 to S12-08 | Code | Full reads of `orgs.ts`, `profiles.ts`, `admin.ts`, `admin-manage.ts` (leading ~400 lines), `packages.ts`, `calendar.ts` + `db/calendar.ts`, `compliance.ts` + relevant `db/compliance.ts` functions, `venue-twin.ts`; cross-checked against `db/schema-org-membership.sql` and `team_seats` schema for the transfer-owner authorization model | 2026-08-09 |
 | S12 (all) | File | `docs/platform-standard/section-12-core-product-engines.md` (new) | 2026-08-09 |
+| S13-01 | Command output | Full-tree grep for third-party analytics/tracking script signatures — zero matches | 2026-08-09 |
+| S13-02 | Code | `src/lib/fingerprint.ts` (`reportSignal`), `src/components/CookieBanner.tsx`, call-site grep confirming only `Landing.tsx`/`GetStarted.tsx` invoke `reportSignal` | 2026-08-09 |
+| S13-03 | Command output | Playwright script against the built SPA in a real browser: banner-on-first-load, accept-all hides it + sets storage, client-nav to `/cookies` shows the new button, click reopens the banner, reject-non-essential updates storage — all steps passed | 2026-08-09 |
+| S13-03 | Code | `src/components/CookieBanner.tsx`, `src/pages/Cookies.tsx` | 2026-08-09 |
+| S13 (all) | File | `docs/platform-standard/section-13-analytics-personalization.md` (new) | 2026-08-09 |
 
 ## Notes
 

@@ -21,7 +21,8 @@ format.
 | 10 Email, SMS, Push Notifications & Marketing Compliance | **READY** — no open P0/P1 items | 2026-08-08 |
 | 11 UX, Accessibility, Onboarding, Forms, Navigation & Content Quality | READY (scoped) WITH P1 ITEMS — see below | 2026-08-08 |
 | 12 Core Product Engines (Profiles, Orgs, Admin, Products/Services, Calendar, Video, Documents) | **READY** — no open P0/P1 items (one P2 operator action) | 2026-08-09 |
-| 13–18 | Not yet started | — |
+| 13 Analytics, Behavior Tracking & Personalization | **READY** — no open P0/P1/P2 items | 2026-08-09 |
+| 14–18 | Not yet started | — |
 
 ## Section 01 summary
 
@@ -410,11 +411,33 @@ format.
 - No P0/P1 blockers remain open. One P2 operator action (run the backfill
   script).
 
+## Section 13 summary
+
+- Applicability confirmed narrow as Section 01 predicted: a full-tree grep
+  for common third-party analytics/tracking scripts (GA/GTM, Segment,
+  Mixpanel, Amplitude, Hotjar, FullStory, Meta Pixel, Clarity, PostHog)
+  found zero matches — everything in this codebase is first-party.
+- Confirmed (did not need to fix) that first-party visitor-signal collection
+  (device fingerprint, IP, UTM attribution) is correctly consent-gated at
+  every call site, and that the deterministic recommendation/scoring
+  features (`recommend.ts`, `divini-score.ts`) do not raise automated-
+  decision or consumer-profiling concerns — they're stateless/B2B-scoped
+  respectively.
+- Found and fixed a real gap between disclosed and actual behavior: the
+  Cookie Policy told visitors they could "use the cookie banner" to change
+  their consent choice at any time, but the banner only ever appeared once,
+  on first visit, with no way to reopen it. Added a reopen mechanism and a
+  "Manage cookie preferences" control on the Cookie Policy page; live-
+  verified end to end in a real browser (initial banner, accept-all,
+  reopen via the new button, change to reject, storage updates correctly
+  at each step).
+- No P0/P1/P2 items remain open for this section.
+
 ## Overall launch readiness (cumulative, updated as sections complete)
 
-**NOT READY** — pending Sections 13–18, plus the standing T7 gate (real
+**NOT READY** — pending Sections 14–18, plus the standing T7 gate (real
 money) which several sections now have concrete pre-requisites tracked
 against (refund/dispute capability, live credential testing). This is
-expected at this stage (twelve of eighteen sections complete) and is not
+expected at this stage (thirteen of eighteen sections complete) and is not
 itself a new finding; it reflects where the multi-section pack currently
 stands, not a regression.

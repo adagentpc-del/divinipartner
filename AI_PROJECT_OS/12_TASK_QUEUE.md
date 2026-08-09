@@ -389,6 +389,12 @@ Prioritized backlog, seeded from the Go-Live runbook remaining items and the V2 
 - Related files: `server/src/db.ts` (`registerOrganization`, `addOrganization`), `db/schema-fix-org-fee-rates.sql`, `db/apply-all.sql`.
 - See: `docs/platform-standard/section-12-core-product-engines.md`, risk R-41, `docs/platform-standard/operator-actions.md`.
 
+## T35 - Add a way to withdraw/change cookie consent after the initial choice (RESOLVED 2026-08-09, ALFY2 pack Section 13)
+
+- Status: DONE. `src/components/CookieBanner.tsx`'s consent banner only ever showed once, on first visit, with no way to bring it back once a choice was stored -- despite `src/pages/Cookies.tsx` telling visitors "use the cookie banner" to change their choice at any time. Added `openCookiePreferences()` (dispatches a custom event the already-mounted banner listens for and re-shows itself on) and a "Manage cookie preferences" button on the Cookie Policy page that calls it; updated the page copy to accurately describe the mechanism. Live-verified end to end with Playwright against the built SPA in a real browser: banner shows on first load, "Accept all" hides it and sets `localStorage`, client-side nav to `/cookies` shows the new button, clicking it reopens the banner, choosing "Reject non-essential" updates the stored value -- every step passed.
+- Related files: `src/components/CookieBanner.tsx`, `src/pages/Cookies.tsx`.
+- See: `docs/platform-standard/section-13-analytics-personalization.md`, risk R-42.
+
 ## ALFY2 / Claude Master Platform Execution Pack (started 2026-08-08)
 
 A separately-uploaded 18-section audit framework is being run against this
@@ -405,12 +411,13 @@ Section 08 (AI Security, Governance, Prompt-Injection Defense & Model
 Quality), Section 09 (Payments, Stripe, Webhooks, Subscriptions,
 Marketplace & Tax), Section 10 (Email, SMS, Push Notifications &
 Marketing Compliance), Section 11 (UX, Accessibility, Onboarding,
-Forms, Navigation & Content Quality), and Section 12 (Core Product
+Forms, Navigation & Content Quality), Section 12 (Core Product
 Engines: Profiles, Organizations, Admin, Products/Services, Calendar,
-Video & Documents) are complete; see
+Video & Documents), and Section 13 (Analytics, Behavior Tracking &
+Personalization) are complete; see
 `docs/platform-standard/release-readiness.md` for cumulative status across
 all 18 sections as they execute. New findings that represent real,
-actionable work (like T13-T34 above) get a task here as they're found, so
+actionable work (like T13-T35 above) get a task here as they're found, so
 this queue stays the single place to look for "what's left to do" --
 `docs/platform-standard/` is where the pack's own required audit/evidence/
 risk trail lives, not a second task list.
