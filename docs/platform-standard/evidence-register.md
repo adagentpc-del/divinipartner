@@ -95,6 +95,11 @@ Bootstrapped at Section 01.
 | S15-01 | Code | `server/src/routes.ts` (`errorHandler`, Postgres `22P02` branch) | 2026-08-09 |
 | S15-02 to S15-05 | Command output | Live adversarial test session: auth-bypass probes, 25-request rate-limit trigger, real two-org IDOR test (register/verify/login both accounts, create a package as Org A, attempt read/update/delete as Org B), and CSRF probe (missing/correct/wrong token against a real session+CSRF cookie pair) -- all against a real running server and a disposable Postgres 16 instance started and torn down for this session only | 2026-08-09 |
 | S15 (all) | File | `docs/platform-standard/section-15-qa-e2e-load-pentest-regression.md` (new) | 2026-08-09 |
+| S16-01 | Command output | Cross-reference of `mobile/PrivacyInfo.xcprivacy` against `server/src/db.ts` registration fields; Python `xml.dom.minidom` well-formedness check on the fixed file (caught and required correcting a real XML-comment syntax defect from the first edit attempt) | 2026-08-09 |
+| S16-01 | Code | `mobile/PrivacyInfo.xcprivacy` | 2026-08-09 |
+| S16-02, S16-03 | Code | `capacitor.config.ts` (read in full), grep of Pricing/account pages for steering language | 2026-08-09 |
+| S16-04 | Command output | Full-tree grep for `isNativePlatform`/`Capacitor.` usage in `src/` — zero matches | 2026-08-09 |
+| S16 (all) | File | `docs/platform-standard/section-16-mobile-ios-android-app-store.md` (new) | 2026-08-09 |
 
 ## Notes
 

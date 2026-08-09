@@ -24,7 +24,8 @@ format.
 | 13 Analytics, Behavior Tracking & Personalization | **READY** — no open P0/P1/P2 items | 2026-08-09 |
 | 14 Observability, Incident Response & Disaster Recovery | READY WITH P2 ITEMS — see below | 2026-08-09 |
 | 15 QA, E2E, Load Testing, Pentest & Regression | **READY** — no open P0/P1/P2 items | 2026-08-09 |
-| 16–18 | Not yet started | — |
+| 16 Mobile: iOS, Android & App Store | READY (scoped) — native build/submission BLOCKED (needs Mac/Xcode, tracked as T9) | 2026-08-09 |
+| 17–18 | Not yet started | — |
 
 ## Section 01 summary
 
@@ -500,11 +501,45 @@ format.
   designed against a real session).
 - No P0/P1/P2 items remain open for this section.
 
+## Section 16 summary
+
+- Scope: the Capacitor iOS/Android shell configuration, the Apple privacy
+  manifest, and App Store submission readiness. Native build, signing, and
+  submission remain genuinely BLOCKED from this environment (no Xcode/
+  Android Studio/Mac; `ios/`/`android/` project directories are correctly
+  gitignored and have never been generated in this sandbox) -- this
+  matches task T9's pre-existing, accurately-scoped status, not a new
+  finding.
+- Found and fixed a real defect: the Apple privacy manifest
+  (`mobile/PrivacyInfo.xcprivacy`) did not declare Phone Number as a
+  collected data type despite `users.phone` being a real, populated
+  column -- found by cross-referencing the manifest against the actual
+  registration code, not by re-reading the manifest in isolation. Fixed
+  and verified well-formed XML (the strongest check available without
+  macOS tooling); the fix process itself caught and corrected a genuine
+  XML syntax defect from the first edit attempt, disclosed rather than
+  silently retried away.
+- Found and documented (not code-fixed) a real implementation gap: the
+  compliance docs' own proposed mitigation for a borderline Apple IAP
+  classification -- "gate paid flows behind the web app" -- has zero
+  supporting code; nothing anywhere detects the app is running inside the
+  native shell. Not fixed directly because which flows (if any) need
+  gating is a business/legal classification call, not an engineering one;
+  tracked so the eventual decision has a fast path to implementation
+  instead of starting from zero.
+- Confirmed sound: ATS stays strict, no deceptive external-purchase
+  language exists, account deletion is reachable from the native shell
+  with no navigation pattern that could break in a webview.
+- No P0/P1 blockers remain open in this session's control. One P2 item
+  (T19, npm audit in mobile-build tooling) and the new IAP-classification
+  gap both correctly require Mac/Xcode or a business decision this
+  environment cannot make.
+
 ## Overall launch readiness (cumulative, updated as sections complete)
 
-**NOT READY** — pending Sections 16–18, plus the standing T7 gate (real
+**NOT READY** — pending Sections 17–18, plus the standing T7 gate (real
 money) which several sections now have concrete pre-requisites tracked
 against (refund/dispute capability, live credential testing). This is
-expected at this stage (fifteen of eighteen sections complete) and is not
+expected at this stage (sixteen of eighteen sections complete) and is not
 itself a new finding; it reflects where the multi-section pack currently
 stands, not a regression.

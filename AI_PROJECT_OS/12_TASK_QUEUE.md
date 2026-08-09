@@ -423,6 +423,17 @@ Prioritized backlog, seeded from the Go-Live runbook remaining items and the V2 
 - Related files: `server/src/routes.ts` (`errorHandler`).
 - See: `docs/platform-standard/section-15-qa-e2e-load-pentest-regression.md`, risk R-46.
 
+## T39 - Classify paid flows for Apple IAP and build native-shell gating if needed (found 2026-08-09, ALFY2 pack Section 16)
+
+- Priority: P2
+- Status: NOT STARTED
+- Owner: unassigned (needs a business/legal classification decision first)
+- Dependencies: none
+- Effort: S for the decision + documentation; S for the code if gating turns out to be needed
+- Acceptance: `IOS-APP-STORE-RUNBOOK.md` and `AI_PROJECT_OS/52_COMPLIANCE.md` both correctly flag that Apple may require In-App Purchase for some paid flows (Featured Vendor $49/mo, listing/placement fees, subscriptions) depending on whether they classify as digital-goods-consumed-in-app versus exempt B2B real-world services, and both propose "gate paid flows behind the web app" as a fallback if the classification is borderline. A full-tree search found zero code anywhere that detects the app is running inside the native Capacitor shell (`Capacitor.isNativePlatform()` or equivalent) -- the proposed mitigation has no supporting implementation. First step: make the actual classification call per flow (documented rationale for App Review notes, per the runbook). Only if that call concludes gating is needed: build a small `Capacitor.isNativePlatform()`-based helper and conditionally hide/redirect the specific flows that need it.
+- Related files: `IOS-APP-STORE-RUNBOOK.md`, `AI_PROJECT_OS/52_COMPLIANCE.md`, `capacitor.config.ts`.
+- See: `docs/platform-standard/section-16-mobile-ios-android-app-store.md`, risk R-48.
+
 ## ALFY2 / Claude Master Platform Execution Pack (started 2026-08-08)
 
 A separately-uploaded 18-section audit framework is being run against this
@@ -443,11 +454,12 @@ Forms, Navigation & Content Quality), Section 12 (Core Product
 Engines: Profiles, Organizations, Admin, Products/Services, Calendar,
 Video & Documents), Section 13 (Analytics, Behavior Tracking &
 Personalization), Section 14 (Observability, Incident Response &
-Disaster Recovery), and Section 15 (QA, E2E, Load Testing, Pentest &
-Regression) are complete; see
-`docs/platform-standard/release-readiness.md` for cumulative status across
-all 18 sections as they execute. New findings that represent real,
-actionable work (like T13-T38 above) get a task here as they're found, so
+Disaster Recovery), Section 15 (QA, E2E, Load Testing, Pentest &
+Regression), and Section 16 (Mobile: iOS, Android & App Store) are
+complete; see `docs/platform-standard/release-readiness.md` for
+cumulative status across all 18 sections as they execute. New findings
+that represent real, actionable work (like T13-T39 above) get a task here
+as they're found, so
 this queue stays the single place to look for "what's left to do" --
 `docs/platform-standard/` is where the pack's own required audit/evidence/
 risk trail lives, not a second task list.
