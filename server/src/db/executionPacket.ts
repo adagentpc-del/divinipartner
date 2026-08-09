@@ -23,6 +23,8 @@ import { NotFoundError, ForbiddenError, type Actor } from "../db.js";
 import { getEvent, canManageEvent, type EventRow } from "./events.js";
 import { buildItinerary, type BuiltItinerary } from "./itinerary.js";
 import { recordEventChange } from "./eventChanges.js";
+import { getEventRole } from "./eventMembers.js";
+import type { EventRole } from "../lib/eventRoles.js";
 
 export type KeyContact = {
   user_id: string;
@@ -76,6 +78,7 @@ export type ExecutionPacketSnapshot = {
   vendor_assignments: VendorAssignment[];
   final_count: { version: number; count: number; discrepancy: number | null } | null;
   vendor_final_quantities: Array<{
+    organization_id: string;
     vendor_name: string;
     scope: string;
     version: number;
@@ -143,6 +146,7 @@ export async function buildExecutionPacket(
   );
 
   const vendorQuantities = await q<{
+    organization_id: string;
     vendor_name: string;
     scope: string;
     version: number;
@@ -152,8 +156,8 @@ export async function buildExecutionPacket(
     discrepancy_status: string | null;
   }>(
     `select distinct on (vfq.vendor_id, vfq.scope)
-            coalesce(o.name, 'Vendor') as vendor_name, vfq.scope, vfq.version, vfq.quantity,
-            vfq.unit, vfq.discrepancy, vfq.discrepancy_status
+            vfq.organization_id, coalesce(o.name, 'Vendor') as vendor_name, vfq.scope, vfq.version,
+            vfq.quantity, vfq.unit, vfq.discrepancy, vfq.discrepancy_status
        from vendor_final_quantities vfq
        left join organizations o on o.id = vfq.organization_id
       where vfq.event_id = $1
@@ -204,6 +208,27 @@ export async function buildExecutionPacket(
     key_contacts,
     generated_at: new Date().toISOString(),
   };
+}
+
+// Role-specific packet projections (Part 4): the pure narrowing logic lives
+// in lib/packetProjection.ts (no DB, unit-testable). Re-exported here so
+// existing callers of executionPacket.ts keep one import surface.
+export {
+  projectPacket,
+  audienceForRole,
+  type PacketAudience,
+  type PacketProjection,
+} from "../lib/packetProjection.js";
+import { projectPacket, type PacketProjection } from "../lib/packetProjection.js";
+
+/** Live preview, projected for the actor's real event role. Not persisted. */
+export async function buildProjectedPreview(
+  actor: Actor,
+  eventId: string,
+): Promise<PacketProjection> {
+  const snapshot = await buildExecutionPacket(actor, eventId);
+  const role = (await getEventRole(actor, eventId)) ?? "read_only";
+  return projectPacket(snapshot, role, actor.org?.id ?? null);
 }
 
 export type ExecutionPacketRow = {
@@ -296,6 +321,22 @@ export async function getPacketVersion(actor: Actor, packetId: string): Promise<
   if (!row) throw new NotFoundError("packet version not found");
   await getEvent(actor, row.event_id);
   return row;
+}
+
+/**
+ * A specific historical packet version, projected for the actor's real
+ * event role. This is the route every non-owner recipient should use --
+ * the raw getPacketVersion() (full snapshot) is for owner/planner tooling
+ * and internal use only.
+ */
+export async function getProjectedPacketVersion(
+  actor: Actor,
+  packetId: string,
+): Promise<PacketProjection & { id: string; version: number; status: string; created_at: string }> {
+  const row = await getPacketVersion(actor, packetId);
+  const role = (await getEventRole(actor, row.event_id)) ?? "read_only";
+  const projection = projectPacket(row.snapshot, role, actor.org?.id ?? null);
+  return { ...projection, id: row.id, version: row.version, status: row.status, created_at: row.created_at };
 }
 
 /** Acknowledge a packet version as the signed-in actor. */

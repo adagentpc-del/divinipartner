@@ -7,6 +7,8 @@ import { Router, type Request, type Response, type NextFunction } from "express"
 import { getAuth, requireUser } from "../auth.js";
 import * as db from "../db.js";
 import * as packet from "../db/executionPacket.js";
+import { canManageEvent } from "../db/events.js";
+import { ForbiddenError } from "../db.js";
 
 const h =
   (fn: (req: Request, res: Response) => Promise<unknown>) =>
@@ -21,11 +23,30 @@ async function actor(req: Request): Promise<db.Actor> {
 const router = Router();
 router.use(requireUser);
 
-/** Live preview of the packet as it would be generated right now. Not persisted. */
+/**
+ * Live preview of the packet as it would be generated right now, projected
+ * for the caller's own event role (Part 4 -- role-specific packet
+ * projections). Not persisted. Owner/planner get the full packet; every
+ * other role gets a backend-enforced narrowed view.
+ */
 router.get(
   "/event/:eventId/preview",
   h(async (req, res) => {
     const a = await actor(req);
+    res.json({ preview: await packet.buildProjectedPreview(a, req.params.eventId) });
+  }),
+);
+
+/** The raw, unprojected master snapshot. Owner/planner only -- internal
+ *  tooling (audit, PDF generation) uses this; every recipient-facing view
+ *  goes through the projected routes above/below. */
+router.get(
+  "/event/:eventId/preview/full",
+  h(async (req, res) => {
+    const a = await actor(req);
+    if (!(await canManageEvent(a, req.params.eventId))) {
+      throw new ForbiddenError("only the event owner can view the full master packet");
+    }
     res.json({ preview: await packet.buildExecutionPacket(a, req.params.eventId) });
   }),
 );
@@ -48,12 +69,25 @@ router.get(
   }),
 );
 
-/** One packet version. */
+/** One packet version, projected for the caller's own event role. */
 router.get(
   "/:id",
   h(async (req, res) => {
     const a = await actor(req);
-    res.json({ packet: await packet.getPacketVersion(a, req.params.id) });
+    res.json({ packet: await packet.getProjectedPacketVersion(a, req.params.id) });
+  }),
+);
+
+/** The raw, unprojected snapshot for one packet version. Owner/planner only. */
+router.get(
+  "/:id/full",
+  h(async (req, res) => {
+    const a = await actor(req);
+    const row = await packet.getPacketVersion(a, req.params.id);
+    if (!(await canManageEvent(a, row.event_id))) {
+      throw new ForbiddenError("only the event owner can view the full master packet");
+    }
+    res.json({ packet: row });
   }),
 );
 

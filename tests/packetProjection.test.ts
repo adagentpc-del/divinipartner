@@ -1,0 +1,202 @@
+/**
+ * Regression tests for role-specific Event Execution Packet projections
+ * (lib/packetProjection.ts). This is the adversarial-security-critical
+ * piece for Part 4: Vendor A must never see Vendor B's quantities, a venue
+ * must never see private vendor pricing/contracts, a sponsor must never see
+ * the full vendor roster or venue logistics notes.
+ *
+ * Run via the package.json test script (node --test with strip-types).
+ * Zero em dashes.
+ */
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { projectPacket, audienceForRole } from "../server/src/lib/packetProjection.ts";
+import type { ExecutionPacketSnapshot } from "../server/src/db/executionPacket.ts";
+
+function fixtureSnapshot(): ExecutionPacketSnapshot {
+  return {
+    event: {
+      id: "event-1",
+      name: "Test Gala",
+      status: "vendor_bidding",
+      date_time: "2026-11-05T18:00:00Z",
+      end_at: null,
+      load_in_at: null,
+      setup_at: null,
+      rehearsal_at: null,
+      vendor_call_at: null,
+      doors_at: null,
+      strike_at: null,
+    },
+    venue: {
+      id: "venue-1",
+      name: "Grand Hall",
+      address: "123 Main St",
+      city: "Metropolis",
+      region: "NY",
+      space: "Main Ballroom",
+      notes: "Loading dock code 4471 -- sensitive logistics detail",
+    },
+    schedule: {
+      event: { id: "event-1", name: "Test Gala", date_time: null, guest_count: null },
+      generated_at: "2026-08-09T00:00:00Z",
+      items: [
+        { key: "a", title: "All-teams item", description: null, category: "program", start_time: null, end_time: null, location: null, owner_role: "all", owner_label: null, source: "auto:event", source_ref: null, status: "planned" },
+        { key: "b", title: "Vendor-only item", description: null, category: "load_in", start_time: null, end_time: null, location: null, owner_role: "vendor", owner_label: null, source: "manual", source_ref: null, status: "planned" },
+        { key: "c", title: "Venue-only item", description: null, category: "setup", start_time: null, end_time: null, location: null, owner_role: "venue", owner_label: null, source: "manual", source_ref: null, status: "planned" },
+      ],
+      by_role: {
+        all: [{ key: "a", title: "All-teams item", description: null, category: "program", start_time: null, end_time: null, location: null, owner_role: "all", owner_label: null, source: "auto:event", source_ref: null, status: "planned" }],
+        client: [],
+        venue: [
+          { key: "a", title: "All-teams item", description: null, category: "program", start_time: null, end_time: null, location: null, owner_role: "all", owner_label: null, source: "auto:event", source_ref: null, status: "planned" },
+          { key: "c", title: "Venue-only item", description: null, category: "setup", start_time: null, end_time: null, location: null, owner_role: "venue", owner_label: null, source: "manual", source_ref: null, status: "planned" },
+        ],
+        vendor: [
+          { key: "a", title: "All-teams item", description: null, category: "program", start_time: null, end_time: null, location: null, owner_role: "all", owner_label: null, source: "auto:event", source_ref: null, status: "planned" },
+          { key: "b", title: "Vendor-only item", description: null, category: "load_in", start_time: null, end_time: null, location: null, owner_role: "vendor", owner_label: null, source: "manual", source_ref: null, status: "planned" },
+        ],
+        installer: [],
+        planner: [
+          { key: "a", title: "All-teams item", description: null, category: "program", start_time: null, end_time: null, location: null, owner_role: "all", owner_label: null, source: "auto:event", source_ref: null, status: "planned" },
+          { key: "b", title: "Vendor-only item", description: null, category: "load_in", start_time: null, end_time: null, location: null, owner_role: "vendor", owner_label: null, source: "manual", source_ref: null, status: "planned" },
+          { key: "c", title: "Venue-only item", description: null, category: "setup", start_time: null, end_time: null, location: null, owner_role: "venue", owner_label: null, source: "manual", source_ref: null, status: "planned" },
+        ],
+      },
+      checks: [],
+      statuses: [],
+      categories: [],
+    },
+    floorplans: [{ id: "fp-1", name: "Main floor", file_url: "https://example.com/fp.pdf", thumbnail_url: null, is_primary: true }],
+    vendor_assignments: [
+      { organization_id: "org-caterer", vendor_name: "Caterer Co", role: "vendor_owner", status: "active" },
+      { organization_id: "org-av", vendor_name: "AV Co", role: "vendor_owner", status: "active" },
+    ],
+    final_count: { version: 2, count: 475, discrepancy: 0 },
+    vendor_final_quantities: [
+      { organization_id: "org-caterer", vendor_name: "Caterer Co", scope: "catering", version: 1, quantity: "488", unit: "meals", discrepancy: "13", discrepancy_status: "over" },
+      { organization_id: "org-av", vendor_name: "AV Co", scope: "av", version: 1, quantity: "475", unit: "seats", discrepancy: "0", discrepancy_status: "match" },
+    ],
+    key_contacts: [
+      { user_id: "u-owner", name: "Owner Person", email: "owner@test.local", phone: null, role: "event_owner", organization_name: "Owner Co" },
+      { user_id: "u-planner", name: "Planner Person", email: "planner@test.local", phone: null, role: "planner", organization_name: "Owner Co" },
+      { user_id: "u-venue", name: "Venue Person", email: "venue@test.local", phone: null, role: "venue", organization_name: "Grand Hall Co" },
+      { user_id: "u-vendor", name: "Caterer Person", email: "caterer@test.local", phone: null, role: "vendor_owner", organization_name: "Caterer Co" },
+    ],
+    generated_at: "2026-08-09T00:00:00Z",
+  };
+}
+
+test("audienceForRole maps every RBAC role to a defined packet audience", () => {
+  assert.equal(audienceForRole("event_owner"), "full");
+  assert.equal(audienceForRole("planner"), "full");
+  assert.equal(audienceForRole("venue"), "venue");
+  assert.equal(audienceForRole("vendor_owner"), "vendor");
+  assert.equal(audienceForRole("vendor_staff"), "vendor_staff");
+  assert.equal(audienceForRole("sponsor"), "sponsor");
+  // finance, guest_manager, event_staff, read_only all fall back to the
+  // same narrow default -- the itinerary system has no finer role for them.
+  assert.equal(audienceForRole("finance"), "event_staff");
+  assert.equal(audienceForRole("guest_manager"), "event_staff");
+  assert.equal(audienceForRole("event_staff"), "event_staff");
+  assert.equal(audienceForRole("read_only"), "event_staff");
+});
+
+test("event_owner / planner get the full packet, including every vendor's quantities and all contacts", () => {
+  const snapshot = fixtureSnapshot();
+  const p = projectPacket(snapshot, "event_owner", "org-owner");
+  assert.equal(p.audience, "full");
+  assert.equal(p.vendor_assignments?.length, 2);
+  assert.equal(p.my_final_quantity?.length, 2);
+  assert.equal(p.key_contacts.length, 4);
+  assert.equal(p.venue.notes, "Loading dock code 4471 -- sensitive logistics detail");
+});
+
+test("vendor A cannot see vendor B's final quantity in their own projection", () => {
+  const snapshot = fixtureSnapshot();
+  const asCaterer = projectPacket(snapshot, "vendor_owner", "org-caterer");
+  assert.equal(asCaterer.my_final_quantity?.length, 1);
+  assert.equal(asCaterer.my_final_quantity?.[0].organization_id, "org-caterer");
+  assert.equal(
+    asCaterer.my_final_quantity?.some((q) => q.organization_id === "org-av"),
+    false,
+  );
+
+  const asAv = projectPacket(snapshot, "vendor_owner", "org-av");
+  assert.equal(asAv.my_final_quantity?.length, 1);
+  assert.equal(asAv.my_final_quantity?.[0].organization_id, "org-av");
+});
+
+test("a vendor with no resolvable org id gets an empty my_final_quantity, not another vendor's data", () => {
+  const snapshot = fixtureSnapshot();
+  const p = projectPacket(snapshot, "vendor_owner", null);
+  assert.deepEqual(p.my_final_quantity, []);
+});
+
+test("vendor_staff does not see the vendor roster (vendor_assignments), unlike vendor_owner", () => {
+  const snapshot = fixtureSnapshot();
+  const owner = projectPacket(snapshot, "vendor_owner", "org-caterer");
+  const staff = projectPacket(snapshot, "vendor_staff", "org-caterer");
+  assert.notEqual(owner.vendor_assignments, null);
+  assert.equal(staff.vendor_assignments, null);
+  // Both still see their own vendor's own final quantity.
+  assert.equal(staff.my_final_quantity?.length, 1);
+});
+
+test("venue sees the vendor roster and venue notes but never any vendor's final quantity", () => {
+  const snapshot = fixtureSnapshot();
+  const p = projectPacket(snapshot, "venue", "org-grandhall");
+  assert.equal(p.audience, "venue");
+  assert.notEqual(p.vendor_assignments, null);
+  assert.equal(p.my_final_quantity, null);
+  assert.equal(p.venue.notes, "Loading dock code 4471 -- sensitive logistics detail");
+});
+
+test("sponsor gets no vendor roster, no vendor quantities, and no venue logistics notes", () => {
+  const snapshot = fixtureSnapshot();
+  const p = projectPacket(snapshot, "sponsor", null);
+  assert.equal(p.audience, "sponsor");
+  assert.equal(p.vendor_assignments, null);
+  assert.equal(p.my_final_quantity, null);
+  assert.equal(p.venue.notes, null);
+  // Sponsor still sees basic venue identity (name/address) for logistics.
+  assert.equal(p.venue.name, "Grand Hall");
+});
+
+test("event_staff (and the finance/guest_manager/read_only fallback) gets the same minimal projection as sponsor", () => {
+  const snapshot = fixtureSnapshot();
+  const staff = projectPacket(snapshot, "event_staff", null);
+  const finance = projectPacket(snapshot, "finance", null);
+  assert.deepEqual(staff, finance);
+  assert.equal(staff.vendor_assignments, null);
+  assert.equal(staff.venue.notes, null);
+});
+
+test("key_contacts is always narrowed to event_owner/planner (+ venue for the venue audience) outside 'full'", () => {
+  const snapshot = fixtureSnapshot();
+  const vendor = projectPacket(snapshot, "vendor_owner", "org-caterer");
+  assert.equal(vendor.key_contacts.every((c) => c.role === "event_owner" || c.role === "planner"), true);
+  // The vendor contact row must never leak to another vendor's projection.
+  assert.equal(vendor.key_contacts.some((c) => c.role === "vendor_owner"), false);
+
+  const venue = projectPacket(snapshot, "venue", "org-grandhall");
+  assert.equal(venue.key_contacts.some((c) => c.role === "venue"), true);
+});
+
+test("schedule_items is filtered per audience using the itinerary system's own by_role views", () => {
+  const snapshot = fixtureSnapshot();
+  const vendorItems = projectPacket(snapshot, "vendor_owner", "org-caterer").schedule_items;
+  assert.equal(vendorItems.some((i) => i.key === "b"), true); // vendor-only item visible
+  assert.equal(vendorItems.some((i) => i.key === "c"), false); // venue-only item NOT visible
+
+  const venueItems = projectPacket(snapshot, "venue", "org-grandhall").schedule_items;
+  assert.equal(venueItems.some((i) => i.key === "c"), true);
+  assert.equal(venueItems.some((i) => i.key === "b"), false);
+
+  const sponsorItems = projectPacket(snapshot, "sponsor", null).schedule_items;
+  assert.equal(sponsorItems.length, 1);
+  assert.equal(sponsorItems[0].key, "a");
+
+  const fullItems = projectPacket(snapshot, "event_owner", null).schedule_items;
+  assert.equal(fullItems.length, 3);
+});
