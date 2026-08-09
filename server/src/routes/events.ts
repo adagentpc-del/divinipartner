@@ -169,6 +169,26 @@ router.post(
   }),
 );
 
+/**
+ * Duplicate / rebook an event (Part 39 of the live-ops phase). Starts a
+ * fresh event pre-filled from the source's reusable config -- see
+ * db/events.ts's duplicateEvent() for exactly what is and is not copied.
+ */
+router.post(
+  "/:id/duplicate",
+  h(async (req, res) => {
+    const a = await actor(req);
+    const { name, date_time, include_vendors, seed_workflow } = req.body ?? {};
+    const ev = await events.duplicateEvent(a, req.params.id, {
+      name,
+      date_time,
+      include_vendors: !!include_vendors,
+      seed_workflow: seed_workflow !== false,
+    });
+    res.status(201).json({ event: ev });
+  }),
+);
+
 /** List vendors attached to an event. */
 router.get(
   "/:id/vendors",

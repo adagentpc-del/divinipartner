@@ -638,6 +638,95 @@ export async function setEventStatus(
   return after;
 }
 
+/**
+ * Duplicate / rebook an event (live-ops phase, Part 39, 2026-08-09). For a
+ * repeat booking with the same or a similar client -- start a fresh event
+ * pre-filled with the source's reusable config, never its stale or
+ * event-specific data.
+ *
+ * Reuses db/tours.ts's copyEventConfig() (already built for tour stops)
+ * for the reusable public config -- landing settings, ticket tiers, public
+ * agenda items, floorplans, exhibitor packages, booths -- rather than a
+ * second, divergent copy routine. Reuses db/tasks.ts's seedWorkflow()
+ * for the standard task checklist rather than copying the source's old
+ * task rows, whose statuses/due dates are meaningless for a new date.
+ *
+ * Deliberately NEVER copied: date_time/load_in_at/.../strike_at (every
+ * timing field -- always null on the new event until re-entered), status
+ * (createEvent always starts a new event at 'inquiry'), guests, invoices,
+ * payments, quotes, bids, or any other financial/attendee-specific
+ * record. event_vendors is copy-on-request only ("same team" is a real
+ * assumption but not always true -- vendor availability may differ for
+ * the new date), never automatic.
+ */
+export type DuplicateEventInput = {
+  name?: string | null;
+  date_time?: string | null;
+  include_vendors?: boolean;
+  seed_workflow?: boolean;
+};
+
+export async function duplicateEvent(
+  actor: Actor,
+  sourceEventId: string,
+  input: DuplicateEventInput = {},
+): Promise<EventRow> {
+  const source = await getEvent(actor, sourceEventId);
+  if (!(await canManageEvent(actor, sourceEventId))) {
+    throw new ForbiddenError("only the source event's owner or planner can duplicate it");
+  }
+
+  const newEvent = await createEvent(actor, {
+    name: input.name?.trim() || `${source.name} (Copy)`,
+    type: source.type,
+    date_time: input.date_time ?? null,
+    guest_count: source.guest_count,
+    budget: source.budget != null ? Number(source.budget) : null,
+    event_goals: source.event_goals,
+    required_services: source.required_services,
+    venue_id: source.venue_id,
+    venue_space: source.venue_space,
+    venue_notes: source.venue_notes,
+    attendance_estimated: source.attendance_estimated,
+    timezone: source.timezone,
+    venue_access_time: source.venue_access_time,
+    venue_parking_info: source.venue_parking_info,
+    venue_loading_dock: source.venue_loading_dock,
+    venue_vendor_entrance: source.venue_vendor_entrance,
+    venue_guest_entrance: source.venue_guest_entrance,
+    venue_restrictions: source.venue_restrictions,
+    emergency_contact_name: source.emergency_contact_name,
+    emergency_contact_phone: source.emergency_contact_phone,
+  });
+
+  const { copyEventConfig } = await import("./tours.js");
+  await copyEventConfig(actor, sourceEventId, newEvent.id);
+
+  if (input.include_vendors) {
+    await q(
+      `insert into event_vendors (event_id, organization_id, vendor_id, role, status)
+       select $2, organization_id, vendor_id, role, 'added'
+         from event_vendors where event_id = $1`,
+      [sourceEventId, newEvent.id],
+    );
+  }
+
+  if (input.seed_workflow !== false) {
+    const { seedWorkflow } = await import("./tasks.js");
+    await seedWorkflow(actor, newEvent.id);
+  }
+
+  const { recordActivity } = await import("./eventActivity.js");
+  await recordActivity(actor, newEvent.id, {
+    category: "status",
+    message: `Event duplicated from "${source.name}"`,
+    relatedEntityType: "event",
+    relatedEntityId: sourceEventId,
+  });
+
+  return newEvent;
+}
+
 export type EventVendorRow = {
   id: string;
   event_id: string;

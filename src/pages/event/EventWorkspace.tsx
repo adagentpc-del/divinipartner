@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { apiGet } from '../../lib/api';
+import { apiGet, apiSend } from '../../lib/api';
 import OverviewTab from './tabs/OverviewTab';
 import PublicPageTab from './tabs/PublicPageTab';
 import ExhibitorsTab from './tabs/ExhibitorsTab';
@@ -66,6 +66,23 @@ export default function EventWorkspace() {
   const [active, setActive] = useState('overview');
   const [head, setHead] = useState<EventHead | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [dupBusy, setDupBusy] = useState(false);
+
+  // Duplicate / rebook (Part 39): starts a fresh event pre-filled from
+  // this one's reusable config, then jumps to the new event's own
+  // workspace so the planner can fill in the new date/timing.
+  async function duplicateEvent() {
+    setDupBusy(true);
+    setErr(null);
+    try {
+      const r = await apiSend<{ event: EventHead }>('POST', `/events/${id}/duplicate`, {});
+      nav(`/events/${r.event.id}`);
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setDupBusy(false);
+    }
+  }
 
   useEffect(() => {
     apiGet<{ event: EventHead }>(`/events/${id}`)
@@ -121,6 +138,9 @@ export default function EventWorkspace() {
           <h1 className="ew-title">{head?.name ?? (err ? 'Event' : 'Loading...')}</h1>
         </div>
         {head?.status ? <span className="ew-statuspill">{head.status.replace(/_/g, ' ')}</span> : null}
+        <button type="button" className="ew-btn ghost" onClick={() => void duplicateEvent()} disabled={dupBusy}>
+          {dupBusy ? 'Duplicating...' : 'Duplicate / Rebook'}
+        </button>
         <button type="button" className="ew-btn ghost" onClick={() => nav('/bids')}>
           Bid board and auto-quote
         </button>
