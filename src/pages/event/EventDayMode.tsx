@@ -84,6 +84,59 @@ type Headcount = {
   checked_in: number;
 };
 
+// --- Final Event Schedule / Execution Packet (Part 14) ----------------------
+// Deliberately NOT a compressed copy of the desktop packet: only the four
+// things someone checks on their phone before/during the event -- final
+// count, their own call time, their own location, and whether they still
+// need to confirm receipt. Everything else (full Run of Show, vendor
+// roster, floorplans) lives in the desktop packet / the PDF download below.
+
+type PacketVersionSummary = { id: string; version: number; status: string };
+
+type PacketProjectionLite = {
+  audience: 'full' | 'venue' | 'vendor' | 'vendor_staff' | 'sponsor' | 'event_staff';
+  event: {
+    date_time: string | null;
+    load_in_at: string | null;
+    vendor_call_at: string | null;
+    doors_at: string | null;
+    timezone: string | null;
+  };
+  venue: {
+    name: string | null;
+    address: string | null;
+    vendor_entrance: string | null;
+    guest_entrance: string | null;
+  };
+  final_count: { version: number; count: number } | null;
+  generated_at: string;
+};
+
+type MyAcknowledgment = { acknowledged_at: string | null; method: string | null } | null;
+
+/**
+ * "MY CALL TIME" and "MY LOCATION" personalized per the viewer's own packet
+ * audience -- derived from real structured event/venue fields the viewer's
+ * own projection already includes, never fabricated or filtered to a
+ * specific vendor org (the itinerary system does not expose a per-org call
+ * time yet, so this uses the field that is genuinely most relevant to that
+ * audience instead of guessing).
+ */
+function myCallTimeAndLocation(p: PacketProjectionLite): { time: string | null; location: string | null } {
+  switch (p.audience) {
+    case 'venue':
+      return { time: p.event.load_in_at, location: p.venue.address };
+    case 'vendor':
+    case 'vendor_staff':
+      return { time: p.event.vendor_call_at ?? p.event.load_in_at, location: p.venue.vendor_entrance ?? p.venue.address };
+    case 'sponsor':
+    case 'event_staff':
+      return { time: p.event.doors_at ?? p.event.date_time, location: p.venue.guest_entrance ?? p.venue.address };
+    default:
+      return { time: p.event.date_time, location: p.venue.address };
+  }
+}
+
 function fmtTime(v: string | null): string {
   if (!v) return 'TBD';
   const d = new Date(v);
@@ -128,11 +181,17 @@ export default function EventDayMode() {
   const [err, setErr] = useState<string | null>(null);
   const [loadedOnce, setLoadedOnce] = useState(false);
 
+  const [packetVersion, setPacketVersion] = useState<PacketVersionSummary | null>(null);
+  const [packetProjection, setPacketProjection] = useState<PacketProjectionLite | null>(null);
+  const [myAck, setMyAck] = useState<MyAcknowledgment>(null);
+  const [ackBusy, setAckBusy] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
+
   const load = useCallback(async () => {
     setBusy(true);
     setErr(null);
     try {
-      const [e, meta, it, tk, vendors, gl, hc] = await Promise.all([
+      const [e, meta, it, tk, vendors, gl, hc, versions] = await Promise.all([
         apiGet<{ event: EventRow }>(`/events/${id}`),
         apiGet<{ statuses: StatusMeta[] }>(`/events/meta`).catch(() => ({ statuses: [] })),
         apiGet<{ itinerary: BuiltItinerary }>(`/itinerary/event/${id}/build`).catch(() => null),
@@ -140,6 +199,7 @@ export default function EventDayMode() {
         apiGet<{ vendors: EventVendor[] }>(`/events/${id}/vendors`).catch(() => ({ vendors: [] })),
         apiGet<{ guests: Guest[] }>(`/guests/event/${id}`).catch(() => ({ guests: [] })),
         apiGet<{ headcount: Headcount }>(`/guests/event/${id}/headcount`).catch(() => null),
+        apiGet<{ versions: PacketVersionSummary[] }>(`/execution-packet/event/${id}`).catch(() => ({ versions: [] })),
       ]);
       setEv(e.event);
       setStatuses(meta.statuses);
@@ -149,6 +209,20 @@ export default function EventDayMode() {
       setGuests(gl.guests);
       setHeadcount(hc ? hc.headcount : null);
       setNow(Date.now());
+
+      const latest = versions.versions[0] ?? null;
+      setPacketVersion(latest);
+      if (latest) {
+        const [proj, ack] = await Promise.all([
+          apiGet<{ packet: PacketProjectionLite }>(`/execution-packet/${latest.id}`).catch(() => null),
+          apiGet<{ acknowledgment: MyAcknowledgment }>(`/execution-packet/${latest.id}/my-acknowledgment`).catch(() => ({ acknowledgment: null })),
+        ]);
+        setPacketProjection(proj ? proj.packet : null);
+        setMyAck(ack.acknowledgment);
+      } else {
+        setPacketProjection(null);
+        setMyAck(null);
+      }
     } catch (e2) {
       setErr((e2 as Error).message);
     } finally {
@@ -230,6 +304,45 @@ export default function EventDayMode() {
     }
   }
 
+  async function confirmReceipt() {
+    if (!packetVersion) return;
+    setAckBusy(true);
+    setErr(null);
+    try {
+      const r = await apiSend<{ acknowledgment: MyAcknowledgment }>(
+        'POST',
+        `/execution-packet/${packetVersion.id}/acknowledge`,
+        { method: 'app' },
+      );
+      setMyAck(r.acknowledgment);
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setAckBusy(false);
+    }
+  }
+
+  async function downloadPacketPdf() {
+    if (!packetVersion) return;
+    setPdfBusy(true);
+    setErr(null);
+    try {
+      const blob = await apiBlob(`/execution-packet/${packetVersion.id}/pdf`);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `final-event-schedule-v${packetVersion.version}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setPdfBusy(false);
+    }
+  }
+
   // Split the itinerary into past / current / upcoming around the live clock.
   const timeline = useMemo(() => {
     const items = (itinerary?.items ?? [])
@@ -274,6 +387,11 @@ export default function EventDayMode() {
     if (ev?.venue_id) return 'Venue on file';
     return 'Venue to be confirmed';
   }, [itinerary, ev]);
+
+  const myCallLocation = useMemo(
+    () => (packetProjection ? myCallTimeAndLocation(packetProjection) : { time: null, location: null }),
+    [packetProjection],
+  );
 
   const currentStatusLabel =
     statuses.find((s) => s.key === ev?.status)?.label ?? ev?.status?.replace(/_/g, ' ') ?? 'Inquiry';
@@ -338,6 +456,48 @@ export default function EventDayMode() {
               icsBusy={icsBusy}
             />
           </section>
+
+          {/* Final Event Schedule: final count, MY CALL TIME, MY LOCATION,
+              receipt confirmation. Personalized per the viewer's own packet
+              role -- never a compressed copy of the full desktop packet,
+              which stays available via the PDF download below. */}
+          {packetProjection ? (
+            <section className="dm-block dm-fes">
+              <h2 className="dm-blockhead">Final event schedule</h2>
+              <div className="dm-fesgrid">
+                <div className="dm-fesstat">
+                  <span className="dm-fesnum">
+                    {packetProjection.final_count ? packetProjection.final_count.count : '—'}
+                  </span>
+                  <span className="dm-feslbl">Final count</span>
+                </div>
+                <div className="dm-fesstat">
+                  <span className="dm-festime">{fmtTime(myCallLocation.time)}</span>
+                  <span className="dm-feslbl">My call time</span>
+                </div>
+              </div>
+              <div className="dm-fesloc">
+                <span className="dm-feslbl">My location</span>
+                <span className="dm-fesloctext">{myCallLocation.location || 'To be confirmed'}</span>
+              </div>
+              <div className="dm-fesacts">
+                {myAck?.acknowledged_at ? (
+                  <span className="dm-fesack is-done">Receipt confirmed</span>
+                ) : (
+                  <button type="button" className="dm-fesack" onClick={() => void confirmReceipt()} disabled={ackBusy}>
+                    {ackBusy ? 'Confirming...' : 'Confirm receipt'}
+                  </button>
+                )}
+                <button type="button" className="dm-fespdf" onClick={() => void downloadPacketPdf()} disabled={pdfBusy}>
+                  {pdfBusy ? 'Preparing...' : 'Download PDF'}
+                </button>
+              </div>
+              <div className="dm-fesmeta">
+                Version {packetVersion?.version}
+                {packetVersion?.status === 'final' ? ' (final)' : ''}
+              </div>
+            </section>
+          ) : null}
 
           {/* Now / next itinerary */}
           <section className="dm-block">
@@ -693,6 +853,32 @@ const DM_CSS = `
 .dm-task.is-done .dm-checkstate { color: var(--dp-emerald-2); }
 
 .dm-foot { text-align: center; font-size: 12px; color: rgba(255,255,255,.6); margin: 4px 0 0; }
+
+.dm-fes { border: 1px solid var(--dp-gold); }
+.dm-fesgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.dm-fesstat {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center;
+  background: var(--dp-emerald); color: #fff; border-radius: 14px; padding: 16px 8px;
+}
+.dm-fesnum, .dm-festime { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 30px; font-weight: 600; line-height: 1; }
+.dm-feslbl { font-size: 10.5px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--dp-muted); }
+.dm-fesstat .dm-feslbl { color: var(--dp-gold); margin-top: 4px; }
+.dm-fesloc {
+  display: flex; flex-direction: column; gap: 3px; background: #fff; border: 1px solid var(--dp-line);
+  border-radius: 12px; padding: 12px 14px; margin-bottom: 12px;
+}
+.dm-fesloctext { font-size: 15px; font-weight: 600; color: var(--dp-ink); }
+.dm-fesacts { display: flex; gap: 10px; }
+.dm-fesack, .dm-fespdf {
+  flex: 1; min-height: 52px; padding: 10px 14px; border-radius: 12px; font: inherit; font-size: 14px; font-weight: 600;
+  cursor: pointer; border: 0;
+}
+.dm-fesack { background: var(--dp-gold); color: var(--dp-emerald); }
+.dm-fesack.is-done { background: rgba(30,93,74,.12); color: var(--dp-emerald-2); display: flex; align-items: center; justify-content: center; }
+.dm-fesack:disabled { opacity: .6; cursor: default; }
+.dm-fespdf { background: var(--dp-emerald); color: #fff; }
+.dm-fespdf:disabled { opacity: .6; cursor: default; }
+.dm-fesmeta { margin-top: 10px; font-size: 11px; color: var(--dp-muted); text-align: center; }
 
 @media (min-width: 560px) {
   .dm-statusgrid { grid-template-columns: repeat(3, 1fr); }

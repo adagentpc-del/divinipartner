@@ -335,11 +335,35 @@ export async function generatePacketVersion(
   return packet;
 }
 
-/** Full version history, newest first. Any actor with event access may view it. */
-export async function listPacketVersions(actor: Actor, eventId: string): Promise<ExecutionPacketRow[]> {
+export type PacketVersionSummary = {
+  id: string;
+  event_id: string;
+  version: number;
+  status: PacketStatus;
+  generated_by: string | null;
+  superseded_by: string | null;
+  created_at: string;
+};
+
+/**
+ * Version history, newest first -- metadata only (id, version, status,
+ * dates), never the snapshot itself. Any actor with event access may call
+ * this: it is what powers "which version is current" for every role
+ * (needed by the acknowledge/PDF/mobile routes), so it deliberately omits
+ * `snapshot` rather than gating the whole endpoint to owner/planner. A real
+ * gap found while wiring the mobile packet view: this previously returned
+ * the FULL raw ExecutionPacketRow (including the unprojected snapshot,
+ * every vendor's quantities, the full roster, the full contact list) to
+ * ANY event member with no role narrowing at all -- the same class of leak
+ * fixed for the diff endpoint via scopeSnapshotForDiff. A caller that needs
+ * actual content should use getProjectedPacketVersion (role-scoped) or
+ * getPacketVersion (owner/planner-gated raw, via the /:id/full route).
+ */
+export async function listPacketVersions(actor: Actor, eventId: string): Promise<PacketVersionSummary[]> {
   await getEvent(actor, eventId);
-  return q<ExecutionPacketRow>(
-    `select * from event_execution_packets where event_id = $1 order by version desc`,
+  return q<PacketVersionSummary>(
+    `select id, event_id, version, status, generated_by, superseded_by, created_at
+       from event_execution_packets where event_id = $1 order by version desc`,
     [eventId],
   );
 }
@@ -445,6 +469,30 @@ export async function acknowledgePacket(
     throw new ForbiddenError("you are not a recipient of this packet version");
   }
   return row;
+}
+
+/**
+ * The signed-in actor's OWN acknowledgment row for a packet version, or
+ * null if they are not a recipient of it. Backend-enforced to the caller's
+ * own user_id only -- there is no way to pass another user's id in, so this
+ * can never be used to check someone else's acknowledgment status. Powers
+ * the mobile "Confirm Receipt" action state (Part 10/14).
+ */
+export async function getMyAcknowledgment(
+  actor: Actor,
+  packetId: string,
+): Promise<{ acknowledged_at: string | null; method: string | null } | null> {
+  const packet = await q1<{ event_id: string }>(
+    `select event_id from event_execution_packets where id = $1`,
+    [packetId],
+  );
+  if (!packet) throw new NotFoundError("packet version not found");
+  await getEvent(actor, packet.event_id);
+  return q1<{ acknowledged_at: string | null; method: string | null }>(
+    `select acknowledged_at, method from event_execution_packet_acknowledgments
+      where packet_id = $1 and user_id = $2`,
+    [packetId, actor.user.id],
+  );
 }
 
 export type ReceiptRow = {

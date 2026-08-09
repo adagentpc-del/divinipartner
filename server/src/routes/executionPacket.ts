@@ -115,6 +115,15 @@ router.get(
   }),
 );
 
+/** The signed-in actor's own acknowledgment status for a packet version. */
+router.get(
+  "/:id/my-acknowledgment",
+  h(async (req, res) => {
+    const a = await actor(req);
+    res.json({ acknowledgment: await packet.getMyAcknowledgment(a, req.params.id) });
+  }),
+);
+
 /**
  * WHAT CHANGED (Part 6): a categorized, human-readable diff against the
  * immediately preceding version, or an explicit ?since=<version number>.
