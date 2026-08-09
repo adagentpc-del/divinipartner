@@ -147,10 +147,39 @@ type PacketProjectionLite = {
     guest_entrance: string | null;
   };
   final_count: { version: number; count: number } | null;
+  /** The viewer's own vendor's final quantities only -- null for
+   *  non-vendor audiences (Part 9: "MY EVENT"'s final quantity line). */
+  my_final_quantity: Array<{ scope: string; quantity: string; unit: string; discrepancy_status: string | null }> | null;
   generated_at: string;
 };
 
 type MyAcknowledgment = { acknowledged_at: string | null; method: string | null } | null;
+
+type Floorplan = { id: string; name: string | null; file_url: string | null; is_primary: boolean | null };
+
+/** Page kicker per audience (Part 9-10): "MY EVENT" for a vendor, "TODAY"
+ *  for event staff / sponsor -- owner/planner/venue keep the existing
+ *  Today/Event framing, since those two named views are specifically the
+ *  vendor and staff mobile experiences the spec calls for, not a relabel
+ *  of every role's view. */
+function audienceKicker(audience: PacketProjectionLite['audience'] | undefined, fallback: string): string {
+  if (audience === 'vendor' || audience === 'vendor_staff') return 'MY EVENT';
+  if (audience === 'event_staff' || audience === 'sponsor') return 'TODAY';
+  return fallback;
+}
+
+/** The itinerary system's coarser role vocabulary (client/venue/vendor/
+ *  installer/planner/all) is also what tasks.assigned_role uses -- the
+ *  same mapping packetProjection.ts's SCHEDULE_ROLE_FOR_AUDIENCE applies
+ *  server-side, mirrored here so "my next task" filters consistently. */
+function taskRoleForAudience(audience: PacketProjectionLite['audience'] | undefined): string | null {
+  switch (audience) {
+    case 'venue': return 'venue';
+    case 'vendor':
+    case 'vendor_staff': return 'vendor';
+    default: return null;
+  }
+}
 
 /**
  * "MY CALL TIME" and "MY LOCATION" personalized per the viewer's own packet
@@ -215,6 +244,7 @@ export default function EventDayMode() {
   const [vendorSchedule, setVendorSchedule] = useState<VendorScheduleRow[]>([]);
   const [myCheckIn, setMyCheckIn] = useState<CheckInRow | null>(null);
   const [checkInBusy, setCheckInBusy] = useState(false);
+  const [floorplans, setFloorplans] = useState<Floorplan[]>([]);
   const [now, setNow] = useState<number>(() => Date.now());
   const [busy, setBusy] = useState(false);
   const [statusBusy, setStatusBusy] = useState(false);
@@ -233,7 +263,7 @@ export default function EventDayMode() {
     setBusy(true);
     setErr(null);
     try {
-      const [e, meta, it, tk, vendors, gl, hc, versions, vs, mci] = await Promise.all([
+      const [e, meta, it, tk, vendors, gl, hc, versions, vs, mci, fp] = await Promise.all([
         apiGet<{ event: EventRow }>(`/events/${id}`),
         apiGet<{ statuses: StatusMeta[] }>(`/events/meta`).catch(() => ({ statuses: [] })),
         apiGet<{ itinerary: BuiltItinerary }>(`/itinerary/event/${id}/build`).catch(() => null),
@@ -244,6 +274,7 @@ export default function EventDayMode() {
         apiGet<{ versions: PacketVersionSummary[] }>(`/execution-packet/event/${id}`).catch(() => ({ versions: [] })),
         apiGet<{ schedule: VendorScheduleRow[] }>(`/itinerary/event/${id}/vendor-schedule`).catch(() => ({ schedule: [] })),
         apiGet<{ check_in: CheckInRow | null }>(`/check-ins/event/${id}/mine`).catch(() => ({ check_in: null })),
+        apiGet<{ floorplans: Floorplan[] }>(`/seating/floorplans/event/${id}`).catch(() => ({ floorplans: [] })),
       ]);
       setEv(e.event);
       setStatuses(meta.statuses);
@@ -254,6 +285,7 @@ export default function EventDayMode() {
       setHeadcount(hc ? hc.headcount : null);
       setVendorSchedule(vs.schedule);
       setMyCheckIn(mci.check_in);
+      setFloorplans(fp.floorplans);
       setNow(Date.now());
 
       const latest = versions.versions[0] ?? null;
@@ -466,6 +498,21 @@ export default function EventDayMode() {
     [packetProjection],
   );
 
+  // "My next task" (Part 9-10): the next not-done task assigned to this
+  // audience's itinerary role, or an unassigned task -- never another
+  // role's task. Tasks with no assigned_role are visible to everyone
+  // (they are genuinely unowned, not misattributed).
+  const myNextTask = useMemo(() => {
+    const myRole = taskRoleForAudience(packetProjection?.audience);
+    const mine = tasks.filter((t) => t.status !== 'done' && (!t.assigned_role || t.assigned_role === myRole));
+    return mine[0] ?? null;
+  }, [tasks, packetProjection]);
+
+  const primaryFloorplan = useMemo(
+    () => floorplans.find((f) => f.is_primary) ?? floorplans[0] ?? null,
+    [floorplans],
+  );
+
   const currentStatusLabel =
     statuses.find((s) => s.key === ev?.status)?.label ?? ev?.status?.replace(/_/g, ' ') ?? 'Inquiry';
 
@@ -512,7 +559,9 @@ export default function EventDayMode() {
       ) : (
         <main className="dm-main">
           <section className="dm-hero">
-            <div className="dm-kicker">{isToday(ev?.date_time ?? null) ? 'Today' : 'Event'}</div>
+            <div className="dm-kicker">
+              {audienceKicker(packetProjection?.audience, isToday(ev?.date_time ?? null) ? 'Today' : 'Event')}
+            </div>
             <h1 className="dm-title">{ev?.name ?? 'Event'}</h1>
             <div className="dm-heroline">{fmtDay(ev?.date_time ?? null)}</div>
             <div className="dm-heroline dm-venue">{venueLine}</div>
@@ -575,6 +624,17 @@ export default function EventDayMode() {
                 <span className="dm-feslbl">My location</span>
                 <span className="dm-fesloctext">{myCallLocation.location || 'To be confirmed'}</span>
               </div>
+              {packetProjection.my_final_quantity && packetProjection.my_final_quantity.length > 0 ? (
+                <div className="dm-fesloc">
+                  <span className="dm-feslbl">My final quantity</span>
+                  {packetProjection.my_final_quantity.map((q, i) => (
+                    <span key={i} className="dm-fesloctext">
+                      {q.quantity} {q.unit} ({q.scope})
+                      {q.discrepancy_status && q.discrepancy_status !== 'not_applicable' ? ` -- ${q.discrepancy_status}` : ''}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
               <div className="dm-fesacts">
                 {myAck?.acknowledged_at ? (
                   <span className="dm-fesack is-done">Receipt confirmed</span>
@@ -594,8 +654,41 @@ export default function EventDayMode() {
             </section>
           ) : null}
 
+          {/* MY NEXT TASK + quick actions (Part 9-10): only for the vendor
+              and staff audiences these two named mobile views target --
+              owner/planner/venue already have the full desktop workspace.
+              Report Issue / Request Change are deliberately not here yet --
+              they need the incident (Part 15) and change-request (Part 13)
+              systems, which have not shipped yet in this phase; adding
+              non-functional buttons for them would violate "do not
+              fabricate." */}
+          {packetProjection &&
+          (packetProjection.audience === 'vendor' ||
+            packetProjection.audience === 'vendor_staff' ||
+            packetProjection.audience === 'event_staff') ? (
+            <section className="dm-block">
+              <h2 className="dm-blockhead">My next task</h2>
+              {myNextTask ? (
+                <div className="dm-mytask">
+                  <div className="dm-nowtitle">{myNextTask.name ?? 'Untitled task'}</div>
+                  {myNextTask.due_date ? <div className="dm-nowmeta">Due {fmtTime(myNextTask.due_date)}</div> : null}
+                </div>
+              ) : (
+                <div className="dm-empty">No tasks assigned to you right now.</div>
+              )}
+              <div className="dm-actionsrow">
+                {primaryFloorplan?.file_url ? (
+                  <a className="dm-actionbtn" href={primaryFloorplan.file_url} target="_blank" rel="noreferrer">View map</a>
+                ) : null}
+                {vendorSchedule.length > 0 ? <a className="dm-actionbtn" href="#dm-vendor-schedule">My schedule</a> : null}
+                <a className="dm-actionbtn" href="#dm-nownext">Run of show</a>
+                {contacts.length > 0 ? <a className="dm-actionbtn" href="#dm-contacts">Contact planner</a> : null}
+              </div>
+            </section>
+          ) : null}
+
           {/* Now / next itinerary */}
-          <section className="dm-block">
+          <section className="dm-block" id="dm-nownext">
             <h2 className="dm-blockhead">Now and next</h2>
             {!timeline.hasAny ? (
               <div className="dm-empty">No itinerary yet. Set the event date and accept quotes to build the schedule.</div>
@@ -645,7 +738,7 @@ export default function EventDayMode() {
               sees only their own org's rows here. Omitted entirely when
               empty rather than showing a hollow section. */}
           {vendorSchedule.length > 0 ? (
-            <section className="dm-block">
+            <section className="dm-block" id="dm-vendor-schedule">
               <h2 className="dm-blockhead">Vendor arrivals</h2>
               <ul className="dm-vendorsched">
                 {vendorSchedule.map((v, idx) => (
@@ -704,7 +797,7 @@ export default function EventDayMode() {
           </section>
 
           {/* Key contacts */}
-          <section className="dm-block">
+          <section className="dm-block" id="dm-contacts">
             <h2 className="dm-blockhead">Key contacts</h2>
             {contacts.length === 0 ? (
               <div className="dm-empty">No partners attached to this event yet.</div>
@@ -871,6 +964,17 @@ const DM_CSS = `
 }
 .dm-checkinbtn.is-in { background: rgba(255,255,255,.14); color: #fff; border: 1px solid rgba(255,255,255,.35); }
 .dm-checkinbtn:disabled { opacity: .6; cursor: default; }
+
+.dm-mytask {
+  background: #fff; border: 1px solid var(--dp-line); border-radius: 12px; padding: 12px 14px; margin-bottom: 12px;
+}
+.dm-actionsrow { display: flex; flex-wrap: wrap; gap: 8px; }
+.dm-actionbtn {
+  display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 16px;
+  border-radius: 11px; background: var(--dp-emerald); color: #fff; text-decoration: none;
+  font-size: 13.5px; font-weight: 600;
+}
+.dm-actionbtn:active { background: var(--dp-emerald-2); }
 .dm-pill {
   font-size: 12.5px; font-weight: 600; text-transform: capitalize; color: var(--dp-emerald);
   background: var(--dp-gold); padding: 6px 13px; border-radius: 999px;
