@@ -41,6 +41,7 @@ import { pool, q, q1 } from "../pool.js";
 import { type Actor } from "../db.js";
 import { logAction } from "../lib/audit.js";
 import { recordActivity } from "./eventActivity.js";
+import { checkBeforeAwardCompliance, ComplianceBlockedError } from "./eventVendorCompliance.js";
 
 export type ContractRow = {
   id: string;
@@ -69,6 +70,7 @@ export type AwardResult = {
   firstAward: boolean;
   contract: ContractRow | null;
   declinedQuoteIds: string[];
+  overrodeCompliance?: boolean;
 };
 
 const DEFAULT_MILESTONES = [
@@ -82,7 +84,11 @@ const DEFAULT_MILESTONES = [
  * quote is a no-op returning firstAward=false, contract=the existing one).
  * Callers must have already run authorizeQuoteOwner (demand-side only).
  */
-export async function awardQuote(actor: Actor, quoteId: string): Promise<AwardResult> {
+export async function awardQuote(
+  actor: Actor,
+  quoteId: string,
+  opts: { override?: boolean } = {},
+): Promise<AwardResult> {
   const client = await pool.connect();
   try {
     await client.query("begin");
@@ -110,6 +116,20 @@ export async function awardQuote(actor: Actor, quoteId: string): Promise<AwardRe
       await client.query("commit");
       return { firstAward: false, contract: already, declinedQuoteIds: [] };
     }
+
+    // Compliance gate: any 'before_award' requirement (insurance/COI/W9) the
+    // organizer configured for this event must be verified on the winning
+    // vendor before award proceeds, unless explicitly overridden -- mirrors
+    // the readiness/closeout/settlement audited-override pattern already
+    // used across the live-ops lifecycle. Checked before any mutation so a
+    // blocked award leaves no partial side effects.
+    const complianceChecks = await checkBeforeAwardCompliance(quote.event_id, quote.vendor_id);
+    const complianceBlocking = complianceChecks.filter((c) => !c.met);
+    if (complianceBlocking.length > 0 && !opts.override) {
+      await client.query("rollback");
+      throw new ComplianceBlockedError(complianceBlocking);
+    }
+    const overrodeCompliance = complianceBlocking.length > 0 && !!opts.override;
 
     // Close the quote itself (idempotent guard mirrors the old autoCloseQuote).
     await client.query(
@@ -206,11 +226,17 @@ export async function awardQuote(actor: Actor, quoteId: string): Promise<AwardRe
 
     await logAction(
       actor,
-      "quote.awarded",
+      overrodeCompliance ? "quote.awarded_with_compliance_override" : "quote.awarded",
       "quote",
       quoteId,
       { status: quote.status },
-      { status: "accepted", contract_id: contract?.id ?? null, declined_quote_ids: declinedQuoteIds },
+      {
+        status: "accepted",
+        contract_id: contract?.id ?? null,
+        declined_quote_ids: declinedQuoteIds,
+        overrode_compliance: overrodeCompliance,
+        compliance_blocking: overrodeCompliance ? complianceBlocking : undefined,
+      },
       { summary: `Quote ${quoteId} awarded; ${declinedQuoteIds.length} competing quote(s) declined` },
     ).catch(() => undefined);
     await recordActivity(actor, quote.event_id, {
@@ -220,7 +246,7 @@ export async function awardQuote(actor: Actor, quoteId: string): Promise<AwardRe
       relatedEntityId: contract?.id ?? null,
     }).catch(() => undefined);
 
-    return { firstAward: true, contract: contract ?? null, declinedQuoteIds };
+    return { firstAward: true, contract: contract ?? null, declinedQuoteIds, overrodeCompliance };
   } catch (e) {
     await client.query("rollback").catch(() => undefined);
     throw e;

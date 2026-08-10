@@ -153,7 +153,7 @@ router.post(
     // connects into the live-ops event membership model, demotes losing
     // bidders so they stop retaining live event access, and creates the
     // real contract + payment-milestone schedule.
-    const award = await awardQuote(a, req.params.id);
+    const award = await awardQuote(a, req.params.id, { override: !!req.body?.override });
     if (award.firstAward) await refreshRelationshipGraphForQuote(req.params.id).catch(() => undefined);
     const quote = await quotes.getQuote(req.params.id);
     // A decision notifies the vendor org that submitted the quote, not the

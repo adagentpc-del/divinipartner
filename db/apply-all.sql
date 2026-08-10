@@ -6477,3 +6477,24 @@ create table if not exists contract_payment_milestones (
   created_at timestamptz not null default now()
 );
 create index if not exists idx_contract_milestones_contract on contract_payment_milestones(contract_id);
+
+-- ---------- event_vendor_compliance_gates: per-event document policy ----------
+-- Previously nonexistent (front-half audit, 2026-08-10): the three
+-- pre-existing "requirements" systems (vendor-compliance.ts, global per-vendor
+-- doc status; vendor-requirements.ts, a quote-intake field schema;
+-- vendor-event-requirements.ts, guest-list/deposit gating flags) cover three
+-- unrelated concerns and none of them let an organizer say "insurance must be
+-- verified before this event's vendors can be awarded." One row per
+-- (event_id, requirement_key); requirement_key matches vendor_compliance's
+-- tracked doc types (insurance/coi/w9) so the gate can be checked directly
+-- against the vendor's real compliance status, never a second parallel model.
+create table if not exists event_vendor_compliance_gates (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references events(id) on delete cascade,
+  requirement_key text not null check (requirement_key in ('insurance','coi','w9')),
+  policy text not null check (policy in ('before_bid','before_award','before_event','informational')),
+  created_by uuid references users(id),
+  created_at timestamptz not null default now(),
+  unique (event_id, requirement_key)
+);
+create index if not exists idx_event_compliance_gates_event on event_vendor_compliance_gates(event_id);

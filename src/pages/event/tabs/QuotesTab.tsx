@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { apiGet, apiSend } from '../../../lib/api';
+import { apiGet, apiSend, ApiError } from '../../../lib/api';
 
 type Quote = {
   id: string;
@@ -53,6 +53,36 @@ export default function QuotesTab({ eventId }: { eventId: string }) {
   const [msgBody, setMsgBody] = useState('');
   const [askRevision, setAskRevision] = useState(false);
   const [msgBusy, setMsgBusy] = useState(false);
+  const [complianceBlock, setComplianceBlock] = useState<{
+    quoteId: string;
+    items: { requirement_key: string; status: string | null }[];
+  } | null>(null);
+  const [gates, setGates] = useState<{ id: string; requirement_key: string; policy: string }[]>([]);
+  const [gatesOpen, setGatesOpen] = useState(false);
+
+  async function loadGates() {
+    try {
+      const r = await apiGet<{ gates: { id: string; requirement_key: string; policy: string }[] }>(
+        `/event-vendor-compliance/event/${eventId}/gates`,
+      );
+      setGates(r.gates);
+    } catch {
+      /* best-effort */
+    }
+  }
+  useEffect(() => { void loadGates(); }, [eventId]);
+
+  async function setGate(requirementKey: string, policy: string) {
+    try {
+      await apiSend('POST', `/event-vendor-compliance/event/${eventId}/gates`, {
+        requirement_key: requirementKey,
+        policy: policy || null,
+      });
+      await loadGates();
+    } catch (e) {
+      setErr((e as Error).message);
+    }
+  }
 
   function toggleSelect(id: string) {
     setSelected((prev) => {
@@ -126,24 +156,59 @@ export default function QuotesTab({ eventId }: { eventId: string }) {
     }
   }
 
-  async function act(id: string, action: 'accept' | 'decline' | 'request-revision') {
+  async function act(id: string, action: 'accept' | 'decline' | 'request-revision', override?: boolean) {
     setBusy(true);
     setErr(null);
+    setComplianceBlock(null);
     try {
-      await apiSend('POST', `/quotes/${id}/${action}`);
+      await apiSend('POST', `/quotes/${id}/${action}`, action === 'accept' ? { override: !!override } : undefined);
       setOpen(null);
       await load();
     } catch (e) {
+      if (action === 'accept' && e instanceof ApiError && e.status === 409) {
+        const blocking = (e.body as { blocking?: { requirement_key: string; status: string | null }[] } | null)
+          ?.blocking;
+        if (blocking) {
+          setComplianceBlock({ quoteId: id, items: blocking });
+          setBusy(false);
+          return;
+        }
+      }
       setErr((e as Error).message);
     } finally {
       setBusy(false);
     }
   }
 
+  const REQUIREMENT_KEYS = ['insurance', 'coi', 'w9'];
+  const POLICIES = ['', 'before_bid', 'before_award', 'before_event', 'informational'];
+  const gateFor = (key: string) => gates.find((g) => g.requirement_key === key)?.policy ?? '';
+
   return (
     <div>
       <style>{Q_CSS}</style>
       {err ? <p className="ew-error">{err}</p> : null}
+
+      <div className="ew-q-gates">
+        <button type="button" className="ew-btn ghost sm" onClick={() => setGatesOpen((v) => !v)}>
+          {gatesOpen ? 'Hide compliance requirements' : 'Compliance requirements'}
+        </button>
+        {gatesOpen ? (
+          <div className="ew-q-gatespanel">
+            <p className="ew-q-secttitle">Require these documents before a vendor can be awarded</p>
+            {REQUIREMENT_KEYS.map((key) => (
+              <div key={key} className="ew-q-gaterow">
+                <span>{key.toUpperCase()}</span>
+                <select value={gateFor(key)} onChange={(e) => setGate(key, e.target.value)}>
+                  {POLICIES.map((p) => (
+                    <option key={p || 'none'} value={p}>{p ? p.replace('_', ' ') : 'No requirement'}</option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </div>
 
       {rows.length === 0 ? (
         <div className="ew-empty"><p>No quotes received yet. Quotes from vendors appear here once submitted.</p></div>
@@ -203,6 +268,20 @@ export default function QuotesTab({ eventId }: { eventId: string }) {
               <div className="ew-q-grand"><span>Total</span><span>{money(open.totals.total)}</span></div>
             </div>
             {open.expiration_date ? <p className="ew-q-exp">Expires {new Date(open.expiration_date).toLocaleDateString()}</p> : null}
+
+            {complianceBlock && complianceBlock.quoteId === open.quote_id ? (
+              <div className="ew-q-compliance">
+                <p className="ew-q-secttitle">Vendor is missing required documents</p>
+                <ul>
+                  {complianceBlock.items.map((c) => (
+                    <li key={c.requirement_key}>{c.requirement_key.toUpperCase()}: {c.status ?? 'not on file'}</li>
+                  ))}
+                </ul>
+                <button type="button" className="ew-btn danger sm" disabled={busy} onClick={() => act(open.quote_id, 'accept', true)}>
+                  Award Anyway
+                </button>
+              </div>
+            ) : null}
 
             <div className="ew-q-actions">
               <button type="button" className="ew-btn" disabled={busy} onClick={() => act(open.quote_id, 'accept')}>Accept</button>
@@ -286,9 +365,16 @@ const Q_CSS = `
 .ew-q-grand { font-weight: 700; color: #123c2e !important; font-size: 16px !important; border-top: 1px solid #e7e1d6; margin-top: 6px; padding-top: 8px !important; }
 .ew-q-exp { font-size: 11.5px; color: #a8631a; margin: 0 0 14px; }
 .ew-q-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.ew-q-compliance { border: 1.5px solid #b4451f; border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; background: rgba(180,69,31,.05); }
+.ew-q-compliance ul { margin: 6px 0 10px; padding-left: 18px; }
+.ew-q-compliance li { font-size: 12.5px; color: #2c2a26; }
 .ew-btn.danger { background: #8a3a3a; }
 .ew-btn.danger:hover { background: #743030; }
 .ew-cmp-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.ew-q-gates { margin-bottom: 14px; }
+.ew-q-gatespanel { margin-top: 8px; background: #faf8f3; border: 1px solid #e7e1d6; border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.ew-q-gaterow { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12.5px; }
+.ew-q-gaterow select { font: inherit; padding: 6px 9px; border: 1px solid #e7e1d6; border-radius: 7px; background: #fff; }
 .ew-cmp-hint { font-size: 12px; color: #6b6459; }
 .ew-cmp-cap { font-size: 12px; color: #a8631a; }
 .ew-q-thread { border-top: 1px solid #e7e1d6; margin-top: 18px; padding-top: 16px; }
