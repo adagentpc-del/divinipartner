@@ -71,8 +71,14 @@ export async function getEventRole(actor: Actor, eventId: string): Promise<Event
   );
   if (member) return member.role;
   if (actor.org?.id) {
+    // status <> 'declined': a losing bidder's self-attach row from
+    // db/quotes.ts::createQuote (award flow, db/awards.ts::awardQuote) is
+    // demoted to 'declined' once the bid is awarded to someone else -- that
+    // org must stop resolving as a live vendor_owner on this event once it
+    // has lost, or it would retain full event access indefinitely.
     const attached = await q1<{ ok: boolean }>(
-      `select true as ok from event_vendors where event_id = $1 and organization_id = $2`,
+      `select true as ok from event_vendors
+        where event_id = $1 and organization_id = $2 and status <> 'declined'`,
       [eventId, actor.org.id],
     );
     if (attached?.ok) return "vendor_owner";

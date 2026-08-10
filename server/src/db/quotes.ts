@@ -152,14 +152,22 @@ async function orgVendorIds(actor: Actor): Promise<string[]> {
  * side) may act on any quote; an attached VENDOR may only touch its own org's
  * quote, never a competitor's. Routes that take a quote id from the request MUST
  * call this. Returns the quote row so callers avoid a second fetch.
+ *
+ * A vendor's OWN quote is checked first, before the broad event-access gate:
+ * db/awards.ts::awardQuote demotes a losing bidder's event_vendors row to
+ * 'declined' once the bid is awarded elsewhere, which correctly cuts off
+ * broad ongoing event access (check-ins, tasks, command center) -- but a
+ * losing vendor must still be able to see the fate of what THEY submitted
+ * (the spec is explicit: "Losers should receive appropriate closure"), so
+ * ownership of the quote's vendor_id is checked independently of that gate.
  */
 export async function authorizeQuoteAccess(actor: Actor, id: string): Promise<QuoteRow> {
   const quote = await getQuote(id);
   if (!quote.event_id) throw new NotFoundError("quote not found");
-  await getEvent(actor, quote.event_id); // event-access gate (owner or attached vendor)
-  if (await isEventOwner(actor, quote.event_id)) return quote;
   const mine = await orgVendorIds(actor);
   if (quote.vendor_id && mine.includes(quote.vendor_id)) return quote;
+  await getEvent(actor, quote.event_id); // event-access gate (owner or currently-attached vendor)
+  if (await isEventOwner(actor, quote.event_id)) return quote;
   throw new ForbiddenError("you can only view your own quote on this event");
 }
 
@@ -352,11 +360,19 @@ export async function createQuote(actor: Actor, input: CreateQuoteInput): Promis
   return row as QuoteRow;
 }
 
-/** Revise an existing quote (new line items recompute totals). */
+/**
+ * Revise an existing quote (new line items recompute totals). The pre-
+ * revision commercial terms are snapshotted into quote_versions first --
+ * previously this UPDATE silently overwrote the prior line items/pricing in
+ * place with zero audit trail, so a client comparing "what did they
+ * originally quote" against a since-revised offer had no way to see it.
+ * quote_versions is append-only (never updated, never deleted) mirroring
+ * change_order_status_history's discipline.
+ */
 export async function reviseQuote(
   actor: Actor,
   id: string,
-  patch: { line_items?: LineItem[]; expiration_date?: string | null },
+  patch: { line_items?: LineItem[]; expiration_date?: string | null; reason?: string | null },
 ): Promise<QuoteRow> {
   const cur = await getQuote(id);
   const items = patch.line_items ?? cur.line_items ?? [];
@@ -372,6 +388,20 @@ export async function reviseQuote(
     platformFee = Math.round(subtotal * feeRate * 100) / 100;
   }
   const total = Math.round((subtotal + platformFee) * 100) / 100;
+  await q1(
+    `insert into quote_versions (quote_id, line_items, subtotal, platform_fee, total, status, revised_by, reason)
+       values ($1,$2,$3,$4,$5,$6,$7,$8)`,
+    [
+      id,
+      JSON.stringify(cur.line_items ?? []),
+      cur.subtotal,
+      cur.platform_fee,
+      cur.total,
+      cur.status,
+      actor.user.id,
+      patch.reason ?? null,
+    ],
+  ).catch(() => undefined);
   const row = await q1<QuoteRow>(
     `update quotes set
         line_items = $2, subtotal = $3, platform_fee = $4, total = $5,
@@ -380,6 +410,25 @@ export async function reviseQuote(
     [id, JSON.stringify(items), subtotal, platformFee, total, patch.expiration_date ?? null],
   );
   return row as QuoteRow;
+}
+
+export type QuoteVersionRow = {
+  id: string;
+  quote_id: string;
+  line_items: LineItem[] | null;
+  subtotal: string | null;
+  platform_fee: string | null;
+  total: string | null;
+  status: string | null;
+  revised_by: string | null;
+  reason: string | null;
+  created_at: string;
+};
+
+/** Prior versions of a quote, oldest first, for a client-facing diff view. */
+export async function listQuoteVersions(actor: Actor, id: string): Promise<QuoteVersionRow[]> {
+  await authorizeQuoteAccess(actor, id);
+  return q<QuoteVersionRow>(`select * from quote_versions where quote_id = $1 order by created_at asc`, [id]);
 }
 
 /** Submit a generated/revised quote to the client. */

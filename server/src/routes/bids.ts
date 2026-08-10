@@ -118,6 +118,59 @@ router.post(
   }),
 );
 
+/** Questions on a bid (owner sees all; vendor sees public + its own private). */
+router.get(
+  "/:id/questions",
+  h(async (req, res) => {
+    const a = await actor(req);
+    res.json({ questions: await bids.listBidQuestions(a, req.params.id) });
+  }),
+);
+
+/** A vendor with bid access asks a clarifying question. */
+router.post(
+  "/:id/questions",
+  h(async (req, res) => {
+    const a = await actor(req);
+    const question = await bids.askBidQuestion(a, req.params.id, req.body?.question ?? "");
+    const bid = await bids.getBid(req.params.id);
+    const to = recipients.excluding(
+      await recipients.eventOwnerEmails(bid.event_id).catch(() => [] as string[]),
+      a.user.email,
+    );
+    if (to.length) await notify.bidInvited(to, "a bid question was asked", { bidId: bid.id }).catch(() => undefined);
+    res.status(201).json({ question });
+  }),
+);
+
+/** Owner answers a question; addendum=true notifies every currently-accessible bidder. */
+router.post(
+  "/:id/questions/:questionId/answer",
+  h(async (req, res) => {
+    const a = await actor(req);
+    const addendum = !!req.body?.addendum;
+    const question = await bids.answerBidQuestion(
+      a,
+      req.params.id,
+      req.params.questionId,
+      req.body?.answer ?? "",
+      addendum,
+    );
+    if (addendum) {
+      // Addendum: every org that has ever engaged with this bid (asked a
+      // question or submitted a quote) gets notified the requirements
+      // changed, not just the one vendor who originally asked -- this is
+      // what keeps two bidders from silently working off different scope.
+      const orgIds = await bids.addendumAudienceOrgIds(req.params.id);
+      const to = await recipients.orgEmails(orgIds).catch(() => [] as string[]);
+      const bid = await bids.getBid(req.params.id);
+      const name = (await recipients.eventName(bid.event_id).catch(() => null)) ?? "an event";
+      if (to.length) await notify.bidInvited(to, `Addendum issued for ${name}`, { bidId: bid.id }).catch(() => undefined);
+    }
+    res.json({ question });
+  }),
+);
+
 /** Transition a bid's status. */
 router.post(
   "/:id/status",

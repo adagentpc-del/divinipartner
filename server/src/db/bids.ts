@@ -289,3 +289,120 @@ export async function setBidStatus(
   ]);
   return row as BidRow;
 }
+
+// ---------------------------------------------------------------------------
+// Pre-bid Q&A / addenda. Previously nonexistent: "questions"/"clarification"
+// were vestigial BidStatus enum values nothing ever set. bid_questions
+// (db/schema-award-flow.sql) is the real table. A question defaults to
+// 'private' (only the asking vendor org + the event owner can see it); the
+// owner can answer it publicly as an addendum (is_addendum=true, promoted to
+// visibility='public') so every vendor who currently has bid access sees the
+// same clarified requirements -- never a materially different scope handed
+// to one bidder silently.
+// ---------------------------------------------------------------------------
+
+export type BidQuestionRow = {
+  id: string;
+  bid_id: string;
+  asked_by_org_id: string | null;
+  question: string;
+  answer: string | null;
+  answered_by: string | null;
+  answered_at: string | null;
+  visibility: "private" | "public";
+  is_addendum: boolean;
+  created_at: string;
+};
+
+/** Vendor asks a question on a bid it can currently access. */
+export async function askBidQuestion(actor: Actor, bidId: string, question: string): Promise<BidQuestionRow> {
+  const bid = await getBid(bidId);
+  if (!question?.trim()) throw new ForbiddenError("question text is required");
+  const isOwner = await actorOwnsBidEvent(actor, bid);
+  if (!isOwner) {
+    const access = canVendorAccessBid(bid, actor.org?.tier ?? null, new Date(), actor.org?.id ?? null);
+    if (!access.allowed) throw new ForbiddenError(access.reason || "no access to this bid");
+  }
+  const row = await q1<BidQuestionRow>(
+    `insert into bid_questions (bid_id, asked_by_org_id, question)
+       values ($1,$2,$3) returning *`,
+    [bidId, actor.org?.id ?? null, question.trim()],
+  );
+  return row as BidQuestionRow;
+}
+
+/**
+ * Owner answers a question. addendum=true promotes it to visibility='public'
+ * (an addendum every current bidder can see); addendum=false keeps it
+ * private to the asking vendor.
+ */
+export async function answerBidQuestion(
+  actor: Actor,
+  bidId: string,
+  questionId: string,
+  answer: string,
+  addendum: boolean,
+): Promise<BidQuestionRow> {
+  const bid = await getBid(bidId);
+  if (!(await actorOwnsBidEvent(actor, bid))) {
+    throw new ForbiddenError("only the event owner can answer bid questions");
+  }
+  if (!answer?.trim()) throw new ForbiddenError("answer text is required");
+  const row = await q1<BidQuestionRow>(
+    `update bid_questions set
+        answer = $3, answered_by = $4, answered_at = now(),
+        visibility = case when $5 then 'public' else visibility end,
+        is_addendum = is_addendum or $5
+      where id = $1 and bid_id = $2
+      returning *`,
+    [questionId, bidId, answer.trim(), actor.user.id, addendum],
+  );
+  if (!row) throw new NotFoundError("question not found");
+  return row;
+}
+
+/**
+ * Every org that currently has a stake in this bid -- invited, asked a
+ * question, or submitted a quote -- so an addendum reaches everyone working
+ * off the original scope, not just the vendor who happened to ask.
+ */
+export async function addendumAudienceOrgIds(bidId: string): Promise<string[]> {
+  const bid = await getBid(bidId);
+  const invited = Array.isArray(bid.invited_vendors) ? (bid.invited_vendors as unknown[]).map(String) : [];
+  const askers = await q<{ asked_by_org_id: string | null }>(
+    `select distinct asked_by_org_id from bid_questions where bid_id = $1 and asked_by_org_id is not null`,
+    [bidId],
+  );
+  const quoters = await q<{ organization_id: string | null }>(
+    `select distinct v.organization_id
+       from quotes q join vendors v on v.id = q.vendor_id
+      where q.bid_id = $1 and v.organization_id is not null`,
+    [bidId],
+  );
+  return Array.from(
+    new Set([
+      ...invited,
+      ...askers.map((r) => r.asked_by_org_id).filter((x): x is string => !!x),
+      ...quoters.map((r) => r.organization_id).filter((x): x is string => !!x),
+    ]),
+  );
+}
+
+/**
+ * Questions on a bid. Owner sees every question (public + private). A
+ * vendor org sees every public question/addendum plus only its own private
+ * ones -- never another vendor's still-private question.
+ */
+export async function listBidQuestions(actor: Actor, bidId: string): Promise<BidQuestionRow[]> {
+  const bid = await getBid(bidId);
+  const isOwner = await actorOwnsBidEvent(actor, bid);
+  if (isOwner) {
+    return q<BidQuestionRow>(`select * from bid_questions where bid_id = $1 order by created_at asc`, [bidId]);
+  }
+  return q<BidQuestionRow>(
+    `select * from bid_questions
+       where bid_id = $1 and (visibility = 'public' or asked_by_org_id = $2)
+       order by created_at asc`,
+    [bidId, actor.org?.id ?? null],
+  );
+}

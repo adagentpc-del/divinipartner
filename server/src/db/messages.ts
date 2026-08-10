@@ -73,7 +73,7 @@ async function viewerScopes(actor: Actor, eventId: string): Promise<Set<string>>
   }
   // Vendor / venue orgs attached to the event.
   const attached = await q1<{ ok: boolean }>(
-    `select true as ok from event_vendors where event_id = $1 and organization_id = $2 limit 1`,
+    `select true as ok from event_vendors where event_id = $1 and organization_id = $2 and status <> 'declined' limit 1`,
     [eventId, actor.org?.id ?? null],
   );
   if (attached?.ok || ev.org === actor.org?.id) {

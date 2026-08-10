@@ -73,7 +73,7 @@ export async function recordEventArchive(actor: Actor, eventId: string): Promise
   const totalSpend = paid > 0 ? paid : toNum(spendRow?.invoiced);
 
   const vendorOrgs = await q<{ organization_id: string | null; role: string | null }>(
-    `select distinct organization_id, role from event_vendors where event_id = $1`,
+    `select distinct organization_id, role from event_vendors where event_id = $1 and status <> 'declined'`,
     [eventId],
   );
   const vendorOrgIds = vendorOrgs
@@ -144,7 +144,7 @@ export async function recordFundraisingRecap(actor: Actor, feId: string): Promis
         `select ev.organization_id, ev.vendor_id, ev.role, ev.status, o.name
            from event_vendors ev
            left join organizations o on o.id = ev.organization_id
-          where ev.event_id = $1
+          where ev.event_id = $1 and ev.status <> 'declined'
           order by ev.created_at asc`,
         [fe.event_id],
       )

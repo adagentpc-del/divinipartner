@@ -130,7 +130,7 @@ export type ItineraryItemInput = {
  *  an active event_members row with a vendor role). */
 async function isAttachedVendorOrg(eventId: string, orgId: string): Promise<boolean> {
   const row = await q1<{ ok: boolean }>(
-    `select true as ok from event_vendors where event_id = $1 and organization_id = $2
+    `select true as ok from event_vendors where event_id = $1 and organization_id = $2 and status <> 'declined'
      union select true from event_members
       where event_id = $1 and organization_id = $2 and status = 'active'
         and role in ('vendor_owner','vendor_staff')

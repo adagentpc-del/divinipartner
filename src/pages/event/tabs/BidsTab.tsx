@@ -16,6 +16,14 @@ type Bid = {
   created_at: string;
 };
 type StatusMeta = { key: string; label: string };
+type BidQuestion = {
+  id: string;
+  question: string;
+  answer: string | null;
+  visibility: 'private' | 'public';
+  is_addendum: boolean;
+  created_at: string;
+};
 
 const TIER_OPTIONS = ['premier', 'partner', 'free', 'private'];
 
@@ -25,6 +33,11 @@ export default function BidsTab({ eventId }: { eventId: string }) {
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [shareOpen, setShareOpen] = useState<Record<string, boolean>>({});
+  const [manageOpen, setManageOpen] = useState<Record<string, boolean>>({});
+  const [inviteOrgId, setInviteOrgId] = useState<Record<string, string>>({});
+  const [questions, setQuestions] = useState<Record<string, BidQuestion[]>>({});
+  const [answerDraft, setAnswerDraft] = useState<Record<string, string>>({});
+  const [answerAddendum, setAnswerAddendum] = useState<Record<string, boolean>>({});
   const [form, setForm] = useState({ category: '', scope: '', budget_min: '', budget_max: '', tier_access: 'premier', rush: false });
 
   async function load() {
@@ -70,6 +83,54 @@ export default function BidsTab({ eventId }: { eventId: string }) {
     try {
       await apiSend('POST', `/bids/${id}/status`, { status });
       await load();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function loadQuestions(bidId: string) {
+    try {
+      const r = await apiGet<{ questions: BidQuestion[] }>(`/bids/${bidId}/questions`);
+      setQuestions((prev) => ({ ...prev, [bidId]: r.questions }));
+    } catch (e) {
+      setErr((e as Error).message);
+    }
+  }
+
+  function toggleManage(bidId: string) {
+    const next = !manageOpen[bidId];
+    setManageOpen((prev) => ({ ...prev, [bidId]: next }));
+    if (next) void loadQuestions(bidId);
+  }
+
+  async function invite(bidId: string) {
+    const orgId = (inviteOrgId[bidId] || '').trim();
+    if (!orgId) return;
+    setBusy(true);
+    try {
+      await apiSend('POST', `/bids/${bidId}/invite`, { organization_ids: [orgId] });
+      setInviteOrgId((prev) => ({ ...prev, [bidId]: '' }));
+      await load();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function answerQuestion(bidId: string, questionId: string) {
+    const answer = (answerDraft[`${bidId}:${questionId}`] || '').trim();
+    if (!answer) return;
+    setBusy(true);
+    try {
+      await apiSend('POST', `/bids/${bidId}/questions/${questionId}/answer`, {
+        answer,
+        addendum: !!answerAddendum[`${bidId}:${questionId}`],
+      });
+      setAnswerDraft((prev) => ({ ...prev, [`${bidId}:${questionId}`]: '' }));
+      await loadQuestions(bidId);
     } catch (e) {
       setErr((e as Error).message);
     } finally {
@@ -124,6 +185,71 @@ export default function BidsTab({ eventId }: { eventId: string }) {
                   {shareOpen[b.id] ? <ShareBidPanel bidId={b.id} /> : null}
                 </div>
               ) : null}
+
+              <button type="button" className="ew-btn ghost sm" onClick={() => toggleManage(b.id)}>
+                {manageOpen[b.id] ? 'Hide invite / questions' : 'Invite vendors / questions'}
+              </button>
+
+              {manageOpen[b.id] ? (
+                <div className="ew-bid-manage">
+                  <div className="ew-bid-invite">
+                    <input
+                      placeholder="Vendor organization ID"
+                      value={inviteOrgId[b.id] || ''}
+                      onChange={(e) => setInviteOrgId((prev) => ({ ...prev, [b.id]: e.target.value }))}
+                    />
+                    <button type="button" className="ew-btn sm" disabled={busy} onClick={() => void invite(b.id)}>
+                      Invite
+                    </button>
+                  </div>
+
+                  <div className="ew-bid-qa">
+                    {(questions[b.id] || []).length === 0 ? (
+                      <p className="ew-muted">No questions yet.</p>
+                    ) : (
+                      (questions[b.id] || []).map((q) => (
+                        <div key={q.id} className="ew-bid-qrow">
+                          <p className="ew-bid-qtext">
+                            <strong>Q:</strong> {q.question}
+                            {q.is_addendum ? <span className="ew-tag rush">Addendum</span> : null}
+                          </p>
+                          {q.answer ? (
+                            <p className="ew-bid-qtext"><strong>A:</strong> {q.answer}</p>
+                          ) : (
+                            <div className="ew-bid-answerform">
+                              <input
+                                placeholder="Answer"
+                                value={answerDraft[`${b.id}:${q.id}`] || ''}
+                                onChange={(e) =>
+                                  setAnswerDraft((prev) => ({ ...prev, [`${b.id}:${q.id}`]: e.target.value }))
+                                }
+                              />
+                              <label className="ew-bid-rush">
+                                <input
+                                  type="checkbox"
+                                  checked={!!answerAddendum[`${b.id}:${q.id}`]}
+                                  onChange={(e) =>
+                                    setAnswerAddendum((prev) => ({ ...prev, [`${b.id}:${q.id}`]: e.target.checked }))
+                                  }
+                                />
+                                Issue as addendum (notify all bidders)
+                              </label>
+                              <button
+                                type="button"
+                                className="ew-btn sm"
+                                disabled={busy}
+                                onClick={() => void answerQuestion(b.id, q.id)}
+                              >
+                                Answer
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              ) : null}
             </div>
           ))}
         </div>
@@ -146,6 +272,14 @@ const B_CSS = `
 .ew-bid-meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; color: #6b6459; }
 .ew-bid-meta select { font: inherit; padding: 6px 9px; border: 1px solid #e7e1d6; border-radius: 7px; background: #fff; }
 .ew-bid-share { display: flex; flex-direction: column; gap: 6px; }
+.ew-bid-manage { display: flex; flex-direction: column; gap: 10px; background: #faf8f3; border: 1px solid #e7e1d6; border-radius: 10px; padding: 10px 12px; }
+.ew-bid-invite { display: flex; flex-wrap: wrap; gap: 8px; }
+.ew-bid-invite input { flex: 1 1 160px; font: inherit; padding: 7px 9px; border: 1px solid #e7e1d6; border-radius: 7px; }
+.ew-bid-qa { display: flex; flex-direction: column; gap: 10px; }
+.ew-bid-qrow { display: flex; flex-direction: column; gap: 4px; border-top: 1px solid #eee7d9; padding-top: 8px; }
+.ew-bid-qtext { margin: 0; font-size: 12.5px; color: #2c2a26; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ew-bid-answerform { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ew-bid-answerform input { flex: 1 1 140px; font: inherit; padding: 6px 9px; border: 1px solid #e7e1d6; border-radius: 7px; }
 .ew-tag { font-size: 10px; letter-spacing: .5px; text-transform: uppercase; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
 .ew-tag.tier-premier { background: rgba(201,163,91,.2); color: #8a6d27; border: 1px solid rgba(201,163,91,.5); }
 .ew-tag.tier-partner { background: rgba(30,93,74,.12); color: #1E5D4A; border: 1px solid rgba(30,93,74,.3); }

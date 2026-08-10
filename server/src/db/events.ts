@@ -124,7 +124,11 @@ export type EventRow = {
 };
 
 /** True when the actor may see this event (owner org, client, planner, attached
- *  vendor org, or an active per-human event_members row -- Phase A item 2). */
+ *  vendor org, or an active per-human event_members row -- Phase A item 2).
+ *  ev.status <> 'declined': a losing bidder's self-attach row from
+ *  db/quotes.ts::createQuote is demoted to 'declined' once its bid is
+ *  awarded to someone else (db/awards.ts::awardQuote) -- that org must lose
+ *  event access at that point, not retain it forever via this fallback. */
 export async function actorCanSee(actor: Actor, eventId: string): Promise<boolean> {
   if (actor.user.role === "super_admin" || actor.user.role === "admin") return true;
   const row = await q1<{ ok: boolean }>(
@@ -137,7 +141,7 @@ export async function actorCanSee(actor: Actor, eventId: string): Promise<boolea
           or e.planner_id = $3
           or exists (
             select 1 from event_vendors ev
-             where ev.event_id = e.id and ev.organization_id = $2
+             where ev.event_id = e.id and ev.organization_id = $2 and ev.status <> 'declined'
           )
           or exists (
             select 1 from event_members em

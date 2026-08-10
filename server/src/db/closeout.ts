@@ -58,6 +58,11 @@ export type VendorCompletionRow = {
  *  actually exist. */
 export async function listVendorCompletions(actor: Actor, eventId: string): Promise<VendorCompletionRow[]> {
   await getEvent(actor, eventId);
+  // status <> 'declined': excludes losing bidders (db/awards.ts::awardQuote
+  // demotes a losing bid's event_vendors row to 'declined') -- without this
+  // filter every vendor who ever submitted a losing quote on this event
+  // permanently pollutes the real closing checklist, since event_vendors
+  // rows are never deleted.
   return q<VendorCompletionRow>(
     `select ev.organization_id as vendor_org_id,
             coalesce(o.name, 'Vendor') as vendor_name,
@@ -68,7 +73,7 @@ export async function listVendorCompletions(actor: Actor, eventId: string): Prom
        from event_vendors ev
        left join organizations o on o.id = ev.organization_id
        left join event_vendor_completions c on c.event_id = ev.event_id and c.vendor_org_id = ev.organization_id
-      where ev.event_id = $1
+      where ev.event_id = $1 and ev.status <> 'declined'
       order by vendor_name asc`,
     [eventId],
   );

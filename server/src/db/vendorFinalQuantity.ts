@@ -142,7 +142,7 @@ export async function submitVendorFinalQuantity(
   const vendorId = await ownVendorId(actor);
   if (!vendorId) throw new ForbiddenError("no vendor identity for this account");
   const isAttached = await q1<{ ok: boolean }>(
-    `select true as ok from event_vendors where event_id = $1 and vendor_id = $2
+    `select true as ok from event_vendors where event_id = $1 and vendor_id = $2 and status <> 'declined'
      union select true from event_members where event_id = $1 and user_id = $3 and status = 'active'
        and role in ('vendor_owner','vendor_staff')
      limit 1`,
