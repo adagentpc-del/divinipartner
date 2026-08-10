@@ -11,7 +11,7 @@ import * as db from "../db.js";
 import * as bids from "../db/bids.js";
 import * as quotes from "../db/quotes.js";
 import * as bidShares from "../db/bidShares.js";
-import { getEvent } from "../db/events.js";
+import { canManageEvent } from "../db/events.js";
 import { notify } from "../lib/notify.js";
 import { recipients } from "../lib/recipients.js";
 
@@ -64,14 +64,18 @@ router.get(
     const bid = await bids.getBid(req.params.id);
     const access = bids.canVendorAccessBid(bid, a.org?.tier ?? null, new Date(), a.org?.id ?? null);
     // Don't leak a private/invite-only RFP's budget + scope to a vendor who is
-    // not permitted to see it. When vendor access is denied, only the event side
-    // (owner/planner/assigned participant) may view the full bid; everyone else
-    // gets 403 instead of the serialized row.
+    // not permitted to see it. When vendor access is denied, only the actual
+    // event owner/planner may still view the full bid -- NOT merely "any
+    // actor with event access" (getEvent()/actorCanSee() also returns true
+    // for a vendor attached to the event via a completely different,
+    // unrelated bid on the same event, which would otherwise leak a private
+    // bid's budget/scope to a vendor who was never invited to it; found via
+    // live adversarial testing, front-half security pass 2026-08-10).
+    // canManageEvent() is owner-or-planner only, matching the comment's
+    // original intent.
     if (!access.allowed) {
-      try {
-        if (bid.event_id) await getEvent(a, bid.event_id);
-        else throw new Error("no event");
-      } catch {
+      const manages = bid.event_id ? await canManageEvent(a, bid.event_id).catch(() => false) : false;
+      if (!manages) {
         return res.status(403).json({ error: access.reason || "no access to this bid" });
       }
     }
