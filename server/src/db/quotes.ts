@@ -227,6 +227,8 @@ export interface QuoteMessageRow {
   author_side: string;
   body: string;
   request_revision: boolean;
+  proposed_amount: string | null;
+  counter_status: "open" | "accepted" | "declined" | null;
   created_at: string;
 }
 
@@ -234,7 +236,7 @@ export interface QuoteMessageRow {
 export async function listQuoteMessages(actor: Actor, quoteId: string): Promise<QuoteMessageRow[]> {
   await authorizeQuoteAccess(actor, quoteId); // owner OR the quote's vendor
   return q<QuoteMessageRow>(
-    `select id, quote_id, author_side, body, request_revision, created_at
+    `select id, quote_id, author_side, body, request_revision, proposed_amount, counter_status, created_at
        from quote_messages where quote_id = $1 order by created_at asc`,
     [quoteId],
   );
@@ -260,13 +262,78 @@ export async function postQuoteMessage(
   const row = await q1<QuoteMessageRow>(
     `insert into quote_messages (quote_id, event_id, author_user_id, author_side, body, request_revision)
      values ($1,$2,$3,$4,$5,$6)
-     returning id, quote_id, author_side, body, request_revision, created_at`,
+     returning id, quote_id, author_side, body, request_revision, proposed_amount, counter_status, created_at`,
     [quoteId, quote.event_id, actor.user.id, side, body, requestRevision],
   );
   if (requestRevision) {
     await q(`update quotes set status = 'revision_requested' where id = $1`, [quoteId]);
   }
   return row as QuoteMessageRow;
+}
+
+/**
+ * Post a structured commercial counteroffer -- previously the only
+ * negotiation mechanism was free text plus a boolean status nudge; there was
+ * no explicit "propose $47,500 instead of $52,000" object the other side
+ * could accept or decline (front-half audit, 2026-08-10). Either side may
+ * propose; the amount is carried on the message row itself so it is never
+ * ambiguous which number is on the table.
+ */
+export async function proposeCounteroffer(
+  actor: Actor,
+  quoteId: string,
+  amount: number,
+  note?: string | null,
+): Promise<QuoteMessageRow> {
+  const quote = await authorizeQuoteAccess(actor, quoteId);
+  if (!(amount > 0)) throw new ForbiddenError("counteroffer amount must be a positive number");
+  const side = quote.event_id && (await isEventOwner(actor, quote.event_id)) ? "client" : "vendor";
+  const body = note?.trim() || `Proposed ${side === "client" ? "counter" : "counter"}offer: $${amount}`;
+  const row = await q1<QuoteMessageRow>(
+    `insert into quote_messages (quote_id, event_id, author_user_id, author_side, body, proposed_amount, counter_status)
+     values ($1,$2,$3,$4,$5,$6,'open')
+     returning id, quote_id, author_side, body, request_revision, proposed_amount, counter_status, created_at`,
+    [quoteId, quote.event_id, actor.user.id, side, body, amount],
+  );
+  return row as QuoteMessageRow;
+}
+
+/**
+ * Respond to a still-open counteroffer. 'decline' just marks it closed.
+ * 'accept' marks it closed AND revises the quote's commercial terms to the
+ * proposed amount (versioned via reviseQuote's quote_versions snapshot, so
+ * the pre-negotiation terms are never lost) -- but never auto-awards; award
+ * remains the event owner's separate, explicit POST /:id/accept decision,
+ * matching the "AI/negotiation cannot make the final award decision" rule.
+ * Only the side that did NOT propose the counteroffer may respond to it.
+ */
+export async function respondToCounteroffer(
+  actor: Actor,
+  quoteId: string,
+  messageId: string,
+  action: "accept" | "decline",
+): Promise<QuoteRow> {
+  const quote = await authorizeQuoteAccess(actor, quoteId);
+  const msg = await q1<{ id: string; author_side: string; proposed_amount: string | null; counter_status: string | null }>(
+    `select id, author_side, proposed_amount, counter_status from quote_messages where id = $1 and quote_id = $2`,
+    [messageId, quoteId],
+  );
+  if (!msg) throw new NotFoundError("counteroffer not found");
+  if (msg.counter_status !== "open") throw new ForbiddenError("this counteroffer is no longer open");
+  const respondingSide = quote.event_id && (await isEventOwner(actor, quote.event_id)) ? "client" : "vendor";
+  if (respondingSide === msg.author_side) {
+    throw new ForbiddenError("you cannot respond to your own counteroffer");
+  }
+  if (action === "decline") {
+    await q1(`update quote_messages set counter_status = 'declined' where id = $1`, [messageId]);
+    return getQuote(quoteId);
+  }
+  const amount = Number(msg.proposed_amount) || 0;
+  await q1(`update quote_messages set counter_status = 'accepted' where id = $1`, [messageId]);
+  return reviseQuote(actor, quoteId, {
+    line_items: [{ label: "Negotiated amount", quantity: 1, unit_price: amount, name: "Negotiated amount" }],
+    reason: `Counteroffer accepted (message ${messageId})`,
+  });
 }
 
 export type CreateQuoteInput = {

@@ -33,6 +33,8 @@ type QuoteMessage = {
   author_side: string;
   body: string;
   request_revision: boolean;
+  proposed_amount: string | null;
+  counter_status: 'open' | 'accepted' | 'declined' | null;
   created_at: string;
 };
 
@@ -52,6 +54,7 @@ export default function QuotesTab({ eventId }: { eventId: string }) {
   const [thread, setThread] = useState<QuoteMessage[]>([]);
   const [msgBody, setMsgBody] = useState('');
   const [askRevision, setAskRevision] = useState(false);
+  const [counterAmount, setCounterAmount] = useState('');
   const [msgBusy, setMsgBusy] = useState(false);
   const [complianceBlock, setComplianceBlock] = useState<{
     quoteId: string;
@@ -149,6 +152,37 @@ export default function QuotesTab({ eventId }: { eventId: string }) {
       await loadThread(id);
       // Requesting a revision pushes the quote back, so refresh the status column.
       if (askRevision) await load();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setMsgBusy(false);
+    }
+  }
+
+  async function sendCounter(id: string) {
+    const amount = Number(counterAmount);
+    if (!(amount > 0)) return;
+    setMsgBusy(true);
+    setErr(null);
+    try {
+      await apiSend('POST', `/quotes/${id}/counteroffer`, { amount });
+      setCounterAmount('');
+      await loadThread(id);
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setMsgBusy(false);
+    }
+  }
+
+  async function respondCounter(quoteId: string, messageId: string, action: 'accept' | 'decline') {
+    setMsgBusy(true);
+    setErr(null);
+    try {
+      await apiSend('POST', `/quotes/${quoteId}/counteroffer/${messageId}/respond`, { action });
+      await loadThread(quoteId);
+      await load();
+      if (action === 'accept') await view(quoteId);
     } catch (e) {
       setErr((e as Error).message);
     } finally {
@@ -303,10 +337,35 @@ export default function QuotesTab({ eventId }: { eventId: string }) {
                         <span className="ew-q-msgtime">{new Date(m.created_at).toLocaleString()}</span>
                       </div>
                       <div className="ew-q-msgbody">{m.body}</div>
+                      {m.proposed_amount ? (
+                        <div className="ew-q-counter">
+                          <span>Counteroffer: {money(m.proposed_amount)}</span>
+                          <span className={`ew-tag counter-${m.counter_status}`}>{m.counter_status}</span>
+                          {m.counter_status === 'open' ? (
+                            <span className="ew-q-counteracts">
+                              <button type="button" className="ew-btn sm" disabled={msgBusy} onClick={() => respondCounter(open.quote_id, m.id, 'accept')}>Accept</button>
+                              <button type="button" className="ew-btn ghost sm" disabled={msgBusy} onClick={() => respondCounter(open.quote_id, m.id, 'decline')}>Decline</button>
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : null}
                     </li>
                   ))}
                 </ul>
               )}
+              <div className="ew-q-counterform">
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="Propose a new total ($)"
+                  value={counterAmount}
+                  onChange={(e) => setCounterAmount(e.target.value)}
+                />
+                <button type="button" className="ew-btn ghost sm" disabled={msgBusy || !counterAmount} onClick={() => sendCounter(open.quote_id)}>
+                  Send counteroffer
+                </button>
+              </div>
               <textarea
                 className="ew-q-compose"
                 rows={3}
@@ -389,5 +448,13 @@ const Q_CSS = `
 .ew-q-revtag { background: #a8631a; color: #fff; border-radius: 6px; padding: 1px 6px; font-size: 10px; letter-spacing: .3px; text-transform: uppercase; }
 .ew-q-msgbody { color: #2c2a26; white-space: pre-wrap; }
 .ew-q-compose { width: 100%; border: 1px solid #e7e1d6; border-radius: 10px; padding: 10px; font: inherit; font-size: 13px; resize: vertical; box-sizing: border-box; }
+.ew-q-counter { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 12px; flex-wrap: wrap; }
+.ew-q-counteracts { display: flex; gap: 6px; }
+.ew-q-counterform { display: flex; gap: 8px; margin: 10px 0; flex-wrap: wrap; }
+.ew-q-counterform input { flex: 1 1 160px; font: inherit; padding: 8px 10px; border: 1px solid #e7e1d6; border-radius: 8px; }
+.ew-tag { font-size: 10px; letter-spacing: .4px; text-transform: uppercase; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+.ew-tag.counter-open { background: rgba(201,163,91,.2); color: #8a6d27; }
+.ew-tag.counter-accepted { background: rgba(30,93,74,.12); color: #1E5D4A; }
+.ew-tag.counter-declined { background: #f3e9e9; color: #8a4a4a; }
 .ew-q-revcheck { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: #4a463e; margin: 8px 0 10px; }
 `;

@@ -6498,3 +6498,14 @@ create table if not exists event_vendor_compliance_gates (
   unique (event_id, requirement_key)
 );
 create index if not exists idx_event_compliance_gates_event on event_vendor_compliance_gates(event_id);
+
+-- ---------- quote_messages: structured counteroffer columns ----------
+-- The pre-existing quote_messages table only ever carried free text plus a
+-- request_revision boolean -- there was no structured commercial
+-- counteroffer object anywhere (front-half audit, 2026-08-10).
+-- proposed_amount + counter_status turn a message row into an optional,
+-- explicit commercial proposal the OTHER side can accept (revises the quote
+-- to that exact number, versioned via quote_versions) or decline.
+alter table quote_messages add column if not exists proposed_amount numeric;
+alter table quote_messages add column if not exists counter_status text
+  check (counter_status in ('open','accepted','declined'));

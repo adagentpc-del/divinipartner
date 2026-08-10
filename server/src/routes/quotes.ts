@@ -267,4 +267,37 @@ router.post(
   }),
 );
 
+/** Propose a structured commercial counteroffer on a quote. */
+router.post(
+  "/:id/counteroffer",
+  h(async (req, res) => {
+    const a = await actor(req);
+    const amount = Number(req.body?.amount);
+    if (!(amount > 0)) return res.status(400).json({ error: "a positive amount is required" });
+    const message = await quotes.proposeCounteroffer(a, req.params.id, amount, req.body?.note ?? null);
+    const eventId = (await recipients.quoteEventId(req.params.id).catch(() => null)) ?? "";
+    const name = eventId ? ((await recipients.eventName(eventId).catch(() => null)) ?? "your event") : "your event";
+    const to =
+      message.author_side === "client"
+        ? recipients.excluding(await recipients.quoteVendorEmails(req.params.id).catch(() => [] as string[]), a.user.email)
+        : recipients.excluding(
+            eventId ? await recipients.eventOwnerEmails(eventId).catch(() => [] as string[]) : [],
+            a.user.email,
+          );
+    if (to.length) await notify.messagePosted(to, name, { quoteId: req.params.id, requestRevision: false }).catch(() => undefined);
+    res.status(201).json({ message });
+  }),
+);
+
+/** Accept or decline a still-open counteroffer. Accept revises the quote's terms. */
+router.post(
+  "/:id/counteroffer/:messageId/respond",
+  h(async (req, res) => {
+    const a = await actor(req);
+    const action = req.body?.action === "decline" ? "decline" : "accept";
+    const quote = await quotes.respondToCounteroffer(a, req.params.id, req.params.messageId, action);
+    res.json({ quote });
+  }),
+);
+
 export default router;
