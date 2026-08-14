@@ -16,6 +16,7 @@ import * as db from "../db.js";
 import { q1 } from "../pool.js";
 import * as inv from "../db/inventory.js";
 import * as pm from "../db/pricing-memory.js";
+import * as bids from "../db/bids.js";
 import {
   generateAutoQuote,
   quoteIntelligence,
@@ -95,11 +96,20 @@ router.post(
 
     if (bidId) {
       const b = await q1<any>(
-        `select id, event_id, category, scope, budget_min, budget_max, deadline, rush
+        `select id, event_id, category, scope, budget_min, budget_max, deadline, rush,
+                tier_access, visibility, invited_vendors, posted_at, created_at, status
            from bids where id = $1`,
         [bidId],
       );
       if (!b) return res.status(404).json({ error: "bid not found" });
+      // A draft against this bid's budget/scope must not be previewable by a
+      // vendor who isn't yet allowed to act on it (private/invite-only bids,
+      // or a public bid still inside a higher-tier's exclusive window) -- the
+      // final submit endpoint (POST /api/bids/:id/quote) already enforces
+      // this; this draft-preview endpoint did not, letting any vendor org
+      // read a gated bid's full budget/scope via the generated draft.
+      const access = bids.canVendorAccessBid(b, org.tier ?? null, new Date(), org.id ?? null);
+      if (!access.allowed) return res.status(403).json({ error: access.reason });
       bid = {
         id: b.id,
         category: b.category,

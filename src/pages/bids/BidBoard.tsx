@@ -60,6 +60,24 @@ export default function BidBoard() {
     }
   }
 
+  // The access flag on `rows` is a snapshot from the last board load, which
+  // only refreshes on filter change (see `load()` below) -- a vendor who has
+  // the board open across a tier-window boundary (48h/7d) or a fresh invite
+  // would otherwise be stuck behind a stale "locked" button until they
+  // manually reload. Re-check the single bid's live access right before
+  // navigating instead of trusting the cached `rows` snapshot; the button
+  // itself is never actually disabled, only styled as locked, so this click
+  // always fires.
+  async function goToGenerateQuote(bidId: string) {
+    try {
+      const r = await apiGet<{ access: { allowed: boolean; reason: string } }>(`/bids/${bidId}`);
+      if (!r.access.allowed) return setErr(r.access.reason);
+      nav(`/quotes/auto/${bidId}`);
+    } catch (e) {
+      setErr((e as Error).message);
+    }
+  }
+
   async function askQuestion(bidId: string) {
     const question = newQuestion.trim();
     if (!question) return;
@@ -153,7 +171,14 @@ export default function BidBoard() {
               </div>
               <div className="bb-actions">
                 <button type="button" className="bb-btn ghost" onClick={() => { setOpenId(b.id); void loadQuestions(b.id); }}>View detail</button>
-                <button type="button" className="bb-btn" onClick={() => nav(`/quotes/auto/${b.id}`)}>Generate quote</button>
+                <button
+                  type="button"
+                  className={`bb-btn${b.access.allowed ? '' : ' locked'}`}
+                  title={b.access.allowed ? undefined : `${b.access.reason} (click to re-check)`}
+                  onClick={() => void goToGenerateQuote(b.id)}
+                >
+                  Generate quote
+                </button>
               </div>
             </div>
           ))}
@@ -211,7 +236,14 @@ export default function BidBoard() {
             </div>
 
             <div className="bb-modal-actions">
-              <button type="button" className="bb-btn" onClick={() => nav(`/quotes/auto/${open.id}`)}>Generate quote</button>
+              <button
+                type="button"
+                className={`bb-btn${open.access.allowed ? '' : ' locked'}`}
+                title={open.access.allowed ? undefined : `${open.access.reason} (click to re-check)`}
+                onClick={() => void goToGenerateQuote(open.id)}
+              >
+                Generate quote
+              </button>
             </div>
           </div>
         </div>
@@ -266,6 +298,7 @@ const BB_CSS = `
 .bb-btn { background: var(--dp-emerald); color: #fff; border: 0; border-radius: 9px; font: inherit; font-size: 12px; font-weight: 600; padding: 8px 14px; cursor: pointer; align-self: flex-start; }
 .bb-btn.ghost { background: transparent; color: var(--dp-emerald); border: 1px solid var(--dp-line); }
 .bb-btn.ghost:hover { border-color: var(--dp-emerald); background: rgba(18,60,46,.04); }
+.bb-btn.locked { background: var(--dp-line); color: #8a8378; }
 .bb-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .bb-modal-actions { display: flex; justify-content: flex-end; margin-top: 16px; }
 .bb-qa { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--dp-line); display: flex; flex-direction: column; gap: 8px; }

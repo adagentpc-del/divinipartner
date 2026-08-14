@@ -9,7 +9,7 @@
  */
 import { q, q1 } from "../pool.js";
 import { NotFoundError, ForbiddenError, TIERS, type Actor, type Tier } from "../db.js";
-import { getBid } from "./bids.js";
+import { getBid, canVendorAccessBid } from "./bids.js";
 import { PRICING_V2 } from "../config.js";
 import { getEvent } from "./events.js";
 import { computePlatformFee } from "../lib/platformFees.js";
@@ -359,6 +359,16 @@ export async function createQuote(actor: Actor, input: CreateQuoteInput): Promis
   if (input.bid_id) {
     const bid = await getBid(input.bid_id);
     eventId = bid.event_id;
+    // This is the single choke point every quote-creation caller goes
+    // through -- the bid-scoped route (routes/bids.ts POST /:id/quote)
+    // already checks access before calling here, but the generic route
+    // (routes/quotes.ts POST /) that the real AutoQuoteDraft "Submit quote"
+    // action actually posts to did not, letting a vendor with no access
+    // (private bid, or still inside a higher tier's exclusive window)
+    // submit a real, persisted quote and attach themselves to the event.
+    // Checking here closes that regardless of which route is used.
+    const access = canVendorAccessBid(bid, actor.org?.tier ?? null, new Date(), actor.org?.id ?? null);
+    if (!access.allowed) throw new ForbiddenError(access.reason);
   }
   if (!eventId) throw new ForbiddenError("event_id or bid_id required");
 
