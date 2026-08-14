@@ -190,6 +190,14 @@ export const LLM_BASE_URL = (process.env.LLM_BASE_URL || "").replace(/\/$/, "");
 // LLM_API_KEY so one key config can cover either provider.
 export const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || process.env.LLM_API_KEY || "";
 export const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || "claude-haiku-4-5-20251001";
+
+/**
+ * Carrier-verified COI (Certificate of Insurance). Off by default: every
+ * environment without a real key returns an honest "unavailable" status from
+ * every verification request, never a fabricated "verified". See
+ * lib/certificial.ts.
+ */
+export const CERTIFICIAL_API_KEY = process.env.CERTIFICIAL_API_KEY || "";
 export const llmEnabled = (): boolean => LLM_PROVIDER !== "off";
 
 /**

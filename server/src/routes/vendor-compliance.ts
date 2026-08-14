@@ -17,6 +17,8 @@ import { Router, type Request, type Response, type NextFunction } from "express"
 import { getAuth, requireUser } from "../auth.js";
 import * as db from "../db.js";
 import * as compliance from "../db/vendor-compliance.js";
+import * as carrierVerification from "../db/carrierVerification.js";
+import { certificialEnabled } from "../lib/certificial.js";
 import { q1 } from "../pool.js";
 
 const h =
@@ -115,6 +117,47 @@ router.get(
       vendor_id: req.params.vendorId,
       why: await compliance.getVendorWhy(a, req.params.vendorId),
     });
+  }),
+);
+
+/** Whether the real carrier-verification integration is configured on this
+ *  deployment (not whether any given vendor is verified). Lets the UI show
+ *  "not available yet" instead of a dead button. */
+router.get(
+  "/carrier-verify/meta",
+  h(async (_req, res) => {
+    res.json({ enabled: certificialEnabled() });
+  }),
+);
+
+/** Request a real-time carrier verification for a vendor's COI. Always
+ *  writes and returns a real row (never a fabricated "verified"). */
+router.post(
+  "/:vendorId/carrier-verify",
+  h(async (req, res) => {
+    const a = await actor(req);
+    const policyNumber = typeof req.body?.policy_number === "string" ? req.body.policy_number : null;
+    res.status(201).json({
+      verification: await carrierVerification.requestCarrierVerification(a, req.params.vendorId, { policyNumber }),
+    });
+  }),
+);
+
+/** The vendor's most recent carrier verification attempt, if any. */
+router.get(
+  "/:vendorId/carrier-verify",
+  h(async (req, res) => {
+    const a = await actor(req);
+    res.json({ verification: await carrierVerification.getLatestCarrierVerification(a, req.params.vendorId) });
+  }),
+);
+
+/** Full carrier-verification history for a vendor. */
+router.get(
+  "/:vendorId/carrier-verify/history",
+  h(async (req, res) => {
+    const a = await actor(req);
+    res.json({ verifications: await carrierVerification.listCarrierVerifications(a, req.params.vendorId) });
   }),
 );
 

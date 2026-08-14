@@ -214,7 +214,13 @@ export default function QuotesTab({ eventId }: { eventId: string }) {
     }
   }
 
-  const REQUIREMENT_KEYS = ['insurance', 'coi', 'w9'];
+  const REQUIREMENT_KEYS = ['insurance', 'coi', 'w9', 'coi_carrier_verified'];
+  const REQUIREMENT_LABELS: Record<string, string> = {
+    insurance: 'Insurance',
+    coi: 'COI (self-reported)',
+    w9: 'W9',
+    coi_carrier_verified: 'COI (carrier-verified)',
+  };
   const POLICIES = ['', 'before_bid', 'before_award', 'before_event', 'informational'];
   const gateFor = (key: string) => gates.find((g) => g.requirement_key === key)?.policy ?? '';
 
@@ -232,7 +238,7 @@ export default function QuotesTab({ eventId }: { eventId: string }) {
             <p className="ew-q-secttitle">Require these documents before a vendor can be awarded</p>
             {REQUIREMENT_KEYS.map((key) => (
               <div key={key} className="ew-q-gaterow">
-                <span>{key.toUpperCase()}</span>
+                <span>{REQUIREMENT_LABELS[key] ?? key}</span>
                 <select value={gateFor(key)} onChange={(e) => setGate(key, e.target.value)}>
                   {POLICIES.map((p) => (
                     <option key={p || 'none'} value={p}>{p ? p.replace('_', ' ') : 'No requirement'}</option>
@@ -240,6 +246,7 @@ export default function QuotesTab({ eventId }: { eventId: string }) {
                 </select>
               </div>
             ))}
+            <p className="ew-q-hint">Carrier-verified COI checks a real insurance carrier record, not the vendor's own self-reported status. It requires a configured verification provider.</p>
           </div>
         ) : null}
       </div>
@@ -310,7 +317,7 @@ export default function QuotesTab({ eventId }: { eventId: string }) {
                 <p className="ew-q-secttitle">Vendor is missing required documents</p>
                 <ul>
                   {complianceBlock.items.map((c) => (
-                    <li key={c.requirement_key}>{c.requirement_key.toUpperCase()}: {c.status ?? 'not on file'}</li>
+                    <li key={c.requirement_key}>{REQUIREMENT_LABELS[c.requirement_key] ?? c.requirement_key}: {c.status ?? 'not on file'}</li>
                   ))}
                 </ul>
                 <button type="button" className="ew-btn danger sm" disabled={busy} onClick={() => act(open.quote_id, 'accept', true)}>
@@ -423,6 +430,7 @@ const Q_CSS = `
 .ew-q-event { font-size: 13px; color: #6b6459; margin: 10px 0 16px; }
 .ew-q-sect, .ew-q-excl { margin-bottom: 14px; }
 .ew-q-secttitle { font-size: 11px; letter-spacing: .6px; text-transform: uppercase; color: #9a8a5e; font-weight: 600; margin-bottom: 6px; }
+.ew-q-hint { font-size: 11.5px; color: #9a8a5e; margin: 8px 0 0; line-height: 1.5; }
 .ew-q-li { display: flex; justify-content: space-between; font-size: 13px; color: #2c2a26; padding: 4px 0; border-bottom: 1px dashed #efe9dd; }
 .ew-q-excl ul { margin: 0; padding-left: 18px; font-size: 12.5px; color: #6b6459; }
 .ew-q-totals { background: rgba(247,244,238,.7); border-radius: 12px; padding: 14px 16px; margin: 12px 0; }

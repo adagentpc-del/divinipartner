@@ -16,11 +16,17 @@
 import { q, q1 } from "../pool.js";
 import { type Actor, ForbiddenError } from "../db.js";
 import { getEvent, canManageEvent } from "./events.js";
+import { isCarrierVerified } from "./carrierVerification.js";
 
-export type ComplianceRequirementKey = "insurance" | "coi" | "w9";
+export type ComplianceRequirementKey = "insurance" | "coi" | "w9" | "coi_carrier_verified";
 export type CompliancePolicy = "before_bid" | "before_award" | "before_event" | "informational";
 
-export const COMPLIANCE_REQUIREMENT_KEYS: ComplianceRequirementKey[] = ["insurance", "coi", "w9"];
+export const COMPLIANCE_REQUIREMENT_KEYS: ComplianceRequirementKey[] = [
+  "insurance",
+  "coi",
+  "w9",
+  "coi_carrier_verified",
+];
 export const COMPLIANCE_POLICIES: CompliancePolicy[] = [
   "before_bid",
   "before_award",
@@ -114,12 +120,23 @@ export async function checkBeforeAwardCompliance(
     if (!compliance) return null;
     if (key === "insurance") return compliance.insurance_status;
     if (key === "coi") return compliance.coi_status;
-    return compliance.w9_status;
+    if (key === "w9") return compliance.w9_status;
+    return null; // coi_carrier_verified is checked separately below, not from vendor_compliance
   };
-  return gates.map((g) => {
+  const results: ComplianceCheckResult[] = [];
+  for (const g of gates) {
+    if (g.requirement_key === "coi_carrier_verified") {
+      // A real carrier-verification record, not the self-attested field --
+      // see db/carrierVerification.ts. vendorId null (no bid vendor row yet)
+      // can never satisfy this.
+      const met = vendorId ? await isCarrierVerified(vendorId) : false;
+      results.push({ requirement_key: g.requirement_key, policy: g.policy, status: met ? "verified" : "unverified", met });
+      continue;
+    }
     const status = statusFor(g.requirement_key);
-    return { requirement_key: g.requirement_key, policy: g.policy, status, met: status === "verified" };
-  });
+    results.push({ requirement_key: g.requirement_key, policy: g.policy, status, met: status === "verified" });
+  }
+  return results;
 }
 
 /** Thrown by db/awards.ts::awardQuote() when a 'before_award' compliance

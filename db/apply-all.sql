@@ -6507,6 +6507,46 @@ create table if not exists event_vendor_compliance_gates (
 );
 create index if not exists idx_event_compliance_gates_event on event_vendor_compliance_gates(event_id);
 
+-- Widened (moat roadmap P0, 2026-08-14) to add 'coi_carrier_verified': the
+-- existing 'coi'/'insurance' keys check vendor_compliance's self-attested
+-- status (the vendor sets their own "verified"), which a corporate/enterprise
+-- buyer's procurement team correctly does not fully trust. This new key is a
+-- SEPARATE, stronger signal an event owner can opt into requiring instead of
+-- or alongside the self-attested ones -- see vendor_coi_verifications below.
+alter table event_vendor_compliance_gates drop constraint if exists event_vendor_compliance_gates_requirement_key_check;
+alter table event_vendor_compliance_gates add constraint event_vendor_compliance_gates_requirement_key_check
+  check (requirement_key in ('insurance','coi','w9','coi_carrier_verified'));
+
+-- ---------- vendor_coi_verifications: carrier-verified COI (moat roadmap P0) ----------
+-- A real verification record, distinct from vendor_compliance's self-attested
+-- insurance_status/coi_status (which the vendor sets on themselves with no
+-- outside check). Each row is one verification attempt against an insurance
+-- carrier's own system of record via a third-party provider (Certificial,
+-- TrustLayer, etc) -- never a second place to self-declare status. The
+-- provider integration is feature-flagged off (CERTIFICIAL_API_KEY unset) in
+-- every environment until real API credentials are provisioned; see
+-- server/src/lib/certificial.ts. Until then every request row is written with
+-- status='unavailable' and a real, honest error_message -- never a fabricated
+-- 'verified'.
+create table if not exists vendor_coi_verifications (
+  id uuid primary key default gen_random_uuid(),
+  vendor_id uuid not null references vendors(id) on delete cascade,
+  provider text not null default 'certificial',
+  status text not null default 'pending'
+    check (status in ('pending','verified','expired','failed','unavailable')),
+  carrier_name text,
+  policy_number text,
+  coverage_type text,
+  effective_date date,
+  expiration_date date,
+  raw_response jsonb,
+  requested_by uuid references users(id) on delete set null,
+  requested_at timestamptz not null default now(),
+  verified_at timestamptz,
+  error_message text
+);
+create index if not exists idx_vendor_coi_verifications_vendor on vendor_coi_verifications(vendor_id, requested_at desc);
+
 -- ---------- quote_messages: structured counteroffer columns ----------
 -- The pre-existing quote_messages table only ever carried free text plus a
 -- request_revision boolean -- there was no structured commercial
