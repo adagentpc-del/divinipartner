@@ -6614,3 +6614,14 @@ create table if not exists webhook_deliveries (
   created_at timestamptz not null default now()
 );
 create index if not exists idx_webhook_deliveries_endpoint on webhook_deliveries(endpoint_id, created_at desc);
+
+-- ---------- packages.instant_bookable (moat roadmap Phase 2c, 2026-08-14):
+-- self-service instant book ----------
+-- An 'active' package with instant_bookable=true can be booked by a client
+-- directly against their event with no bid/quote back-and-forth (see
+-- server/src/db/quotes.ts::instantBookPackage) -- the resulting quote is
+-- created and immediately awarded in one atomic step, through the exact
+-- same awardQuote() transaction (compliance gate, contract, payment
+-- milestones, event membership) every negotiated award already goes
+-- through. Off by default: a vendor opts a specific package in explicitly.
+alter table packages add column if not exists instant_bookable boolean not null default false;

@@ -27,12 +27,13 @@ export type PackageInput = {
   serves?: number;
   add_ons?: unknown;
   status?: string;
+  instant_bookable?: boolean;
 };
 
 const COLS = `
   id, organization_id, vendor_id, name, description, category, items,
   bundle_price, delivery_fee, install_fee, labor_hours, serves, add_ons,
-  status, created_at, updated_at
+  status, instant_bookable, created_at, updated_at
 `;
 
 async function vendorIdForOrg(orgId: string): Promise<string | null> {
@@ -81,6 +82,51 @@ export async function getPackage(orgId: string, id: string): Promise<any | null>
   return q1(`select ${COLS} from packages where id = $1 and organization_id = $2`, [id, orgId]);
 }
 
+/** Get one package for a client to instant-book, regardless of org --
+ *  only ever returns it when 'active' AND instant_bookable, so a draft or
+ *  archived package (or one the vendor never opted into instant book) is
+ *  never bookable this way. Not org-scoped: the whole point is that the
+ *  booking actor is a different org (the client), not the package's owner. */
+export async function getBookablePackage(id: string): Promise<any | null> {
+  return q1(
+    `select ${COLS} from packages where id = $1 and status = 'active' and instant_bookable = true`,
+    [id],
+  );
+}
+
+/** Every instant-bookable package for a vendor org, for a client browsing
+ *  that vendor's offerings before booking. */
+export async function listBookablePackages(orgId: string): Promise<any[]> {
+  return q(
+    `select ${COLS} from packages
+      where organization_id = $1 and status = 'active' and instant_bookable = true
+      order by created_at desc`,
+    [orgId],
+  );
+}
+
+/** Every instant-bookable package platform-wide, with the vendor's org name
+ *  joined in, for a client discovering vendors to book directly (no bid/
+ *  quote back-and-forth). Optional category filter. */
+export async function listAllBookablePackages(category?: string): Promise<any[]> {
+  const params: unknown[] = [];
+  let where = `p.status = 'active' and p.instant_bookable = true`;
+  if (category) {
+    params.push(category);
+    where += ` and p.category = $${params.length}`;
+  }
+  return q(
+    `select p.id, p.organization_id, p.vendor_id, o.name as vendor_org_name, p.name, p.description,
+            p.category, p.items, p.bundle_price, p.serves, p.status, p.instant_bookable, p.created_at
+       from packages p
+       left join organizations o on o.id = p.organization_id
+      where ${where}
+      order by p.created_at desc
+      limit 200`,
+    params,
+  );
+}
+
 /** Create a package. */
 export async function createPackage(orgId: string, input: PackageInput): Promise<any> {
   const vendorId = await vendorIdForOrg(orgId);
@@ -88,8 +134,8 @@ export async function createPackage(orgId: string, input: PackageInput): Promise
     `insert into packages (
        organization_id, vendor_id, name, description, category, items,
        bundle_price, delivery_fee, install_fee, labor_hours, serves, add_ons,
-       status, updated_at)
-     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,coalesce($13,'draft'), now())
+       status, instant_bookable, updated_at)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,coalesce($13,'draft'),coalesce($14,false), now())
      returning ${COLS}`,
     [
       orgId, vendorId, input.name ?? null, input.description ?? null, input.category ?? null,
@@ -98,6 +144,7 @@ export async function createPackage(orgId: string, input: PackageInput): Promise
       input.labor_hours ?? null, input.serves ?? null,
       input.add_ons ? JSON.stringify(input.add_ons) : null,
       input.status ?? null,
+      input.instant_bookable ?? null,
     ],
   );
 }
@@ -106,6 +153,7 @@ const UPDATABLE: Record<string, "raw" | "json"> = {
   name: "raw", description: "raw", category: "raw", items: "json",
   bundle_price: "raw", delivery_fee: "raw", install_fee: "raw",
   labor_hours: "raw", serves: "raw", add_ons: "json", status: "raw",
+  instant_bookable: "raw",
 };
 
 /** Patch a package (org-scoped). */

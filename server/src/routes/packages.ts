@@ -8,6 +8,10 @@ import { getAuth, requireUser } from "../auth.js";
 import * as db from "../db.js";
 import * as pkg from "../db/packages.js";
 import { checkLimit, limitExceededPayload } from "../lib/entitlements.js";
+import { instantBookPackage } from "../db/quotes.js";
+import { refreshRelationshipGraphForQuote } from "../db/lifecycle.js";
+import { notify } from "../lib/notify.js";
+import { recipients } from "../lib/recipients.js";
 
 const h =
   (fn: (req: Request, res: Response) => Promise<unknown>) =>
@@ -40,6 +44,32 @@ router.get(
     if (!orgId) return;
     const status = typeof req.query.status === "string" ? req.query.status : undefined;
     const packages = await pkg.listPackages(orgId, status);
+    res.json({ packages });
+  }),
+);
+
+// GET /api/packages/vendor/:orgId/bookable - a vendor org's instant-bookable
+// packages, for a client browsing before they book (moat roadmap Phase 2c).
+// Registered BEFORE GET /:id -- Express matches route order, and /:id would
+// otherwise swallow this (and /bookable below) as if "vendor" were an id.
+router.get(
+  "/vendor/:orgId/bookable",
+  requireUser,
+  h(async (req, res) => {
+    const packages = await pkg.listBookablePackages(req.params.orgId);
+    res.json({ packages });
+  }),
+);
+
+// GET /api/packages/bookable - every instant-bookable package platform-wide
+// (optional ?category=), for a client discovering vendors to book directly.
+// Also registered BEFORE GET /:id for the same reason.
+router.get(
+  "/bookable",
+  requireUser,
+  h(async (req, res) => {
+    const category = typeof req.query.category === "string" ? req.query.category : undefined;
+    const packages = await pkg.listAllBookablePackages(category);
     res.json({ packages });
   }),
 );
@@ -96,6 +126,28 @@ router.delete(
     const ok = await pkg.deletePackage(orgId, req.params.id);
     if (!ok) return res.status(404).json({ error: "not found" });
     res.status(204).end();
+  }),
+);
+
+// POST /api/packages/:id/instant-book { event_id } - book this package
+// against the actor's own event with no bid/quote back-and-forth: creates
+// and immediately awards a quote through the same atomic awardQuote()
+// transaction every negotiated award goes through.
+router.post(
+  "/:id/instant-book",
+  requireUser,
+  h(async (req, res) => {
+    const auth = getAuth(req);
+    const actor = await db.getActor(auth.userId!, auth.email);
+    const { event_id } = req.body ?? {};
+    if (!event_id || typeof event_id !== "string") {
+      return res.status(400).json({ error: "event_id required" });
+    }
+    const result = await instantBookPackage(actor, req.params.id, event_id);
+    if (result.firstAward) await refreshRelationshipGraphForQuote(result.quote.id).catch(() => undefined);
+    const to = await recipients.quoteVendorEmails(result.quote.id).catch(() => [] as string[]);
+    if (to.length) await notify.quoteDecision(to, "accepted", { quoteId: result.quote.id }).catch(() => undefined);
+    res.status(201).json({ quote: result.quote, contract: result.contract });
   }),
 );
 

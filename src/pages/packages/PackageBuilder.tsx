@@ -25,6 +25,7 @@ type Pkg = {
   labor_hours?: number;
   serves?: number;
   status?: string;
+  instant_bookable?: boolean;
 };
 
 type InventoryItem = { id: string; name?: string; price?: number };
@@ -155,6 +156,7 @@ export default function PackageBuilder() {
               <div className="pkg-row-top">
                 <h3>{p.name || 'Untitled package'}</h3>
                 {p.status && <span className={`pkg-tag ${p.status}`}>{p.status}</span>}
+                {p.instant_bookable && <span className="pkg-tag instant">Instant book</span>}
               </div>
               {p.category && <p className="pkg-cat">{p.category}</p>}
               {p.description && <p className="pkg-desc">{p.description}</p>}
@@ -188,6 +190,10 @@ export default function PackageBuilder() {
                   <option value="active">active</option>
                   <option value="archived">archived</option>
                 </select>
+              </label>
+              <label className="pkg-checkbox">
+                <input type="checkbox" checked={!!editing.instant_bookable} onChange={(e) => field('instant_bookable', e.target.checked)} />
+                Instant book (client can book this package with no bid/quote back-and-forth)
               </label>
             </div>
 
@@ -250,6 +256,8 @@ const CSS = `
 .pkg-tag.active { background:rgba(30,93,74,.12); color:var(--e2); }
 .pkg-tag.draft { background:rgba(201,163,91,.2); color:#7a5e22; }
 .pkg-tag.archived { background:rgba(125,119,108,.16); color:var(--mut); }
+.pkg-tag.instant { background:rgba(30,93,74,.14); color:var(--e); border:1px solid rgba(30,93,74,.3); }
+.pkg-form .pkg-checkbox { grid-column:1 / -1; flex-direction:row; align-items:center; gap:8px; font-weight:500; }
 .pkg-cat { font-size:11.5px; color:var(--g); font-weight:600; text-transform:capitalize; margin:3px 0 6px; }
 .pkg-desc { font-size:12.5px; color:var(--mut); margin:0 0 8px; line-height:1.5; }
 .pkg-price { font-size:18px; color:var(--e); font-weight:600; margin:0 0 2px; }

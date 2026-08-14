@@ -14,6 +14,8 @@ import { PRICING_V2 } from "../config.js";
 import { getEvent } from "./events.js";
 import { computePlatformFee } from "../lib/platformFees.js";
 import { computeSubtotal, type LineItem } from "../lib/quoteMath.js";
+import { getBookablePackage, lineItemTotal } from "./packages.js";
+import { awardQuote, type AwardResult } from "./awards.js";
 
 export { computeSubtotal, type LineItem };
 
@@ -425,6 +427,75 @@ export async function createQuote(actor: Actor, input: CreateQuoteInput): Promis
   }
 
   return row as QuoteRow;
+}
+
+/**
+ * Self-service instant book (moat roadmap Phase 2c, 2026-08-14): a client
+ * books a vendor's fixed-price package against their event with no bid or
+ * back-and-forth negotiation. Builds a quote from the package's line items
+ * (or its flat bundle_price when it has no itemized lines), then reuses
+ * awardQuote() -- the SAME atomic transaction every negotiated award goes
+ * through, compliance gate included -- to award it immediately. There is no
+ * override here: if the event has an unmet before-award compliance
+ * requirement on this vendor, the booking is blocked exactly like a normal
+ * award would be, not silently bypassed just because it is "instant."
+ */
+export async function instantBookPackage(
+  actor: Actor,
+  packageId: string,
+  eventId: string,
+): Promise<AwardResult & { quote: QuoteRow }> {
+  if (!(await isEventOwner(actor, eventId))) {
+    throw new ForbiddenError("only the event owner can book a package");
+  }
+  const pkg = await getBookablePackage(packageId);
+  if (!pkg) throw new NotFoundError("package not found or not available for instant book");
+  if (!pkg.vendor_id) throw new ForbiddenError("this package has no vendor identity to book against");
+
+  const packageItems: LineItem[] = Array.isArray(pkg.items) && pkg.items.length > 0
+    ? pkg.items.map((it: { name?: string; quantity?: number; unit_price?: number }) => ({
+        description: it.name || "Package item",
+        amount: Math.round((Number(it.unit_price) || 0) * (Number(it.quantity) || 1) * 100) / 100,
+      }))
+    : [{ description: pkg.name || "Package", amount: Number(pkg.bundle_price) || 0 }];
+  const subtotal = pkg.bundle_price != null ? Number(pkg.bundle_price) : lineItemTotal(pkg.items);
+
+  let feeRate: number;
+  let platformFee: number;
+  if (PRICING_V2) {
+    const r = await clientPlatformFee(eventId, subtotal);
+    platformFee = r.fee;
+    feeRate = r.rate;
+  } else {
+    // Legacy (PRICING_V2 off): fee rate keyed off the VENDOR org's own tier,
+    // matching createQuote's non-PRICING_V2 convention -- feeRateFor(actor)
+    // would be wrong here since the actor booking is the CLIENT, not the
+    // vendor whose rate this fee is supposed to reflect.
+    const vendorOrg = await q1<{ tier: string | null }>(`select tier from organizations where id = $1`, [pkg.organization_id]);
+    const tier = (vendorOrg?.tier ?? "free_partner") as Tier;
+    feeRate = TIERS[tier]?.feeRate ?? TIERS.free_partner.feeRate;
+    platformFee = Math.round(subtotal * feeRate * 100) / 100;
+  }
+  const total = Math.round((subtotal + platformFee) * 100) / 100;
+
+  const row = await q1<QuoteRow>(
+    `insert into quotes (bid_id, vendor_id, event_id, line_items, subtotal, fees, platform_fee, total, status)
+     values (null,$1,$2,$3,$4,$5,$6,$7,'submitted')
+     returning *`,
+    [
+      pkg.vendor_id,
+      eventId,
+      JSON.stringify(packageItems),
+      subtotal,
+      JSON.stringify({ platform_fee_rate: feeRate, on_top: PRICING_V2 ? 1 : 0, instant_book_package_id: packageId }),
+      platformFee,
+      total,
+    ],
+  );
+  const quote = row as QuoteRow;
+
+  const award = await awardQuote(actor, quote.id, { override: false });
+  return { ...award, quote: await getQuote(quote.id) };
 }
 
 /**

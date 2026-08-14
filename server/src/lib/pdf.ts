@@ -8,6 +8,7 @@ import type { InvoiceRow, InvoiceLineItem } from "../db/invoices.js";
 import { PRICING_V2, PLATFORM_FEE_RATE_V2 } from "../config.js";
 import type { PacketProjection } from "./packetProjection.js";
 import type { PacketDiffEntry } from "./packetDiff.js";
+import type { BeoData } from "../db/beo.js";
 
 const EMERALD = "#123c2e";
 const EMERALD2 = "#1E5D4A";
@@ -625,6 +626,137 @@ export async function renderExecutionPacketPdf(data: ExecutionPacketPdfData): Pr
 
   doc.fillColor(MUT).font("Helvetica").fontSize(8).text(
     "Divini Partners by Divini Group. This is a frozen snapshot of the Final Event Schedule at the version noted above; the live app view is always authoritative for anything after this version.",
+    48, 790, { width: 499, align: "center" },
+  );
+  doc.end();
+  return out;
+}
+
+/**
+ * Render the Banquet Event Order (BEO) -- the hospitality-industry-standard
+ * document venue/catering/AV professionals expect: event overview, venue
+ * setup/access, the run-of-show timeline, and (the part the Final Event
+ * Schedule deliberately omits, since that document is pure day-of
+ * logistics) what is actually ORDERED from each awarded vendor, with real
+ * pricing pulled from their awarded quote. Never fabricates a vendor order
+ * section when no vendor has been awarded yet -- says so plainly instead.
+ */
+export async function renderBeoPdf(data: BeoData): Promise<Buffer> {
+  const doc = new PDFDocument({ size: "A4", margin: 48 });
+  const out = toBuffer(doc);
+  const tz = data.event.timezone;
+
+  header(doc, "", null, "Banquet Event Order");
+  metaRow(doc, [
+    ["Event", data.event.name],
+    ["Date / time", fmtDate(data.event.date_time, tz)],
+    ["Generated", fmtDate(data.generated_at, tz)],
+  ]);
+
+  // --- Event Overview ---
+  sectionTitle(doc, "Event Overview");
+  const overviewPairs: [string, string][] = [
+    ["Load-in", fmtDate(data.event.load_in_at, tz)],
+    ["Setup", fmtDate(data.event.setup_at, tz)],
+    ["Doors", fmtDate(data.event.doors_at, tz)],
+    ["Strike", fmtDate(data.event.strike_at, tz)],
+  ];
+  for (let i = 0; i < overviewPairs.length; i += 2) {
+    ensureSpace(doc, 16);
+    metaRow(doc, overviewPairs.slice(i, i + 2));
+  }
+  if (data.event.emergency_contact_name || data.event.emergency_contact_phone) {
+    doc.fillColor(MUT).font("Helvetica").fontSize(9).text(
+      `Emergency contact: ${data.event.emergency_contact_name ?? "-"}${data.event.emergency_contact_phone ? ` (${data.event.emergency_contact_phone})` : ""}`,
+      48, doc.y, { width: 499 },
+    );
+    doc.moveDown(0.3);
+  }
+
+  // --- Venue Setup / Access ---
+  sectionTitle(doc, "Venue Setup / Access");
+  if (!data.venue.name && !data.venue.access_time && !data.venue.notes) {
+    emptyNote(doc, "No venue setup/access details recorded yet.");
+  } else {
+    if (data.venue.name) {
+      doc.fillColor(INK).font("Helvetica-Bold").fontSize(10).text(data.venue.name, 48, doc.y, { width: 499 });
+    }
+    if (data.venue.space) doc.fillColor(MUT).font("Helvetica").fontSize(9).text(`Space: ${data.venue.space}`, 48, doc.y, { width: 499 });
+    const accessPairs: [string, string | null][] = [
+      ["Access time", fmtDate(data.venue.access_time, tz)],
+      ["Vendor entrance", data.venue.vendor_entrance],
+      ["Guest entrance", data.venue.guest_entrance],
+      ["Loading dock", data.venue.loading_dock],
+      ["Parking", data.venue.parking_info],
+    ];
+    for (const [label, value] of accessPairs.filter(([, v]) => v)) {
+      ensureSpace(doc, 14);
+      doc.fillColor(MUT).font("Helvetica-Bold").fontSize(8.5).text(`${label}: `, 48, doc.y, { continued: true, width: 499 });
+      doc.fillColor(INK).font("Helvetica").fontSize(8.5).text(value as string);
+    }
+    if (data.venue.restrictions) {
+      doc.moveDown(0.2);
+      doc.fillColor(INK).font("Helvetica").fontSize(9).text(data.venue.restrictions, 48, doc.y, { width: 499 });
+    }
+    if (data.venue.notes) {
+      doc.moveDown(0.2);
+      doc.fillColor(INK).font("Helvetica").fontSize(9).text(data.venue.notes, 48, doc.y, { width: 499 });
+    }
+    doc.moveDown(0.3);
+  }
+
+  // --- Run of Show ---
+  sectionTitle(doc, "Run of Show");
+  if (data.schedule.length === 0) {
+    emptyNote(doc, "No schedule items yet.");
+  } else {
+    for (const item of data.schedule) {
+      ensureSpace(doc, 16);
+      const when = item.start_time
+        ? `${fmtDate(item.start_time, tz)}${item.end_time ? ` - ${fmtDate(item.end_time, tz)}` : ""}`
+        : "Time TBD";
+      doc.fillColor(EMERALD2).font("Helvetica-Bold").fontSize(9).text(when, 48, doc.y, { width: 150 });
+      doc.fillColor(INK).font("Helvetica").fontSize(9).text(item.title, 200, doc.y - 11, { width: 347 });
+      if (item.location) {
+        doc.fillColor(MUT).font("Helvetica").fontSize(8).text(item.location, 200, doc.y, { width: 347 });
+      }
+      doc.moveDown(0.35);
+    }
+  }
+
+  // --- Vendor Orders (the BEO-specific section: what is actually ordered,
+  // with real pricing from the awarded quote) ---
+  sectionTitle(doc, "Vendor Orders");
+  if (data.vendor_orders.length === 0) {
+    emptyNote(doc, "No vendor has been awarded on this event yet -- nothing to order.");
+  } else {
+    for (const v of data.vendor_orders) {
+      ensureSpace(doc, 24);
+      doc.fillColor(EMERALD).font("Helvetica-Bold").fontSize(10.5).text(
+        `${v.vendor_name}${v.category ? ` - ${v.category}` : ""}`,
+        48, doc.y, { width: 499 },
+      );
+      doc.moveDown(0.2);
+      if (v.line_items.length === 0) {
+        doc.fillColor(MUT).font("Helvetica-Oblique").fontSize(8.5).text("No itemized line items on the awarded quote.", 48, doc.y, { width: 499 });
+      } else {
+        for (const li of v.line_items) {
+          ensureSpace(doc, 12);
+          doc.fillColor(INK).font("Helvetica").fontSize(9).text(li.description || "Item", 56, doc.y, { width: 400, continued: true });
+          doc.fillColor(INK).font("Helvetica-Bold").fontSize(9).text(money(li.amount), { align: "right", width: 483 - 56 });
+        }
+      }
+      doc.moveDown(0.1);
+      doc.fillColor(EMERALD2).font("Helvetica-Bold").fontSize(9.5).text(
+        `Order total: ${money(v.awarded_amount)}`,
+        48, doc.y, { width: 499, align: "right" },
+      );
+      doc.moveDown(0.5);
+    }
+  }
+
+  doc.fillColor(MUT).font("Helvetica").fontSize(8).text(
+    "Divini Partners by Divini Group. This Banquet Event Order reflects the awarded vendor orders and event schedule at the time it was generated; the live app view is always authoritative for anything after this point.",
     48, 790, { width: 499, align: "center" },
   );
   doc.end();

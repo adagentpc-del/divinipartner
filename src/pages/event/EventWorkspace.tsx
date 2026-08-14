@@ -8,6 +8,8 @@ import VendorsTab from './tabs/VendorsTab';
 import BidsTab from './tabs/BidsTab';
 import ProcurementPipelineTab from './tabs/ProcurementPipelineTab';
 import QuotesTab from './tabs/QuotesTab';
+import InstantBookTab from './tabs/InstantBookTab';
+import BeoTab from './tabs/BeoTab';
 import MessagesTab from './tabs/MessagesTab';
 import DocumentsTab from './tabs/DocumentsTab';
 import NotesTab from './tabs/NotesTab';
@@ -110,6 +112,8 @@ export default function EventWorkspace() {
     { key: 'pipeline', label: 'Pipeline', element: <ProcurementPipelineTab eventId={id} /> },
     { key: 'bids', label: 'Bids', element: <BidsTab eventId={id} /> },
     { key: 'quotes', label: 'Quotes', element: <QuotesTab eventId={id} /> },
+    { key: 'instant_book', label: 'Instant Book', element: <InstantBookTab eventId={id} /> },
+    { key: 'beo', label: 'BEO', element: <BeoTab eventId={id} /> },
     { key: 'inventory', label: 'Inventory', element: <InventoryTab eventId={id} /> },
     { key: 'guest_list', label: 'Guest List', element: <GuestListTab eventId={id} /> },
     { key: 'seating_chart', label: 'Seating Chart', element: <SeatingChartTab eventId={id} /> },

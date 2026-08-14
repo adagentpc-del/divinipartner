@@ -12,6 +12,8 @@ import { notify } from "../lib/notify.js";
 import { recipients } from "../lib/recipients.js";
 import { isTerminalStatus, onEventCompleted } from "../db/completion.js";
 import { checkLimit, limitExceededPayload } from "../lib/entitlements.js";
+import { buildBeo } from "../db/beo.js";
+import { renderBeoPdf } from "../lib/pdf.js";
 
 const h =
   (fn: (req: Request, res: Response) => Promise<unknown>) =>
@@ -241,6 +243,29 @@ router.get(
     res.setHeader("Content-Type", "text/calendar; charset=utf-8");
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
     res.send(ics);
+  }),
+);
+
+/** Banquet Event Order (BEO): event overview, venue setup/access, run of
+ *  show, and awarded vendor orders with real pricing (moat roadmap Phase 2c). */
+router.get(
+  "/:id/beo",
+  h(async (req, res) => {
+    const a = await actor(req);
+    res.json({ beo: await buildBeo(a, req.params.id) });
+  }),
+);
+
+/** Branded, downloadable BEO PDF. */
+router.get(
+  "/:id/beo/pdf",
+  h(async (req, res) => {
+    const a = await actor(req);
+    const beo = await buildBeo(a, req.params.id);
+    const pdf = await renderBeoPdf(beo);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="beo-${req.params.id.slice(0, 8)}.pdf"`);
+    res.send(pdf);
   }),
 );
 
