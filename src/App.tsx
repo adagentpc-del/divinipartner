@@ -336,6 +336,7 @@ function Routed() {
       <Route path="/vendors/:slug" element={<PublicProfile />} />
       <Route path="/planners/:slug" element={<PublicProfile />} />
       <Route path="/suppliers/:slug" element={<PublicProfile />} />
+      <Route path="/installers/:slug" element={<PublicProfile />} />
 
       {/* public invite landing */}
       <Route path="/join/:token" element={<JoinInvite />} />
