@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { apiGet, apiSend } from '../../../lib/api';
+import SeatingChart3DView from './SeatingChart3DView';
 
 /**
  * Phase 6 - Seating Chart builder (blueprint 14.3). Place tables and zones on a
@@ -27,6 +28,7 @@ export default function SeatingChartTab({ eventId }: { eventId: string }) {
   const [guests, setGuests] = useState<Guest[]>([]);
   const [meta, setMeta] = useState<Meta | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  const [view, setView] = useState<'plan' | '3d'>('plan');
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -185,44 +187,56 @@ export default function SeatingChartTab({ eventId }: { eventId: string }) {
           {meta?.zone_types.map((z) => <option key={z.key} value={z.key}>{z.label}</option>)}
         </select>
         <span className="sc-spacer" />
+        <div className="sc-viewtoggle">
+          <button type="button" className={view === 'plan' ? 'on' : ''} onClick={() => setView('plan')}>Plan</button>
+          <button type="button" className={view === '3d' ? 'on' : ''} onClick={() => setView('3d')}>3D view</button>
+        </div>
         <button type="button" className="ew-btn ghost sm" onClick={exportLayout}>Export</button>
         <button type="button" className="ew-btn sm" onClick={save} disabled={busy || !dirty}>{dirty ? 'Save layout' : 'Saved'}</button>
       </div>
 
       <div className="sc-grid">
         <div className="sc-canvaswrap">
-          <svg ref={svgRef} className="sc-canvas" viewBox={`0 0 ${W} ${H}`} onPointerMove={onMove} onPointerUp={onUp} onPointerLeave={onUp}>
-            <rect x={0} y={0} width={W} height={H} fill="#f7f4ee" stroke="#e7e1d6" />
-            {fp?.file_url && /\.(png|jpe?g|webp|gif|svg)(\?|$)/i.test(fp.file_url)
-              ? <image href={fp.file_url} x={0} y={0} width={W} height={H} preserveAspectRatio="xMidYMid meet" opacity={0.35} />
-              : null}
-            {layout.zones.map((z) => (
-              <g key={z.id}>
-                <rect x={z.x} y={z.y} width={z.width ?? 140} height={z.height ?? 90} rx={8}
-                  fill="rgba(201,163,91,.12)" stroke="#C9A35B" strokeDasharray="6 4" />
-                <text x={z.x + 8} y={z.y + 18} className="sc-zonelabel">{z.label}</text>
-                <text x={(z.x + (z.width ?? 140)) - 6} y={z.y + 16} className="sc-zonex" onClick={() => removeZone(z.id)}>x</text>
-              </g>
-            ))}
-            {layout.tables.map((t) => {
-              const r = 34;
-              const isSel = t.id === selected;
-              const isRect = t.shape === 'rectangle' || t.shape === 'head';
-              return (
-                <g key={t.id} onPointerDown={(e) => onDown(e, t.id)} className="sc-table"
-                  transform={isRect && t.rotation ? `rotate(${t.rotation} ${t.x} ${t.y})` : undefined}>
-                  {isRect
-                    ? <rect x={t.x - 44} y={t.y - 22} width={88} height={44} rx={6}
-                        fill={t.vip ? '#123c2e' : '#fff'} stroke={isSel ? '#C9A35B' : '#1E5D4A'} strokeWidth={isSel ? 3 : 1.5} />
-                    : <circle cx={t.x} cy={t.y} r={r}
-                        fill={t.vip ? '#123c2e' : '#fff'} stroke={isSel ? '#C9A35B' : '#1E5D4A'} strokeWidth={isSel ? 3 : 1.5} />}
-                  <text x={t.x} y={t.y - 2} textAnchor="middle" className={`sc-tlabel${t.vip ? ' on' : ''}`}>{t.label}</text>
-                  <text x={t.x} y={t.y + 12} textAnchor="middle" className={`sc-tseats${t.vip ? ' on' : ''}`}>{seatsUsed(t.id)}/{t.seats ?? 8}</text>
+          {view === 'plan' ? (
+            <svg ref={svgRef} className="sc-canvas" viewBox={`0 0 ${W} ${H}`} onPointerMove={onMove} onPointerUp={onUp} onPointerLeave={onUp}>
+              <rect x={0} y={0} width={W} height={H} fill="#f7f4ee" stroke="#e7e1d6" />
+              {fp?.file_url && /\.(png|jpe?g|webp|gif|svg)(\?|$)/i.test(fp.file_url)
+                ? <image href={fp.file_url} x={0} y={0} width={W} height={H} preserveAspectRatio="xMidYMid meet" opacity={0.35} />
+                : null}
+              {layout.zones.map((z) => (
+                <g key={z.id}>
+                  <rect x={z.x} y={z.y} width={z.width ?? 140} height={z.height ?? 90} rx={8}
+                    fill="rgba(201,163,91,.12)" stroke="#C9A35B" strokeDasharray="6 4" />
+                  <text x={z.x + 8} y={z.y + 18} className="sc-zonelabel">{z.label}</text>
+                  <text x={(z.x + (z.width ?? 140)) - 6} y={z.y + 16} className="sc-zonex" onClick={() => removeZone(z.id)}>x</text>
                 </g>
-              );
-            })}
-          </svg>
-          <p className="ew-muted sc-hint">Drag tables to position them. Click a table to edit it and assign guests.</p>
+              ))}
+              {layout.tables.map((t) => {
+                const r = 34;
+                const isSel = t.id === selected;
+                const isRect = t.shape === 'rectangle' || t.shape === 'head';
+                return (
+                  <g key={t.id} onPointerDown={(e) => onDown(e, t.id)} className="sc-table"
+                    transform={isRect && t.rotation ? `rotate(${t.rotation} ${t.x} ${t.y})` : undefined}>
+                    {isRect
+                      ? <rect x={t.x - 44} y={t.y - 22} width={88} height={44} rx={6}
+                          fill={t.vip ? '#123c2e' : '#fff'} stroke={isSel ? '#C9A35B' : '#1E5D4A'} strokeWidth={isSel ? 3 : 1.5} />
+                      : <circle cx={t.x} cy={t.y} r={r}
+                          fill={t.vip ? '#123c2e' : '#fff'} stroke={isSel ? '#C9A35B' : '#1E5D4A'} strokeWidth={isSel ? 3 : 1.5} />}
+                    <text x={t.x} y={t.y - 2} textAnchor="middle" className={`sc-tlabel${t.vip ? ' on' : ''}`}>{t.label}</text>
+                    <text x={t.x} y={t.y + 12} textAnchor="middle" className={`sc-tseats${t.vip ? ' on' : ''}`}>{seatsUsed(t.id)}/{t.seats ?? 8}</text>
+                  </g>
+                );
+              })}
+            </svg>
+          ) : (
+            <SeatingChart3DView layout={layout} w={W} h={H} selected={selected} onSelect={setSelected} />
+          )}
+          <p className="ew-muted sc-hint">
+            {view === 'plan'
+              ? 'Drag tables to position them. Click a table to edit it and assign guests.'
+              : 'Presentation view. Switch to Plan to reposition tables -- click a table here to select it.'}
+          </p>
         </div>
 
         <div className="sc-side">
@@ -298,6 +312,10 @@ const S_CSS = `
 .sc-grid { display: grid; grid-template-columns: 1fr 280px; gap: 16px; }
 .sc-canvaswrap { min-width: 0; }
 .sc-canvas { width: 100%; height: auto; border-radius: 12px; touch-action: none; user-select: none; display: block; }
+.sc-canvas.sc-3d { background: #f7f4ee; border: 1px solid #e7e1d6; }
+.sc-viewtoggle { display: flex; border: 1px solid #e7e1d6; border-radius: 8px; overflow: hidden; }
+.sc-viewtoggle button { font: inherit; font-size: 12px; font-weight: 600; padding: 6px 12px; border: 0; background: #fff; color: #6b6459; cursor: pointer; }
+.sc-viewtoggle button.on { background: #1E5D4A; color: #fff; }
 .sc-table { cursor: grab; }
 .sc-tlabel { font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 600; fill: #123c2e; pointer-events: none; }
 .sc-tlabel.on { fill: #fff; }
