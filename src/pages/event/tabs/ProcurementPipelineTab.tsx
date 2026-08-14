@@ -77,12 +77,12 @@ export default function ProcurementPipelineTab({ eventId }: { eventId: string })
           <tbody>
             {rows.map((r) => (
               <tr key={r.bid_id}>
-                <td>{r.category ?? 'General'}</td>
-                <td>{budget(r)}</td>
-                <td>{r.quotes_count}</td>
-                <td><span className={`ew-pp-stage stage-${r.stage}`}>{STAGE_LABEL[r.stage]}</span></td>
-                <td>{r.awarded_vendor_name ?? '-'}</td>
-                <td className="ew-pp-action">{r.next_action}</td>
+                <td data-label="Scope">{r.category ?? 'General'}</td>
+                <td data-label="Budget">{budget(r)}</td>
+                <td data-label="Quotes">{r.quotes_count}</td>
+                <td data-label="Stage"><span className={`ew-pp-stage stage-${r.stage}`}>{STAGE_LABEL[r.stage]}</span></td>
+                <td data-label="Awarded to">{r.awarded_vendor_name ?? '-'}</td>
+                <td className="ew-pp-action" data-label="Next action">{r.next_action}</td>
               </tr>
             ))}
           </tbody>
@@ -109,6 +109,7 @@ const PP_CSS = `
   .ew-pp-table, .ew-pp-table thead, .ew-pp-table tbody, .ew-pp-table th, .ew-pp-table td, .ew-pp-table tr { display: block; }
   .ew-pp-table thead { display: none; }
   .ew-pp-table tr { border: 1px solid #e7e1d6; border-radius: 10px; margin-bottom: 10px; padding: 8px 10px; }
-  .ew-pp-table td { border-bottom: none; padding: 4px 0; }
+  .ew-pp-table td { border-bottom: none; padding: 4px 0; display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+  .ew-pp-table td::before { content: attr(data-label); font-size: 10.5px; text-transform: uppercase; letter-spacing: .4px; color: #9a8a5e; font-weight: 600; flex: 0 0 auto; }
 }
 `;

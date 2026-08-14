@@ -253,24 +253,26 @@ export default function QuotesTab({ eventId }: { eventId: string }) {
           <span className="ew-cmp-hint">Select 2 or more quotes to compare side by side (your plan's limit applies).</span>
           {capNote ? <span className="ew-cmp-cap">Select up to 5</span> : null}
         </div>
-        <table className="ew-table">
-          <thead>
-            <tr><th></th><th>Quote</th><th>Subtotal</th><th>Platform fee</th><th>Total</th><th>Status</th><th></th></tr>
-          </thead>
-          <tbody>
-            {rows.map((q) => (
-              <tr key={q.id}>
-                <td><input type="checkbox" checked={selected.includes(q.id)} onChange={() => toggleSelect(q.id)} aria-label={`Select quote ${q.id.slice(0, 8)}`} /></td>
-                <td className="ew-mono">{q.id.slice(0, 8)}</td>
-                <td>{money(q.subtotal)}</td>
-                <td>{money(q.platform_fee)}</td>
-                <td>{money(q.total)}</td>
-                <td>{q.status}</td>
-                <td><button type="button" className="ew-btn ghost sm" onClick={() => view(q.id)}>View</button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="ew-q-tablewrap">
+          <table className="ew-table">
+            <thead>
+              <tr><th></th><th>Quote</th><th>Subtotal</th><th>Platform fee</th><th>Total</th><th>Status</th><th></th></tr>
+            </thead>
+            <tbody>
+              {rows.map((q) => (
+                <tr key={q.id}>
+                  <td><input type="checkbox" checked={selected.includes(q.id)} onChange={() => toggleSelect(q.id)} aria-label={`Select quote ${q.id.slice(0, 8)}`} /></td>
+                  <td className="ew-mono">{q.id.slice(0, 8)}</td>
+                  <td>{money(q.subtotal)}</td>
+                  <td>{money(q.platform_fee)}</td>
+                  <td>{money(q.total)}</td>
+                  <td>{q.status}</td>
+                  <td><button type="button" className="ew-btn ghost sm" onClick={() => view(q.id)}>View</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         </>
       )}
 
@@ -342,10 +344,14 @@ export default function QuotesTab({ eventId }: { eventId: string }) {
                           <span>Counteroffer: {money(m.proposed_amount)}</span>
                           <span className={`ew-tag counter-${m.counter_status}`}>{m.counter_status}</span>
                           {m.counter_status === 'open' ? (
-                            <span className="ew-q-counteracts">
-                              <button type="button" className="ew-btn sm" disabled={msgBusy} onClick={() => respondCounter(open.quote_id, m.id, 'accept')}>Accept</button>
-                              <button type="button" className="ew-btn ghost sm" disabled={msgBusy} onClick={() => respondCounter(open.quote_id, m.id, 'decline')}>Decline</button>
-                            </span>
+                            m.author_side === 'client' ? (
+                              <span className="ew-q-counterwait">Waiting on the vendor</span>
+                            ) : (
+                              <span className="ew-q-counteracts">
+                                <button type="button" className="ew-btn sm" disabled={msgBusy} onClick={() => respondCounter(open.quote_id, m.id, 'accept')}>Accept</button>
+                                <button type="button" className="ew-btn ghost sm" disabled={msgBusy} onClick={() => respondCounter(open.quote_id, m.id, 'decline')}>Decline</button>
+                              </span>
+                            )
                           ) : null}
                         </div>
                       ) : null}
@@ -450,9 +456,12 @@ const Q_CSS = `
 .ew-q-compose { width: 100%; border: 1px solid #e7e1d6; border-radius: 10px; padding: 10px; font: inherit; font-size: 13px; resize: vertical; box-sizing: border-box; }
 .ew-q-counter { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 12px; flex-wrap: wrap; }
 .ew-q-counteracts { display: flex; gap: 6px; }
+.ew-q-counterwait { font-size: 11.5px; color: #9a8a5e; font-style: italic; }
 .ew-q-counterform { display: flex; gap: 8px; margin: 10px 0; flex-wrap: wrap; }
 .ew-q-counterform input { flex: 1 1 160px; font: inherit; padding: 8px 10px; border: 1px solid #e7e1d6; border-radius: 8px; }
 .ew-tag { font-size: 10px; letter-spacing: .4px; text-transform: uppercase; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+.ew-q-tablewrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.ew-q-tablewrap .ew-table { min-width: 560px; }
 .ew-tag.counter-open { background: rgba(201,163,91,.2); color: #8a6d27; }
 .ew-tag.counter-accepted { background: rgba(30,93,74,.12); color: #1E5D4A; }
 .ew-tag.counter-declined { background: #f3e9e9; color: #8a4a4a; }
