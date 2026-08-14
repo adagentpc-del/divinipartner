@@ -153,7 +153,15 @@ export default function BidBoard() {
               </div>
               <div className="bb-actions">
                 <button type="button" className="bb-btn ghost" onClick={() => { setOpenId(b.id); void loadQuestions(b.id); }}>View detail</button>
-                <button type="button" className="bb-btn" onClick={() => nav(`/quotes/auto/${b.id}`)}>Generate quote</button>
+                <button
+                  type="button"
+                  className="bb-btn"
+                  disabled={!b.access.allowed}
+                  title={b.access.allowed ? undefined : b.access.reason}
+                  onClick={() => nav(`/quotes/auto/${b.id}`)}
+                >
+                  Generate quote
+                </button>
               </div>
             </div>
           ))}
@@ -211,7 +219,15 @@ export default function BidBoard() {
             </div>
 
             <div className="bb-modal-actions">
-              <button type="button" className="bb-btn" onClick={() => nav(`/quotes/auto/${open.id}`)}>Generate quote</button>
+              <button
+                type="button"
+                className="bb-btn"
+                disabled={!open.access.allowed}
+                title={open.access.allowed ? undefined : open.access.reason}
+                onClick={() => nav(`/quotes/auto/${open.id}`)}
+              >
+                Generate quote
+              </button>
             </div>
           </div>
         </div>
@@ -266,6 +282,7 @@ const BB_CSS = `
 .bb-btn { background: var(--dp-emerald); color: #fff; border: 0; border-radius: 9px; font: inherit; font-size: 12px; font-weight: 600; padding: 8px 14px; cursor: pointer; align-self: flex-start; }
 .bb-btn.ghost { background: transparent; color: var(--dp-emerald); border: 1px solid var(--dp-line); }
 .bb-btn.ghost:hover { border-color: var(--dp-emerald); background: rgba(18,60,46,.04); }
+.bb-btn:disabled { background: var(--dp-line); color: #8a8378; cursor: not-allowed; }
 .bb-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .bb-modal-actions { display: flex; justify-content: flex-end; margin-top: 16px; }
 .bb-qa { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--dp-line); display: flex; flex-direction: column; gap: 8px; }
