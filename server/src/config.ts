@@ -178,13 +178,18 @@ export const WORKER_INTERVAL_MINUTES = Number(process.env.WORKER_INTERVAL_MINUTE
 /**
  * Local-first LLM. Defaults to a local Ollama server; when unreachable or off,
  * callers fall back to deterministic logic (never a hard dependency). An
- * OpenAI-compatible endpoint is supported only if explicitly configured.
+ * OpenAI-compatible endpoint or the Anthropic Messages API is supported only
+ * if explicitly configured.
  */
-export const LLM_PROVIDER = (process.env.LLM_PROVIDER || "ollama").toLowerCase(); // ollama | openai-compat | off
+export const LLM_PROVIDER = (process.env.LLM_PROVIDER || "ollama").toLowerCase(); // ollama | openai-compat | anthropic | off
 export const OLLAMA_URL = (process.env.OLLAMA_URL || "http://localhost:11434").replace(/\/$/, "");
-export const LLM_MODEL = process.env.LLM_MODEL || "llama3.1";
+export const LLM_MODEL = process.env.LLM_MODEL || "llama3.1"; // ollama/openai-compat only
 export const LLM_API_KEY = process.env.LLM_API_KEY || ""; // openai-compat only
 export const LLM_BASE_URL = (process.env.LLM_BASE_URL || "").replace(/\/$/, ""); // openai-compat base
+// Prefers the SDK-conventional ANTHROPIC_API_KEY; falls back to the generic
+// LLM_API_KEY so one key config can cover either provider.
+export const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || process.env.LLM_API_KEY || "";
+export const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || "claude-haiku-4-5-20251001";
 export const llmEnabled = (): boolean => LLM_PROVIDER !== "off";
 
 /**
