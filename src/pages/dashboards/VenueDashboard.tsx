@@ -93,15 +93,18 @@ const NAV: NavItem[] = [
   { label: 'My Payouts', icon: '$', to: '/connect-payouts/mine' },
 ];
 
-// Next-best-action prompts for venues (blueprint section 25.1).
-const PROMPTS = [
-  'Complete your venue profile and photos',
-  'Set availability and seasonal rates',
-  'Upload floorplans for each space',
-  'Respond to your newest inquiry',
+// Next-best-action prompts for venues (blueprint section 25.1). Each prompt
+// routes to the page that actually performs it -- previously all four shared
+// one onPrompt callback and landed on /venue-twin regardless of which was
+// clicked.
+const PROMPTS: { label: string; to: string }[] = [
+  { label: 'Complete your venue profile and photos', to: '/profile' },
+  { label: 'Set availability and seasonal rates', to: '/calendar' },
+  { label: 'Upload floorplans for each space', to: '/venue-twin' },
+  { label: 'Respond to your newest inquiry', to: '/leads' },
 ];
 
-function PromptStrip({ onPrompt }: { onPrompt: () => void }) {
+function PromptStrip({ onPrompt }: { onPrompt: (to: string) => void }) {
   return (
     <section className="dpdash-nba">
       <div className="dpdash-nba-head">
@@ -110,7 +113,7 @@ function PromptStrip({ onPrompt }: { onPrompt: () => void }) {
       </div>
       <div className="dpdash-nba-prompts">
         {PROMPTS.map((p, i) => (
-          <button key={i} type="button" className="dpdash-prompt" onClick={onPrompt}>{p}</button>
+          <button key={i} type="button" className="dpdash-prompt" onClick={() => onPrompt(p.to)}>{p.label}</button>
         ))}
       </div>
     </section>
@@ -136,7 +139,7 @@ export default function VenueDashboard() {
         .vd-network-btn:hover{background:#123c2e}
       `}</style>
 
-      <PromptStrip onPrompt={() => nav('/venue-twin')} />
+      <PromptStrip onPrompt={(to) => nav(to)} />
 
       <section className="vd-network">
         <div className="vd-network-txt">

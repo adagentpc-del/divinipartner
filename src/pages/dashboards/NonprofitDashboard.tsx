@@ -47,11 +47,14 @@ const NAV: NavItem[] = [
   { label: 'My Payouts', icon: '$', to: '/connect-payouts/mine' },
 ];
 
-const PROMPTS = [
-  'Create your next fundraising event',
-  'Build tiered sponsorship packages',
-  'Add ticket and table options',
-  'Track sponsor fulfillment',
+// Each prompt routes to the page that actually performs it -- previously all
+// four shared one onClick and landed on /fundraising-builder regardless of
+// which was clicked.
+const PROMPTS: { label: string; to: string }[] = [
+  { label: 'Create your next fundraising event', to: '/fundraising-builder' },
+  { label: 'Build tiered sponsorship packages', to: '/sponsorship-packages' },
+  { label: 'Add ticket and table options', to: '/ticket-table' },
+  { label: 'Track sponsor fulfillment', to: '/sponsorship-packages' },
 ];
 
 type Dashboard = {
@@ -118,8 +121,8 @@ export default function NonprofitDashboard() {
         </div>
         <div className="dpdash-nba-prompts">
           {PROMPTS.map((p, i) => (
-            <button key={i} type="button" className="dpdash-prompt" onClick={() => nav('/fundraising-builder')}>
-              {p}
+            <button key={i} type="button" className="dpdash-prompt" onClick={() => nav(p.to)}>
+              {p.label}
             </button>
           ))}
         </div>

@@ -46,14 +46,22 @@ const NAV: NavItem[] = [
 ];
 
 // Next-best-action prompts for planners (blueprint section 25, planner role).
-const PROMPTS = [
-  'Set up your next client event',
-  'Source venues and vendors for an event',
-  'Build the run-of-show timeline',
-  'Track the budget against quotes',
+// Each prompt routes to the page that actually performs it -- previously all
+// four shared one onPrompt callback and landed on /events regardless of
+// which was clicked. The run-of-show timeline lives inside a specific
+// event's workspace (no standalone global timeline page), so that one still
+// starts at /events -- picking the event is the first real step either way.
+const PROMPTS: { label: string; to: string }[] = [
+  { label: 'Set up your next client event', to: '/events' },
+  { label: 'Source venues and vendors for an event', to: '/marketplace/search' },
+  { label: 'Build the run-of-show timeline', to: '/events' },
+  // /profit-map is Plus-gated and scoped to jobs the org sold as a vendor --
+  // it omits a planner's buyer-side event quotes. The event workspace is
+  // where the actual budget-vs-quotes comparison lives, per PR #33 review.
+  { label: 'Track the budget against quotes', to: '/events' },
 ];
 
-function PromptStrip({ onPrompt }: { onPrompt: () => void }) {
+function PromptStrip({ onPrompt }: { onPrompt: (to: string) => void }) {
   return (
     <section className="dpdash-nba">
       <div className="dpdash-nba-head">
@@ -62,7 +70,7 @@ function PromptStrip({ onPrompt }: { onPrompt: () => void }) {
       </div>
       <div className="dpdash-nba-prompts">
         {PROMPTS.map((p, i) => (
-          <button key={i} type="button" className="dpdash-prompt" onClick={onPrompt}>{p}</button>
+          <button key={i} type="button" className="dpdash-prompt" onClick={() => onPrompt(p.to)}>{p.label}</button>
         ))}
       </div>
     </section>
@@ -76,7 +84,7 @@ export default function PlannerDashboard() {
 
   return (
     <DashboardShell title="Planner Studio" navLabel="Planner Workspace" items={NAV}>
-      <PromptStrip onPrompt={() => nav('/events')} />
+      <PromptStrip onPrompt={(to) => nav(to)} />
 
       <div className="dpdash-stats">
         <div className="dpdash-stat"><div className="dpdash-stat-k">Active events</div><div className="dpdash-stat-v">0</div><div className="dpdash-stat-d">in production</div></div>

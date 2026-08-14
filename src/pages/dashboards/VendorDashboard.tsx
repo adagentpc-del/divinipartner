@@ -99,15 +99,18 @@ const NAV: NavItem[] = [
   { label: 'My Payouts', icon: '$', to: '/connect-payouts/mine' },
 ];
 
-// Next-best-action prompts for vendors (blueprint section 25.2).
-const PROMPTS = [
-  'Upload your COI and W-9 documents',
-  'List your services and pricing',
-  'Browse open bids matched to you',
-  'Send a quote on an active request',
+// Next-best-action prompts for vendors (blueprint section 25.2). Each prompt
+// routes to the page that actually performs it -- previously all four shared
+// one onPrompt callback and landed on /compliance regardless of which was
+// clicked.
+const PROMPTS: { label: string; to: string }[] = [
+  { label: 'Upload your COI and W-9 documents', to: '/compliance' },
+  { label: 'List your services and pricing', to: '/profile' },
+  { label: 'Browse open bids matched to you', to: '/bids' },
+  { label: 'Send a quote on an active request', to: '/bids' },
 ];
 
-function PromptStrip({ onPrompt }: { onPrompt: () => void }) {
+function PromptStrip({ onPrompt }: { onPrompt: (to: string) => void }) {
   return (
     <section className="dpdash-nba">
       <div className="dpdash-nba-head">
@@ -116,7 +119,7 @@ function PromptStrip({ onPrompt }: { onPrompt: () => void }) {
       </div>
       <div className="dpdash-nba-prompts">
         {PROMPTS.map((p, i) => (
-          <button key={i} type="button" className="dpdash-prompt" onClick={onPrompt}>{p}</button>
+          <button key={i} type="button" className="dpdash-prompt" onClick={() => onPrompt(p.to)}>{p.label}</button>
         ))}
       </div>
     </section>
@@ -260,7 +263,7 @@ export default function VendorDashboard() {
 
   return (
     <DashboardShell title="Vendor Dashboard" navLabel="Vendor Workspace" items={NAV}>
-      <PromptStrip onPrompt={() => nav('/compliance')} />
+      <PromptStrip onPrompt={(to) => nav(to)} />
       <FeaturedUpsell />
 
       <div className="dpdash-stats">
