@@ -14,6 +14,7 @@
  */
 import { Router, type Request, type Response } from "express";
 import { PUBLIC_APP_URL } from "../config.js";
+import { listPublishedProfileSlugs } from "../db/marketplace.js";
 
 const router = Router();
 
@@ -105,6 +106,37 @@ function discoverPaths(): string[] {
   return out;
 }
 
+// profiles.kind -> the public storefront route prefix that serves it
+// (App.tsx). "installer" has no public storefront route yet, so it is
+// deliberately excluded rather than pointing the sitemap at a 404.
+const KIND_TO_PATH_PREFIX: Record<string, string> = {
+  venue: "venues",
+  vendor: "vendors",
+  planner: "planners",
+  supplier: "suppliers",
+};
+
+/**
+ * Individual storefront pages (a real business name + city), the actual
+ * long-tail SEO surface -- not just discoverable via internal links from the
+ * category pages, but explicitly listed here so search engines index them
+ * directly. Degrades to an empty list on a DB error rather than failing the
+ * whole sitemap.
+ */
+async function profilePaths(): Promise<{ path: string; lastmod: string }[]> {
+  try {
+    const rows = await listPublishedProfileSlugs();
+    return rows
+      .filter((r) => KIND_TO_PATH_PREFIX[r.kind])
+      .map((r) => ({
+        path: `/${KIND_TO_PATH_PREFIX[r.kind]}/${r.slug}`,
+        lastmod: new Date(r.created_at).toISOString().slice(0, 10),
+      }));
+  } catch {
+    return [];
+  }
+}
+
 function xmlEscape(s: string): string {
   return s
     .replace(/&/g, "&amp;")
@@ -114,16 +146,19 @@ function xmlEscape(s: string): string {
     .replace(/'/g, "&apos;");
 }
 
-router.get("/sitemap.xml", (req: Request, res: Response) => {
+router.get("/sitemap.xml", async (req: Request, res: Response) => {
   const origin = originFor(req);
-  const lastmod = new Date().toISOString().slice(0, 10);
-  const paths = [...MARKETING_PATHS, ...discoverPaths()];
+  const today = new Date().toISOString().slice(0, 10);
+  const staticEntries = [...MARKETING_PATHS, ...discoverPaths()].map((p) => ({ path: p, lastmod: today }));
+  const profileEntries = await profilePaths();
+  const entries = [...staticEntries, ...profileEntries];
 
-  const urls = paths
-    .map((p) => {
+  const urls = entries
+    .map(({ path: p, lastmod }) => {
       const loc = xmlEscape(`${origin}${p}`);
-      const priority = p === "/" ? "1.0" : p === "/discover" || p.startsWith("/discover/") ? "0.7" : "0.8";
-      const changefreq = p.startsWith("/discover") ? "weekly" : "monthly";
+      const isStorefront = Object.values(KIND_TO_PATH_PREFIX).some((prefix) => p.startsWith(`/${prefix}/`));
+      const priority = p === "/" ? "1.0" : isStorefront ? "0.75" : p.startsWith("/discover") ? "0.7" : "0.8";
+      const changefreq = isStorefront ? "weekly" : p.startsWith("/discover") ? "weekly" : "monthly";
       return `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`;
     })
     .join("\n");
@@ -139,8 +174,37 @@ router.get("/robots.txt", (req: Request, res: Response) => {
   const body = [
     "User-agent: *",
     "Allow: /",
+    "",
+    "# Keep crawlers out of the authenticated app (client-rendered, login-only)",
     "Disallow: /app",
+    "Disallow: /admin",
+    "Disallow: /dashboard",
     "Disallow: /api/",
+    "",
+    "# Explicitly welcome AI answer-engine crawlers (AEO/GEO)",
+    "User-agent: GPTBot",
+    "Allow: /",
+    "",
+    "User-agent: OAI-SearchBot",
+    "Allow: /",
+    "",
+    "User-agent: ChatGPT-User",
+    "Allow: /",
+    "",
+    "User-agent: PerplexityBot",
+    "Allow: /",
+    "",
+    "User-agent: ClaudeBot",
+    "Allow: /",
+    "",
+    "User-agent: Claude-Web",
+    "Allow: /",
+    "",
+    "User-agent: Google-Extended",
+    "Allow: /",
+    "",
+    "User-agent: Applebot-Extended",
+    "Allow: /",
     "",
     `Sitemap: ${origin}/sitemap.xml`,
     "",
