@@ -35,7 +35,10 @@ const NAV: NavItem[] = [
 const PROMPTS: { label: string; to: string }[] = [
   { label: 'Create your first event', to: '/events' },
   { label: 'Find venues that fit your guest count', to: '/marketplace/search' },
-  { label: 'Request quotes from vendors', to: '/marketplace/search' },
+  // Requesting a quote needs an event to attach a budget/scope to and invite
+  // vendors on (the event workspace's Bids tab) -- marketplace search has no
+  // event or bid context and can't create a request, per PR #33 review.
+  { label: 'Request quotes from vendors', to: '/events' },
   { label: 'Start your guest list', to: '/guest-hub' },
 ];
 

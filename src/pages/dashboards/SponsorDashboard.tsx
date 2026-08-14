@@ -38,14 +38,18 @@ const NAV: NavItem[] = [
   { label: 'My Payouts', icon: '$', to: '/connect-payouts/mine' },
 ];
 
-// Each prompt routes to the page that actually performs it -- previously all
-// four shared one onClick and landed on /sponsor-portal regardless of which
-// was clicked.
+// /sponsor-portal is where all four of these actually happen: it loads
+// published packages from GET /sponsor-portal/packages (browse + express
+// interest), and a purchase's detail view has the agreement, the logo/ad
+// asset upload (POST /sponsor-purchases/:id/assets), and the guest-name
+// form bounded by the purchase's guest allotment. /opportunities,
+// /profile/decks-programs, and /guest-hub are all the wrong data model for
+// a sponsor fulfilling a specific purchased package (PR #33 review).
 const PROMPTS: { label: string; to: string }[] = [
-  { label: 'Browse available sponsorships', to: '/opportunities' },
+  { label: 'Browse available sponsorships', to: '/sponsor-portal' },
   { label: 'Sign your sponsorship agreement', to: '/sponsor-portal' },
-  { label: 'Upload your logo and ad artwork', to: '/profile/decks-programs' },
-  { label: 'Add your guest names', to: '/guest-hub' },
+  { label: 'Upload your logo and ad artwork', to: '/sponsor-portal' },
+  { label: 'Add your guest names', to: '/sponsor-portal' },
 ];
 
 type Purchase = {

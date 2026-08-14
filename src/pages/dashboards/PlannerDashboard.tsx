@@ -55,7 +55,10 @@ const PROMPTS: { label: string; to: string }[] = [
   { label: 'Set up your next client event', to: '/events' },
   { label: 'Source venues and vendors for an event', to: '/marketplace/search' },
   { label: 'Build the run-of-show timeline', to: '/events' },
-  { label: 'Track the budget against quotes', to: '/profit-map' },
+  // /profit-map is Plus-gated and scoped to jobs the org sold as a vendor --
+  // it omits a planner's buyer-side event quotes. The event workspace is
+  // where the actual budget-vs-quotes comparison lives, per PR #33 review.
+  { label: 'Track the budget against quotes', to: '/events' },
 ];
 
 function PromptStrip({ onPrompt }: { onPrompt: (to: string) => void }) {
