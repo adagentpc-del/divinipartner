@@ -225,6 +225,32 @@ export async function listInvoices(orgId: string, filters?: { event_id?: string;
   );
 }
 
+/**
+ * Every invoice raised against a single event, regardless of which org issued
+ * it. The route calling this MUST authorize the actor against the event
+ * first (events.ts::getEvent throws if the actor cannot see it) -- unscoped
+ * on purpose, same convention as invoiceOrgTier/getInvoicePartiesById above.
+ *
+ * Before this existed, GET /invoices only ever filtered by the CALLER's own
+ * organization_id (the issuing org), so an event owner asking for
+ * ?event_id=... got back invoices THEY issued, never the vendor-issued
+ * invoices raised against their own event -- which is exactly what
+ * InvoicesTab.tsx (the event workspace's Invoices tab) asks for and renders,
+ * so the tab was silently empty for every event owner.
+ */
+export async function listEventInvoices(eventId: string, status?: string): Promise<InvoiceRow[]> {
+  const where: string[] = [`event_id = $1`];
+  const params: unknown[] = [eventId];
+  if (status) {
+    params.push(status);
+    where.push(`status = $${params.length}`);
+  }
+  return q<InvoiceRow>(
+    `select * from invoices where ${where.join(" and ")} order by created_at desc`,
+    params,
+  );
+}
+
 export async function getInvoice(orgId: string, id: string): Promise<InvoiceRow | null> {
   return q1<InvoiceRow>(`select * from invoices where id = $1 and organization_id = $2`, [id, orgId]);
 }
@@ -275,24 +301,38 @@ export async function getInvoicePartiesById(invoiceId: string): Promise<{
     vendor_org_id: string | null;
     venue_org_id: string | null;
     client_org_id: string | null;
+    event_client_org_id: string | null;
+    event_planner_org_id: string | null;
   }>(
     `select i.organization_id,
             ve.organization_id as vendor_org_id,
             vn.organization_id as venue_org_id,
-            cu.organization_id as client_org_id
+            cu.organization_id as client_org_id,
+            ecu.organization_id as event_client_org_id,
+            epu.organization_id as event_planner_org_id
        from invoices i
        left join vendors ve on ve.id = i.vendor_id
        left join venues vn on vn.id = i.venue_id
        left join users cu on cu.id = i.client_id
+       left join events ev on ev.id = i.event_id
+       left join users ecu on ecu.id = ev.client_id
+       left join users epu on epu.id = ev.planner_id
       where i.id = $1`,
     [invoiceId],
   );
   if (!row) return null;
+  // A vendor issuing an invoice against an event does not always know (or
+  // pass) the client's user id -- fall back to the event's own client/planner
+  // org so the event owner always has a real, authorized path to pay an
+  // invoice raised against their own event, not just whoever the invoice's
+  // client_id happened to name explicitly.
   const party_org_ids = [
     row.organization_id,
     row.vendor_org_id,
     row.venue_org_id,
     row.client_org_id,
+    row.event_client_org_id,
+    row.event_planner_org_id,
   ].filter((x): x is string => !!x);
   return {
     organization_id: row.organization_id,
@@ -322,8 +362,14 @@ export async function applyPaymentToInvoice(invoiceId: string, amount: number): 
   if (balance <= 0) status = "paid";
   else if (newPaid > 0) status = "partially_paid";
   return q1<InvoiceRow>(
-    `update invoices set deposit_paid = $2, balance_due = $3, status = $4, updated_at = now(),
-        paid_at = case when $3 <= 0 then now() else paid_at end
+    // $3 is cast explicitly on both uses: reusing an untyped placeholder in
+    // an assignment context (balance_due = $3) and a comparison context
+    // (case when $3 <= 0) makes Postgres's extended-protocol type inference
+    // fail outright with "inconsistent types deduced for parameter $3"
+    // (reproduced directly against pg -- not context-dependent, always
+    // fails), so every 502 on this endpoint was this query, every time.
+    `update invoices set deposit_paid = $2, balance_due = $3::numeric, status = $4, updated_at = now(),
+        paid_at = case when $3::numeric <= 0 then now() else paid_at end
        where id = $1 returning *`,
     [invoiceId, newPaid, balance, status],
   );

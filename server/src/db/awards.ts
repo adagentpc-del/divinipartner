@@ -189,13 +189,45 @@ export async function awardQuote(
     }
 
     if (winnerOrg) {
-      await client.query(
-        `insert into event_vendors (event_id, organization_id, vendor_id, role, status)
-           values ($1, $2, $3, $4, 'awarded')
-         on conflict (event_id, organization_id)
-         do update set role = excluded.role, status = 'awarded'`,
-        [quote.event_id, winnerOrg, quote.vendor_id, bidCategory ?? "vendor"],
-      );
+      const eventVendor = (
+        await client.query<{ id: string }>(
+          `insert into event_vendors (event_id, organization_id, vendor_id, role, status)
+             values ($1, $2, $3, $4, 'awarded')
+           on conflict (event_id, organization_id)
+           do update set role = excluded.role, status = 'awarded'
+           returning id`,
+          [quote.event_id, winnerOrg, quote.vendor_id, bidCategory ?? "vendor"],
+        )
+      ).rows[0];
+
+      // Promote every active user of the winning org to a real event_members
+      // row (role 'vendor_owner') so they can actually participate in live-ops
+      // (check-in, tasks, incidents) on event day. Before this, only the
+      // legacy getEventRole() fallback (read-side) recognized an awarded
+      // vendor via their event_vendors row -- write-side live-ops actions
+      // like checkIns.ts::checkIn() require a real event_members row and had
+      // no path to ever get one for a vendor who won through the bid/quote
+      // flow (as opposed to being manually invited), so an awarded vendor
+      // could see the event but could never check in to it.
+      const winnerUsers = await client.query<{ id: string }>(`select id from users where organization_id = $1`, [
+        winnerOrg,
+      ]);
+      for (const u of winnerUsers.rows) {
+        await client.query(
+          `insert into event_members
+             (event_id, user_id, organization_id, vendor_id, event_vendor_id, role, status, joined_at)
+           values ($1,$2,$3,$4,$5,'vendor_owner','active', now())
+           on conflict (event_id, user_id) do update set
+              organization_id = excluded.organization_id,
+              vendor_id = excluded.vendor_id,
+              event_vendor_id = excluded.event_vendor_id,
+              role = 'vendor_owner',
+              status = 'active',
+              removed_at = null,
+              updated_at = now()`,
+          [quote.event_id, u.id, winnerOrg, quote.vendor_id, eventVendor?.id ?? null],
+        );
+      }
     }
 
     const amount = Number(quote.total) || 0;

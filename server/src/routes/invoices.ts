@@ -13,12 +13,14 @@ import * as db from "../db.js";
 import {
   createInvoice,
   listInvoices,
+  listEventInvoices,
   getInvoice,
   updateInvoiceStatus,
   INVOICE_STATUSES,
   INVOICE_STATUS_LABELS,
   type InvoiceStatus,
 } from "../db/invoices.js";
+import { getEvent } from "../db/events.js";
 import { renderInvoicePdf } from "../lib/pdf.js";
 import { notify } from "../lib/notify.js";
 import { q1 } from "../pool.js";
@@ -54,11 +56,21 @@ router.get(
   h(async (req, res) => {
     const auth = getAuth(req);
     const actor = await db.getActor(auth.userId!, auth.email);
+    const eventId = typeof req.query.event_id === "string" ? req.query.event_id : undefined;
+    const status = typeof req.query.status === "string" ? req.query.status : undefined;
+    if (eventId) {
+      // Scoped to one event: any actor who can see the event (owner, planner,
+      // an attached vendor, etc, via getEvent's own authorization) sees every
+      // invoice raised against it, not just the ones their own org issued --
+      // otherwise an event owner asking for their own event's invoices (this
+      // is exactly what InvoicesTab.tsx does) would always get back an empty
+      // list, since they never issue invoices on their own event.
+      await getEvent(actor, eventId);
+      const rows = await listEventInvoices(eventId, status);
+      return res.json({ invoices: rows });
+    }
     if (!actor.org) return res.json({ invoices: [] });
-    const rows = await listInvoices(actor.org.id, {
-      event_id: typeof req.query.event_id === "string" ? req.query.event_id : undefined,
-      status: typeof req.query.status === "string" ? req.query.status : undefined,
-    });
+    const rows = await listInvoices(actor.org.id, { status });
     res.json({ invoices: rows });
   }),
 );
