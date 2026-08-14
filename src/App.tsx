@@ -51,6 +51,7 @@ import EventsList from './pages/events/EventsList';
 import EventWorkspace from './pages/event/EventWorkspace';
 import EventDayMode from './pages/event/EventDayMode';
 import BidBoard from './pages/bids/BidBoard';
+import VendorPipeline from './pages/bids/VendorPipeline';
 
 // inventory / auto-quote (Phase 4)
 import InventoryManager from './pages/inventory/InventoryManager';
@@ -374,6 +375,7 @@ function Routed() {
       <Route path="/events/:id" element={<Authed><EventWorkspace /></Authed>} />
       <Route path="/events/:id/day" element={<Authed><EventDayMode /></Authed>} />
       <Route path="/bids" element={<Authed><BidBoard /></Authed>} />
+      <Route path="/vendor-pipeline" element={<Authed><VendorPipeline /></Authed>} />
       <Route path="/quotes/auto/:bidId" element={<Authed><AutoQuoteDraft /></Authed>} />
       <Route path="/search-bids" element={<Authed><SearchBids /></Authed>} />
       <Route path="/vendor-readiness-score" element={<Authed><VendorReadiness /></Authed>} />

@@ -6,6 +6,7 @@ import PublicPageTab from './tabs/PublicPageTab';
 import ExhibitorsTab from './tabs/ExhibitorsTab';
 import VendorsTab from './tabs/VendorsTab';
 import BidsTab from './tabs/BidsTab';
+import ProcurementPipelineTab from './tabs/ProcurementPipelineTab';
 import QuotesTab from './tabs/QuotesTab';
 import MessagesTab from './tabs/MessagesTab';
 import DocumentsTab from './tabs/DocumentsTab';
@@ -106,6 +107,7 @@ export default function EventWorkspace() {
     { key: 'risk_alerts', label: 'Risk & Alerts', element: <EventWarRoom eventId={id} /> },
     { key: 'venue', label: 'Venue', element: <VenueTab eventId={id} /> },
     { key: 'vendors', label: 'Vendors', element: <VendorsTab eventId={id} /> },
+    { key: 'pipeline', label: 'Pipeline', element: <ProcurementPipelineTab eventId={id} /> },
     { key: 'bids', label: 'Bids', element: <BidsTab eventId={id} /> },
     { key: 'quotes', label: 'Quotes', element: <QuotesTab eventId={id} /> },
     { key: 'inventory', label: 'Inventory', element: <InventoryTab eventId={id} /> },

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { apiGet, apiSend } from '../../lib/api';
 
 /**
@@ -109,6 +109,7 @@ export default function BidBoard() {
           <h1 className="bb-title">Bid Board</h1>
           <p className="bb-sub">Open event requests, gated by tier-access windows.</p>
         </div>
+        <Link to="/vendor-pipeline" className="bb-btn ghost">My pipeline</Link>
       </header>
 
       <div className="bb-legend">
@@ -228,7 +229,7 @@ const BB_CSS = `
 }
 .bb *, .bb *::before, .bb *::after { box-sizing: border-box; }
 .bb h1, .bb h2 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 600; margin: 0; }
-.bb-head { margin-bottom: 16px; }
+.bb-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
 .bb-kicker { font-size: 10.5px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--dp-gold); font-weight: 600; }
 .bb-title { font-size: 32px; color: var(--dp-emerald); line-height: 1.05; }
 .bb-sub { margin: 4px 0 0; font-size: 13px; color: var(--dp-muted); }
