@@ -273,10 +273,16 @@ export async function listSponsorGuests(purchaseId: string): Promise<SponsorGues
 }
 
 /**
- * Add a guest name for a purchase, up to the allotment. The guest is attached to
- * the purchase's fundraising_event_id (when present) and tagged with the sponsor
- * group so it rolls into the event's guest list. Returns the new row, or throws
- * ForbiddenError when the allotment is exhausted.
+ * Add a guest name for a purchase, up to the allotment. `guests.event_id` is a
+ * foreign key into the native `events` table, which is a DIFFERENT id space
+ * than `sponsor_purchases.fundraising_event_id` (a `fundraising_events.id`) --
+ * inserting the fundraising event's own id there always violated the FK and
+ * 500'd, found via a live sponsor persona walkthrough. A fundraising event
+ * only rolls into a native event's guest list when it has been linked to one
+ * via `fundraising_events.event_id`; when unlinked (the common case), the
+ * guest is still recorded (tagged by the sponsor group below) but not
+ * attached to any `events` row. Returns the new row, or throws ForbiddenError
+ * when the allotment is exhausted.
  */
 export async function addSponsorGuest(
   purchase: SponsorPurchase,
@@ -289,12 +295,20 @@ export async function addSponsorGuest(
   if (allotment > 0 && used >= allotment) {
     throw new ForbiddenError("guest allotment is full for this sponsorship");
   }
+  let linkedEventId: string | null = null;
+  if (purchase.fundraising_event_id) {
+    const fe = await q1<{ event_id: string | null }>(
+      `select event_id from fundraising_events where id = $1`,
+      [purchase.fundraising_event_id],
+    ).catch(() => null);
+    linkedEventId = fe?.event_id ?? null;
+  }
   const group = `sponsor:${purchase.id}`;
   const row = await q1<SponsorGuest>(
     `insert into guests (event_id, name, email, rsvp_status, guest_group, created_by)
      values ($1,$2,$3,'invited',$4,$5)
      returning id, name, email`,
-    [purchase.fundraising_event_id ?? null, name, email, group, createdBy],
+    [linkedEventId, name, email, group, createdBy],
   );
   return row as SponsorGuest;
 }
