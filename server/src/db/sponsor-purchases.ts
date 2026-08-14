@@ -22,6 +22,7 @@
  */
 import { q, q1, pool } from "../pool.js";
 import { NotFoundError, ForbiddenError, type Actor } from "../db.js";
+import { guestSync } from "../lib/guestSync.js";
 
 export type PurchaseStatus = "interested" | "agreed" | "paid" | "fulfilled" | "cancelled";
 export const PURCHASE_STATUSES: PurchaseStatus[] = [
@@ -310,6 +311,28 @@ export async function addSponsorGuest(
      returning id, name, email`,
     [linkedEventId, name, email, group, createdBy],
   );
+  // When the fundraising event IS linked to a native event, this guest just
+  // joined that event's guest list -- mirror guests.ts's fireGuestSync so
+  // vendors with needs_guest_list / needs_headcount subscriptions still hear
+  // about it (Codex review on this PR, verified: they otherwise silently
+  // miss sponsor-added guests). Best-effort, fire-and-forget, never blocks.
+  if (linkedEventId) {
+    void q1<{ total: string; confirmed: string }>(
+      `select count(*) as total,
+              count(*) filter (where rsvp_status = 'confirmed') as confirmed
+         from guests where event_id = $1`,
+      [linkedEventId],
+    )
+      .then((counts) =>
+        guestSync.onGuestListChanged(linkedEventId as string, {
+          action: "add",
+          total: Number(counts?.total ?? 0),
+          confirmed: Number(counts?.confirmed ?? 0),
+        }),
+      )
+      .catch(() => undefined);
+    void guestSync.syncEventAttendanceFromGuests(linkedEventId).catch(() => undefined);
+  }
   return row as SponsorGuest;
 }
 
