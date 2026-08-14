@@ -11,6 +11,7 @@
 import { q, q1 } from "../pool.js";
 import { ForbiddenError, NotFoundError, type Actor } from "../db.js";
 import { computePlatformFee } from "../lib/platformFees.js";
+import { getPublicBranding, type PublicBranding } from "./whitelabel.js";
 
 export type AttendMode = "off" | "free" | "ticketed";
 
@@ -259,6 +260,13 @@ export interface PublicLanding {
   faq: FaqEntry[];
   tiers: { id: string; name: string; price_cents: number; sold_out: boolean }[];
   agenda: { id: string; title: string | null; start_time: string | null; end_time: string | null; location: string | null; track: string | null }[];
+  /**
+   * Non-null only for an organization with an ACTIVE, branding_enabled
+   * white-label deal (server/src/db/whitelabel.ts's admin-managed pipeline).
+   * The public page substitutes this for the default "Divini Partners"
+   * masthead; everyone else sees the platform brand as before.
+   */
+  platform_brand: PublicBranding | null;
 }
 
 export async function getPublicLanding(eventId: string): Promise<PublicLanding | null> {
@@ -268,10 +276,11 @@ export async function getPublicLanding(eventId: string): Promise<PublicLanding |
     date_time: string | null;
     type: string | null;
     organizer: string | null;
+    organization_id: string | null;
     venue_name: string | null;
     venue_city: string | null;
   }>(
-    `select e.id, e.name, e.date_time, e.type, o.name as organizer,
+    `select e.id, e.name, e.date_time, e.type, e.organization_id, o.name as organizer,
             v.name as venue_name, v.city as venue_city
        from events e
        left join organizations o on o.id = e.organization_id
@@ -280,6 +289,8 @@ export async function getPublicLanding(eventId: string): Promise<PublicLanding |
     [eventId],
   );
   if (!ev) return null;
+
+  const platformBrand = ev.organization_id ? await getPublicBranding(ev.organization_id) : null;
 
   const settings = await getSettings(eventId);
 
@@ -336,6 +347,7 @@ export async function getPublicLanding(eventId: string): Promise<PublicLanding |
     faq: settings.faq,
     tiers,
     agenda,
+    platform_brand: platformBrand,
   };
 }
 

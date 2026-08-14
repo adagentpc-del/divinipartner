@@ -25,6 +25,7 @@ type Landing = {
   };
   sponsors: { name: string; logo_url: string | null; link_url: string | null }[];
   faq: { question: string; answer: string }[];
+  platform_brand: { display_name: string | null; logo_url: string | null } | null;
   tiers: { id: string; name: string; price_cents: number; sold_out: boolean }[];
   agenda: {
     id: string;
@@ -317,8 +318,19 @@ export default function PublicEventLanding() {
     <div className="el">
       <style>{CSS}</style>
       <div className="el-wrap">
-        <div className="el-brand">Divini Partners</div>
-        <div className="el-by">by Divini Group</div>
+        {landing?.platform_brand?.display_name ? (
+          <>
+            {landing.platform_brand.logo_url ? (
+              <img className="el-platform-logo" src={landing.platform_brand.logo_url} alt={landing.platform_brand.display_name} />
+            ) : null}
+            <div className="el-brand">{landing.platform_brand.display_name}</div>
+          </>
+        ) : (
+          <>
+            <div className="el-brand">Divini Partners</div>
+            <div className="el-by">by Divini Group</div>
+          </>
+        )}
 
         {payState ? (
           <div className={`el-paybanner ${payState}`}>
@@ -682,8 +694,9 @@ const CSS = `
 .el { min-height: 100vh; padding: 32px 16px;
   background: radial-gradient(120% 120% at 50% 0%, #10131a 0%, #0a0c11 60%); color: #e9edf4; }
 .el-wrap { width: 100%; max-width: 620px; margin: 0 auto; }
-.el-brand { font-size: 22px; font-weight: 700; letter-spacing: .3px; text-align: center; }
+.el-brand { font-size: 22px; font-weight: 700; letter-spacing: .3px; text-align: center; margin-bottom: 20px; }
 .el-by { font-size: 12px; opacity: .6; margin-bottom: 20px; text-align: center; }
+.el-platform-logo { display: block; max-width: 160px; max-height: 56px; object-fit: contain; margin: 0 auto 10px; }
 .el-card { background: #141821; border: 1px solid #232a37; border-radius: 16px; padding: 24px; margin-bottom: 16px; }
 .el-paybanner { border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; font-size: 14px; border: 1px solid; }
 .el-paybanner.confirming { background: rgba(201,163,91,.12); border-color: rgba(201,163,91,.4); color: #e7cf9c; }
