@@ -17,6 +17,7 @@
  */
 import { createHmac } from "node:crypto";
 import { q, q1 } from "../pool.js";
+import { safeFetch } from "./safe-fetch.js";
 
 export const WEBHOOK_EVENT_TYPES = ["quote.awarded", "invoice.paid", "event.status_changed"] as const;
 export type WebhookEventType = (typeof WEBHOOK_EVENT_TYPES)[number];
@@ -57,7 +58,11 @@ export async function emitWebhookEvent(
         let success = false;
         let errorMessage: string | null = null;
         try {
-          const res = await fetch(ep.url, {
+          // Routed through safeFetch (not a bare fetch) so a URL that looked
+          // public at registration time but now resolves, or redirects, to a
+          // loopback/private/link-local/metadata address is rejected at
+          // delivery time too -- see lib/safe-fetch.ts.
+          const res = await safeFetch(ep.url, {
             method: "POST",
             headers: {
               "content-type": "application/json",
@@ -67,9 +72,13 @@ export async function emitWebhookEvent(
             body,
             signal: AbortSignal.timeout(10_000),
           });
-          responseStatus = res.status;
-          success = res.ok;
-          if (!res.ok) errorMessage = `receiver returned HTTP ${res.status}`;
+          if (!res) {
+            errorMessage = "delivery rejected: url is not a safe delivery target";
+          } else {
+            responseStatus = res.status;
+            success = res.ok;
+            if (!res.ok) errorMessage = `receiver returned HTTP ${res.status}`;
+          }
         } catch (e) {
           errorMessage = e instanceof Error ? e.message : "delivery failed";
         }

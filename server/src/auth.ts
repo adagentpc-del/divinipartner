@@ -87,6 +87,12 @@ async function resolve(req: Request): Promise<AuthResult> {
   if (bearerToken && bearerToken.startsWith(API_KEY_PREFIX)) {
     const resolved = await resolveApiKey(bearerToken);
     if (!resolved) return EMPTY_AUTH;
+    // A key is scoped to the org it was issued for. If the creating user has
+    // since switched their active org (or been removed from the issuing org),
+    // the key must not silently follow them into a different org's data --
+    // reject it instead of letting db.getActor() resolve to whatever org the
+    // user is currently pointed at.
+    if (resolved.organizationId !== resolved.currentOrganizationId) return EMPTY_AUTH;
     return {
       userId: resolved.userId,
       email: resolved.email,

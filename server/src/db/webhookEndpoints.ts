@@ -10,6 +10,7 @@ import { randomBytes } from "node:crypto";
 import { q, q1 } from "../pool.js";
 import { ForbiddenError, NotFoundError, type Actor } from "../db.js";
 import { WEBHOOK_EVENT_TYPES, type WebhookEventType } from "../lib/webhooks.js";
+import { isSafeUrl } from "../lib/safe-fetch.js";
 
 export type WebhookEndpointRow = {
   id: string;
@@ -38,14 +39,13 @@ function isAdmin(actor: Actor): boolean {
   return actor.user.role === "super_admin" || actor.user.role === "admin";
 }
 
-function validUrl(url: string): boolean {
-  try {
-    const u = new URL(url);
-    return u.protocol === "https:" || u.protocol === "http:";
-  } catch {
-    return false;
-  }
-}
+// SSRF hardening: a registered webhook URL must not point at a loopback,
+// private, link-local, or cloud-metadata address (see lib/safe-fetch.ts).
+// This is a registration-time check only -- delivery itself goes through
+// safeFetch too, which revalidates every redirect hop at send time, since a
+// hostname that resolves to a public address now could be repointed (DNS
+// rebinding) or 302 to an internal address later.
+const validUrl = isSafeUrl;
 
 function validEventTypes(types: unknown): string[] {
   if (!Array.isArray(types)) return [];

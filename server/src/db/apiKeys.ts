@@ -105,15 +105,35 @@ export async function revokeApiKey(actor: Actor, id: string): Promise<ApiKeyRow>
  * Resolve a presented Bearer token (already confirmed to start with
  * API_KEY_PREFIX) to the creating user's id + email, or null if the key is
  * unknown or revoked. Best-effort stamps last_used_at; never throws.
+ *
+ * Also returns the org the key was ISSUED for (`organization_id`) alongside
+ * the user's CURRENT active org (`currentOrganizationId`, users.organization_id).
+ * A key is scoped to the org it was created in; callers must reject it if the
+ * two differ, otherwise a key silently re-scopes to whatever org the creating
+ * user later switches into (e.g. after joining or being added to a second org).
  */
-export async function resolveApiKey(rawKey: string): Promise<{ userId: string; email: string | null } | null> {
-  const row = await q1<{ id: string; user_id: string; email: string | null; revoked_at: string | null }>(
-    `select k.id, k.user_id, u.email, k.revoked_at
+export async function resolveApiKey(
+  rawKey: string,
+): Promise<{ userId: string; email: string | null; organizationId: string; currentOrganizationId: string | null } | null> {
+  const row = await q1<{
+    id: string;
+    user_id: string;
+    email: string | null;
+    revoked_at: string | null;
+    organization_id: string;
+    current_organization_id: string | null;
+  }>(
+    `select k.id, k.user_id, u.email, k.revoked_at, k.organization_id, u.organization_id as current_organization_id
        from api_keys k join users u on u.id = k.user_id
       where k.key_hash = $1`,
     [hashKey(rawKey)],
   );
   if (!row || row.revoked_at) return null;
   q1(`update api_keys set last_used_at = now() where id = $1`, [row.id]).catch(() => undefined);
-  return { userId: row.user_id, email: row.email };
+  return {
+    userId: row.user_id,
+    email: row.email,
+    organizationId: row.organization_id,
+    currentOrganizationId: row.current_organization_id,
+  };
 }
