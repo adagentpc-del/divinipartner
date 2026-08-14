@@ -53,6 +53,7 @@ const ROLES: { key: Role; label: string; blurb: string }[] = [
   { key: 'planner', label: 'Event Planner', blurb: 'Run multiple client events end to end.' },
   { key: 'installer', label: 'Installer / Support Staff', blurb: 'Receive jobs, schedules, and load-in details.' },
   { key: 'sponsor', label: 'Sponsor / Brand', blurb: 'Discover sponsorship opportunities across premium venues and events.' },
+  { key: 'nonprofit', label: 'Nonprofit / Charity', blurb: 'Run galas and fundraisers, build sponsorship and ticket packages.' },
 ];
 
 export default function GetStarted() {
@@ -71,6 +72,7 @@ export default function GetStarted() {
   // picker and register everyone free. Read from /api/pricing.
   const [pricingV2, setPricingV2] = useState(false);
   const [catalog, setCatalog] = useState<RoleCatalog[]>([]);
+  const [catalogLoaded, setCatalogLoaded] = useState(false);
   const [agree, setAgree] = useState(false);
   const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -88,7 +90,17 @@ export default function GetStarted() {
       .then((r) => { if (alive) setPricingV2(Boolean(r?.pricingV2)); })
       .catch(() => { /* default to legacy tiers on error */ });
     apiGet<{ roles: RoleCatalog[] }>('/plans')
-      .then((r) => { if (alive) setCatalog(r?.roles ?? []); })
+      .then((r) => {
+        if (!alive) return;
+        setCatalog(r?.roles ?? []);
+        // Only a SUCCESSFUL response tells us whether a role's absence from
+        // the catalog is real (nonprofit has no paid tiers) or not. On
+        // failure, catalog stays [] and catalogLoaded stays false, so every
+        // role still shows "Loading plans..." rather than a fetch hiccup
+        // falsely claiming a role with real paid tiers (vendor, sponsor,
+        // ...) has none (Codex review on this PR, verified).
+        setCatalogLoaded(true);
+      })
       .catch(() => { /* the picker below has a hardcoded fallback */ });
     return () => { alive = false; };
   }, []);
@@ -260,8 +272,13 @@ export default function GetStarted() {
                 )}
               </>
             )}
-            {role && !pricingV2 && !roleCatalog && (
+            {role && !pricingV2 && !roleCatalog && !catalogLoaded && (
               <div className="free" style={{ marginTop: 4 }}>Loading plans...</div>
+            )}
+            {role && !pricingV2 && !roleCatalog && catalogLoaded && (
+              <div className="free" style={{ marginTop: 4 }}>
+                Free to join, no membership tiers. Your account is created on the Free plan.
+              </div>
             )}
             {role && pricingV2 && (
               <>
