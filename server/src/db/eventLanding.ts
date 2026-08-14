@@ -14,13 +14,62 @@ import { computePlatformFee } from "../lib/platformFees.js";
 
 export type AttendMode = "off" | "free" | "ticketed";
 
+export interface SponsorEntry {
+  name: string;
+  logo_url: string | null;
+  link_url: string | null;
+}
+
+export interface FaqEntry {
+  question: string;
+  answer: string;
+}
+
 export interface LandingSettings {
   event_id: string;
   attend_mode: AttendMode;
   vendor_cta_enabled: boolean;
   headline: string | null;
   description: string | null;
+  hero_image_url: string | null;
+  logo_url: string | null;
+  sponsors: SponsorEntry[];
+  faq: FaqEntry[];
   updated_at: string | null;
+}
+
+/** Only http(s) URLs are accepted for a display image -- rejects javascript:/data:
+ *  and anything else that isn't a plain remote image link. */
+function normImageUrl(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const trimmed = v.trim();
+  if (!trimmed) return null;
+  return /^https?:\/\//i.test(trimmed) ? trimmed.slice(0, 2000) : null;
+}
+
+function normSponsors(v: unknown): SponsorEntry[] {
+  if (!Array.isArray(v)) return [];
+  return v
+    .filter((s): s is Record<string, unknown> => !!s && typeof s === "object")
+    .map((s) => ({
+      name: typeof s.name === "string" ? s.name.trim().slice(0, 200) : "",
+      logo_url: normImageUrl(s.logo_url),
+      link_url: normImageUrl(s.link_url),
+    }))
+    .filter((s) => s.name.length > 0)
+    .slice(0, 100);
+}
+
+function normFaq(v: unknown): FaqEntry[] {
+  if (!Array.isArray(v)) return [];
+  return v
+    .filter((f): f is Record<string, unknown> => !!f && typeof f === "object")
+    .map((f) => ({
+      question: typeof f.question === "string" ? f.question.trim().slice(0, 300) : "",
+      answer: typeof f.answer === "string" ? f.answer.trim().slice(0, 3000) : "",
+    }))
+    .filter((f) => f.question.length > 0 && f.answer.length > 0)
+    .slice(0, 100);
 }
 
 export interface TicketTier {
@@ -57,7 +106,8 @@ export async function assertOwnsEvent(actor: Actor, eventId: string): Promise<vo
 
 export async function getSettings(eventId: string): Promise<LandingSettings> {
   const row = await q1<LandingSettings>(
-    `select event_id, attend_mode, vendor_cta_enabled, headline, description, updated_at
+    `select event_id, attend_mode, vendor_cta_enabled, headline, description,
+            hero_image_url, logo_url, sponsors, faq, updated_at
        from event_landing_settings where event_id = $1`,
     [eventId],
   );
@@ -71,6 +121,10 @@ export async function getSettings(eventId: string): Promise<LandingSettings> {
     vendor_cta_enabled: true,
     headline: null,
     description: null,
+    hero_image_url: null,
+    logo_url: null,
+    sponsors: [],
+    faq: [],
     updated_at: null,
   };
 }
@@ -78,25 +132,45 @@ export async function getSettings(eventId: string): Promise<LandingSettings> {
 export async function upsertSettings(
   actor: Actor,
   eventId: string,
-  patch: { attend_mode?: string; vendor_cta_enabled?: boolean; headline?: string | null; description?: string | null },
+  patch: {
+    attend_mode?: string;
+    vendor_cta_enabled?: boolean;
+    headline?: string | null;
+    description?: string | null;
+    hero_image_url?: string | null;
+    logo_url?: string | null;
+    sponsors?: unknown;
+    faq?: unknown;
+  },
 ): Promise<LandingSettings> {
   await assertOwnsEvent(actor, eventId);
   const row = await q1<LandingSettings>(
-    `insert into event_landing_settings (event_id, attend_mode, vendor_cta_enabled, headline, description, updated_at)
-     values ($1,$2,$3,$4,$5, now())
+    `insert into event_landing_settings
+       (event_id, attend_mode, vendor_cta_enabled, headline, description,
+        hero_image_url, logo_url, sponsors, faq, updated_at)
+     values ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9::jsonb, now())
      on conflict (event_id) do update set
         attend_mode = excluded.attend_mode,
         vendor_cta_enabled = excluded.vendor_cta_enabled,
         headline = excluded.headline,
         description = excluded.description,
+        hero_image_url = excluded.hero_image_url,
+        logo_url = excluded.logo_url,
+        sponsors = excluded.sponsors,
+        faq = excluded.faq,
         updated_at = now()
-     returning event_id, attend_mode, vendor_cta_enabled, headline, description, updated_at`,
+     returning event_id, attend_mode, vendor_cta_enabled, headline, description,
+               hero_image_url, logo_url, sponsors, faq, updated_at`,
     [
       eventId,
       normMode(patch.attend_mode),
       patch.vendor_cta_enabled ?? true,
       patch.headline ?? null,
       patch.description ?? null,
+      normImageUrl(patch.hero_image_url),
+      normImageUrl(patch.logo_url),
+      JSON.stringify(normSponsors(patch.sponsors)),
+      JSON.stringify(normFaq(patch.faq)),
     ],
   );
   return row as LandingSettings;
@@ -173,7 +247,16 @@ export async function listRegistrations(actor: Actor, eventId: string): Promise<
 export interface PublicLanding {
   event: { id: string; name: string | null; date_time: string | null; type: string | null; organizer: string | null };
   place: { venue_name: string | null; venue_city: string | null; floorplan_place: string | null };
-  settings: { attend_mode: AttendMode; vendor_cta_enabled: boolean; headline: string | null; description: string | null };
+  settings: {
+    attend_mode: AttendMode;
+    vendor_cta_enabled: boolean;
+    headline: string | null;
+    description: string | null;
+    hero_image_url: string | null;
+    logo_url: string | null;
+  };
+  sponsors: SponsorEntry[];
+  faq: FaqEntry[];
   tiers: { id: string; name: string; price_cents: number; sold_out: boolean }[];
   agenda: { id: string; title: string | null; start_time: string | null; end_time: string | null; location: string | null; track: string | null }[];
 }
@@ -246,7 +329,11 @@ export async function getPublicLanding(eventId: string): Promise<PublicLanding |
       vendor_cta_enabled: settings.vendor_cta_enabled,
       headline: settings.headline,
       description: settings.description,
+      hero_image_url: settings.hero_image_url,
+      logo_url: settings.logo_url,
     },
+    sponsors: settings.sponsors,
+    faq: settings.faq,
     tiers,
     agenda,
   };

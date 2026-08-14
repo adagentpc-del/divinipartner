@@ -4897,8 +4897,16 @@ create table if not exists event_landing_settings (
   vendor_cta_enabled boolean not null default true,
   headline text,
   description text,
+  hero_image_url text,
+  logo_url text,
+  sponsors jsonb not null default '[]'::jsonb,
+  faq jsonb not null default '[]'::jsonb,
   updated_at timestamptz default now()
 );
+alter table event_landing_settings add column if not exists hero_image_url text;
+alter table event_landing_settings add column if not exists logo_url text;
+alter table event_landing_settings add column if not exists sponsors jsonb not null default '[]'::jsonb;
+alter table event_landing_settings add column if not exists faq jsonb not null default '[]'::jsonb;
 
 -- General (non-fundraising) ticket tiers for any event.
 create table if not exists event_ticket_tiers (
