@@ -53,6 +53,7 @@ const ROLES: { key: Role; label: string; blurb: string }[] = [
   { key: 'planner', label: 'Event Planner', blurb: 'Run multiple client events end to end.' },
   { key: 'installer', label: 'Installer / Support Staff', blurb: 'Receive jobs, schedules, and load-in details.' },
   { key: 'sponsor', label: 'Sponsor / Brand', blurb: 'Discover sponsorship opportunities across premium venues and events.' },
+  { key: 'nonprofit', label: 'Nonprofit / Charity', blurb: 'Run galas and fundraisers, build sponsorship and ticket packages.' },
 ];
 
 export default function GetStarted() {
@@ -71,6 +72,7 @@ export default function GetStarted() {
   // picker and register everyone free. Read from /api/pricing.
   const [pricingV2, setPricingV2] = useState(false);
   const [catalog, setCatalog] = useState<RoleCatalog[]>([]);
+  const [catalogLoaded, setCatalogLoaded] = useState(false);
   const [agree, setAgree] = useState(false);
   const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -89,7 +91,8 @@ export default function GetStarted() {
       .catch(() => { /* default to legacy tiers on error */ });
     apiGet<{ roles: RoleCatalog[] }>('/plans')
       .then((r) => { if (alive) setCatalog(r?.roles ?? []); })
-      .catch(() => { /* the picker below has a hardcoded fallback */ });
+      .catch(() => { /* the picker below has a hardcoded fallback */ })
+      .finally(() => { if (alive) setCatalogLoaded(true); });
     return () => { alive = false; };
   }, []);
 
@@ -260,8 +263,13 @@ export default function GetStarted() {
                 )}
               </>
             )}
-            {role && !pricingV2 && !roleCatalog && (
+            {role && !pricingV2 && !roleCatalog && !catalogLoaded && (
               <div className="free" style={{ marginTop: 4 }}>Loading plans...</div>
+            )}
+            {role && !pricingV2 && !roleCatalog && catalogLoaded && (
+              <div className="free" style={{ marginTop: 4 }}>
+                Free to join, no membership tiers. Your account is created on the Free plan.
+              </div>
             )}
             {role && pricingV2 && (
               <>

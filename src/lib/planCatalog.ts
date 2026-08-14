@@ -3,7 +3,7 @@
 // truth for the actual numbers; this file only shapes/labels them for
 // display, so GetStarted.tsx and the public Pricing page never disagree).
 
-export type Role = 'venue' | 'vendor' | 'supplier' | 'installer' | 'planner' | 'client' | 'sponsor';
+export type Role = 'venue' | 'vendor' | 'supplier' | 'installer' | 'planner' | 'client' | 'sponsor' | 'nonprofit';
 
 export type CatalogTier = {
   key: string;
