@@ -123,6 +123,7 @@ import ReferralDashboard from './pages/ReferralDashboard';
 import AuditViewer from './pages/AuditViewer';
 import ComplianceCenter from './pages/ComplianceCenter';
 import RevenueCenter from './pages/RevenueCenter';
+import DeveloperSettings from './pages/DeveloperSettings';
 // Stripe Connect split-payout rail (recipient onboarding + my payouts + admin release queue)
 import ConnectPayoutSettings from './pages/ConnectPayoutSettings';
 import MyConnectPayouts from './pages/MyConnectPayouts';
@@ -511,6 +512,7 @@ function Routed() {
           rights UI, not just an admin who already knows the /admin/... URL. Linked from
           ProfileEditor.tsx's "Your data and privacy" section. */}
       <Route path="/account/privacy" element={<Authed><ComplianceCenter /></Authed>} />
+      <Route path="/account/developer" element={<Authed><DeveloperSettings /></Authed>} />
       <Route path="/admin/venues" element={<Authed><AdminManageVenues /></Authed>} />
       <Route path="/admin/vendors" element={<Authed><AdminManageVendors /></Authed>} />
       <Route path="/admin/events" element={<Authed><AdminManageEvents /></Authed>} />

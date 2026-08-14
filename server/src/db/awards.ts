@@ -42,6 +42,7 @@ import { type Actor } from "../db.js";
 import { logAction } from "../lib/audit.js";
 import { recordActivity } from "./eventActivity.js";
 import { checkBeforeAwardCompliance, ComplianceBlockedError } from "./eventVendorCompliance.js";
+import { emitWebhookEvent } from "../lib/webhooks.js";
 
 export type ContractRow = {
   id: string;
@@ -277,6 +278,13 @@ export async function awardQuote(
       relatedEntityType: "contract",
       relatedEntityId: contract?.id ?? null,
     }).catch(() => undefined);
+    void emitWebhookEvent(winnerOrg, "quote.awarded", {
+      quote_id: quoteId,
+      event_id: quote.event_id,
+      vendor_id: quote.vendor_id,
+      contract_id: contract?.id ?? null,
+      amount,
+    });
 
     return { firstAward: true, contract: contract ?? null, declinedQuoteIds, overrodeCompliance };
   } catch (e) {

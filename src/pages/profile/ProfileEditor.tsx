@@ -695,6 +695,19 @@ export default function ProfileEditor() {
               </div>
             </Section>
 
+            <Section title="Developer: API keys and webhooks">
+              <p className="dppe-help">
+                Generate API keys for programmatic access to your organization's data, and register
+                webhook endpoints to receive real-time notifications when a quote is awarded, an
+                invoice is paid, or an event's status changes.
+              </p>
+              <div className="dppe-actions">
+                <button className="dppe-btn" onClick={() => nav('/account/developer')}>
+                  Open developer settings
+                </button>
+              </div>
+            </Section>
+
             <Section title="Delete account">
               <p className="dppe-help">
                 Permanently delete your Divini Partners account. This signs you out and removes

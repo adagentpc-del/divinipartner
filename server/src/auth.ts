@@ -22,6 +22,7 @@ import { verifySession, SESSION_COOKIE } from "./lib/session.js";
 import { getMfaUser } from "./db/mfa.js";
 import { sessionsInvalidatedBefore } from "./db.js";
 import { sessionIsRevoked } from "./lib/sessionRevocation.js";
+import { API_KEY_PREFIX, resolveApiKey } from "./db/apiKeys.js";
 
 export interface AuthResult {
   userId: string | null;
@@ -72,7 +73,27 @@ function computeIsAdmin(email: string | null): boolean {
   return getAdminAllowedEmails().includes(email.toLowerCase());
 }
 
+/**
+ * API key auth (moat roadmap Phase 2a): a Bearer token prefixed with
+ * API_KEY_PREFIX is an API key, not a session JWT -- checked before touching
+ * the cookie/JWT path at all, since a real API client sends only the header,
+ * never the session cookie. It resolves to the CREATING user's id/email, so
+ * every downstream `db.getActor(userId, email)` call (identical to session
+ * auth) grants the exact same org-scoped access that user already has --
+ * there is no separate API-key permission system.
+ */
 async function resolve(req: Request): Promise<AuthResult> {
+  const bearerToken = bearer(req);
+  if (bearerToken && bearerToken.startsWith(API_KEY_PREFIX)) {
+    const resolved = await resolveApiKey(bearerToken);
+    if (!resolved) return EMPTY_AUTH;
+    return {
+      userId: resolved.userId,
+      email: resolved.email,
+      isAdmin: computeIsAdmin(resolved.email),
+      claims: { sub: resolved.userId, email: resolved.email },
+    };
+  }
   const claims = await verifySession(sessionToken(req));
   if (!claims || !claims.sub) return EMPTY_AUTH;
   // Session revocation (SOC 2 / ISO 27001 audit, 2026-08-03): a session JWT

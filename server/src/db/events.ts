@@ -14,6 +14,7 @@ import { buildItinerary } from "./itinerary.js";
 import { upsertEventMember, getEventRole } from "./eventMembers.js";
 import { recordFieldChanges, recordEventChange, type ChangeCategory } from "./eventChanges.js";
 import { logAction } from "../lib/audit.js";
+import { emitWebhookEvent } from "../lib/webhooks.js";
 
 // ---- Status model (blueprint section 13) -----------------------------------
 export type EventStatus =
@@ -637,6 +638,11 @@ export async function setEventStatus(
       message: `Event status changed: ${before.status ?? "unknown"} -> ${after.status ?? "unknown"}`,
       relatedEntityType: "event",
       relatedEntityId: id,
+    });
+    void emitWebhookEvent(after.organization_id, "event.status_changed", {
+      event_id: id,
+      from: before.status,
+      to: after.status,
     });
   }
   return after;

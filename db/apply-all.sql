@@ -6557,3 +6557,60 @@ create index if not exists idx_vendor_coi_verifications_vendor on vendor_coi_ver
 alter table quote_messages add column if not exists proposed_amount numeric;
 alter table quote_messages add column if not exists counter_status text
   check (counter_status in ('open','accepted','declined'));
+
+-- ---------- api_keys + webhook_endpoints + webhook_deliveries (moat roadmap
+-- Phase 2a, 2026-08-14): public REST API + outbound webhooks ----------
+-- An API key authenticates as the CREATING user (key_hash resolves to
+-- user_id in server/src/auth.ts), so every existing route's authorization --
+-- org-scoped checks, requireAdmin, everything -- applies unchanged to
+-- API-key traffic exactly as it does to a session JWT. organization_id is
+-- kept alongside for display/listing only; it is never itself the
+-- authorization boundary. Only key_hash (sha256) is stored -- the plaintext
+-- key is shown to the user exactly once, at creation.
+create table if not exists api_keys (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references organizations(id) on delete cascade,
+  user_id uuid not null references users(id) on delete cascade,
+  name text not null,
+  key_hash text not null unique,
+  key_prefix text not null,
+  created_by uuid references users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  last_used_at timestamptz,
+  revoked_at timestamptz
+);
+create index if not exists idx_api_keys_org on api_keys(organization_id);
+
+-- A webhook endpoint the org registers to receive outbound event
+-- notifications. `secret` signs each delivery (HMAC-SHA256, X-Divini-Signature
+-- header) so the receiver can verify authenticity. `event_types` is an
+-- allowlist of the event type strings (see server/src/lib/webhooks.ts) this
+-- endpoint wants; empty means "all".
+create table if not exists webhook_endpoints (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references organizations(id) on delete cascade,
+  url text not null,
+  secret text not null,
+  enabled boolean not null default true,
+  event_types text[] not null default '{}',
+  created_by uuid references users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists idx_webhook_endpoints_org on webhook_endpoints(organization_id);
+
+-- One row per delivery ATTEMPT. v1 delivery is synchronous, best-effort,
+-- single-attempt (matching lib/notify.ts's fire-and-forget convention) -- no
+-- retry/backoff queue yet. success=false rows are the retry backlog for a
+-- future phase, kept as a real audit trail either way.
+create table if not exists webhook_deliveries (
+  id uuid primary key default gen_random_uuid(),
+  endpoint_id uuid not null references webhook_endpoints(id) on delete cascade,
+  event_type text not null,
+  payload jsonb not null,
+  success boolean not null,
+  response_status integer,
+  error_message text,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_webhook_deliveries_endpoint on webhook_deliveries(endpoint_id, created_at desc);

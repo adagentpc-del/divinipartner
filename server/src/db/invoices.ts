@@ -12,6 +12,7 @@
 import { q, q1, pool } from "../pool.js";
 import { TIERS, type Tier } from "../db.js";
 import { PRICING_V2, PLATFORM_FEE_RATE_V2 } from "../config.js";
+import { emitWebhookEvent } from "../lib/webhooks.js";
 
 export const INVOICE_STATUSES = [
   "draft",
@@ -263,6 +264,10 @@ export async function updateInvoiceStatus(
   status: InvoiceStatus,
 ): Promise<InvoiceRow | null> {
   if (!ALLOWED.has(status)) throw new Error(`invalid invoice status: ${status}`);
+  const before = await q1<{ status: string | null }>(
+    `select status from invoices where id = $1 and organization_id = $2`,
+    [id, orgId],
+  );
   const stamp =
     status === "sent"
       ? ", sent_at = now()"
@@ -271,11 +276,19 @@ export async function updateInvoiceStatus(
         : status === "paid"
           ? ", paid_at = now()"
           : "";
-  return q1<InvoiceRow>(
+  const row = await q1<InvoiceRow>(
     `update invoices set status = $3, updated_at = now()${stamp}
        where id = $1 and organization_id = $2 returning *`,
     [id, orgId, status],
   );
+  if (row && status === "paid" && before?.status !== "paid") {
+    void emitWebhookEvent(orgId, "invoice.paid", {
+      invoice_id: row.id,
+      event_id: row.event_id,
+      total: row.total,
+    });
+  }
+  return row;
 }
 
 /**
@@ -361,7 +374,7 @@ export async function applyPaymentToInvoice(invoiceId: string, amount: number): 
   let status: InvoiceStatus = inv.status as InvoiceStatus;
   if (balance <= 0) status = "paid";
   else if (newPaid > 0) status = "partially_paid";
-  return q1<InvoiceRow>(
+  const row = await q1<InvoiceRow>(
     // $3 is cast explicitly on both uses: reusing an untyped placeholder in
     // an assignment context (balance_due = $3) and a comparison context
     // (case when $3 <= 0) makes Postgres's extended-protocol type inference
@@ -373,6 +386,14 @@ export async function applyPaymentToInvoice(invoiceId: string, amount: number): 
        where id = $1 returning *`,
     [invoiceId, newPaid, balance, status],
   );
+  if (row && status === "paid" && inv.status !== "paid") {
+    void emitWebhookEvent(row.organization_id, "invoice.paid", {
+      invoice_id: row.id,
+      event_id: row.event_id,
+      total: row.total,
+    });
+  }
+  return row;
 }
 
 export const __test = { sum, feeRateForTier, nextInvoiceNumber };

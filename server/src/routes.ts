@@ -215,6 +215,9 @@ import proposalStudio from "./routes/proposal-studio.js";
 import publicProposals from "./routes/public-proposals.js";
 import followUpDesk from "./routes/follow-up-desk.js";
 import priceGuide from "./routes/price-guide.js";
+// Public REST API surface: API keys + outbound webhooks (moat roadmap Phase 2a)
+import apiKeys from "./routes/api-keys.js";
+import webhooks from "./routes/webhooks.js";
 
 const router = Router();
 
@@ -383,6 +386,8 @@ router.use("/scope-builder", scopeBuilder);
 router.use("/proposal-studio", proposalStudio);
 router.use("/follow-up-desk", followUpDesk);
 router.use("/price-guide", priceGuide);
+router.use("/api-keys", apiKeys);
+router.use("/webhooks", webhooks);
 
 export function errorHandler(err: any, req: Request, res: Response, _next: NextFunction) {
   if (err instanceof AccountDeletedError) return res.status(401).json({ error: "unauthorized" });
