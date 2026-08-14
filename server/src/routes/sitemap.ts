@@ -106,14 +106,13 @@ function discoverPaths(): string[] {
   return out;
 }
 
-// profiles.kind -> the public storefront route prefix that serves it
-// (App.tsx). "installer" has no public storefront route yet, so it is
-// deliberately excluded rather than pointing the sitemap at a 404.
+// profiles.kind -> the public storefront route prefix that serves it (App.tsx).
 const KIND_TO_PATH_PREFIX: Record<string, string> = {
   venue: "venues",
   vendor: "vendors",
   planner: "planners",
   supplier: "suppliers",
+  installer: "installers",
 };
 
 /**
