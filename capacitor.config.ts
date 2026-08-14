@@ -4,9 +4,10 @@ import type { CapacitorConfig } from '@capacitor/cli';
 //
 // PRIMARY (managed webview) configuration: the native app loads the HOSTED
 // production site over HTTPS via server.url. This is the fastest, lowest-risk
-// path for a research-preview launch because Authentik OIDC login works exactly
-// as it does on the web (standard browser redirect flow, no native deep-link
-// plumbing required). It does mean the app depends on the live HTTPS domain
+// path for a research-preview launch because auth is native email/password (a
+// plain form POST to /api/auth, not an OAuth redirect flow) -- login behaves
+// exactly as it does on the web, no native deep-link / custom-scheme callback
+// plumbing required. It does mean the app depends on the live HTTPS domain
 // being up (see MOBILE-APP.md, Stage B).
 //
 // App Transport Security (ATS) MUST stay strict: cleartext is false and there
@@ -27,8 +28,9 @@ const config: CapacitorConfig = {
   ios: {
     contentInset: 'always',
     // iOS custom URL scheme used for the in-app webview. Keep as "https" so the
-    // webview origin matches the hosted site (helps with OIDC cookie/storage
-    // partitioning). Override only if you switch to the bundled-offline mode.
+    // webview origin matches the hosted site (helps the session cookie behave
+    // the same as it does on the web). Override only if you switch to the
+    // bundled-offline mode.
     scheme: 'https',
   },
   android: {
@@ -61,10 +63,12 @@ export default config;
 //
 // Ship the SPA assets INSIDE the app bundle instead of loading the hosted URL.
 // This makes the shell work offline and removes the runtime dependency on the
-// live domain, but OIDC login needs extra handling (the redirect must return to
-// a native custom-scheme deep link, e.g. divinipartners://callback, and that
-// redirect URI must be registered in Authentik). Do NOT enable this without
-// doing that login plumbing first.
+// live domain, but login needs extra handling: a bundled app talks to the API
+// from capacitor://localhost (iOS) / https://localhost (Android) instead of
+// the real hosted origin, so the CORS allowlist and session-cookie/Bearer-token
+// handling both need updating first (see MOBILE-APP.md's "Bundled / offline
+// alternative" section for the exact steps). Do NOT enable this without doing
+// that login plumbing first.
 //
 // IMPORTANT: this requires a SEPARATE, relatively-based web build so the app
 // can load assets from the local file system. Do this in a throwaway output dir
