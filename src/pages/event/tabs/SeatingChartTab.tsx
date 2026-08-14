@@ -7,7 +7,7 @@ import { apiGet, apiSend } from '../../../lib/api';
  * layout. Drag tables to reposition; click to select and assign guests. The
  * whole layout (tables, zones, assignments) is saved as a single jsonb blob.
  */
-type STable = { id: string; label: string; x: number; y: number; shape?: string; seats?: number; vip?: boolean };
+type STable = { id: string; label: string; x: number; y: number; shape?: string; seats?: number; vip?: boolean; rotation?: number };
 type SZone = { id: string; label: string; type: string; x: number; y: number; width?: number; height?: number };
 type Layout = { tables: STable[]; zones: SZone[]; assignments: Record<string, string> };
 type Chart = { id: string; name: string | null; status: string | null; floorplan_id: string | null; layout: Layout | null };
@@ -85,6 +85,23 @@ export default function SeatingChartTab({ eventId }: { eventId: string }) {
   function addTable() {
     const n = layout.tables.length + 1;
     mutate((l) => { l.tables.push({ id: uid(), label: `Table ${n}`, x: 80 + (n % 6) * 120, y: 90 + Math.floor(n / 6) * 120, shape: 'round', seats: 8, vip: false }); return l; });
+  }
+  // Duplicate a table with the same shape/seats/VIP flag, offset so it's
+  // visibly distinct and never lands exactly on top of the source -- the
+  // fast path for a banquet layout with dozens of identical round tables.
+  function duplicateTable(id: string) {
+    const src = layout.tables.find((t) => t.id === id);
+    if (!src) return;
+    const n = layout.tables.length + 1;
+    const copy: STable = {
+      ...src,
+      id: uid(),
+      label: `Table ${n}`,
+      x: Math.min(W - 20, src.x + 40),
+      y: Math.min(H - 20, src.y + 40),
+    };
+    mutate((l) => { l.tables.push(copy); return l; });
+    setSelected(copy.id);
   }
   function addZone(type: string) {
     const label = meta?.zone_types.find((z) => z.key === type)?.label ?? type;
@@ -190,9 +207,11 @@ export default function SeatingChartTab({ eventId }: { eventId: string }) {
             {layout.tables.map((t) => {
               const r = 34;
               const isSel = t.id === selected;
+              const isRect = t.shape === 'rectangle' || t.shape === 'head';
               return (
-                <g key={t.id} onPointerDown={(e) => onDown(e, t.id)} className="sc-table">
-                  {t.shape === 'rectangle' || t.shape === 'head'
+                <g key={t.id} onPointerDown={(e) => onDown(e, t.id)} className="sc-table"
+                  transform={isRect && t.rotation ? `rotate(${t.rotation} ${t.x} ${t.y})` : undefined}>
+                  {isRect
                     ? <rect x={t.x - 44} y={t.y - 22} width={88} height={44} rx={6}
                         fill={t.vip ? '#123c2e' : '#fff'} stroke={isSel ? '#C9A35B' : '#1E5D4A'} strokeWidth={isSel ? 3 : 1.5} />
                     : <circle cx={t.x} cy={t.y} r={r}
@@ -211,6 +230,7 @@ export default function SeatingChartTab({ eventId }: { eventId: string }) {
             <div className="sc-panel">
               <div className="sc-panelhead">
                 <input className="sc-pname" value={selTable.label} onChange={(e) => patchTable(selTable.id, { label: e.target.value })} />
+                <button type="button" className="fp-del sc-rm" onClick={() => duplicateTable(selTable.id)}>Duplicate</button>
                 <button type="button" className="fp-del sc-rm" onClick={() => removeTable(selTable.id)}>Remove</button>
               </div>
               <div className="sc-row">
@@ -223,6 +243,15 @@ export default function SeatingChartTab({ eventId }: { eventId: string }) {
                   <input type="number" min={1} max={30} value={selTable.seats ?? 8} onChange={(e) => patchTable(selTable.id, { seats: Number(e.target.value) })} />
                 </label>
               </div>
+              {(selTable.shape === 'rectangle' || selTable.shape === 'head') ? (
+                <div className="sc-row">
+                  <label>Rotation
+                    <input type="range" min={0} max={359} value={selTable.rotation ?? 0}
+                      onChange={(e) => patchTable(selTable.id, { rotation: Number(e.target.value) })} />
+                  </label>
+                  <span className="sc-rotval">{selTable.rotation ?? 0}&deg;</span>
+                </div>
+              ) : null}
               <label className="sc-viplabel">
                 <input type="checkbox" checked={!!selTable.vip} onChange={(e) => patchTable(selTable.id, { vip: e.target.checked })} /> VIP table
               </label>
@@ -285,6 +314,7 @@ const S_CSS = `
 .sc-row { display: flex; gap: 10px; margin-bottom: 8px; }
 .sc-row label { flex: 1; display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: #9a8a5e; text-transform: uppercase; letter-spacing: .4px; font-weight: 600; }
 .sc-row select, .sc-row input { font: inherit; font-size: 12.5px; padding: 6px 8px; border: 1px solid #e7e1d6; border-radius: 8px; color: #2c2a26; text-transform: none; }
+.sc-rotval { align-self: flex-end; font-size: 12px; color: #6b6459; font-weight: 600; padding-bottom: 8px; }
 .sc-viplabel { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: #2c2a26; margin-bottom: 10px; }
 .sc-subhead { font-size: 11px; letter-spacing: .5px; text-transform: uppercase; color: #9a8a5e; font-weight: 600; margin-bottom: 8px; }
 .sc-assignedrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12.5px; padding: 4px 0; border-bottom: 1px solid #f0ebe0; }
