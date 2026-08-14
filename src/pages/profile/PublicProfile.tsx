@@ -3,6 +3,14 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { apiGet, apiSend } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import VerifiedBadges, { type VerifiedBadgeData } from '../../components/VerifiedBadges';
+import { jsonLdSafe } from '../../lib/jsonLd';
+
+const KIND_LABEL: Record<string, string> = {
+  venue: 'Venue', vendor: 'Vendor', planner: 'Planner', supplier: 'Supplier', installer: 'Installer',
+};
+const KIND_SCHEMA_TYPE: Record<string, string> = {
+  venue: 'EventVenue', vendor: 'LocalBusiness', planner: 'LocalBusiness', supplier: 'LocalBusiness', installer: 'LocalBusiness',
+};
 
 /**
  * Divini Partners - public co-branded partner profile (blueprint section 9).
@@ -168,6 +176,61 @@ export default function PublicProfile() {
     return () => { mounted = false; };
   }, [profile?.organization_id]);
 
+  // SEO: document title, meta description, Open Graph tags, and JSON-LD --
+  // this is the actual long-tail storefront page (a real business name + city),
+  // so unlike the category landing pages this needs per-business structured
+  // data, not just a generic template. Mirrors CategoryLanding.tsx's pattern.
+  const orgName = profile?.organization.name || profile?.hero?.title || null;
+  const kindLabel = profile ? (KIND_LABEL[profile.kind ?? ''] ?? 'Partner') : null;
+  const city = profile?.sections?.location?.city ?? null;
+  const region = profile?.sections?.location?.region ?? null;
+  const place = city ? (region ? `${city}, ${region}` : city) : null;
+  const seoDescription = profile
+    ? (profile.hero?.tagline || profile.about || profile.sections?.about || '').trim().slice(0, 280) ||
+      `${orgName ?? 'This partner'} is a verified ${(kindLabel ?? 'partner').toLowerCase()}${place ? ` in ${place}` : ''} on Divini Partners.`
+    : null;
+  const seoImage = profile?.hero?.cover_url || profile?.theme?.cover_url || profile?.theme?.logo_url || null;
+  const seoTitle = profile && orgName ? `${orgName} | ${kindLabel} on Divini Partners` : null;
+
+  useEffect(() => {
+    if (!profile || !seoTitle || !seoDescription) return;
+    const prevTitle = document.title;
+    document.title = seoTitle;
+    const setMeta = (attr: 'name' | 'property', key: string, content: string) => {
+      let el = document.head.querySelector<HTMLMetaElement>(`meta[${attr}="${key}"]`);
+      if (!el) {
+        el = document.createElement('meta');
+        el.setAttribute(attr, key);
+        document.head.appendChild(el);
+      }
+      el.setAttribute('content', content);
+      return el;
+    };
+    const tags = [
+      setMeta('name', 'description', seoDescription),
+      setMeta('property', 'og:title', seoTitle),
+      setMeta('property', 'og:description', seoDescription),
+      setMeta('property', 'og:type', 'business.business'),
+      ...(seoImage ? [setMeta('property', 'og:image', seoImage)] : []),
+    ];
+    return () => {
+      document.title = prevTitle;
+      for (const el of tags) el.setAttribute('content', '');
+    };
+  }, [profile, seoTitle, seoDescription, seoImage]);
+
+  const profileJsonLd = profile && orgName
+    ? {
+        '@context': 'https://schema.org',
+        '@type': KIND_SCHEMA_TYPE[profile.kind ?? ''] ?? 'LocalBusiness',
+        name: orgName,
+        description: seoDescription,
+        ...(seoImage ? { image: seoImage } : {}),
+        ...(place ? { address: { '@type': 'PostalAddress', addressLocality: city, addressRegion: region || undefined } } : {}),
+        url: typeof window !== 'undefined' ? window.location.href : undefined,
+      }
+    : null;
+
   // "Request this date": signed-in users open the request form; guests go to
   // /login first (returning to this profile afterward, where they continue).
   function startRequest() {
@@ -302,6 +365,9 @@ export default function PublicProfile() {
   return (
     <div className="pp" style={styleVars}>
       <style>{CSS}</style>
+      {profileJsonLd && (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdSafe(profileJsonLd) }} />
+      )}
 
       {/* ---- Divini shell header (stays Divini-branded) ---- */}
       <header className="pp-shellhead">

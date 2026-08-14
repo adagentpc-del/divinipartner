@@ -253,3 +253,20 @@ export async function seoProfile(slug: string): Promise<SeoProfile> {
   if (!row) throw new NotFoundError("profile not found");
   return row;
 }
+
+export type PublishedProfileSlug = { slug: string; kind: string; created_at: string };
+
+/**
+ * Every published, slugged profile -- for the public sitemap (routes/sitemap.ts).
+ * Individual storefront pages (/venues/:slug, /vendors/:slug, /planners/:slug,
+ * /suppliers/:slug) are the actual long-tail SEO surface (a real business name
+ * plus city, not just a category page), so they need to be explicitly listed
+ * for search engines rather than relying on internal-link discovery alone.
+ */
+export async function listPublishedProfileSlugs(): Promise<PublishedProfileSlug[]> {
+  return q<PublishedProfileSlug>(
+    `select slug, kind, created_at from profiles
+      where published_status = 'published' and slug is not null
+      order by created_at desc`,
+  );
+}
