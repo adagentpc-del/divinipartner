@@ -90,9 +90,18 @@ export default function GetStarted() {
       .then((r) => { if (alive) setPricingV2(Boolean(r?.pricingV2)); })
       .catch(() => { /* default to legacy tiers on error */ });
     apiGet<{ roles: RoleCatalog[] }>('/plans')
-      .then((r) => { if (alive) setCatalog(r?.roles ?? []); })
-      .catch(() => { /* the picker below has a hardcoded fallback */ })
-      .finally(() => { if (alive) setCatalogLoaded(true); });
+      .then((r) => {
+        if (!alive) return;
+        setCatalog(r?.roles ?? []);
+        // Only a SUCCESSFUL response tells us whether a role's absence from
+        // the catalog is real (nonprofit has no paid tiers) or not. On
+        // failure, catalog stays [] and catalogLoaded stays false, so every
+        // role still shows "Loading plans..." rather than a fetch hiccup
+        // falsely claiming a role with real paid tiers (vendor, sponsor,
+        // ...) has none (Codex review on this PR, verified).
+        setCatalogLoaded(true);
+      })
+      .catch(() => { /* the picker below has a hardcoded fallback */ });
     return () => { alive = false; };
   }, []);
 
