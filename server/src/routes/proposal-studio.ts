@@ -10,10 +10,14 @@
  *                                        { ...patch, line_items? } -- appends a version
  *   GET  /proposals/:id/versions       append-only version history
  *   POST /proposals/:id/send           mint/reuse a public share link, mark sent
+ *   POST /proposals/:id/draft-notes    opt-in AI cover-note draft (prose only,
+ *                                        never a number; always returns a real
+ *                                        deterministic fallback; not auto-saved)
  *
  * See docs/DIVINI_DETERMINISTIC_TOOLS_SPEC.md. Org-scoped throughout via
- * db/proposalStudio.ts; no LLM dependency. The public accept/decline surface
- * lives in routes/public-proposals.ts.
+ * db/proposalStudio.ts; the core tool has no LLM dependency -- draft-notes is
+ * the one narrow, explicitly opt-in exception. The public accept/decline
+ * surface lives in routes/public-proposals.ts.
  */
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { getAuth, requireUser } from "../auth.js";
@@ -90,6 +94,14 @@ router.post(
   h(async (req, res) => {
     const a = await actor(req);
     res.json({ proposal: await proposals.sendProposal(a, req.params.id) });
+  }),
+);
+
+router.post(
+  "/proposals/:id/draft-notes",
+  h(async (req, res) => {
+    const a = await actor(req);
+    res.json(await proposals.draftProposalNotes(a, req.params.id));
   }),
 );
 

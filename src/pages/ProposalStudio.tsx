@@ -148,6 +148,8 @@ function ProposalDetail({ id, onBack }: { id: string; onBack: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [drafting, setDrafting] = useState(false);
+  const [draftSource, setDraftSource] = useState<'ai' | 'deterministic' | null>(null);
 
   async function load() {
     setLoading(true);
@@ -199,6 +201,24 @@ function ProposalDetail({ id, onBack }: { id: string; onBack: () => void }) {
     }
   }
 
+  async function draftNotes() {
+    setDrafting(true);
+    setError(null);
+    setDraftSource(null);
+    try {
+      const r = await apiSend<{ notes: string; source: 'ai' | 'deterministic' }>(
+        'POST',
+        `/proposal-studio/proposals/${id}/draft-notes`,
+      );
+      setHeader((h) => ({ ...h, notes: r.notes }));
+      setDraftSource(r.source);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setDrafting(false);
+    }
+  }
+
   async function send() {
     setBusy(true);
     setError(null);
@@ -243,7 +263,14 @@ function ProposalDetail({ id, onBack }: { id: string; onBack: () => void }) {
         <input placeholder="Client name" value={header.client_name} onChange={(e) => setHeader({ ...header, client_name: e.target.value })} />
         <input placeholder="Client email" value={header.client_email} onChange={(e) => setHeader({ ...header, client_email: e.target.value })} />
         <input type="date" value={header.valid_until} onChange={(e) => setHeader({ ...header, valid_until: e.target.value })} />
-        <textarea rows={3} placeholder="Notes / terms" value={header.notes} onChange={(e) => setHeader({ ...header, notes: e.target.value })} />
+        <textarea rows={3} placeholder="Notes / terms" value={header.notes} onChange={(e) => { setHeader({ ...header, notes: e.target.value }); setDraftSource(null); }} />
+        <div className="pxs-draftrow">
+          <button type="button" className="pxs-draftbtn" onClick={draftNotes} disabled={drafting}>
+            {drafting ? 'Drafting...' : 'Draft with Divini'}
+          </button>
+          {draftSource === 'ai' && <span className="pxs-drafttag ai">AI-drafted &mdash; review before sending</span>}
+          {draftSource === 'deterministic' && <span className="pxs-drafttag">Template draft &mdash; AI unavailable</span>}
+        </div>
 
         <div className="pxs-sectiontitle">Line items</div>
         {items.map((it, i) => (
@@ -306,6 +333,12 @@ const CSS = `
 .pxs-muted { font-size:12px; color:var(--mut); margin:10px 0 0; }
 .pxs-error { font-size:13px; color:#9a3a28; margin:8px 0; }
 .pxs-sectiontitle { font-size:13px; font-weight:700; color:var(--e); text-transform:uppercase; letter-spacing:.4px; margin:18px 0 8px; }
+.pxs-draftrow { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:-2px; }
+.pxs-draftbtn { background:#fff; color:var(--e); border:1px solid var(--ln); border-radius:8px; padding:6px 12px;
+  font-size:12.5px; font-weight:600; cursor:pointer; }
+.pxs-draftbtn:disabled { opacity:.6; cursor:default; }
+.pxs-drafttag { font-size:11.5px; color:var(--mut); font-style:italic; }
+.pxs-drafttag.ai { color:var(--e); font-style:normal; font-weight:600; }
 
 .pxs-btn { background:var(--e); color:#fff; border:none; border-radius:9px; padding:9px 16px;
   font-size:13.5px; font-weight:600; cursor:pointer; white-space:nowrap; }
