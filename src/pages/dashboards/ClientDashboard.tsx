@@ -11,7 +11,7 @@ const NAV: NavItem[] = [
   { label: 'Overview', icon: 'O', to: '/app' },
   { label: 'My Events', icon: 'E', to: '/events' },
   { label: 'Calendar', icon: 'c', to: '/calendar' },
-  { label: 'Marketplace', icon: 'V', to: '/marketplace' },
+  { label: 'Marketplace', icon: 'V', to: '/marketplace/search' },
   { label: 'Recommendations', icon: 'C', to: '/event-recommendations' },
   { label: 'Event Assistant', icon: 'A', to: '/event-assistant' },
   { label: 'Guest Hub', icon: 'G', to: '/guest-hub' },
@@ -28,15 +28,18 @@ const NAV: NavItem[] = [
   { label: 'My Payouts', icon: '$', to: '/connect-payouts/mine' },
 ];
 
-// Next-best-action prompts for clients (blueprint section 25.3).
-const PROMPTS = [
-  'Create your first event',
-  'Find venues that fit your guest count',
-  'Request quotes from vendors',
-  'Start your guest list',
+// Next-best-action prompts for clients (blueprint section 25.3). Each prompt
+// routes to the page that actually performs it, not a single shared handler --
+// "Find venues" and "Request quotes" previously all dropped the user on
+// /events regardless of which prompt they clicked.
+const PROMPTS: { label: string; to: string }[] = [
+  { label: 'Create your first event', to: '/events' },
+  { label: 'Find venues that fit your guest count', to: '/marketplace/search' },
+  { label: 'Request quotes from vendors', to: '/marketplace/search' },
+  { label: 'Start your guest list', to: '/guest-hub' },
 ];
 
-function PromptStrip({ onPrompt }: { onPrompt: () => void }) {
+function PromptStrip({ onPrompt }: { onPrompt: (to: string) => void }) {
   return (
     <section className="dpdash-nba">
       <div className="dpdash-nba-head">
@@ -45,7 +48,7 @@ function PromptStrip({ onPrompt }: { onPrompt: () => void }) {
       </div>
       <div className="dpdash-nba-prompts">
         {PROMPTS.map((p, i) => (
-          <button key={i} type="button" className="dpdash-prompt" onClick={onPrompt}>{p}</button>
+          <button key={i} type="button" className="dpdash-prompt" onClick={() => onPrompt(p.to)}>{p.label}</button>
         ))}
       </div>
     </section>
@@ -59,7 +62,7 @@ export default function ClientDashboard() {
 
   return (
     <DashboardShell title="My Events" navLabel="Client Workspace" items={NAV}>
-      <PromptStrip onPrompt={() => nav('/events')} />
+      <PromptStrip onPrompt={(to) => nav(to)} />
 
       <div className="dpdash-stats">
         <div className="dpdash-stat"><div className="dpdash-stat-k">Active events</div><div className="dpdash-stat-v">0</div><div className="dpdash-stat-d">in planning</div></div>
@@ -86,7 +89,7 @@ export default function ClientDashboard() {
           <div className="dpdash-empty">
             <span className="dpdash-empty-glyph" aria-hidden="true">V</span>
             <p>Nothing shortlisted yet. Search venues by capacity and date, then request quotes from vendors.</p>
-            <button type="button" className="dpdash-btn ghost" onClick={() => nav('/marketplace')}>Start searching</button>
+            <button type="button" className="dpdash-btn ghost" onClick={() => nav('/marketplace/search')}>Start searching</button>
           </div>
         </div>
 

@@ -32,15 +32,18 @@ const NAV: NavItem[] = [
   { label: 'My Payouts', icon: '$', to: '/connect-payouts/mine' },
 ];
 
-// Next-best-action prompts for installers (blueprint section 25, installer role).
-const PROMPTS = [
-  'Complete your skills and certifications',
-  'Set your availability for the week',
-  'Review your next assigned job',
-  'Upload completion photos for a job',
+// Next-best-action prompts for installers (blueprint section 25, installer
+// role). Each prompt routes to the page that actually performs it --
+// previously all four shared one onPrompt callback and landed on
+// /installations regardless of which was clicked.
+const PROMPTS: { label: string; to: string }[] = [
+  { label: 'Complete your skills and certifications', to: '/profile' },
+  { label: 'Set your availability for the week', to: '/calendar' },
+  { label: 'Review your next assigned job', to: '/installations' },
+  { label: 'Upload completion photos for a job', to: '/installations' },
 ];
 
-function PromptStrip({ onPrompt }: { onPrompt: () => void }) {
+function PromptStrip({ onPrompt }: { onPrompt: (to: string) => void }) {
   return (
     <section className="dpdash-nba">
       <div className="dpdash-nba-head">
@@ -49,7 +52,7 @@ function PromptStrip({ onPrompt }: { onPrompt: () => void }) {
       </div>
       <div className="dpdash-nba-prompts">
         {PROMPTS.map((p, i) => (
-          <button key={i} type="button" className="dpdash-prompt" onClick={onPrompt}>{p}</button>
+          <button key={i} type="button" className="dpdash-prompt" onClick={() => onPrompt(p.to)}>{p.label}</button>
         ))}
       </div>
     </section>
@@ -63,7 +66,7 @@ export default function InstallerDashboard() {
 
   return (
     <DashboardShell title="Installer Dashboard" navLabel="Installer Workspace" items={NAV}>
-      <PromptStrip onPrompt={() => nav('/installations')} />
+      <PromptStrip onPrompt={(to) => nav(to)} />
 
       <div className="dpdash-stats">
         <div className="dpdash-stat"><div className="dpdash-stat-k">Assigned jobs</div><div className="dpdash-stat-v">0</div><div className="dpdash-stat-d">upcoming</div></div>

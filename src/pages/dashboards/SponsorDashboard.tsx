@@ -38,11 +38,14 @@ const NAV: NavItem[] = [
   { label: 'My Payouts', icon: '$', to: '/connect-payouts/mine' },
 ];
 
-const PROMPTS = [
-  'Browse available sponsorships',
-  'Sign your sponsorship agreement',
-  'Upload your logo and ad artwork',
-  'Add your guest names',
+// Each prompt routes to the page that actually performs it -- previously all
+// four shared one onClick and landed on /sponsor-portal regardless of which
+// was clicked.
+const PROMPTS: { label: string; to: string }[] = [
+  { label: 'Browse available sponsorships', to: '/opportunities' },
+  { label: 'Sign your sponsorship agreement', to: '/sponsor-portal' },
+  { label: 'Upload your logo and ad artwork', to: '/profile/decks-programs' },
+  { label: 'Add your guest names', to: '/guest-hub' },
 ];
 
 type Purchase = {
@@ -92,7 +95,7 @@ export default function SponsorDashboard() {
         </div>
         <div className="dpdash-nba-prompts">
           {PROMPTS.map((p, i) => (
-            <button key={i} type="button" className="dpdash-prompt" onClick={() => nav('/sponsor-portal')}>{p}</button>
+            <button key={i} type="button" className="dpdash-prompt" onClick={() => nav(p.to)}>{p.label}</button>
           ))}
         </div>
       </section>
