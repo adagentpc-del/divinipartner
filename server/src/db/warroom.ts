@@ -1,5 +1,10 @@
 /**
- * Intelligence Moat - F3 AI Event War Room data-access layer.
+ * Divini Event Command: Risk & Alerts (docs/DIVINI_DETERMINISTIC_TOOLS_SPEC.md,
+ * build-order slice 10; originally built pre-spec as "Event War Room,"
+ * Intelligence Moat F3). The live-alert half of Event Command, now embedded
+ * as a tab inside the per-event workspace (src/pages/event/EventWorkspace.tsx)
+ * rather than living only as a standalone page -- spec section 18's
+ * "advanced Event Command," Pro-gated below.
  *
  * Mirrors server/src/db/event-intel.ts conventions: every read/write is gated
  * through the events repo getEvent(), which throws NotFound/Forbidden, so a
@@ -24,6 +29,7 @@ import { q, q1 } from "../pool.js";
 import { type Actor } from "../db.js";
 import { getEvent } from "./events.js";
 import { gatherEventReadinessSignals } from "./event-intel.js";
+import { isTopTier, featureLockedPayload } from "../lib/entitlements.js";
 import {
   scanEvent,
   SEVERITY_RANK,
@@ -31,6 +37,20 @@ import {
   type WarRoomAlert,
   type AlertSeverity,
 } from "../lib/eventWarRoom.js";
+
+export class FeatureLockedError extends Error {
+  status = 403;
+  payload: ReturnType<typeof featureLockedPayload>;
+  constructor(actor: Actor) {
+    super("Advanced Divini Event Command (live risk alerts) is a Pro feature");
+    this.name = "FeatureLockedError";
+    this.payload = featureLockedPayload(actor.org ?? { tier: null, type: null }, "Advanced Divini Event Command");
+  }
+}
+
+function requirePro(actor: Actor): void {
+  if (!actor.org || !isTopTier(actor.org)) throw new FeatureLockedError(actor);
+}
 
 /** Persisted disposition of an alert code (open is the implicit default). */
 export type AlertStatus = "open" | "snoozed" | "resolved";
@@ -252,6 +272,7 @@ async function gatherWarRoomSignals(actor: Actor, eventId: string): Promise<WarR
  * UI can show them) but do not count toward the open total.
  */
 export async function runScan(actor: Actor, eventId: string): Promise<WarRoomResult> {
+  requirePro(actor);
   const signals = await gatherWarRoomSignals(actor, eventId);
   const alerts = scanEvent(signals);
 
@@ -308,6 +329,7 @@ export async function setAlertState(
   status: AlertStatus,
   note: string | null,
 ): Promise<{ alert_code: string; status: AlertStatus; note: string | null; updated_at: string | null }> {
+  requirePro(actor);
   await getEvent(actor, eventId); // access gate (IDOR-safe)
 
   const trimmedCode = String(code ?? "").trim();

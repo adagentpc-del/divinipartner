@@ -17,6 +17,6 @@ Use these, in order of relevance:
 - **READY-TO-SHIP-CHECKLIST.md** — pre-flight checklist.
 
 Required fail-closed env vars (login/boot throw without them):
-`SESSION_SECRET`, `DOWNLOAD_URL_SECRET`, and if Stripe is on,
-`STRIPE_WEBHOOK_SECRET` alongside `STRIPE_SECRET_KEY`. Set them in the
-droplet's `.env.local` (never committed, never rsynced).
+`SESSION_SECRET`, and if Stripe is on, `STRIPE_WEBHOOK_SECRET` alongside
+`STRIPE_SECRET_KEY`. Set them in the droplet's `.env.local` (never
+committed, never rsynced).

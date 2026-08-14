@@ -46,11 +46,18 @@ function VenueMetricTiles() {
 // and VendorDashboard). Labels with no real route stay inert rather than 404.
 const NAV: NavItem[] = [
   { label: 'Overview', icon: 'O', to: '/app' },
+  { label: 'Divini Pipeline', icon: '◈', to: '/pipeline' },
+  { label: 'Divini Scope Builder', icon: '▤', to: '/divini-scope-builder' },
+  { label: 'Divini Proposal Studio', icon: '✎', to: '/proposal-studio' },
+  { label: 'Divini Follow-Up Desk', icon: '⏰', to: '/follow-up-desk' },
+  { label: 'Divini Profit Map', icon: '$', to: '/profit-map' },
+  { label: 'Divini Price Guide', icon: '£', to: '/price-guide' },
   { label: 'Calendar', icon: 'c', to: '/calendar' },
   { label: 'Venue Twin', icon: 'P', to: '/venue-twin' },
   { label: 'Recommendations', icon: 'C', to: '/event-recommendations' },
   { label: 'Preferred Vendors', icon: 'V', to: '/preferred-vendors' },
   { label: 'Revenue Inventory', icon: 'N', to: '/revenue-inventory' },
+  { label: 'Get Paid', icon: '$', to: '/payouts/setup' },
   { label: 'Sponsorships', icon: 'H', to: '/sponsorships' },
   { label: 'Sponsorship Intel', icon: 'J', to: '/sponsorship-intel' },
   { label: 'Venue Comparison', icon: 'W', to: '/venue-comparison' },
@@ -68,9 +75,9 @@ const NAV: NavItem[] = [
   { label: 'AI COO', icon: 'A', to: '/coo' },
   { label: 'Command Center', icon: 'M', to: '/command-center' },
   { label: 'Daily Briefing', icon: 'D', to: '/daily-briefing' },
-  { label: 'Business Health', icon: 'B', to: '/business-health' },
+  { label: 'Divini Business Review', icon: 'B', to: '/business-review' },
   { label: 'Revenue Intelligence', icon: 'I', to: '/revenue-intelligence' },
-  { label: 'Forecasting', icon: 'F', to: '/forecasting' },
+  { label: 'Divini Forecast', icon: 'F', to: '/forecasting' },
   { label: 'Pricing Intelligence', icon: 'P', to: '/pricing-intelligence' },
   { label: 'Marketplace Intelligence', icon: 'K', to: '/marketplace-intelligence' },
   { label: 'Partnership Matches', icon: 'H', to: '/partnership-matches' },
@@ -123,7 +130,7 @@ export default function VenueDashboard() {
           box-shadow:0 0 0 1px rgba(201,163,91,.18)}
         .vd-network-txt{min-width:240px}
         .vd-network-txt b{font-family:'Cormorant Garamond',Georgia,serif;font-size:18px;color:#123c2e;display:block}
-        .vd-network-txt span{font-size:12.5px;color:#7d776c;line-height:1.5}
+        .vd-network-txt span{font-size:12.5px;color:#6b6459;line-height:1.5}
         .vd-network-btn{background:#1E5D4A;color:#fff;border:0;border-radius:10px;font:inherit;font-size:13px;
           font-weight:600;padding:11px 18px;cursor:pointer;white-space:nowrap}
         .vd-network-btn:hover{background:#123c2e}

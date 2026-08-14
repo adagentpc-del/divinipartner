@@ -8,6 +8,10 @@ import { TIERS, ROLES } from "../db.js";
 import * as invites from "../db/invites.js";
 import { notify } from "../lib/notify.js";
 import { PRICING_V2 } from "../config.js";
+import { clearSessionCookie } from "./auth-native.js";
+import { clearCsrfCookie } from "../lib/csrf.js";
+import { logAction } from "../lib/audit.js";
+import { pool } from "../pool.js";
 
 const h =
   (fn: (req: Request, res: Response) => Promise<unknown>) =>
@@ -16,8 +20,27 @@ const h =
 
 const router = Router();
 
-router.get("/healthz", (_req, res) => {
-  res.json({ ok: true, service: "divini-partners", ts: Date.now() });
+// Readiness check, not just a liveness check: a bare 200 here previously
+// meant only "the Node process is running," which stays true even while the
+// database (this app's single real dependency) is fully unreachable -- the
+// most likely real outage mode. Deploy scripts and any uptime/load-balancer
+// check that treats this as "the app is healthy" deserve an honest answer.
+// A 1.5s cap keeps a hung DB from making this endpoint hang too.
+router.get("/healthz", async (_req, res) => {
+  try {
+    let timer: NodeJS.Timeout;
+    const timeout = new Promise<never>((_resolve, reject) => {
+      timer = setTimeout(() => reject(new Error("db health check timed out")), 1500);
+    });
+    try {
+      await Promise.race([pool.query("select 1"), timeout]);
+    } finally {
+      clearTimeout(timer!);
+    }
+    res.json({ ok: true, service: "divini-partners", db: true, ts: Date.now() });
+  } catch {
+    res.status(503).json({ ok: false, service: "divini-partners", db: false, ts: Date.now() });
+  }
 });
 
 router.get("/pricing", (_req, res) => {
@@ -58,12 +81,21 @@ router.post(
   requireUser,
   h(async (req, res) => {
     const auth = getAuth(req);
-    const { role, orgName, tier, name, phone, invite } = req.body ?? {};
+    const { role, orgName, tier, name, phone, invite, ageConfirmed } = req.body ?? {};
     if (!role || !ROLES.includes(role)) {
       return res.status(400).json({ error: "valid role required" });
     }
     if (!orgName || typeof orgName !== "string") {
       return res.status(400).json({ error: "orgName required" });
+    }
+    // Age affirmation (ALFY2 pack Section 17, COPPA row / risk R-01): the
+    // product is not child-directed and has no known minor userbase, so this
+    // is hygiene rather than a live violation -- but there was previously
+    // zero technical barrier to a minor signing up. Enforced server-side
+    // (not just a client-side checkbox) since the server is the actual
+    // authority on what registration requires.
+    if (ageConfirmed !== true) {
+      return res.status(400).json({ error: "age confirmation required" });
     }
     const ip =
       (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() ||
@@ -110,6 +142,48 @@ router.post(
     }
 
     res.status(201).json({ id: org.id, kind: org.type, name: org.name, tier: org.tier });
+  }),
+);
+
+// ---- Account deletion (Apple Guideline 5.1.1(v)) ---------------------------
+// Anonymize + deactivate, not a hard delete -- see db.deleteAccount for why.
+// Requires the caller's current password as a re-confirmation speed bump.
+router.post(
+  "/account/delete",
+  requireUser,
+  h(async (req, res) => {
+    const auth = getAuth(req);
+    const password = typeof req.body?.password === "string" ? req.body.password : "";
+    if (!password) {
+      return res.status(400).json({ error: "password required" });
+    }
+    const ip =
+      (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() ||
+      req.socket.remoteAddress ||
+      null;
+    await db.deleteAccount(auth.userId!, password);
+    await logAction(
+      { id: auth.userId!, email: auth.email },
+      "account.deleted",
+      "user",
+      auth.userId!,
+      null,
+      null,
+      { summary: "User deleted their own account (anonymized + deactivated).", ip },
+    );
+    // Confirmation to the ORIGINAL address, captured from the session before
+    // db.deleteAccount overwrote it with the anonymized placeholder. Sent
+    // after the deletion succeeds so it never blocks the deletion itself.
+    if (auth.email) {
+      await notify.securityEvent(auth.email, "Account deleted", {
+        message:
+          "Your Divini Partners account was deleted, as you requested. Your login and personal " +
+          "information have been removed. If this was not you, contact support immediately.",
+      });
+    }
+    clearSessionCookie(res);
+    clearCsrfCookie(res);
+    res.json({ ok: true });
   }),
 );
 

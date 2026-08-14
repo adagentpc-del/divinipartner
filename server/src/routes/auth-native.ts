@@ -22,8 +22,15 @@ import {
   randomToken,
   SESSION_COOKIE,
   SESSION_MAX_AGE_SECONDS,
+  signMfaChallenge,
+  verifyMfaChallenge,
 } from "../lib/session.js";
+import { verifyTotp } from "../lib/totp.js";
+import * as mfaDb from "../db/mfa.js";
 import { sendEmail } from "../lib/email.js";
+import { notify } from "../lib/notify.js";
+import { logAction } from "../lib/audit.js";
+import { issueCsrfCookie, clearCsrfCookie } from "../lib/csrf.js";
 import { PUBLIC_APP_URL, BASE_PATH, IS_PROD, getAdminAllowedEmails } from "../config.js";
 
 const h =
@@ -60,17 +67,18 @@ function setSessionCookie(res: Response, token: string): void {
   });
 }
 
-function clearSessionCookie(res: Response): void {
+export function clearSessionCookie(res: Response): void {
   res.clearCookie(SESSION_COOKIE, { httpOnly: true, secure: IS_PROD, sameSite: "lax", path: "/" });
 }
 
-/** Issue a session for a user: set cookie + return the token + user. */
+/** Issue a session for a user: set cookie + CSRF cookie + return the token + user. */
 async function issueSession(
   res: Response,
   user: { id: string; email: string | null },
 ): Promise<{ token: string }> {
   const token = await signSession(user.id, user.email);
   setSessionCookie(res, token);
+  issueCsrfCookie(res); // must accompany the session cookie -- see lib/csrf.ts
   return { token };
 }
 
@@ -187,6 +195,47 @@ router.post(
         needsVerification: true,
       });
     }
+    if (user.totp_enabled) {
+      // Password is correct, but do not issue a real session yet: return a
+      // short-lived challenge token instead. Only /auth/mfa-verify accepts
+      // it, and only to exchange a correct TOTP/backup code for a real
+      // session -- see lib/session.ts's signMfaChallenge for why a leaked
+      // challenge token cannot be replayed as full API access.
+      const challengeToken = await signMfaChallenge(user.id);
+      return res.json({ ok: true, mfaRequired: true, challengeToken });
+    }
+    const { token } = await issueSession(res, { id: user.id, email: user.email });
+    return res.json({
+      ok: true,
+      token,
+      user: { id: user.id, email: user.email },
+      isAdmin: isAdminEmail(user.email),
+    });
+  }),
+);
+
+// ---- MFA challenge verification (second step of login when TOTP is on) ----
+router.post(
+  "/mfa-verify",
+  h(async (req, res) => {
+    const { challengeToken, code } = req.body ?? {};
+    const generic = { error: "Incorrect code." };
+    if (typeof challengeToken !== "string" || typeof code !== "string" || !code) {
+      return res.status(400).json(generic);
+    }
+    const userId = await verifyMfaChallenge(challengeToken);
+    if (!userId) {
+      return res.status(401).json({ error: "This sign-in attempt has expired. Sign in again." });
+    }
+    const user = await mfaDb.getMfaUser(userId);
+    if (!user || !user.totp_enabled || !user.totp_secret) {
+      return res.status(400).json({ error: "Two-factor authentication is not enabled on this account." });
+    }
+    const ok =
+      verifyTotp(user.totp_secret, code) || (await mfaDb.consumeBackupCode(userId, code.trim()));
+    if (!ok) {
+      return res.status(401).json(generic);
+    }
     const { token } = await issueSession(res, { id: user.id, email: user.email });
     return res.json({
       ok: true,
@@ -200,8 +249,40 @@ router.post(
 // ---- Logout ----------------------------------------------------------------
 router.post("/logout", (_req, res) => {
   clearSessionCookie(res);
+  clearCsrfCookie(res);
   res.json({ ok: true });
 });
+
+/**
+ * Sign out every OTHER session (lost/stolen device, an old browser you no
+ * longer trust) without changing the password. Reuses the same
+ * invalidateSessions() a password reset already relies on (see the /reset
+ * handler above) -- the mechanism is proven; this is a second, deliberate
+ * entry point to it. Re-issues a fresh session for THIS request/device
+ * immediately after invalidating, in the same order the /reset handler
+ * uses, so the caller stays signed in on the device they used to ask for
+ * this.
+ */
+router.post(
+  "/sign-out-other-sessions",
+  requireUser,
+  h(async (req, res) => {
+    const auth = getAuth(req);
+    const user = await db.ensureUser(auth.userId!, auth.email);
+    await db.invalidateSessions(user.id);
+    await logAction(
+      { id: user.id, email: user.email },
+      "account.sessions_revoked",
+      "user",
+      user.id,
+      null,
+      null,
+      { summary: "User signed out all other sessions." },
+    );
+    const { token } = await issueSession(res, { id: user.id, email: user.email });
+    return res.json({ ok: true, token });
+  }),
+);
 
 // ---- Me (mirror /api/me shape the SPA expects) -----------------------------
 router.get(
@@ -270,6 +351,31 @@ router.post(
       return res.status(400).json({ error: "This reset link is invalid or has expired." });
     }
     await db.applyPasswordReset(user.id, hashPassword(password));
+    // Session revocation: invalidate every OTHER already-issued session
+    // token for this user before issuing the new one below, so a token
+    // stolen before this reset stops working immediately rather than
+    // staying valid for up to 30 more days. Must run BEFORE issueSession so
+    // the freshly-issued token's iat lands after this cutoff.
+    await db.invalidateSessions(user.id);
+    // Detection control: tell the account owner their password changed, so a
+    // reset they did not request (e.g. via a compromised inbox) is visible to
+    // them immediately, not just recoverable after the fact via audit_logs.
+    // Best-effort (notify.securityEvent swallows send failures) and never
+    // blocks the reset itself.
+    if (user.email) {
+      await notify.securityEvent(user.email, "Password changed", {
+        message: "Your Divini Partners password was just changed. If this was not you, contact support immediately.",
+      });
+    }
+    await logAction(
+      { id: user.id, email: user.email },
+      "account.password_reset",
+      "user",
+      user.id,
+      null,
+      null,
+      { summary: "Password reset via emailed reset link." },
+    );
     const { token: session } = await issueSession(res, { id: user.id, email: user.email });
     return res.json({
       ok: true,

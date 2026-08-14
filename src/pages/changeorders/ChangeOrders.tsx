@@ -1,10 +1,14 @@
 /**
- * Change Orders (blueprint section 23). Route: /change-orders.
+ * Divini Change Desk (docs/DIVINI_DETERMINISTIC_TOOLS_SPEC.md, build-order
+ * slice 8; originally built pre-spec as "Change Orders," blueprint section
+ * 23). Route: /change-orders.
  *
- * Create and track change orders for an event: scope add-ons with a price delta,
- * a lifecycle status, and a scope-creep flag. Reads the event from ?event_id; in
- * the Event Workspace this embeds as the Change Orders tab. Self-contained styles.
- * Zero em dashes.
+ * Create and track change orders for an event: scope add-ons with a price
+ * delta, an optional requested schedule change, a lifecycle status, and a
+ * scope-creep flag. Every status transition is preserved in an append-only
+ * history, viewable per change order. Reads the event from ?event_id; in
+ * the Event Workspace this embeds as the Change Orders tab. Self-contained
+ * styles. Zero em dashes.
  */
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
@@ -21,8 +25,12 @@ type ChangeOrder = {
   platform_fee: string | null;
   status: string | null;
   scope_creep_flag: boolean;
+  requested_new_date: string | null;
+  schedule_change_note: string | null;
   created_at: string;
 };
+
+type StatusHistoryRow = { id: string; from_status: string | null; to_status: string; changed_at: string };
 
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Draft', sent: 'Sent', accepted: 'Accepted', declined: 'Declined',
@@ -46,8 +54,12 @@ export default function ChangeOrders() {
   const [description, setDescription] = useState('');
   const [reason, setReason] = useState('');
   const [amount, setAmount] = useState('');
+  const [requestedNewDate, setRequestedNewDate] = useState('');
+  const [scheduleNote, setScheduleNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveErr, setSaveErr] = useState<string | null>(null);
+  const [openHistory, setOpenHistory] = useState<string | null>(null);
+  const [history, setHistory] = useState<StatusHistoryRow[]>([]);
 
   const load = useCallback(() => {
     if (!eventId) { setLoading(false); return; }
@@ -59,6 +71,17 @@ export default function ChangeOrders() {
   }, [eventId]);
 
   useEffect(() => { load(); }, [load]);
+
+  async function toggleHistory(id: string) {
+    if (openHistory === id) { setOpenHistory(null); return; }
+    setOpenHistory(id);
+    try {
+      const r = await apiGet<{ history: StatusHistoryRow[] }>(`/change-orders/${id}/history`);
+      setHistory(r.history ?? []);
+    } catch {
+      setHistory([]);
+    }
+  }
 
   async function createChangeOrder() {
     if (!eventId) return;
@@ -74,8 +97,10 @@ export default function ChangeOrders() {
         line_items: Number.isFinite(amt) && amt > 0
           ? [{ description: title.trim() || 'Scope change', amount: amt }]
           : [],
+        requested_new_date: requestedNewDate || null,
+        schedule_change_note: scheduleNote.trim() || null,
       });
-      setTitle(''); setDescription(''); setReason(''); setAmount('');
+      setTitle(''); setDescription(''); setReason(''); setAmount(''); setRequestedNewDate(''); setScheduleNote('');
       setShowForm(false);
       load();
     } catch (e) {
@@ -92,8 +117,8 @@ export default function ChangeOrders() {
       <header className="dpco-head">
         <div>
           <span className="dpco-kicker">Event workspace</span>
-          <h1 className="dpco-title">Change orders</h1>
-          <p className="dpco-sub">Track scope changes and price deltas for this event.</p>
+          <h1 className="dpco-title">Divini Change Desk</h1>
+          <p className="dpco-sub">Track scope, price, and schedule changes for this event, with every approval preserved.</p>
         </div>
         {eventId ? (
           <button type="button" className="dpco-btn primary" onClick={() => setShowForm((s) => !s)}>
@@ -118,6 +143,14 @@ export default function ChangeOrders() {
           <label>Reason
             <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Why is scope changing?" />
           </label>
+          <div className="dpco-form-row">
+            <label>Requested new date (optional)
+              <input type="date" value={requestedNewDate} onChange={(e) => setRequestedNewDate(e.target.value)} />
+            </label>
+            <label>Schedule change note (optional)
+              <input value={scheduleNote} onChange={(e) => setScheduleNote(e.target.value)} placeholder="e.g. Move load-in to 8am" />
+            </label>
+          </div>
           {saveErr ? <div className="dpco-err" style={{ marginTop: 8 }}>{saveErr}</div> : null}
           <div className="dpco-form-actions">
             <button type="button" className="dpco-btn primary" disabled={saving} onClick={createChangeOrder}>
@@ -149,12 +182,21 @@ export default function ChangeOrders() {
               {co.title ? <h3 className="dpco-cardtitle">{co.title}</h3> : null}
               {co.description ? <p className="dpco-desc">{co.description}</p> : null}
               {co.reason ? <p className="dpco-reason">Reason: {co.reason}</p> : null}
+              {(co.requested_new_date || co.schedule_change_note) ? (
+                <p className="dpco-schedule">
+                  Schedule change{co.requested_new_date ? `: requested date ${new Date(co.requested_new_date).toLocaleDateString()}` : ''}
+                  {co.schedule_change_note ? ` — ${co.schedule_change_note}` : ''}
+                </p>
+              ) : null}
               <div className="dpco-amounts">
                 <span>Subtotal {money(co.subtotal)}</span>
                 <span>Platform fee {money(co.platform_fee)}</span>
                 <span className="dpco-total">Total {money(co.amount)}</span>
               </div>
               <div className="dpco-signrow">
+                <button type="button" className="dpco-histbtn" onClick={() => toggleHistory(co.id)}>
+                  {openHistory === co.id ? 'Hide history' : 'Status history'}
+                </button>
                 <Link
                   className="dpco-sign"
                   to={`/sign/change_order_approval?related_object_type=change_order&related_object_id=${encodeURIComponent(co.id)}&title=${encodeURIComponent(`Change Order ${co.change_order_number ?? co.id.slice(0, 8)}`)}`}
@@ -162,6 +204,20 @@ export default function ChangeOrders() {
                   Sign approval
                 </Link>
               </div>
+              {openHistory === co.id ? (
+                <div className="dpco-history">
+                  {history.length === 0 ? (
+                    <div className="dpco-history-row">No history yet.</div>
+                  ) : (
+                    history.map((h) => (
+                      <div className="dpco-history-row" key={h.id}>
+                        <span>{h.from_status ? `${STATUS_LABELS[h.from_status] ?? h.from_status} -> ` : ''}{STATUS_LABELS[h.to_status] ?? h.to_status}</span>
+                        <span className="dpco-history-date">{new Date(h.changed_at).toLocaleString()}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              ) : null}
             </div>
           ))}
         </div>
@@ -173,7 +229,7 @@ export default function ChangeOrders() {
 const CSS = `
 .dpco {
   --dp-emerald: #123c2e; --dp-emerald-2: #1E5D4A; --dp-gold: #C9A35B;
-  --dp-ivory: #F7F4EE; --dp-ink: #2c2a26; --dp-muted: #7d776c; --dp-line: #e7e1d6;
+  --dp-ivory: #F7F4EE; --dp-ink: #2c2a26; --dp-muted: #6b6459; --dp-line: #e7e1d6;
   font-family: 'Inter', system-ui, -apple-system, sans-serif; color: var(--dp-ink);
 }
 .dpco h1, .dpco h3 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 600; margin: 0; }
@@ -212,7 +268,12 @@ const CSS = `
 .dpco-pill.st-accepted, .dpco-pill.st-paid { background: rgba(30,93,74,.12); color: var(--dp-emerald-2); border-color: rgba(30,93,74,.3); }
 .dpco-pill.st-declined { background: rgba(155,44,44,.1); color: #9b2c2c; border-color: rgba(155,44,44,.35); }
 .dpco-pill.st-sent, .dpco-pill.st-revision_requested, .dpco-pill.st-added_to_invoice { background: rgba(201,163,91,.16); color: #8a5a12; border-color: rgba(201,163,91,.45); }
-.dpco-signrow { display: flex; justify-content: flex-end; margin-top: 12px; }
+.dpco-signrow { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; gap: 10px; }
 .dpco-sign { font-size: 12.5px; font-weight: 600; text-decoration: none; padding: 7px 14px; border-radius: 9px; background: var(--dp-emerald); color: #fff; }
 .dpco-sign:hover { background: var(--dp-emerald-2); }
+.dpco-schedule { font-size: 12px; color: var(--dp-emerald-2); background: rgba(30,93,74,.08); border-radius: 8px; padding: 6px 10px; margin: 6px 0; }
+.dpco-histbtn { font: inherit; font-size: 12px; font-weight: 600; color: var(--dp-emerald-2); background: none; border: none; cursor: pointer; text-decoration: underline; padding: 0; }
+.dpco-history { margin-top: 10px; border-top: 1px dashed var(--dp-line); padding-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+.dpco-history-row { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--dp-muted); gap: 10px; }
+.dpco-history-date { white-space: nowrap; }
 `;

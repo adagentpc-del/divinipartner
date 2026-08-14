@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { apiGet, apiSend } from '../../lib/api';
+import { isPlanLimitError, UpgradePrompt, type PlanLimitError } from '../../lib/entitlements';
 
 // Phase 4 - Rental Inventory manager (blueprint 12.2). List, add, and edit
 // inventory items with the full field set, photo placeholders, and availability.
@@ -54,6 +55,7 @@ export default function InventoryManager() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [limitError, setLimitError] = useState<PlanLimitError | null>(null);
   const [editing, setEditing] = useState<Partial<InventoryItem> | null>(null);
   const [saving, setSaving] = useState(false);
   const [avail, setAvail] = useState<Record<string, AvailabilityWindow[]>>({});
@@ -76,6 +78,7 @@ export default function InventoryManager() {
   async function save() {
     if (!editing) return;
     setSaving(true);
+    setLimitError(null);
     try {
       const body = { ...editing };
       if (editing.id) {
@@ -86,7 +89,8 @@ export default function InventoryManager() {
       setEditing(null);
       await load();
     } catch (e) {
-      setError((e as Error).message);
+      if (isPlanLimitError(e)) setLimitError(e.body);
+      else setError((e as Error).message);
     } finally {
       setSaving(false);
     }
@@ -129,6 +133,7 @@ export default function InventoryManager() {
       </header>
 
       {error && <div className="inv-error">{error}</div>}
+      {limitError && <UpgradePrompt error={limitError} onDismiss={() => setLimitError(null)} />}
 
       {loading ? (
         <div className="inv-empty">Loading inventory.</div>
@@ -243,7 +248,7 @@ export default function InventoryManager() {
 }
 
 const CSS = `
-.inv { --e:#123c2e; --e2:#1E5D4A; --g:#C9A35B; --iv:#F7F4EE; --ink:#2c2a26; --mut:#7d776c; --ln:#e7e1d6;
+.inv { --e:#123c2e; --e2:#1E5D4A; --g:#C9A35B; --iv:#F7F4EE; --ink:#2c2a26; --mut:#6b6459; --ln:#e7e1d6;
   font-family:'Inter',system-ui,sans-serif; color:var(--ink); max-width:1180px; }
 .inv *,.inv *::before,.inv *::after { box-sizing:border-box; }
 .inv h1,.inv h2,.inv h3 { font-family:'Cormorant Garamond',Georgia,serif; margin:0; }

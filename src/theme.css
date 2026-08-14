@@ -2,9 +2,9 @@
 
 :root{
   --emerald:#1E5D4A; --emerald-deep:#123c2e; --emerald-mid:#174838;
-  --champagne:#D9CCB0; --ink:#2c2a26; --muted:#7d776c;
+  --champagne:#D9CCB0; --ink:#2c2a26; --muted:#6b6459;
   --line:#e7e1d6; --ivory:#f7f4ee; --bg:#f3efe6; --white:#fff;
-  --green:#2f8f5b; --amber:#b8860b; --red:#b3413a;
+  --green:#237246; --amber:#b8860b; --red:#b3413a;
   --radius:13px;
 }
 *{box-sizing:border-box}

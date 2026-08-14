@@ -136,9 +136,9 @@ function Stat({ k, v, d }: { k: string; v: string; d: string }) {
 const P_CSS = `
 .ew-pay-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 22px; }
 .ew-pay-stat { background: #fff; border: 1px solid #e7e1d6; border-radius: 14px; padding: 16px 18px; }
-.ew-pay-stat-k { font-size: 11.5px; color: #7d776c; }
+.ew-pay-stat-k { font-size: 11.5px; color: #6b6459; }
 .ew-pay-stat-v { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 28px; color: #123c2e; line-height: 1.05; margin: 4px 0 2px; }
-.ew-pay-stat-d { font-size: 11px; color: #7d776c; }
+.ew-pay-stat-d { font-size: 11px; color: #6b6459; }
 .ew-pay-tablewrap { background: #fff; border: 1px solid #e7e1d6; border-radius: 14px; overflow: hidden; }
 .ew-pay-right { text-align: right; }
 .ew-pay-cap { text-transform: capitalize; }

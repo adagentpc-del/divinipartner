@@ -104,7 +104,7 @@ const I_CSS = `
 .ew-inv-row:hover { background: rgba(201,163,91,.07); }
 .ew-inv-num { font-weight: 600; color: #123c2e; }
 .ew-inv-bal { font-weight: 600; }
-.ew-inv-pill { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 10px; border-radius: 999px; border: 1px solid #e7e1d6; background: #F7F4EE; color: #7d776c; }
+.ew-inv-pill { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 10px; border-radius: 999px; border: 1px solid #e7e1d6; background: #F7F4EE; color: #6b6459; }
 .ew-inv-pill.st-paid { background: rgba(30,93,74,.12); color: #1E5D4A; border-color: rgba(30,93,74,.3); }
 .ew-inv-pill.st-sent, .ew-inv-pill.st-viewed, .ew-inv-pill.st-deposit_paid, .ew-inv-pill.st-partially_paid { background: rgba(201,163,91,.16); color: #8a5a12; border-color: rgba(201,163,91,.45); }
 .ew-inv-pill.st-overdue, .ew-inv-pill.st-disputed { background: rgba(155,44,44,.1); color: #9b2c2c; border-color: rgba(155,44,44,.35); }

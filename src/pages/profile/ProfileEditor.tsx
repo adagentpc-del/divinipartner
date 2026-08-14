@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
 import { apiGet, apiSend, apiUpload } from '../../lib/api';
+import { deleteMyAccount } from '../../lib/db';
+import {
+  mfaStatus, mfaEnrollStart, mfaEnrollVerify, mfaRegenerateBackupCodes, mfaDisable,
+  type MfaStatus, type MfaEnrollStart,
+} from '../../lib/mfa';
 
 /**
  * Divini Partners - Profile editor (blueprint section 9).
@@ -83,7 +88,7 @@ const BUTTON_STYLES = ['rounded', 'pill', 'square'];
 
 export default function ProfileEditor() {
   const nav = useNavigate();
-  const { session } = useAuth();
+  const { session, signOut } = useAuth();
   const [state, setState] = useState<State | null>(null);
   const [sections, setSections] = useState<Record<string, any>>({});
   const [theme, setTheme] = useState<Theme>({
@@ -99,6 +104,24 @@ export default function ProfileEditor() {
   const [transferBusy, setTransferBusy] = useState(false);
   const [transferMsg, setTransferMsg] = useState('');
   const [transferErr, setTransferErr] = useState('');
+  // Delete account (danger zone).
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteErr, setDeleteErr] = useState('');
+  // Sign out other sessions (lost/stolen device), no password change needed.
+  const [signOutBusy, setSignOutBusy] = useState(false);
+  const [signOutMsg, setSignOutMsg] = useState('');
+  const [signOutErr, setSignOutErr] = useState('');
+  // Two-factor authentication (TOTP).
+  const [mfa, setMfa] = useState<MfaStatus | null>(null);
+  const [mfaBusy, setMfaBusy] = useState(false);
+  const [mfaErr, setMfaErr] = useState('');
+  const [mfaMsg, setMfaMsg] = useState('');
+  const [mfaEnroll, setMfaEnroll] = useState<MfaEnrollStart | null>(null);
+  const [mfaVerifyCode, setMfaVerifyCode] = useState('');
+  const [backupCodesReveal, setBackupCodesReveal] = useState<string[] | null>(null);
+  const [regenerateCode, setRegenerateCode] = useState('');
+  const [disableMfaPassword, setDisableMfaPassword] = useState('');
 
   // AI profile assist: extract from a website URL or an uploaded document,
   // then review each suggested field (accept / edit / reject) before it
@@ -118,6 +141,8 @@ export default function ProfileEditor() {
       const s = await apiGet<State>('/profile');
       setState(s);
       setSections(s.draft?.sections ?? {});
+      // `clean` (below) is a hoisted function declaration, so this is a lint false positive.
+      // eslint-disable-next-line react-hooks/immutability
       if (s.theme) setTheme((t) => ({ ...t, ...clean(s.theme as Theme) }));
     } catch (e: any) {
       setErr(e?.message ?? 'Could not load your profile.');
@@ -248,6 +273,119 @@ export default function ProfileEditor() {
       setTransferErr(e?.message ?? 'Could not transfer ownership.');
     } finally {
       setTransferBusy(false);
+    }
+  }
+
+  async function signOutOtherSessions() {
+    setSignOutErr(''); setSignOutMsg('');
+    const ok = window.confirm(
+      'Sign out every other device/browser signed in to your account? This one stays signed in.',
+    );
+    if (!ok) return;
+    setSignOutBusy(true);
+    try {
+      await apiSend('POST', '/auth/sign-out-other-sessions', {});
+      setSignOutMsg('Every other session has been signed out. This device stays signed in.');
+    } catch (e: any) {
+      setSignOutErr(e?.message ?? 'Could not sign out other sessions.');
+    } finally {
+      setSignOutBusy(false);
+    }
+  }
+
+  async function deleteAccount() {
+    setDeleteErr('');
+    if (!deletePassword) {
+      setDeleteErr('Enter your password to confirm.');
+      return;
+    }
+    const ok = window.confirm(
+      'Delete your account? This signs you out permanently and removes your personal ' +
+        'information (name, email, login). It cannot be undone from here. Your organization\'s ' +
+        'quotes, invoices, and other business records are kept for other members and for legal ' +
+        'record-keeping, but you will no longer have access to them.',
+    );
+    if (!ok) return;
+    setDeleteBusy(true);
+    try {
+      await deleteMyAccount(deletePassword);
+      await signOut();
+      nav('/');
+    } catch (e: any) {
+      setDeleteErr(e?.message ?? 'Could not delete your account.');
+      setDeleteBusy(false);
+    }
+  }
+
+  async function loadMfaStatus() {
+    try {
+      setMfa(await mfaStatus());
+    } catch {
+      // Non-fatal: the section just stays in its loading state.
+    }
+  }
+  useEffect(() => { if (session) loadMfaStatus();   }, [session]);
+
+  async function startMfaEnroll() {
+    setMfaErr(''); setMfaMsg('');
+    setMfaBusy(true);
+    try {
+      setMfaEnroll(await mfaEnrollStart());
+    } catch (e: any) {
+      setMfaErr(e?.message ?? 'Could not start enrollment.');
+    } finally {
+      setMfaBusy(false);
+    }
+  }
+
+  async function confirmMfaEnroll() {
+    setMfaErr('');
+    if (!mfaVerifyCode.trim()) { setMfaErr('Enter the 6-digit code from your authenticator app.'); return; }
+    setMfaBusy(true);
+    try {
+      const r = await mfaEnrollVerify(mfaVerifyCode.trim());
+      setBackupCodesReveal(r.backupCodes);
+      setMfaEnroll(null);
+      setMfaVerifyCode('');
+      await loadMfaStatus();
+    } catch (e: any) {
+      setMfaErr(e?.message ?? 'Incorrect code.');
+    } finally {
+      setMfaBusy(false);
+    }
+  }
+
+  async function doRegenerateBackupCodes() {
+    setMfaErr(''); setMfaMsg('');
+    if (!regenerateCode.trim()) { setMfaErr('Enter your current 6-digit code to confirm.'); return; }
+    setMfaBusy(true);
+    try {
+      const r = await mfaRegenerateBackupCodes(regenerateCode.trim());
+      setBackupCodesReveal(r.backupCodes);
+      setRegenerateCode('');
+      await loadMfaStatus();
+    } catch (e: any) {
+      setMfaErr(e?.message ?? 'Incorrect code.');
+    } finally {
+      setMfaBusy(false);
+    }
+  }
+
+  async function doDisableMfa() {
+    setMfaErr(''); setMfaMsg('');
+    if (!disableMfaPassword) { setMfaErr('Enter your password to confirm.'); return; }
+    const ok = window.confirm('Turn off two-factor authentication for your account?');
+    if (!ok) return;
+    setMfaBusy(true);
+    try {
+      await mfaDisable(disableMfaPassword);
+      setDisableMfaPassword('');
+      setMfaMsg('Two-factor authentication is now off.');
+      await loadMfaStatus();
+    } catch (e: any) {
+      setMfaErr(e?.message ?? 'Could not disable two-factor authentication.');
+    } finally {
+      setMfaBusy(false);
     }
   }
 
@@ -439,6 +577,74 @@ export default function ProfileEditor() {
 
         {tab === 'account' && (
           <div className="dppe-panel">
+            <Section title="Two-factor authentication">
+              {mfaErr && <div className="dppe-err" style={{ marginTop: 4 }}>{mfaErr}</div>}
+              {mfaMsg && <div className="dppe-ok" style={{ marginTop: 4 }}>{mfaMsg}</div>}
+
+              {backupCodesReveal ? (
+                <>
+                  <p className="dppe-help">
+                    Save these backup codes somewhere safe - each one works once, if you lose access
+                    to your authenticator app. They will not be shown again.
+                  </p>
+                  <div style={{ background: '#f7f4ec', border: '1px solid #e7e1d6', borderRadius: 10, padding: 14, fontFamily: 'monospace', fontSize: 14, lineHeight: 1.9, marginBottom: 12 }}>
+                    {backupCodesReveal.map((c) => <div key={c}>{c}</div>)}
+                  </div>
+                  <div className="dppe-actions">
+                    <button className="dppe-btn" onClick={() => setBackupCodesReveal(null)}>I have saved these codes</button>
+                  </div>
+                </>
+              ) : mfaEnroll ? (
+                <>
+                  <p className="dppe-help">
+                    Scan this code with an authenticator app (Google Authenticator, Authy, 1Password,
+                    Apple Passwords), then enter the 6-digit code it shows to finish turning on
+                    two-factor authentication.
+                  </p>
+                  <img src={mfaEnroll.qrCodeDataUrl} alt="Two-factor authentication QR code" style={{ width: 180, height: 180, marginBottom: 10 }} />
+                  <p className="dppe-help">Or enter this code manually: <code>{mfaEnroll.secret}</code></p>
+                  <Field label="6-digit code">
+                    <input value={mfaVerifyCode} onChange={(e) => setMfaVerifyCode(e.target.value)} placeholder="123456" autoFocus />
+                  </Field>
+                  <div className="dppe-actions">
+                    <button className="dppe-btn ghost" onClick={() => { setMfaEnroll(null); setMfaVerifyCode(''); setMfaErr(''); }}>Cancel</button>
+                    <button className="dppe-btn" onClick={confirmMfaEnroll} disabled={mfaBusy}>{mfaBusy ? 'Verifying...' : 'Turn on'}</button>
+                  </div>
+                </>
+              ) : mfa?.enabled ? (
+                <>
+                  <p className="dppe-help">
+                    Two-factor authentication is <strong>on</strong>. You have {mfa.remainingBackupCodes} unused
+                    backup code{mfa.remainingBackupCodes === 1 ? '' : 's'} left.
+                  </p>
+                  <Field label="Regenerate backup codes (enter your current 6-digit code)">
+                    <input value={regenerateCode} onChange={(e) => setRegenerateCode(e.target.value)} placeholder="123456" />
+                  </Field>
+                  <div className="dppe-actions" style={{ marginBottom: 18 }}>
+                    <button className="dppe-btn ghost" onClick={doRegenerateBackupCodes} disabled={mfaBusy}>Regenerate backup codes</button>
+                  </div>
+                  <Field label="Turn off two-factor authentication (enter your password)">
+                    <input type="password" value={disableMfaPassword} onChange={(e) => setDisableMfaPassword(e.target.value)} placeholder="Current password" autoComplete="current-password" />
+                  </Field>
+                  <div className="dppe-actions">
+                    <button className="dppe-btn danger" onClick={doDisableMfa} disabled={mfaBusy}>Turn off</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="dppe-help">
+                    Two-factor authentication is <strong>off</strong>. Turning it on requires a code
+                    from an authenticator app in addition to your password when you sign in.
+                  </p>
+                  <div className="dppe-actions">
+                    <button className="dppe-btn" onClick={startMfaEnroll} disabled={mfaBusy}>
+                      {mfaBusy ? 'Starting...' : 'Turn on two-factor authentication'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </Section>
+
             <Section title="Profile owner email">
               <p className="dppe-help">
                 Signed in as <strong>{session?.user?.email ?? 'your account'}</strong>. Transfer
@@ -459,6 +665,70 @@ export default function ProfileEditor() {
               <div className="dppe-actions">
                 <button className="dppe-btn" onClick={transferOwner} disabled={transferBusy}>
                   {transferBusy ? 'Transferring...' : 'Transfer ownership'}
+                </button>
+              </div>
+            </Section>
+
+            <Section title="Sessions">
+              <p className="dppe-help">
+                Lost a device, or signed in somewhere you no longer trust? Sign out every other
+                session without changing your password. This device stays signed in.
+              </p>
+              {signOutErr && <div className="dppe-err" style={{ marginTop: 10 }}>{signOutErr}</div>}
+              {signOutMsg && <div className="dppe-ok" style={{ marginTop: 10 }}>{signOutMsg}</div>}
+              <div className="dppe-actions">
+                <button className="dppe-btn" onClick={signOutOtherSessions} disabled={signOutBusy}>
+                  {signOutBusy ? 'Signing out...' : 'Sign out other sessions'}
+                </button>
+              </div>
+            </Section>
+
+            <Section title="Your data and privacy">
+              <p className="dppe-help">
+                Request access to, export, correction, or deletion of your data, and manage your
+                consent preferences (marketing email, analytics, data processing).
+              </p>
+              <div className="dppe-actions">
+                <button className="dppe-btn" onClick={() => nav('/account/privacy')}>
+                  Open privacy requests
+                </button>
+              </div>
+            </Section>
+
+            <Section title="Developer: API keys and webhooks">
+              <p className="dppe-help">
+                Generate API keys for programmatic access to your organization's data, and register
+                webhook endpoints to receive real-time notifications when a quote is awarded, an
+                invoice is paid, or an event's status changes.
+              </p>
+              <div className="dppe-actions">
+                <button className="dppe-btn" onClick={() => nav('/account/developer')}>
+                  Open developer settings
+                </button>
+              </div>
+            </Section>
+
+            <Section title="Delete account">
+              <p className="dppe-help">
+                Permanently delete your Divini Partners account. This signs you out and removes
+                your personal information (name, email, login credentials). It does not delete
+                your organization's quotes, invoices, or other business records - those are kept
+                for other members of your organization and for legal record-keeping, but you will
+                lose access to them. This cannot be undone from here.
+              </p>
+              <Field label="Confirm your password">
+                <input
+                  type="password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  placeholder="Current password"
+                  autoComplete="current-password"
+                />
+              </Field>
+              {deleteErr && <div className="dppe-err" style={{ marginTop: 10 }}>{deleteErr}</div>}
+              <div className="dppe-actions">
+                <button className="dppe-btn danger" onClick={deleteAccount} disabled={deleteBusy}>
+                  {deleteBusy ? 'Deleting...' : 'Delete my account'}
                 </button>
               </div>
             </Section>
@@ -508,7 +778,7 @@ function List({
 }
 
 const CSS = `
-.dppe{--e:#123c2e;--e2:#1E5D4A;--gold:#C9A35B;--ivory:#F7F4EE;--ink:#2c2a26;--muted:#7d776c;--line:#e7e1d6;
+.dppe{--e:#123c2e;--e2:#1E5D4A;--gold:#C9A35B;--ivory:#F7F4EE;--ink:#2c2a26;--muted:#6b6459;--line:#e7e1d6;
   min-height:100vh;background:var(--ivory);color:var(--ink);font-family:Inter,system-ui,sans-serif;}
 .dppe *{box-sizing:border-box;}
 .dppe-top{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;background:#fff;border-bottom:1px solid var(--line);}
@@ -558,6 +828,8 @@ const CSS = `
 .dppe-btn{background:var(--e);color:#fff;border:0;border-radius:10px;font:inherit;font-size:13.5px;font-weight:600;padding:11px 20px;cursor:pointer;}
 .dppe-btn:hover{background:var(--e2);}
 .dppe-btn.ghost{background:transparent;color:var(--e);border:1px solid var(--line);align-self:flex-start;}
+.dppe-btn.danger{background:#a3382f;}
+.dppe-btn.danger:hover{background:#8a2e26;}
 .dppe-btn:disabled{opacity:.5;cursor:default;}
 .dppe-ghost{background:transparent;border:1px solid var(--line);border-radius:10px;color:var(--e);font:inherit;font-size:13px;font-weight:600;padding:9px 15px;cursor:pointer;}
 .dppe-ghost:hover{border-color:var(--e2);}

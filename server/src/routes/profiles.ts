@@ -38,7 +38,8 @@ import {
 } from "../lib/uploadGuard.js";
 import { sendEmail } from "../lib/email.js";
 import { randomToken } from "../lib/session.js";
-import { PUBLIC_APP_URL, BASE_PATH } from "../config.js";
+import { PUBLIC_APP_URL, BASE_PATH, LLM_PROVIDER, LLM_MODEL } from "../config.js";
+import { logAction } from "../lib/audit.js";
 
 const AI_PENDING_NOTE = "ai_suggested pending owner verification";
 
@@ -151,6 +152,19 @@ router.post(
     }
     const clean = url.trim();
     const extracted = await extractProfileFromUrl(clean);
+    // ai_run_audit trail (ALFY2 pack Section 08): record that an AI extraction
+    // ran, its provider/model, and its outcome -- never the extracted text
+    // itself, which already lives (governed by its own status lifecycle) in
+    // ai_profile_suggestions.
+    await logAction(
+      ctx.actor,
+      "ai.extract_profile",
+      "organization",
+      ctx.actor.org!.id,
+      null,
+      { source: "website", provider: LLM_PROVIDER, model: LLM_MODEL, outcome: extracted ? "ok" : "unavailable" },
+      { summary: `AI profile extraction from website: ${extracted ? "succeeded" : "unavailable/failed"}` },
+    ).catch(() => undefined);
     if (!extracted) {
       // Local model unavailable or extraction failed: client should fall back to
       // POST /onboarding/website (deterministic, always available).
@@ -230,6 +244,17 @@ router.post(
       });
       suggestions = [out.suggestion];
     }
+
+    // ai_run_audit trail (ALFY2 pack Section 08) -- same rationale as /extract.
+    await logAction(
+      ctx.actor,
+      "ai.extract_profile",
+      "organization",
+      orgId,
+      null,
+      { source: "document", provider: LLM_PROVIDER, model: LLM_MODEL, outcome: extractedAny ? "ok" : "unavailable" },
+      { summary: `AI profile extraction from document: ${extractedAny ? "succeeded" : "unavailable/failed"}` },
+    ).catch(() => undefined);
 
     res.status(201).json({ available: extractedAny, fileUrl, suggestions });
   }),

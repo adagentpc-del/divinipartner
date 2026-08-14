@@ -64,7 +64,7 @@ export default function QuoteApprovals() {
 
   useEffect(() => {
     loadDrafts();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);  
 
   async function openChain(id: string) {
     setActiveId(id);
@@ -220,7 +220,7 @@ export default function QuoteApprovals() {
 }
 
 const CSS = `
-.qa { --e:#123c2e; --e2:#1E5D4A; --g:#C9A35B; --iv:#F7F4EE; --ink:#2c2a26; --mut:#7d776c; --ln:#e7e1d6;
+.qa { --e:#123c2e; --e2:#1E5D4A; --g:#C9A35B; --iv:#F7F4EE; --ink:#2c2a26; --mut:#6b6459; --ln:#e7e1d6;
   font-family:'Inter',system-ui,sans-serif; color:var(--ink); max-width:1100px; }
 .qa *,.qa *::before,.qa *::after { box-sizing:border-box; }
 .qa h1,.qa h2 { font-family:'Cormorant Garamond',Georgia,serif; margin:0; }

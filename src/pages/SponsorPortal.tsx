@@ -390,7 +390,7 @@ function Frame({ children }: { children: React.ReactNode }) {
 const CSS = `
 .sp-wrap {
   --dp-emerald: #123c2e; --dp-emerald-2: #1E5D4A; --dp-gold: #C9A35B;
-  --dp-ivory: #F7F4EE; --dp-ink: #2c2a26; --dp-muted: #7d776c; --dp-line: #e7e1d6;
+  --dp-ivory: #F7F4EE; --dp-ink: #2c2a26; --dp-muted: #6b6459; --dp-line: #e7e1d6;
   max-width: 1120px; margin: 0 auto; padding: 30px 26px 60px;
   background: var(--dp-ivory); color: var(--dp-ink);
   font-family: 'Inter', system-ui, -apple-system, sans-serif; min-height: 100vh;

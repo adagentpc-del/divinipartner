@@ -10,12 +10,19 @@ import { apiGet, apiSend } from '../../../lib/api';
 
 type AttendMode = 'off' | 'free' | 'ticketed';
 
+type Sponsor = { name: string; logo_url: string | null; link_url: string | null };
+type Faq = { question: string; answer: string };
+
 type Settings = {
   event_id: string;
   attend_mode: AttendMode;
   vendor_cta_enabled: boolean;
   headline: string | null;
   description: string | null;
+  hero_image_url: string | null;
+  logo_url: string | null;
+  sponsors: Sponsor[];
+  faq: Faq[];
 };
 
 type Tier = {
@@ -56,6 +63,9 @@ export default function PublicPageTab({ eventId }: { eventId: string }) {
 
   const [tierForm, setTierForm] = useState({ name: '', price: '', quantity: '' });
   const [tierBusy, setTierBusy] = useState(false);
+
+  const [sponsorForm, setSponsorForm] = useState({ name: '', logo_url: '', link_url: '' });
+  const [faqForm, setFaqForm] = useState({ question: '', answer: '' });
 
   async function loadSettings() {
     const r = await apiGet<{ settings: Settings; tiers: Tier[] }>(`/event-landing/event/${eventId}`);
@@ -100,6 +110,10 @@ export default function PublicPageTab({ eventId }: { eventId: string }) {
         vendor_cta_enabled: settings.vendor_cta_enabled,
         headline: settings.headline,
         description: settings.description,
+        hero_image_url: settings.hero_image_url,
+        logo_url: settings.logo_url,
+        sponsors: settings.sponsors,
+        faq: settings.faq,
       });
       setSettings(r.settings);
       setSaved(true);
@@ -143,6 +157,36 @@ export default function PublicPageTab({ eventId }: { eventId: string }) {
     } catch (e) {
       setErr((e as Error).message);
     }
+  }
+
+  function addSponsor(e: React.FormEvent) {
+    e.preventDefault();
+    const name = sponsorForm.name.trim();
+    if (!name) return;
+    patchSettings({
+      sponsors: [
+        ...(settings?.sponsors ?? []),
+        { name, logo_url: sponsorForm.logo_url.trim() || null, link_url: sponsorForm.link_url.trim() || null },
+      ],
+    });
+    setSponsorForm({ name: '', logo_url: '', link_url: '' });
+  }
+
+  function removeSponsor(index: number) {
+    patchSettings({ sponsors: (settings?.sponsors ?? []).filter((_, i) => i !== index) });
+  }
+
+  function addFaq(e: React.FormEvent) {
+    e.preventDefault();
+    const question = faqForm.question.trim();
+    const answer = faqForm.answer.trim();
+    if (!question || !answer) return;
+    patchSettings({ faq: [...(settings?.faq ?? []), { question, answer }] });
+    setFaqForm({ question: '', answer: '' });
+  }
+
+  function removeFaq(index: number) {
+    patchSettings({ faq: (settings?.faq ?? []).filter((_, i) => i !== index) });
   }
 
   async function copyLink() {
@@ -248,6 +292,96 @@ export default function PublicPageTab({ eventId }: { eventId: string }) {
             onChange={(e) => patchSettings({ description: e.target.value })}
           />
         </label>
+        <label className="pp2-field">
+          <span className="pp2-fieldlabel">Hero image URL</span>
+          <input
+            className="pp2-in"
+            placeholder="https://..."
+            value={settings.hero_image_url ?? ''}
+            onChange={(e) => patchSettings({ hero_image_url: e.target.value || null })}
+          />
+        </label>
+        <label className="pp2-field">
+          <span className="pp2-fieldlabel">Logo URL</span>
+          <input
+            className="pp2-in"
+            placeholder="https://..."
+            value={settings.logo_url ?? ''}
+            onChange={(e) => patchSettings({ logo_url: e.target.value || null })}
+          />
+        </label>
+      </div>
+
+      <div className="pp2-section">
+        <div className="pp2-secttitle">Sponsors</div>
+        <form className="pp2-tieradd" onSubmit={addSponsor}>
+          <input
+            className="pp2-in"
+            placeholder="Sponsor name"
+            value={sponsorForm.name}
+            onChange={(e) => setSponsorForm({ ...sponsorForm, name: e.target.value })}
+          />
+          <input
+            className="pp2-in"
+            placeholder="Logo URL (optional)"
+            value={sponsorForm.logo_url}
+            onChange={(e) => setSponsorForm({ ...sponsorForm, logo_url: e.target.value })}
+          />
+          <input
+            className="pp2-in"
+            placeholder="Link URL (optional)"
+            value={sponsorForm.link_url}
+            onChange={(e) => setSponsorForm({ ...sponsorForm, link_url: e.target.value })}
+          />
+          <button type="submit" className="ew-btn sm">Add sponsor</button>
+        </form>
+        {settings.sponsors.length === 0 ? (
+          <p className="ew-muted pp2-hint">No sponsors added yet.</p>
+        ) : (
+          <ul className="pp2-list">
+            {settings.sponsors.map((s, i) => (
+              <li key={i} className="pp2-listrow">
+                <span>{s.name}</span>
+                <button type="button" className="pp2-del" onClick={() => removeSponsor(i)}>Remove</button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="pp2-section">
+        <div className="pp2-secttitle">FAQ</div>
+        <form className="pp2-faqadd" onSubmit={addFaq}>
+          <input
+            className="pp2-in"
+            placeholder="Question"
+            value={faqForm.question}
+            onChange={(e) => setFaqForm({ ...faqForm, question: e.target.value })}
+          />
+          <textarea
+            className="pp2-in pp2-textarea"
+            placeholder="Answer"
+            value={faqForm.answer}
+            onChange={(e) => setFaqForm({ ...faqForm, answer: e.target.value })}
+          />
+          <button type="submit" className="ew-btn sm">Add FAQ</button>
+        </form>
+        {settings.faq.length === 0 ? (
+          <p className="ew-muted pp2-hint">No FAQ items added yet.</p>
+        ) : (
+          <ul className="pp2-list">
+            {settings.faq.map((f, i) => (
+              <li key={i} className="pp2-listrow pp2-faqrow">
+                <span>
+                  <strong>{f.question}</strong>
+                  <br />
+                  {f.answer}
+                </span>
+                <button type="button" className="pp2-del" onClick={() => removeFaq(i)}>Remove</button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="pp2-saverow">
@@ -326,11 +460,11 @@ const PP2_CSS = `
 .pp2-linklabel { font-size: 10.5px; letter-spacing: .5px; text-transform: uppercase; color: #b3aa99; font-weight: 600; margin-bottom: 3px; }
 .pp2-link { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: #123c2e; }
 .pp2-linkactions { display: flex; align-items: center; gap: 12px; }
-.pp2-count { font-size: 11.5px; color: #7d776c; }
+.pp2-count { font-size: 11.5px; color: #6b6459; }
 .pp2-section { margin-bottom: 20px; }
-.pp2-secttitle { font-size: 10.5px; letter-spacing: .5px; text-transform: uppercase; color: #7d776c; font-weight: 600; margin-bottom: 8px; }
+.pp2-secttitle { font-size: 10.5px; letter-spacing: .5px; text-transform: uppercase; color: #6b6459; font-weight: 600; margin-bottom: 8px; }
 .pp2-modes { display: inline-flex; border: 1px solid #e7e1d6; border-radius: 10px; overflow: hidden; background: #fff; }
-.pp2-mode { font: inherit; font-size: 12.5px; color: #7d776c; background: transparent; border: 0; padding: 8px 18px; cursor: pointer; border-right: 1px solid #e7e1d6; }
+.pp2-mode { font: inherit; font-size: 12.5px; color: #6b6459; background: transparent; border: 0; padding: 8px 18px; cursor: pointer; border-right: 1px solid #e7e1d6; }
 .pp2-mode:last-child { border-right: 0; }
 .pp2-mode:hover { background: rgba(18,60,46,.04); color: #123c2e; }
 .pp2-mode.is-active { background: #123c2e; color: #fff; font-weight: 600; }
@@ -338,7 +472,7 @@ const PP2_CSS = `
 .pp2-check { display: flex; align-items: center; gap: 9px; font-size: 13px; color: #2c2a26; cursor: pointer; }
 .pp2-check input { width: 15px; height: 15px; accent-color: #1E5D4A; }
 .pp2-field { display: block; margin-bottom: 12px; }
-.pp2-fieldlabel { display: block; font-size: 11.5px; color: #7d776c; margin-bottom: 4px; }
+.pp2-fieldlabel { display: block; font-size: 11.5px; color: #6b6459; margin-bottom: 4px; }
 .pp2-in { font: inherit; font-size: 13px; padding: 8px 11px; border: 1px solid #e7e1d6; border-radius: 8px; background: #fff; color: #2c2a26; width: 100%; }
 .pp2-textarea { min-height: 74px; resize: vertical; }
 .pp2-saverow { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
@@ -352,5 +486,9 @@ const PP2_CSS = `
 .pp2-rowaction { text-align: right; }
 .pp2-del { font: inherit; font-size: 11px; color: #8a3a3a; background: transparent; border: 0; cursor: pointer; }
 .pp2-del:hover { text-decoration: underline; }
+.pp2-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+.pp2-listrow { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 10px 12px; background: #fff; border: 1px solid #e7e1d6; border-radius: 8px; font-size: 13px; color: #2c2a26; }
+.pp2-faqrow span { line-height: 1.5; }
+.pp2-faqadd { display: grid; gap: 8px; margin-bottom: 8px; }
 @media (max-width: 720px) { .pp2-innum { flex: 1 1 120px; } }
 `;

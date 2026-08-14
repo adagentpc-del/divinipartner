@@ -1,15 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { apiGet } from '../lib/api';
+import { isFeatureLockedError, UpgradePrompt, type FeatureLockedError } from '../lib/entitlements';
 
 /**
- * Divini AI COO V2 - Forecasting page.
+ * Divini Forecast (docs/DIVINI_DETERMINISTIC_TOOLS_SPEC.md, build-order
+ * slice 11; originally built pre-spec as "Forecasting").
  *
  * Calls GET /revenue-intel/forecast and renders the deterministic projection for
  * the next period: revenue, bookings, vendor demand, sponsor demand, venue
- * occupancy, the month-of-year seasonality profile, and a pipeline-health read.
+ * occupancy, the month-of-year seasonality profile, and a pipeline-health read
+ * that now blends in real, live Divini Pipeline open-opportunity value
+ * alongside the existing events-based pipeline signal.
  *
- * Org-scoped + IDOR-safe at the API layer. Degrades gracefully: an empty history
- * yields hasData=false and an honest empty state instead of fabricated numbers.
+ * Org-scoped + IDOR-safe at the API layer, Pro-gated. Degrades gracefully: an
+ * empty history yields hasData=false and an honest empty state instead of
+ * fabricated numbers.
  */
 
 type ForecastPoint = {
@@ -65,20 +70,22 @@ export default function Forecasting() {
   const [forecast, setForecast] = useState<Forecast | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lockError, setLockError] = useState<FeatureLockedError | null>(null);
 
   useEffect(() => {
     let alive = true;
     setLoading(true);
     setError(null);
+    setLockError(null);
     apiGet<{ forecast: Forecast }>('/revenue-intel/forecast')
       .then((res) => {
         if (alive) setForecast(res.forecast);
       })
       .catch((e) => {
-        if (alive) {
-          setError((e as Error).message);
-          setForecast(null);
-        }
+        if (!alive) return;
+        if (isFeatureLockedError(e)) setLockError(e.body);
+        else setError((e as Error).message);
+        setForecast(null);
       })
       .finally(() => {
         if (alive) setLoading(false);
@@ -95,12 +102,13 @@ export default function Forecasting() {
       <style>{CSS}</style>
 
       <header className="fcast-head">
-        <h1>Forecasting</h1>
+        <h1>Divini Forecast</h1>
         <p className="fcast-sub">
           A deterministic projection of the next period built from a trailing
           moving average, a linear trend, and month-of-year seasonality. Covers
           revenue, bookings, vendor and sponsor demand, venue occupancy, and
-          pipeline health.
+          pipeline health, blending your real Divini Pipeline open opportunities
+          alongside your booked events.
         </p>
         {ready && forecast!.horizon && (
           <p className="fcast-muted">
@@ -112,8 +120,9 @@ export default function Forecasting() {
 
       {loading && <p className="fcast-muted">Loading forecast.</p>}
       {error && <p className="fcast-error">{error}</p>}
+      {lockError && <UpgradePrompt error={lockError} />}
 
-      {!loading && !error && !ready && (
+      {!loading && !error && !lockError && !ready && (
         <section className="fcast-card fcast-empty">
           <h2>Not enough data to forecast</h2>
           <p className="fcast-muted">
@@ -182,7 +191,7 @@ export default function Forecasting() {
 }
 
 const CSS = `
-.fcast { --e:#123c2e; --e2:#1E5D4A; --g:#C9A35B; --ink:#2c2a26; --mut:#7d776c; --ln:#e7e1d6;
+.fcast { --e:#123c2e; --e2:#1E5D4A; --g:#C9A35B; --ink:#2c2a26; --mut:#6b6459; --ln:#e7e1d6;
   --bg:#fbf9f4; font-family:'Inter',system-ui,sans-serif; color:var(--ink); max-width:980px;
   margin:0 auto; padding:24px 20px 56px; }
 .fcast *,.fcast *::before,.fcast *::after { box-sizing:border-box; }

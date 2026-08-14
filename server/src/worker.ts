@@ -12,14 +12,14 @@ import { pool } from "./pool.js";
 
 async function main(): Promise<void> {
   const summary = await runScheduler();
-  // eslint-disable-next-line no-console
+   
   console.log(JSON.stringify(summary, null, 2));
   await pool.end();
   process.exit(0);
 }
 
 main().catch(async (err) => {
-  // eslint-disable-next-line no-console
+   
   console.error(`[worker] run failed: ${err instanceof Error ? err.message : String(err)}`);
   try {
     await pool.end();

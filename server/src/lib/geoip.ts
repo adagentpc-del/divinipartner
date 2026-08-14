@@ -63,17 +63,17 @@ function getReader(): Promise<Reader<AnyResponse> | null> {
   readerPromise = (async () => {
     const dbPath = resolveDbPath();
     if (!dbPath) {
-      // eslint-disable-next-line no-console
+       
       console.log("[geoip] no local database found; geo falls back to headers/locale. Run scripts/fetch-geoip.sh to enable.");
       return null;
     }
     try {
       const reader = await open<AnyResponse>(dbPath);
-      // eslint-disable-next-line no-console
+       
       console.log(`[geoip] loaded local database ${dbPath}`);
       return reader;
     } catch (e) {
-      // eslint-disable-next-line no-console
+       
       console.error("[geoip] failed to open database:", (e as Error).message);
       return null;
     }

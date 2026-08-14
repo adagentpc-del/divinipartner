@@ -59,21 +59,21 @@ export default function Register() {
         .reg{min-height:100vh;background:#f3efe6;color:#2c2a26;font-family:Inter,system-ui,sans-serif;padding:40px 20px}
         .reg .wrap{max-width:480px;margin:0 auto}
         .reg .brand{font-family:'Cormorant Garamond',serif;font-size:24px;color:#123c2e;font-weight:700;text-align:center}
-        .reg .tg{text-align:center;color:#7d776c;font-size:12px;letter-spacing:.5px;text-transform:uppercase;margin-bottom:24px}
+        .reg .tg{text-align:center;color:#6b6459;font-size:12px;letter-spacing:.5px;text-transform:uppercase;margin-bottom:24px}
         .reg .card{background:#fff;border:1px solid #e7e1d6;border-radius:16px;padding:28px;box-shadow:0 30px 60px -40px rgba(18,60,46,.4)}
         .reg h1{font-family:'Cormorant Garamond',serif;font-size:30px;color:#123c2e;margin:0 0 4px}
-        .reg .sub{color:#7d776c;font-size:14px;margin-bottom:22px;line-height:1.5}
-        .reg .lbl{font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#7d776c;margin:14px 0 8px}
+        .reg .sub{color:#6b6459;font-size:14px;margin-bottom:22px;line-height:1.5}
+        .reg .lbl{font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#6b6459;margin:14px 0 8px}
         .reg input{width:100%;padding:12px;border:1px solid #e7e1d6;border-radius:10px;font-size:15px;font-family:Inter;box-sizing:border-box}
         .reg input:focus{outline:none;border-color:#1E5D4A}
         .reg .btn{width:100%;padding:14px;border:none;border-radius:12px;background:#1E5D4A;color:#fff;font-weight:700;font-size:15px;cursor:pointer;margin-top:18px}
         .reg .btn:disabled{opacity:.5;cursor:default}
         .reg .err{background:#fbe9e7;color:#a3382f;border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:14px}
         .reg .ok{background:#eef6f1;border:1px solid #cfe6da;color:#123c2e;border-radius:10px;padding:14px;font-size:14px;line-height:1.55}
-        .reg .foot{font-size:13px;color:#7d776c;margin-top:14px;text-align:center}
-        .reg a{color:#1E5D4A}
+        .reg .foot{font-size:13px;color:#6b6459;margin-top:14px;text-align:center}
+        .reg a{color:#1E5D4A;text-decoration:underline}
         .reg .link{background:none;border:none;padding:0;color:#1E5D4A;cursor:pointer;font:inherit;text-decoration:underline}
-        .reg .consent{display:flex;gap:9px;align-items:flex-start;margin-top:16px;font-size:12.5px;color:#7d776c;line-height:1.5}
+        .reg .consent{display:flex;gap:9px;align-items:flex-start;margin-top:16px;font-size:12.5px;color:#6b6459;line-height:1.5}
         .reg .consent input{width:auto;margin-top:2px}
       `}</style>
       <div className="wrap">

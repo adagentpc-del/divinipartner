@@ -32,7 +32,7 @@ export default function FloorplansTab({ eventId }: { eventId: string }) {
       if (r.floorplans.length && !active) setActive(r.floorplans[0].id);
     } catch (e) { setErr((e as Error).message); }
   }
-  useEffect(() => { void load(); /* eslint-disable-next-line */ }, [eventId]);
+  useEffect(() => { void load();   }, [eventId]);
 
   async function add(e: React.FormEvent) {
     e.preventDefault();

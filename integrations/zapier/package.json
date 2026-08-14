@@ -1,0 +1,22 @@
+{
+  "name": "divini-partners-zapier",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Divini Partners Zapier integration (unpublished, ready to deploy). Real triggers for quote.awarded, invoice.paid, and event.status_changed via the platform's outbound webhook system (server/src/lib/webhooks.ts).",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --test test/",
+    "validate": "zapier validate",
+    "push": "zapier push"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "dependencies": {
+    "zapier-platform-core": "19.1.0"
+  },
+  "devDependencies": {
+    "zapier-platform-cli": "19.1.0"
+  }
+}

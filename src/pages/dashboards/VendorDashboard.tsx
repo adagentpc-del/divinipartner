@@ -55,11 +55,16 @@ function VendorMetricTiles() {
 // reach them from their own dashboard, not only via a deep link.
 const NAV: NavItem[] = [
   { label: 'Overview', icon: 'O', to: '/app' },
+  { label: 'Divini Pipeline', icon: '◈', to: '/pipeline' },
+  { label: 'Divini Scope Builder', icon: '▤', to: '/divini-scope-builder' },
+  { label: 'Divini Proposal Studio', icon: '✎', to: '/proposal-studio' },
+  { label: 'Divini Follow-Up Desk', icon: '⏰', to: '/follow-up-desk' },
   { label: 'Calendar', icon: 'c', to: '/calendar' },
   { label: 'Vendor Profile', icon: 'P', to: '/profile' },
   { label: 'Decks & Programs', icon: 'K', to: '/profile/decks-programs' },
   { label: 'Services', icon: 'S', to: '/profile' },
   { label: 'Rental Inventory', icon: 'N', to: '/inventory' },
+  { label: 'Warehouses', icon: 'W', to: '/warehouses' },
   { label: 'Pricing Rules', icon: 'C', to: '/vendor-pricing' },
   { label: 'Packages', icon: 'K', to: '/packages' },
   { label: 'Quote Requirements', icon: 'Q', to: '/vendor-requirements' },
@@ -68,22 +73,25 @@ const NAV: NavItem[] = [
   { label: 'Account Assignments', icon: 'A', to: '/vendor/accounts' },
   { label: 'Quote Approvals', icon: 'V', to: '/vendor/quote-approvals' },
   { label: 'Readiness Score', icon: 'C', to: '/vendor-readiness-score' },
-  { label: 'Vendor Scorecards', icon: 'S', to: '/vendor-scorecards' },
+  { label: 'Divini Vendor Scorecard', icon: 'S', to: '/vendor-scorecards' },
   { label: 'Documents', icon: 'D', to: '/compliance' },
   { label: 'Discovery', icon: 'V', to: '/recommendations' },
   { label: 'Bid Board', icon: 'B', to: '/bids' },
   { label: 'Search Bids', icon: 'L', to: '/search-bids' },
   { label: 'Invoices', icon: 'I', to: '/invoices' },
   { label: 'Payments', icon: 'Y', to: '/payments' },
+  { label: 'Get Paid', icon: '$', to: '/payouts/setup' },
   { label: 'Reviews', icon: 'R', to: '/reviews' },
   { label: 'Team Seats', icon: 'T', to: '/account/seats' },
   { label: 'Daily Briefing', icon: 'D', to: '/daily-briefing' },
   { label: 'Pricing Intelligence', icon: 'C', to: '/pricing-intelligence' },
   { label: 'Revenue Intelligence', icon: 'I', to: '/revenue-intelligence' },
-  { label: 'Forecasting', icon: 'F', to: '/forecasting' },
+  { label: 'Divini Forecast', icon: 'F', to: '/forecasting' },
+  { label: 'Divini Profit Map', icon: '$', to: '/profit-map' },
+  { label: 'Divini Price Guide', icon: '£', to: '/price-guide' },
   { label: 'AI COO', icon: 'A', to: '/coo' },
   { label: 'Command Center', icon: 'M', to: '/command-center' },
-  { label: 'Business Health', icon: 'H', to: '/business-health' },
+  { label: 'Divini Business Review', icon: 'H', to: '/business-review' },
   { label: 'Referrals', icon: 'r', to: '/referral-dashboard' },
   { label: 'Preferred Partners', icon: 'P', to: '/preferred-partners' },
   { label: 'Campaigns', icon: 'C', to: '/relationship-campaigns' },
@@ -161,7 +169,7 @@ const READINESS_CSS = `
     conic-gradient(var(--dp-gold, #C9A35B) 0 72%, var(--dp-line, #e7e1d6) 72% 100%);
 }
 .dpdash-readiness-copy { display: flex; flex-direction: column; gap: 9px; }
-.dpdash-readiness-copy p { margin: 0; font-size: 12.5px; color: var(--dp-muted, #7d776c); line-height: 1.5; }
+.dpdash-readiness-copy p { margin: 0; font-size: 12.5px; color: var(--dp-muted, #6b6459); line-height: 1.5; }
 `;
 
 // Pricing V2 Featured Vendor upsell. Reads /api/featured for the org's status
@@ -240,7 +248,7 @@ const FEATURED_CSS = `
 .dpdash-featured-body { min-width: 260px; flex: 1 1 340px; }
 .dpdash-featured-kicker { font-size: 10.5px; letter-spacing: 1.4px; text-transform: uppercase; font-weight: 700; color: #8a6d27; }
 .dpdash-featured h3 { margin: 4px 0 6px; font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 600; font-size: 22px; color: var(--dp-emerald, #123c2e); }
-.dpdash-featured p { margin: 0; font-size: 12.8px; color: var(--dp-muted, #7d776c); line-height: 1.55; max-width: 560px; }
+.dpdash-featured p { margin: 0; font-size: 12.8px; color: var(--dp-muted, #6b6459); line-height: 1.55; max-width: 560px; }
 .dpdash-featured-err { margin-top: 8px; font-size: 12px; color: #b3261e; }
 .dpdash-featured-cta { flex: 0 0 auto; }
 `;

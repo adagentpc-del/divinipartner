@@ -91,7 +91,7 @@ const CSS = `
 .atc{position:relative;display:inline-block}
 .atc-btn{display:inline-flex;align-items:center;gap:8px;font:inherit;font-size:13px;font-weight:600;color:#123c2e;background:#fff;border:1px solid #e7e1d6;border-radius:11px;padding:10px 16px;cursor:pointer}
 .atc-btn:hover{border-color:#1E5D4A;background:#f7f4ee}
-.atc-caret{font-size:10px;color:#7d776c}
+.atc-caret{font-size:10px;color:#6b6459}
 .atc-scrim{position:fixed;inset:0;z-index:40}
 .atc-menu{position:absolute;z-index:41;top:calc(100% + 6px);left:0;min-width:210px;background:#fff;border:1px solid #e7e1d6;border-radius:12px;box-shadow:0 18px 40px -22px rgba(18,60,46,.55);overflow:hidden;display:flex;flex-direction:column}
 .atc-menu button{text-align:left;font:inherit;font-size:13.5px;color:#2c2a26;background:#fff;border:none;border-bottom:1px solid #f0ece3;padding:11px 15px;cursor:pointer}

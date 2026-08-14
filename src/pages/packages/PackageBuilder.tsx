@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { apiGet, apiSend } from '../../lib/api';
+import { isPlanLimitError, UpgradePrompt, type PlanLimitError } from '../../lib/entitlements';
 
 // Phase 4 - Package / Bundle builder (blueprint 17). Build named bundles of
 // inventory items + services with bundle pricing.
@@ -24,6 +25,7 @@ type Pkg = {
   labor_hours?: number;
   serves?: number;
   status?: string;
+  instant_bookable?: boolean;
 };
 
 type InventoryItem = { id: string; name?: string; price?: number };
@@ -47,6 +49,7 @@ export default function PackageBuilder() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [limitError, setLimitError] = useState<PlanLimitError | null>(null);
 
   async function load() {
     setLoading(true);
@@ -99,13 +102,15 @@ export default function PackageBuilder() {
   async function save() {
     if (!editing) return;
     setSaving(true);
+    setLimitError(null);
     try {
       if (editing.id) await apiSend('PUT', `/packages/${editing.id}`, editing);
       else await apiSend('POST', '/packages', editing);
       setEditing(null);
       await load();
     } catch (e) {
-      setError((e as Error).message);
+      if (isPlanLimitError(e)) setLimitError(e.body);
+      else setError((e as Error).message);
     } finally {
       setSaving(false);
     }
@@ -138,6 +143,7 @@ export default function PackageBuilder() {
       </header>
 
       {error && <div className="pkg-error">{error}</div>}
+      {limitError && <UpgradePrompt error={limitError} onDismiss={() => setLimitError(null)} />}
 
       {loading ? (
         <div className="pkg-empty">Loading packages.</div>
@@ -150,6 +156,7 @@ export default function PackageBuilder() {
               <div className="pkg-row-top">
                 <h3>{p.name || 'Untitled package'}</h3>
                 {p.status && <span className={`pkg-tag ${p.status}`}>{p.status}</span>}
+                {p.instant_bookable && <span className="pkg-tag instant">Instant book</span>}
               </div>
               {p.category && <p className="pkg-cat">{p.category}</p>}
               {p.description && <p className="pkg-desc">{p.description}</p>}
@@ -183,6 +190,10 @@ export default function PackageBuilder() {
                   <option value="active">active</option>
                   <option value="archived">archived</option>
                 </select>
+              </label>
+              <label className="pkg-checkbox">
+                <input type="checkbox" checked={!!editing.instant_bookable} onChange={(e) => field('instant_bookable', e.target.checked)} />
+                Instant book (client can book this package with no bid/quote back-and-forth)
               </label>
             </div>
 
@@ -227,7 +238,7 @@ export default function PackageBuilder() {
 }
 
 const CSS = `
-.pkg { --e:#123c2e; --e2:#1E5D4A; --g:#C9A35B; --iv:#F7F4EE; --ink:#2c2a26; --mut:#7d776c; --ln:#e7e1d6;
+.pkg { --e:#123c2e; --e2:#1E5D4A; --g:#C9A35B; --iv:#F7F4EE; --ink:#2c2a26; --mut:#6b6459; --ln:#e7e1d6;
   font-family:'Inter',system-ui,sans-serif; color:var(--ink); max-width:1180px; }
 .pkg *,.pkg *::before,.pkg *::after { box-sizing:border-box; }
 .pkg h1,.pkg h2,.pkg h3 { font-family:'Cormorant Garamond',Georgia,serif; margin:0; }
@@ -245,6 +256,8 @@ const CSS = `
 .pkg-tag.active { background:rgba(30,93,74,.12); color:var(--e2); }
 .pkg-tag.draft { background:rgba(201,163,91,.2); color:#7a5e22; }
 .pkg-tag.archived { background:rgba(125,119,108,.16); color:var(--mut); }
+.pkg-tag.instant { background:rgba(30,93,74,.14); color:var(--e); border:1px solid rgba(30,93,74,.3); }
+.pkg-form .pkg-checkbox { grid-column:1 / -1; flex-direction:row; align-items:center; gap:8px; font-weight:500; }
 .pkg-cat { font-size:11.5px; color:var(--g); font-weight:600; text-transform:capitalize; margin:3px 0 6px; }
 .pkg-desc { font-size:12.5px; color:var(--mut); margin:0 0 8px; line-height:1.5; }
 .pkg-price { font-size:18px; color:var(--e); font-weight:600; margin:0 0 2px; }

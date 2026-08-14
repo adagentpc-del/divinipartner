@@ -357,7 +357,7 @@ export async function reserveSlug(
   );
   if (existing) return existing.slug;
 
-  let candidate = slugify(base) || "partner";
+  const candidate = slugify(base) || "partner";
   let attempt = candidate;
   for (let i = 2; i < 50; i++) {
     const taken = await q1<{ id: string }>(

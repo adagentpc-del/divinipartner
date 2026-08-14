@@ -13,9 +13,12 @@ import sitemap from "./routes/sitemap.js";
 import { getAllowedOrigins, IS_PROD } from "./config.js";
 import { securityHeaders } from "./lib/securityHeaders.js";
 import { apiRateLimit, authRateLimit } from "./lib/rateLimit.js";
+import { csrfProtection } from "./lib/csrf.js";
+import { botGuard } from "./lib/botGuard.js";
 
 const app: Express = express();
 app.set("trust proxy", 1);
+app.disable("x-powered-by");
 
 // Security response headers - set early, before routes and body parsing. HSTS
 // is on because the app is served behind Caddy over HTTPS.
@@ -28,7 +31,7 @@ app.use(securityHeaders());
 // permissive bootstrap for local dev convenience.
 const allowedOrigins = getAllowedOrigins();
 if (IS_PROD && allowedOrigins.length === 0) {
-  // eslint-disable-next-line no-console
+   
   console.warn(
     "[cors] No allowlist configured in production (PUBLIC_APP_URL / ALLOWED_ORIGINS empty). " +
       "Denying all cross-origin requests; restricting to same-origin. Set PUBLIC_APP_URL or ALLOWED_ORIGINS.",
@@ -66,6 +69,11 @@ app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 // Authentik (OIDC) verification - stashes verified claims on req.
 app.use(authMiddleware());
 
+// CSRF - double-submit cookie check on mutating requests that carry the
+// session cookie (see lib/csrf.ts). No-op for Bearer-only / unauthenticated
+// traffic, so it never touches public or webhook routes.
+app.use("/api", csrfProtection());
+
 // API - throttle the API surface (reads x-forwarded-for via trust proxy).
 app.use("/api", apiRateLimit);
 // Tighter per-IP throttle on the auth surface (login / register / verify /
@@ -74,6 +82,14 @@ app.use("/api", apiRateLimit);
 app.use("/api/auth", authRateLimit);
 app.use("/api", router);
 app.use("/api", errorHandler);
+
+// Anti-bot crawling guard (lib/botGuard.ts): scoped to everything BELOW this
+// point, i.e. the public marketing SPA, static assets, and sitemap/robots --
+// never /api, which is handled entirely above. Allows real search-engine
+// indexers unconditionally; blocks known scraping tools and AI-training
+// crawlers; leaves every other visitor (including any UA it doesn't
+// recognize) untouched.
+app.use(botGuard());
 
 // ---- serve the built SPA from this same process ---------------------------
 // The build step copies Vite's dist/ into server/dist/public.

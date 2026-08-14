@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { apiGet } from '../lib/api';
+import { isFeatureLockedError, UpgradePrompt, type FeatureLockedError } from '../lib/entitlements';
 
 /**
  * Divini AI COO V2 - Revenue Intelligence page.
@@ -56,20 +57,22 @@ export default function RevenueIntelligence() {
   const [trends, setTrends] = useState<Trends | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lockError, setLockError] = useState<FeatureLockedError | null>(null);
 
   useEffect(() => {
     let alive = true;
     setLoading(true);
     setError(null);
+    setLockError(null);
     apiGet<{ trends: Trends }>('/revenue-intel/trends')
       .then((res) => {
         if (alive) setTrends(res.trends);
       })
       .catch((e) => {
-        if (alive) {
-          setError((e as Error).message);
-          setTrends(null);
-        }
+        if (!alive) return;
+        if (isFeatureLockedError(e)) setLockError(e.body);
+        else setError((e as Error).message);
+        setTrends(null);
       })
       .finally(() => {
         if (alive) setLoading(false);
@@ -101,8 +104,9 @@ export default function RevenueIntelligence() {
 
       {loading && <p className="rintel-muted">Loading trends.</p>}
       {error && <p className="rintel-error">{error}</p>}
+      {lockError && <UpgradePrompt error={lockError} />}
 
-      {!loading && !error && !hasInsights && (
+      {!loading && !error && !lockError && !hasInsights && (
         <section className="rintel-card rintel-empty">
           <h2>No trend data yet</h2>
           <p className="rintel-muted">
@@ -158,8 +162,8 @@ export default function RevenueIntelligence() {
 }
 
 const CSS = `
-.rintel { --e:#123c2e; --e2:#1E5D4A; --g:#C9A35B; --ink:#2c2a26; --mut:#7d776c; --ln:#e7e1d6;
-  --bg:#fbf9f4; --up:#1E5D4A; --down:#9a3a28; --flat:#7d776c;
+.rintel { --e:#123c2e; --e2:#1E5D4A; --g:#C9A35B; --ink:#2c2a26; --mut:#6b6459; --ln:#e7e1d6;
+  --bg:#fbf9f4; --up:#1E5D4A; --down:#9a3a28; --flat:#6b6459;
   font-family:'Inter',system-ui,sans-serif; color:var(--ink); max-width:980px; margin:0 auto;
   padding:24px 20px 56px; }
 .rintel *,.rintel *::before,.rintel *::after { box-sizing:border-box; }

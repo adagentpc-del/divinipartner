@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { VENUE_CATEGORIES, VENDOR_CATEGORIES, DISCOVER_CITIES } from './CategoryLanding';
+import { jsonLdSafe } from '../../lib/jsonLd';
 
 /**
  * Discovery hub (public, no login) at /discover.
@@ -67,7 +68,7 @@ export default function DiscoverHub() {
   return (
     <div className="dhub">
       <Styles />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(hubJson) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdSafe(hubJson) }} />
 
       <header>
         <div className="wrap bar">

@@ -78,6 +78,17 @@ This OS is a living system. It rots if it is not maintained.
 | 50_TESTING.md | Tests, CI, manual QA |
 | 51_SECURITY.md | Security controls |
 | 52_COMPLIANCE.md | Legal and store compliance |
+| 53_SOC2_ISO27001_AUDIT.md | SOC 2 / ISO 27001 technical-controls audit |
 | 90_FUTURE_IDEAS.md | Parking lot |
+
+`docs/platform-standard/` (repo root) is a separate, pack-required audit
+trail for the externally-provided "ALFY2 / Claude Master Platform Execution
+Pack" (an 18-section security/privacy/compliance audit framework, started
+2026-08-08). It is not a replacement for this folder -- new actionable
+findings from that pack still get a task in `12_TASK_QUEUE.md` (this
+remains the single backlog); `docs/platform-standard/` holds that pack's own
+required registers (control/evidence/risk/operator-actions/release-readiness)
+and cites this folder as evidence wherever prior work already covers a
+control, rather than duplicating it.
 
 Last updated: 2026-06-24

@@ -36,6 +36,7 @@ function fireGuestSync(eventId: string, action: GuestListChangeSummary["action"]
     .catch(() => {
       // Best-effort: swallow so the request is never affected.
     });
+  void guestSync.syncEventAttendanceFromGuests(eventId).catch(() => undefined);
 }
 
 // Access helpers: read => can see event; write => owns event (mirrors events.ts).

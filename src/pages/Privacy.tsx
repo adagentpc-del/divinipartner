@@ -9,7 +9,7 @@ export default function Privacy() {
       </div>
 
       <h1 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 36, color: '#1f3d31', marginBottom: 6 }}>Privacy Policy</h1>
-      <div style={{ color: '#6b7a72', marginBottom: 28 }}>Effective June 8, 2026</div>
+      <div style={{ color: '#5c6a63', marginBottom: 28 }}>Effective June 8, 2026</div>
 
       <p>
         Divini Partners (“we,” “us”) operates an event partnership marketplace that connects venues,
@@ -66,16 +66,27 @@ export default function Privacy() {
 
       <h2 style={h2}>Data retention &amp; deletion</h2>
       <p>
-        You can permanently delete your account at any time from <strong>Profile → Delete account</strong> in the app.
-        Deleting your account removes your login and, if your company has no other members, its associated
-        data (projects, packages, bids, files). You may also email us to request deletion.
+        You can delete your account at any time from <strong>Profile → Delete account</strong> in the app
+        (password re-confirmation required). This immediately and permanently removes your login and personal
+        information (name, email, phone) and any team memberships tied to your account. Your organization's
+        business records - quotes, invoices, events, bids, and files - are kept even after your own account is
+        deleted, so that counterparties you transacted with and any other members of your organization are not
+        left with broken records.
+      </p>
+      <p>
+        For anything short of full account deletion - requesting a copy (export) of your data, correcting it,
+        asking what is retained, or requesting deletion of specific records - sign in and go to
+        <strong> Profile → Your data and privacy</strong> to submit a request, or use the direct link:
+        {' '}<a href="/account/privacy" style={{ color: '#1f6f50', textDecoration: 'underline' }}>divinipartners.com/account/privacy</a>. The
+        same page lets you grant or withdraw consent for marketing email, analytics, and data processing. You
+        may also email us instead if you prefer.
       </p>
 
       <h2 style={h2}>Security</h2>
       <p>
-        We use industry-standard measures including encrypted connections and database row-level security to
-        protect your data. No method of transmission or storage is 100% secure, but we work to protect your
-        information and limit access to it.
+        We use industry-standard measures including encrypted connections and access controls that scope every
+        request to your account and organization to protect your data. No method of transmission or storage is
+        100% secure, but we work to protect your information and limit access to it.
       </p>
 
       <h2 style={h2}>Children</h2>
@@ -86,7 +97,7 @@ export default function Privacy() {
 
       <h2 style={h2}>Contact</h2>
       <p>
-        Questions or deletion requests: <a href="mailto:support@divinipartners.com" style={{ color: '#1f6f50' }}>support@divinipartners.com</a>.
+        Questions or deletion requests: <a href="mailto:support@divinipartners.com" style={{ color: '#1f6f50', textDecoration: 'underline' }}>support@divinipartners.com</a>.
       </p>
       <p>
         Divini Partners by Divini Group LLC<br />
@@ -94,7 +105,7 @@ export default function Privacy() {
       </p>
 
       <div style={{ marginTop: 40 }}>
-        <Link to="/" style={{ color: '#1f6f50' }}>← Back to Divini Partners</Link>
+        <Link to="/" style={{ color: '#1f6f50', textDecoration: 'underline' }}>← Back to Divini Partners</Link>
       </div>
     </div>
   );

@@ -8,7 +8,10 @@
  * user to an `organization` (the account). Roles + tiers drive the role-based
  * dashboards and platform fees.
  */
-import { q1, pool } from "./pool.js";
+import { q, q1, pool } from "./pool.js";
+import { planTierFor } from "./lib/planCatalog.js";
+import { getAdminAllowedEmails } from "./config.js";
+import { hashPassword, verifyPassword, randomToken } from "./lib/session.js";
 
 export class ForbiddenError extends Error {
   status = 403;
@@ -22,6 +25,16 @@ export class NotFoundError extends Error {
   constructor(msg = "not found") {
     super(msg);
     this.name = "NotFoundError";
+  }
+}
+/** Thrown by ensureUser/getActor when the session's user row is a deleted
+ *  (anonymized + deactivated) account -- see deleteAccount below. Routes
+ *  should treat this like an expired session. */
+export class AccountDeletedError extends Error {
+  status = 401;
+  constructor(msg = "account deleted") {
+    super(msg);
+    this.name = "AccountDeletedError";
   }
 }
 
@@ -49,6 +62,7 @@ export type DbUser = {
   name: string | null;
   role: string | null;
   organization_id: string | null;
+  status: string | null;
 };
 export type DbOrg = {
   id: string;
@@ -58,9 +72,16 @@ export type DbOrg = {
   platform_fee_rate: string | null;
   verification_status: string | null;
   white_label_status: string | null;
+  stripe_customer_id?: string | null;
+  stripe_subscription_id?: string | null;
+  subscription_status?: string | null;
 };
 
-const USER_COLS = "id, oidc_sub, email, name, role, organization_id";
+/** One organization a user belongs to, from the multi-org switcher's point of
+ *  view: is it the org currently active on their session (users.organization_id)? */
+export type MyOrganization = DbOrg & { membership_role: string | null; active: boolean };
+
+const USER_COLS = "id, oidc_sub, email, name, role, organization_id, status";
 
 /**
  * Resolve the signed-in user from the session subject.
@@ -79,6 +100,14 @@ export async function ensureUser(idOrSub: string, email: string | null): Promise
     [idOrSub],
   );
   if (row) {
+    // A deleted account's row is kept (anonymized) but must never be usable
+    // again, including via a still-valid session token issued before the
+    // deletion. Check this BEFORE the email-sync below: otherwise a stale
+    // token still carrying the user's ORIGINAL email would overwrite the
+    // anonymized placeholder email back to the real one on their next request.
+    if (row.status === "deleted") {
+      throw new AccountDeletedError();
+    }
     if (email && email !== row.email) {
       await q1(`update users set email = $2, updated_at = now() where id = $1`, [row.id, email]);
       row.email = email;
@@ -110,23 +139,258 @@ export async function ensureUser(idOrSub: string, email: string | null): Promise
   return row as DbUser;
 }
 
-/** Resolve the signed-in actor: their user row + organization (or null). */
+/**
+ * Resolve the signed-in actor: their user row + organization (or null).
+ *
+ * Real admin status comes from ADMIN_ALLOWED_EMAILS (server/src/auth.ts's
+ * getAuth().isAdmin), a separate mechanism from the users.role column --
+ * nothing ever writes "admin"/"super_admin" into that column, since it is
+ * set once at registration to the org role the user picked (venue, vendor,
+ * client, ...) and stays that way for their own account. But ~48 call sites
+ * across the codebase (server/src/db/*.ts) grant elevated access by checking
+ * `actor.user.role === "admin" || actor.user.role === "super_admin"` --
+ * a real admin logged in via ADMIN_ALLOWED_EMAILS was silently failing every
+ * one of those checks, since their own users.role is whatever org role they
+ * registered under (or null). In server/src/db/whitelabel.ts specifically
+ * this was the ONLY check on the White Label admin pipeline, making it
+ * unreachable even for the actual site owner.
+ *
+ * Fix: override role to "super_admin" on the Actor RETURNED here (in memory
+ * only, never persisted) when the email matches the allowlist. This makes
+ * all ~48 existing checks correct in one place, with no schema change and no
+ * per-file edits, and never touches the user's real stored org role.
+ */
 export type Actor = { user: DbUser; org: DbOrg | null };
 export async function getActor(idOrSub: string, email: string | null): Promise<Actor> {
   const user = await ensureUser(idOrSub, email);
   const org = await getMyOrg(user.id);
-  return { user, org };
+  const isPlatformAdmin =
+    !!user.email && getAdminAllowedEmails().includes(user.email.toLowerCase());
+  const effectiveUser = isPlatformAdmin ? { ...user, role: "super_admin" } : user;
+  return { user: effectiveUser, org };
 }
 
-/** The organization the user belongs to (or null). */
+const ORG_COLS =
+  "o.id, o.name, o.type, o.tier, o.platform_fee_rate, o.verification_status, o.white_label_status, " +
+  "o.stripe_customer_id, o.stripe_subscription_id, o.subscription_status";
+
+/** The organization the user belongs to (or null). This is the ACTIVE org for
+ *  the session (users.organization_id) -- see switchActiveOrganization for
+ *  how a user with multiple org memberships changes which one is active. */
 export async function getMyOrg(userId: string): Promise<DbOrg | null> {
   return q1<DbOrg>(
-    `select o.id, o.name, o.type, o.tier, o.platform_fee_rate, o.verification_status, o.white_label_status
+    `select ${ORG_COLS}
        from organizations o
        join users u on u.organization_id = o.id
       where u.id = $1`,
     [userId],
   );
+}
+
+/**
+ * Every organization this user belongs to (multi-org), newest membership
+ * first, flagged with which one is currently active on their session. Used
+ * to render the org switcher.
+ */
+export async function listMyOrganizations(userId: string): Promise<MyOrganization[]> {
+  return q<MyOrganization>(
+    `select ${ORG_COLS}, m.role as membership_role,
+            (u.organization_id = o.id) as active
+       from organization_memberships m
+       join organizations o on o.id = m.organization_id
+       join users u on u.id = m.user_id
+      where m.user_id = $1
+      order by m.is_default desc, m.created_at asc`,
+    [userId],
+  );
+}
+
+/**
+ * Switch the user's ACTIVE organization to one they already belong to.
+ * Verifies membership first (never lets a user switch into an org they are
+ * not a member of). Returns the newly active org, or null if not a member.
+ */
+export async function switchActiveOrganization(userId: string, organizationId: string): Promise<DbOrg | null> {
+  const member = await q1<{ organization_id: string }>(
+    `select organization_id from organization_memberships where user_id = $1 and organization_id = $2`,
+    [userId, organizationId],
+  );
+  if (!member) return null;
+  await q1(`update users set organization_id = $2, updated_at = now() where id = $1`, [
+    userId,
+    organizationId,
+  ]);
+  return q1<DbOrg>(`select ${ORG_COLS} from organizations o where o.id = $1`, [organizationId]);
+}
+
+/** Look up an org by its Stripe Customer id (used by the webhook's
+ *  invoice.payment_failed handler, which only carries a customer id). */
+export async function getOrgByStripeCustomerId(stripeCustomerId: string): Promise<DbOrg | null> {
+  return q1<DbOrg>(`select ${ORG_COLS} from organizations o where o.stripe_customer_id = $1`, [
+    stripeCustomerId,
+  ]);
+}
+
+/** Look up an org by its Stripe Subscription id. Needed for the
+ *  stripe_balance-funded subscription path (lib/stripeAccounts.ts): that
+ *  invoice has no `customer` (cus_...) at all -- the connected account IS
+ *  the payer -- so invoice.payment_failed cannot resolve via
+ *  getOrgByStripeCustomerId and falls back to this instead. */
+export async function getOrgByStripeSubscriptionId(stripeSubscriptionId: string): Promise<DbOrg | null> {
+  return q1<DbOrg>(`select ${ORG_COLS} from organizations o where o.stripe_subscription_id = $1`, [
+    stripeSubscriptionId,
+  ]);
+}
+
+/**
+ * Apply a Stripe subscription lifecycle event to the org it belongs to.
+ * Idempotent: replaying the same event just re-applies the same deterministic
+ * state, so the webhook can safely retry. Resolves the org from `orgId`
+ * (checkout session / subscription metadata) or, failing that, from the
+ * Stripe customer id. A no-op if neither resolves to a known org.
+ *
+ *   active / trialing            -> promote to the subscribed tier (real fee
+ *                                    rate + monthly price), subscription_status active
+ *   past_due                     -> keep the current tier (grace period, do
+ *                                    not yank access on a single missed payment),
+ *                                    subscription_status past_due
+ *   canceled / unpaid / expired  -> downgrade to the free tier, clear the
+ *                                    subscription id, subscription_status canceled
+ */
+export async function applySubscriptionUpdate(args: {
+  orgId?: string | null;
+  stripeCustomerId?: string | null;
+  stripeSubscriptionId: string;
+  status: string;
+  tier?: string | null;
+}): Promise<void> {
+  let orgId = args.orgId ?? null;
+  let orgType: string | null = null;
+  if (orgId) {
+    const row = await q1<{ type: string | null }>(`select type from organizations where id = $1`, [orgId]);
+    orgType = row?.type ?? null;
+  } else if (args.stripeCustomerId) {
+    const org = await getOrgByStripeCustomerId(args.stripeCustomerId);
+    orgId = org?.id ?? null;
+    orgType = org?.type ?? null;
+  } else {
+    // stripe_balance-funded subscriptions (lib/stripeAccounts.ts) have no
+    // Stripe Customer at all -- the connected account itself is the payer --
+    // so this is the only resolution path available once metadata.org_id is
+    // also missing (e.g. an invoice.payment_failed event, which carries
+    // neither).
+    const org = await getOrgByStripeSubscriptionId(args.stripeSubscriptionId);
+    orgId = org?.id ?? null;
+    orgType = org?.type ?? null;
+  }
+  if (!orgId) return;
+
+  if (args.status === "active" || args.status === "trialing") {
+    const tier = args.tier && (TIERS as Record<string, unknown>)[args.tier] ? (args.tier as Tier) : null;
+    if (tier) {
+      // Role-aware fee rate: lib/planCatalog.ts is authoritative when the org's
+      // role has a real plan catalog entry (a role with platformFeeRate: null,
+      // e.g. client/installer/sponsor, correctly gets 0 -- never TIERS' rate).
+      // Falls back to the flat TIERS rate for roles with no catalog entry.
+      const roleTier = planTierFor(orgType as Role, tier);
+      const feeRate = roleTier ? roleTier.platformFeeRate ?? 0 : TIERS[tier].feeRate;
+      await q1(
+        `update organizations set tier = $2, platform_fee_rate = $3, subscription_status = 'active',
+           stripe_subscription_id = $4, updated_at = now() where id = $1`,
+        [orgId, tier, feeRate, args.stripeSubscriptionId],
+      );
+    } else {
+      await q1(
+        `update organizations set subscription_status = 'active', stripe_subscription_id = $2, updated_at = now()
+         where id = $1`,
+        [orgId, args.stripeSubscriptionId],
+      );
+    }
+  } else if (args.status === "past_due") {
+    await q1(`update organizations set subscription_status = 'past_due', updated_at = now() where id = $1`, [
+      orgId,
+    ]);
+  } else if (args.status === "canceled" || args.status === "unpaid" || args.status === "incomplete_expired") {
+    // Same role-aware lookup as the "active" branch above, so a cancelled
+    // org's fee rate lands on the correct free-tier value for its role
+    // (e.g. client stays 0, not the flat TIERS.free_partner rate).
+    const roleTier = planTierFor(orgType as Role, "free_partner");
+    const feeRate = roleTier ? roleTier.platformFeeRate ?? 0 : TIERS.free_partner.feeRate;
+    await q1(
+      `update organizations set tier = 'free_partner', platform_fee_rate = $2, subscription_status = 'canceled',
+         stripe_subscription_id = null, updated_at = now() where id = $1`,
+      [orgId, feeRate],
+    );
+  }
+}
+
+/**
+ * Create an ADDITIONAL organization for a user who already has one (or more)
+ * -- e.g. a planner who also runs a venue, or a sponsor agency adding a
+ * second brand. Unlike registerOrganization (the first-time onboarding path,
+ * which is a no-op if the user already has an org), this always creates a
+ * new org + membership row. The newly created org becomes the active org
+ * only when `makeActive` is true; otherwise the user's current active org is
+ * left unchanged and they can switch into the new one later.
+ */
+export async function addOrganization(
+  userId: string,
+  payload: { role: Role; orgName: string; tier?: Tier; makeActive?: boolean },
+): Promise<DbOrg> {
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    const tier: Tier = payload.tier && (TIERS as Record<string, unknown>)[payload.tier]
+      ? payload.tier
+      : "free_partner";
+    // Role-aware fee rate: lib/planCatalog.ts is authoritative when the role
+    // has a real plan catalog entry (a role with platformFeeRate: null, e.g.
+    // client/installer/sponsor, correctly gets 0 -- never the flat TIERS
+    // rate). Same pattern as applySubscriptionUpdate above.
+    const roleTier = planTierFor(payload.role, tier);
+    const feeRate = roleTier ? roleTier.platformFeeRate ?? 0 : TIERS[tier].feeRate;
+    const org = (
+      await client.query(
+        `insert into organizations (name, type, tier, platform_fee_rate, subscription_status,
+           verification_status, white_label_status, included_seats)
+         values ($1,$2,$3,$4,'active','draft','not_eligible',1)
+         returning id, name, type, tier, platform_fee_rate, verification_status, white_label_status,
+           stripe_customer_id, stripe_subscription_id, subscription_status`,
+        [payload.orgName, payload.role, tier, feeRate],
+      )
+    ).rows[0];
+
+    // Same vendor-identity-row requirement as registerOrganization above --
+    // an additional vendor-role org needs one too.
+    if (payload.role === "vendor") {
+      await client.query(
+        `insert into vendors (organization_id, status) values ($1, 'active')`,
+        [org.id],
+      );
+    }
+
+    await client.query(
+      `insert into organization_memberships (user_id, organization_id, role, is_default)
+       values ($1, $2, $3, false)
+       on conflict (user_id, organization_id) do nothing`,
+      [userId, org.id, payload.role],
+    );
+
+    if (payload.makeActive) {
+      await client.query(`update users set organization_id = $2, updated_at = now() where id = $1`, [
+        userId,
+        org.id,
+      ]);
+    }
+
+    await client.query("commit");
+    return org as DbOrg;
+  } catch (e) {
+    await client.query("rollback");
+    throw e;
+  } finally {
+    client.release();
+  }
 }
 
 /**
@@ -210,10 +474,25 @@ export async function registerOrganization(
       exhibitor: "free_partner",
       viewer: "client",
     };
-    const tier: Tier = (TIERS as Record<string, unknown>)[payload.tier]
-      ? payload.tier
+    // Only FREE tiers may be self-declared at registration -- a paid tier
+    // (partner/premier) requires an actual Stripe subscription (see
+    // POST /billing/subscribe), never a client-submitted field here. Any paid
+    // tier requested at registration time is coerced down to the free tier;
+    // the caller upgrades for real, post-registration, through billing.
+    const requestedTier = (TIERS as Record<string, unknown>)[payload.tier] ? payload.tier : null;
+    const requestedIsFree = requestedTier ? TIERS[requestedTier].monthly === 0 : false;
+    const tier: Tier = requestedTier && requestedIsFree
+      ? requestedTier
       : roleDefaultTier[payload.role] ?? "free_partner";
-    const feeRate = TIERS[tier].feeRate;
+    // Role-aware fee rate: lib/planCatalog.ts is authoritative when the role
+    // has a real plan catalog entry (a role with platformFeeRate: null, e.g.
+    // client/installer/sponsor, correctly gets 0 -- never the flat TIERS
+    // rate). Same pattern as applySubscriptionUpdate/addOrganization above --
+    // without this, e.g. an installer or sponsor registering at the free
+    // tier would be silently stamped with the generic 5% free_partner fee
+    // rate instead of the 0% their role's catalog actually specifies.
+    const roleTier = planTierFor(payload.role, tier);
+    const feeRate = roleTier ? roleTier.platformFeeRate ?? 0 : TIERS[tier].feeRate;
     // organizations.type is free text (no DB CHECK); the role maps straight to it,
     // so nonprofit -> type 'nonprofit', donor -> 'donor', volunteer -> 'volunteer'.
     const org = (
@@ -226,10 +505,34 @@ export async function registerOrganization(
       )
     ).rows[0];
 
+    // A vendor-role org needs a `vendors` identity row -- 55+ files across
+    // this codebase (marketplace search, quote vendor_id resolution,
+    // scorecards, compliance, requirements) join or filter against it, but
+    // nothing ever created one: found live-tracing the vendor quote flow
+    // (ALFY2 pack post-audit product work, 2026-08-09) that a freshly
+    // registered vendor org had zero rows in `vendors`, so every one of
+    // those features silently had nothing to find for them. Category/
+    // services/etc. stay null here and get filled in as the vendor
+    // completes onboarding (profiles.ts); this establishes the identity
+    // row those later writes need to exist first.
+    if (payload.role === "vendor") {
+      await client.query(
+        `insert into vendors (organization_id, status) values ($1, 'active')`,
+        [org.id],
+      );
+    }
+
     await client.query(
       `update users set role = $2, organization_id = $3, account_type = $2, status = 'active', updated_at = now()
         where id = $1`,
       [u.id, payload.role, org.id],
+    );
+
+    await client.query(
+      `insert into organization_memberships (user_id, organization_id, role, is_default)
+       values ($1, $2, $3, true)
+       on conflict (user_id, organization_id) do nothing`,
+      [u.id, org.id, payload.role],
     );
 
     await client.query(
@@ -263,10 +566,11 @@ export type AuthUser = {
   reset_token: string | null;
   reset_expires: string | null;
   organization_id: string | null;
+  totp_enabled: boolean;
 };
 
 const AUTH_USER_COLS =
-  "id, email, name, password_hash, email_verified, verify_token, verify_expires, reset_token, reset_expires, organization_id";
+  "id, email, name, password_hash, email_verified, verify_token, verify_expires, reset_token, reset_expires, organization_id, totp_enabled";
 
 /** Find a user by (case-insensitive) email. */
 export async function findUserByEmail(email: string): Promise<AuthUser | null> {
@@ -367,6 +671,91 @@ export async function applyPasswordReset(userId: string, passwordHash: string): 
        email_verified = true, updated_at = now() where id = $1`,
     [userId, passwordHash],
   );
+}
+
+/**
+ * Session revocation (SOC 2 / ISO 27001 audit, 2026-08-03): mark every
+ * session token issued before right now as no longer valid, even though its
+ * signature still verifies -- see server/src/auth.ts's resolve(), which
+ * checks a token's `iat` claim against this timestamp on every request.
+ * Call after any event that should invalidate other already-issued sessions
+ * for this user, e.g. a password reset.
+ */
+export async function invalidateSessions(userId: string): Promise<void> {
+  await q1(`update users set sessions_invalidated_before = now() where id = $1`, [userId]);
+}
+
+/** The session-revocation cutoff for a user, or null if none has ever been set. */
+export async function sessionsInvalidatedBefore(userId: string): Promise<Date | null> {
+  const row = await q1<{ sessions_invalidated_before: string | null }>(
+    `select sessions_invalidated_before from users where id = $1 limit 1`,
+    [userId],
+  );
+  return row?.sessions_invalidated_before ? new Date(row.sessions_invalidated_before) : null;
+}
+
+/**
+ * Delete (anonymize + deactivate) the caller's own account, requiring their
+ * current password as a re-confirmation. Apple Guideline 5.1.1(v).
+ *
+ * This is deliberately NOT a hard delete: the users row, and everything that
+ * references it (audit_logs, quotes, invoices, ledger entries, other org
+ * members' shared records) stays intact for financial/audit-record
+ * integrity. What gets destroyed is the ability to sign in as this person
+ * and their personally identifying data:
+ *   - email is overwritten with a unique, non-routable placeholder (frees
+ *     the original address for reuse -- the deleted person can register a
+ *     new account with the same email later if they want to).
+ *   - name/phone are cleared, notification_preferences dropped.
+ *   - password_hash is replaced with a hash of a random, never-communicated
+ *     32-byte token: a validly-formatted hash that can never be produced by
+ *     any real password, permanently locking the account out.
+ *   - any live verify/reset tokens are cleared so an in-flight email link
+ *     cannot be used post-deletion.
+ *   - status is set to 'deleted' (checked by ensureUser -- see there for why
+ *     that check must run before the email-sync it guards) and deleted_at
+ *     is stamped.
+ *   - the user's org memberships and the org-scoped team_seats rows keyed by
+ *     their (pre-anonymization) email are removed, so they no longer appear
+ *     as an active member/seat anywhere; the organizations themselves and
+ *     their financial history are untouched.
+ */
+export async function deleteAccount(userId: string, password: string): Promise<void> {
+  const row = await q1<{ id: string; email: string | null; password_hash: string | null; status: string | null }>(
+    `select id, email, password_hash, status from users where id = $1 limit 1`,
+    [userId],
+  );
+  if (!row || row.status === "deleted") {
+    throw new NotFoundError("account not found");
+  }
+  if (!verifyPassword(password, row.password_hash)) {
+    throw new ForbiddenError("incorrect password");
+  }
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    const placeholderEmail = `deleted+${row.id}@deleted.invalid`;
+    const lockHash = hashPassword(randomToken(32));
+    await client.query(
+      `update users set
+         email = $2, name = 'Deleted user', phone = null,
+         password_hash = $3, verify_token = null, verify_expires = null,
+         reset_token = null, reset_expires = null, notification_preferences = null,
+         organization_id = null, status = 'deleted', deleted_at = now(), updated_at = now()
+       where id = $1`,
+      [row.id, placeholderEmail, lockHash],
+    );
+    await client.query(`delete from organization_memberships where user_id = $1`, [row.id]);
+    if (row.email) {
+      await client.query(`delete from team_seats where lower(member_email) = lower($1)`, [row.email]);
+    }
+    await client.query("commit");
+  } catch (e) {
+    await client.query("rollback");
+    throw e;
+  } finally {
+    client.release();
+  }
 }
 
 /**

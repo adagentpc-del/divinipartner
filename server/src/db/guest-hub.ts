@@ -19,6 +19,7 @@
 import { q, q1, pool } from "../pool.js";
 import { NotFoundError, ForbiddenError, type Actor } from "../db.js";
 import { getEvent } from "./events.js";
+import { guestSync } from "../lib/guestSync.js";
 
 // ---- Reference data --------------------------------------------------------
 export const RSVP_STATUSES: { key: string; label: string }[] = [
@@ -360,5 +361,11 @@ export async function submitPublicRsvp(
       [eventId, input.name, input.email, status, party, note, owner],
     );
   }
+  // This writes into the same `guests` table guests.ts's fireGuestSync
+  // keys off, but the public self-RSVP path is a separate write site with
+  // no actor -- without this, self-service RSVPs (the highest-volume real
+  // source of RSVP data) would never feed events.attendance_rsvp_yes /
+  // attendance_confirmed at all.
+  void guestSync.syncEventAttendanceFromGuests(eventId).catch(() => undefined);
   return true;
 }

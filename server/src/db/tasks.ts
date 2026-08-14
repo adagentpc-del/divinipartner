@@ -10,6 +10,9 @@
 import { q, q1, pool } from "../pool.js";
 import { NotFoundError, ForbiddenError, type Actor } from "../db.js";
 import { getEvent } from "./events.js";
+import { recordActivity } from "./eventActivity.js";
+import { getEventRole } from "./eventMembers.js";
+import { canSelfServeTaskStatus } from "../lib/taskAuthorization.js";
 
 async function canSee(actor: Actor, eventId: string): Promise<void> {
   await getEvent(actor, eventId);
@@ -227,11 +230,25 @@ export async function updateTask(actor: Actor, taskId: string, patch: TaskInput)
   return row as TaskRow;
 }
 
-/** Quick status set (owner only). */
+/**
+ * Quick status set (Part 23: broadened beyond owner-only). The event owner
+ * or planner may always set status; any other real event participant may
+ * self-serve a STATUS-ONLY update (never name/assignment/due date/deletion,
+ * which stay behind requireOwner on addTask/updateTask/deleteTask) --
+ * matching EventDayMode's collaborative "Today's tasks" checklist, which
+ * every operational role except sponsor can already see and tap.
+ */
 export async function setTaskStatus(actor: Actor, taskId: string, status: string): Promise<TaskRow> {
   const eventId = await loadTaskEvent(taskId);
-  await requireOwner(actor, eventId);
+  await canSee(actor, eventId);
+  if (!(await owns(actor, eventId))) {
+    const role = await getEventRole(actor, eventId);
+    if (!canSelfServeTaskStatus(role)) {
+      throw new ForbiddenError("only the event owner, planner, or an operational event participant can update task status");
+    }
+  }
   if (!STATUS_KEYS.has(status)) throw new ForbiddenError("invalid task status");
+  const before = await q1<{ status: string | null }>(`select status from tasks where id = $1`, [taskId]);
   const row = await q1<TaskRow>(
     `update tasks set status = $2,
         completed_at = case when $2 = 'done' then now() else null end,
@@ -239,7 +256,16 @@ export async function setTaskStatus(actor: Actor, taskId: string, status: string
       where id = $1 returning *`,
     [taskId, status],
   );
-  return row as TaskRow;
+  const after = row as TaskRow;
+  if (status === "done" && before?.status !== "done") {
+    await recordActivity(actor, eventId, {
+      category: "task",
+      message: `Task completed: ${after.name ?? "Untitled task"}`,
+      relatedEntityType: "task",
+      relatedEntityId: after.id,
+    });
+  }
+  return after;
 }
 
 export async function deleteTask(actor: Actor, taskId: string): Promise<void> {

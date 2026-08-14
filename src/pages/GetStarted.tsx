@@ -4,6 +4,7 @@ import { useAuth } from '../lib/auth';
 import { apiGet, apiSend } from '../lib/api';
 import { reportSignal } from '../lib/fingerprint';
 import { completeBidShareRegistration } from '../lib/bidShare';
+import { priceLabel, pricePeriod, feeLabel, tierEnumForLevel, type Role, type RoleCatalog } from '../lib/planCatalog';
 
 /**
  * Get started: role + plan + account-name selection. Shown to a verified,
@@ -42,7 +43,6 @@ function readRefCode(params: URLSearchParams): string {
   }
 }
 
-type Role = 'venue' | 'vendor' | 'supplier' | 'installer' | 'planner' | 'client' | 'sponsor';
 type Tier = 'client' | 'free_partner' | 'partner' | 'premier';
 
 const ROLES: { key: Role; label: string; blurb: string }[] = [
@@ -55,21 +55,6 @@ const ROLES: { key: Role; label: string; blurb: string }[] = [
   { key: 'sponsor', label: 'Sponsor / Brand', blurb: 'Discover sponsorship opportunities across premium venues and events.' },
 ];
 
-const TIERS: { key: Tier; label: string; price: string; fee: string }[] = [
-  { key: 'free_partner', label: 'Free Partner', price: 'Free', fee: '5% platform fee' },
-  { key: 'partner', label: 'Partner', price: '$45 / month', fee: '2.5% platform fee' },
-  { key: 'premier', label: 'Premier', price: '$99 / month', fee: '1% platform fee' },
-];
-
-// Client membership plans. The client pays the platform fee, so their plan sets
-// the % they pay (capped at $2,500 per event). Free clients stay on the base
-// rate; Plus/Pro subscribe to lower their fee.
-const CLIENT_TIERS: { key: Tier; label: string; price: string; fee: string }[] = [
-  { key: 'client', label: 'Free', price: 'Free', fee: '5% fee, capped $2,500/event' },
-  { key: 'partner', label: 'Plus', price: '$45 / month', fee: '2.5% fee, capped $2,500/event' },
-  { key: 'premier', label: 'Pro', price: '$99 / month', fee: '1% fee, capped $2,500/event' },
-];
-
 export default function GetStarted() {
   const nav = useNavigate();
   const [params] = useSearchParams();
@@ -80,27 +65,37 @@ export default function GetStarted() {
   const [contactName, setContactName] = useState('');
   const [phone, setPhone] = useState('');
   const [refCode, setRefCode] = useState<string>(() => readRefCode(params));
-  const [tier, setTier] = useState<Tier>('free_partner');
-  const [clientTier, setClientTier] = useState<Tier>('client');
+  // Which tier LEVEL (0 = free, 1 = plus, 2 = pro) the user picked, per role.
+  const [tierLevel, setTierLevel] = useState(0);
   // Pricing V2 (server flag): no membership tiers. When on, hide the plan
   // picker and register everyone free. Read from /api/pricing.
   const [pricingV2, setPricingV2] = useState(false);
+  const [catalog, setCatalog] = useState<RoleCatalog[]>([]);
   const [agree, setAgree] = useState(false);
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
   const isClient = role === 'client';
-  // Under Pricing V2 the plan picker is hidden and everyone registers free:
-  // a client stays client, every other role is a free partner.
-  const effectiveTier: Tier = isClient ? clientTier : pricingV2 ? 'free_partner' : tier;
+  // Under Pricing V2 the plan picker is hidden and everyone registers free.
+  const effectiveTier: Tier = role ? (pricingV2 ? 'free_partner' : tierEnumForLevel(role, tierLevel)) : 'free_partner';
+  const roleCatalog = role ? catalog.find((c) => c.role === role) : undefined;
+  const selectedCatalogTier = roleCatalog?.tiers[tierLevel];
 
   useEffect(() => {
     let alive = true;
     apiGet<{ pricingV2?: boolean }>('/pricing')
       .then((r) => { if (alive) setPricingV2(Boolean(r?.pricingV2)); })
       .catch(() => { /* default to legacy tiers on error */ });
+    apiGet<{ roles: RoleCatalog[] }>('/plans')
+      .then((r) => { if (alive) setCatalog(r?.roles ?? []); })
+      .catch(() => { /* the picker below has a hardcoded fallback */ });
     return () => { alive = false; };
   }, []);
+
+  // Reset the tier pick to Free whenever the role changes, so switching from
+  // e.g. Venue Plus to Vendor does not silently carry over a mismatched level.
+  useEffect(() => { setTierLevel(0); }, [role]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -108,12 +103,14 @@ export default function GetStarted() {
     if (!role) return setErr('Choose an account type.');
     if (!orgName.trim()) return setErr('Enter your business or account name.');
     if (!agree) return setErr('Please accept the policies to continue.');
+    if (!ageConfirmed) return setErr('Please confirm you are 18 or older to continue.');
     setBusy(true);
     try {
       await apiSend('POST', '/register', {
         role,
         orgName: orgName.trim(),
         tier: effectiveTier,
+        ageConfirmed: true,
         ...(contactName.trim() ? { name: contactName.trim() } : {}),
         ...(phone.trim() ? { phone: phone.trim() } : {}),
         ...(inviteToken ? { invite: inviteToken } : {}),
@@ -141,7 +138,31 @@ export default function GetStarted() {
       // If this signup came from a shared bid link, mark them registered and
       // route straight to submit instead of the generic dashboard.
       const share = await completeBidShareRegistration({ email: null }).catch(() => null);
-      nav(share?.next ?? '/app', { replace: true });
+      if (share?.next) {
+        nav(share.next, { replace: true });
+        return;
+      }
+      // Registration always creates the org on the FREE tier (the server never
+      // accepts a paid tier at signup -- see server/src/db.ts registerOrganization).
+      // If the user picked a paid plan (level > 0) with a real flat monthly
+      // price, immediately continue into a real Stripe subscription checkout
+      // so the plan they saw is the plan they actually get once it completes.
+      const wantsPaidPlan = !pricingV2 && tierLevel > 0 && selectedCatalogTier?.monthlyUsd != null;
+      if (wantsPaidPlan) {
+        try {
+          const sub = await apiSend<{ redirect_url: string }>('POST', '/billing/subscribe', {
+            tier: effectiveTier,
+          });
+          if (sub?.redirect_url) {
+            window.location.href = sub.redirect_url;
+            return;
+          }
+        } catch {
+          // Billing not configured yet, or the checkout failed to start: land
+          // on the dashboard at Free rather than blocking account creation.
+        }
+      }
+      nav('/app', { replace: true });
     } catch (e: any) {
       setErr(e?.message ?? 'Could not finish setting up your account.');
     } finally {
@@ -155,18 +176,18 @@ export default function GetStarted() {
         .reg{min-height:100vh;background:#f3efe6;color:#2c2a26;font-family:Inter,system-ui,sans-serif;padding:40px 20px}
         .reg .wrap{max-width:720px;margin:0 auto}
         .reg .brand{font-family:'Cormorant Garamond',serif;font-size:24px;color:#123c2e;font-weight:700;text-align:center}
-        .reg .tg{text-align:center;color:#7d776c;font-size:12px;letter-spacing:.5px;text-transform:uppercase;margin-bottom:24px}
+        .reg .tg{text-align:center;color:#6b6459;font-size:12px;letter-spacing:.5px;text-transform:uppercase;margin-bottom:24px}
         .reg .card{background:#fff;border:1px solid #e7e1d6;border-radius:16px;padding:28px;box-shadow:0 30px 60px -40px rgba(18,60,46,.4)}
         .reg h1{font-family:'Cormorant Garamond',serif;font-size:30px;color:#123c2e;margin:0 0 4px}
-        .reg .sub{color:#7d776c;font-size:14px;margin-bottom:22px}
-        .reg .lbl{font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#7d776c;margin:18px 0 10px}
+        .reg .sub{color:#6b6459;font-size:14px;margin-bottom:22px}
+        .reg .lbl{font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#6b6459;margin:18px 0 10px}
         .reg .roles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
         @media(max-width:560px){.reg .roles{grid-template-columns:1fr}}
         .reg .role{text-align:left;border:1px solid #e7e1d6;background:#fff;border-radius:12px;padding:14px;cursor:pointer;transition:.15s}
         .reg .role:hover{border-color:#1E5D4A}
         .reg .role.on{border-color:#1E5D4A;background:#f0f6f2;box-shadow:0 0 0 1px #1E5D4A inset}
         .reg .role .rn{font-weight:700;font-size:15px;color:#123c2e}
-        .reg .role .rb{font-size:12.5px;color:#7d776c;margin-top:3px;line-height:1.4}
+        .reg .role .rb{font-size:12.5px;color:#6b6459;margin-top:3px;line-height:1.4}
         .reg input{width:100%;padding:12px;border:1px solid #e7e1d6;border-radius:10px;font-size:15px;font-family:Inter}
         .reg input:focus{outline:none;border-color:#1E5D4A}
         .reg .tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
@@ -175,7 +196,7 @@ export default function GetStarted() {
         .reg .tier.on{border-color:#C9A35B;background:#fbf7ee;box-shadow:0 0 0 1px #C9A35B inset}
         .reg .tier .tn{font-weight:700;color:#123c2e}
         .reg .tier .tp{font-family:'Cormorant Garamond',serif;font-size:20px;color:#123c2e}
-        .reg .tier .tf{font-size:12px;color:#7d776c}
+        .reg .tier .tf{font-size:12px;color:#6b6459}
         .reg .agree{display:flex;gap:10px;align-items:flex-start;margin:18px 0;font-size:13px;color:#2c2a26;line-height:1.5}
         .reg .agree input{width:auto;margin-top:3px}
         .reg .btn{width:100%;padding:14px;border:none;border-radius:12px;background:#1E5D4A;color:#fff;font-weight:700;font-size:15px;cursor:pointer}
@@ -213,21 +234,36 @@ export default function GetStarted() {
             <div className="lbl">Referral code <span style={{ textTransform: 'none', fontWeight: 400, color: '#9a9488' }}>(optional)</span></div>
             <input value={refCode} onChange={(e) => setRefCode(e.target.value)} placeholder="Enter a referral code if you have one" autoCapitalize="characters" />
 
-            {!isClient && role && !pricingV2 && (
+            {role && !pricingV2 && roleCatalog && (
               <>
                 <div className="lbl">Choose your plan</div>
                 <div className="tiers">
-                  {TIERS.map((t) => (
-                    <div key={t.key} className={'tier' + (tier === t.key ? ' on' : '')} onClick={() => setTier(t.key)}>
+                  {roleCatalog.tiers.map((t, i) => (
+                    <div key={t.key} className={'tier' + (tierLevel === i ? ' on' : '')} onClick={() => setTierLevel(i)}>
                       <div className="tn">{t.label}</div>
-                      <div className="tp">{t.price}</div>
-                      <div className="tf">{t.fee}</div>
+                      <div className="tp">{priceLabel(t)}{t.monthlyUsd ? ` / ${pricePeriod(t) === 'per month' ? 'month' : pricePeriod(t)}` : ''}</div>
+                      <div className="tf">{feeLabel(t)}</div>
                     </div>
                   ))}
                 </div>
+                {tierLevel > 0 && selectedCatalogTier?.monthlyUsd != null && (
+                  <div className="free" style={{ marginTop: 10 }}>
+                    Your account is created free first, then you will continue straight into a
+                    secure Stripe checkout to start the {selectedCatalogTier.label} plan.
+                  </div>
+                )}
+                {tierLevel > 0 && selectedCatalogTier?.monthlyUsd == null && (
+                  <div className="free" style={{ marginTop: 10 }}>
+                    {selectedCatalogTier?.label} is custom, per-event pricing. Your account is
+                    created on the Free plan; our team will follow up to set it up.
+                  </div>
+                )}
               </>
             )}
-            {!isClient && role && pricingV2 && (
+            {role && !pricingV2 && !roleCatalog && (
+              <div className="free" style={{ marginTop: 4 }}>Loading plans...</div>
+            )}
+            {role && pricingV2 && (
               <>
                 <div className="lbl">Your account</div>
                 <div className="free">
@@ -237,32 +273,15 @@ export default function GetStarted() {
                 </div>
               </>
             )}
-            {isClient && (
-              <>
-                <div className="lbl">Choose your plan</div>
-                <div className="tiers">
-                  {CLIENT_TIERS.map((t) => (
-                    <div
-                      key={t.key}
-                      className={'tier' + (clientTier === t.key ? ' on' : '')}
-                      onClick={() => setClientTier(t.key)}
-                    >
-                      <div className="tn">{t.label}</div>
-                      <div className="tp">{t.price}</div>
-                      <div className="tf">{t.fee}</div>
-                    </div>
-                  ))}
-                </div>
-                <div className="free" style={{ marginTop: 10 }}>
-                  Free to plan events and compare quotes. Your plan sets the small fee you pay
-                  when you book, capped at $2,500 per event. Upgrade anytime to lower it.
-                </div>
-              </>
-            )}
 
             <label className="agree">
               <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
               <span>I agree to the Divini Partners <a href="/terms" target="_blank" rel="noopener noreferrer">Terms of Service</a>, <a href="/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>, <a href="/payment-policy" target="_blank" rel="noopener noreferrer">Payment Policy</a>, <a href="/marketplace-conduct" target="_blank" rel="noopener noreferrer">Marketplace Conduct Policy</a>, and <a href="/non-circumvention" target="_blank" rel="noopener noreferrer">Non-Circumvention Policy</a>. I understand Divini Partners is a lead-generation and networking platform, is not a party to transactions between users, and that payments are handled by third-party processors under the platform fee and payment policies.</span>
+            </label>
+
+            <label className="agree">
+              <input type="checkbox" checked={ageConfirmed} onChange={(e) => setAgeConfirmed(e.target.checked)} />
+              <span>I confirm that I am 18 years of age or older.</span>
             </label>
 
             <button className="btn" disabled={busy}>{busy ? 'Setting up...' : 'Continue'}</button>

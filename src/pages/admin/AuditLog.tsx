@@ -44,7 +44,7 @@ export default function AuditLog() {
     if (!isAdmin) { setLoading(false); return; }
     apiGet<{ actions: string[] }>('/admin/audit/actions').then((r) => setActions(r.actions)).catch(() => {});
   }, [isAdmin]);
-  useEffect(() => { if (isAdmin) void load(); /* eslint-disable-next-line */ }, [isAdmin, action]);
+  useEffect(() => { if (isAdmin) void load();   }, [isAdmin, action]);
 
   if (!isAdmin) {
     return <div className="al"><style>{AL_CSS}</style><p className="al-guard">This page is restricted to platform administrators.</p></div>;
@@ -105,7 +105,7 @@ export default function AuditLog() {
 const AL_CSS = `
 .al {
   --dp-emerald: #123c2e; --dp-emerald-2: #1E5D4A; --dp-gold: #C9A35B;
-  --dp-ivory: #F7F4EE; --dp-ink: #2c2a26; --dp-muted: #7d776c; --dp-line: #e7e1d6;
+  --dp-ivory: #F7F4EE; --dp-ink: #2c2a26; --dp-muted: #6b6459; --dp-line: #e7e1d6;
   font-family: 'Inter', system-ui, -apple-system, sans-serif; color: var(--dp-ink);
 }
 .al *, .al *::before, .al *::after { box-sizing: border-box; }

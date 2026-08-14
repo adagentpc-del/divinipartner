@@ -137,7 +137,7 @@ export default function JoinInvite() {
 }
 
 const CSS = `
-.ji{--em:#123c2e;--em2:#1E5D4A;--gold:#C9A35B;--ink:#2c2a26;--muted:#7d776c;--line:#e7e1d6;
+.ji{--em:#123c2e;--em2:#1E5D4A;--gold:#C9A35B;--ink:#2c2a26;--muted:#6b6459;--line:#e7e1d6;
   min-height:100vh;background:#f3efe6;color:var(--ink);font-family:Inter,system-ui,sans-serif;
   display:grid;place-items:center;padding:40px 20px}
 .ji *,.ji *::before,.ji *::after{box-sizing:border-box}

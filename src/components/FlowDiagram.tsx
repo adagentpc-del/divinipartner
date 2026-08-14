@@ -40,7 +40,7 @@ export default function FlowDiagram({ steps, title, intro }: { steps: FlowStep[]
 }
 
 const FD_CSS = `
-.fd{--em:#123c2e;--em2:#1E5D4A;--gold:#C9A35B;--ink:#2c2a26;--mut:#7d776c;--line:#e7e1d6;font-family:Inter,system-ui,sans-serif}
+.fd{--em:#123c2e;--em2:#1E5D4A;--gold:#C9A35B;--ink:#2c2a26;--mut:#6b6459;--line:#e7e1d6;font-family:Inter,system-ui,sans-serif}
 .fd *{box-sizing:border-box}
 .fd-title{font-family:'Cormorant Garamond',Georgia,serif;font-size:30px;color:var(--em);text-align:center;margin:0 0 6px;font-weight:600}
 .fd-intro{text-align:center;color:var(--mut);font-size:15px;max-width:580px;margin:0 auto 30px;line-height:1.6}

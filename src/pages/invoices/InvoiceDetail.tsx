@@ -206,7 +206,7 @@ export default function InvoiceDetail() {
           </p>
         ) : null}
 
-        <p className="dpid-v2note" style={{ fontSize: 12, color: '#6b7a72' }}>
+        <p className="dpid-v2note" style={{ fontSize: 12, color: '#5c6a63' }}>
           Payments are processed securely by our third-party payment provider. Divini Partners is a
           lead-generation and networking platform and is not a party to this transaction. See our{' '}
           <a href="/payment-policy" target="_blank" rel="noopener noreferrer" style={{ color: '#1f6f50' }}>Payment Policy</a>{' '}and{' '}
@@ -261,7 +261,7 @@ export default function InvoiceDetail() {
 const CSS = `
 .dpid {
   --dp-emerald: #123c2e; --dp-emerald-2: #1E5D4A; --dp-gold: #C9A35B;
-  --dp-ivory: #F7F4EE; --dp-ink: #2c2a26; --dp-muted: #7d776c; --dp-line: #e7e1d6;
+  --dp-ivory: #F7F4EE; --dp-ink: #2c2a26; --dp-muted: #6b6459; --dp-line: #e7e1d6;
   font-family: 'Inter', system-ui, -apple-system, sans-serif; color: var(--dp-ink);
 }
 .dpid h4 { font-family: 'Cormorant Garamond', Georgia, serif; margin: 0; }

@@ -1,0 +1,21 @@
+# CODEOWNERS — added 2026-08-08 (ALFY2 pack Section 03/T21).
+#
+# GitHub requests a review from the matched owner(s) on any PR touching
+# these paths, if branch protection is configured to require it (confirm in
+# GitHub repo settings — that setting is not controllable from this file).
+#
+# Default owner is the repository owner (from the GitHub remote). Refine
+# this with real per-area owners (individuals or teams) as the team grows —
+# a single blanket owner is a starting point, not a permanent design.
+
+* @adagentpc-del
+
+# Money-movement and legal-adjacent paths particularly benefit from a
+# deliberate second pair of eyes — flagged here so a future owner knows
+# where to route more specific ownership first, even though it currently
+# resolves to the same default above:
+# /server/src/lib/stripe*.ts
+# /server/src/routes/payments.ts
+# /db/apply-all.sql
+# /compliance/
+# /docs/platform-standard/

@@ -98,7 +98,7 @@ async function actorCanSeeEvent(actor: Actor, eventId: string): Promise<boolean>
           or e.planner_id = $3
           or exists (
             select 1 from event_vendors ev
-             where ev.event_id = e.id and ev.organization_id = $2
+             where ev.event_id = e.id and ev.organization_id = $2 and ev.status <> 'declined'
           )
         )
       limit 1`,

@@ -10,6 +10,7 @@ import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 import Cookies from './pages/Cookies';
 import CookieBanner from './components/CookieBanner';
+import InstallPrompt from './components/InstallPrompt';
 import PaymentPolicy from './pages/PaymentPolicy';
 import MarketplaceConduct from './pages/MarketplaceConduct';
 import NonCircumvention from './pages/NonCircumvention';
@@ -51,6 +52,7 @@ import EventsList from './pages/events/EventsList';
 import EventWorkspace from './pages/event/EventWorkspace';
 import EventDayMode from './pages/event/EventDayMode';
 import BidBoard from './pages/bids/BidBoard';
+import VendorPipeline from './pages/bids/VendorPipeline';
 
 // inventory / auto-quote (Phase 4)
 import InventoryManager from './pages/inventory/InventoryManager';
@@ -90,16 +92,15 @@ import MarketplaceSearch from './pages/marketplace/MarketplaceSearch';
 import Reports from './pages/reports/Reports';
 
 // top-level pages reachable from nav
-import Projects from './pages/Projects';
 import SearchBids from './pages/SearchBids';
 import AdminConsole from './pages/AdminConsole';
-import AdminFeatures from './pages/AdminFeatures';
 import VendorReadiness from './pages/VendorReadiness';
 
 // vendor network + invites
 import VendorNetwork from './pages/network/VendorNetwork';
 import JoinInvite from './pages/join/JoinInvite';
 import PublicBid from './pages/public/PublicBid';
+import PublicProposal from './pages/public/PublicProposal';
 import PublicAgenda from './pages/public/PublicAgenda';
 import PublicEventLanding from './pages/public/PublicEventLanding';
 import PublicTour from './pages/public/PublicTour';
@@ -123,6 +124,7 @@ import ReferralDashboard from './pages/ReferralDashboard';
 import AuditViewer from './pages/AuditViewer';
 import ComplianceCenter from './pages/ComplianceCenter';
 import RevenueCenter from './pages/RevenueCenter';
+import DeveloperSettings from './pages/DeveloperSettings';
 // Stripe Connect split-payout rail (recipient onboarding + my payouts + admin release queue)
 import ConnectPayoutSettings from './pages/ConnectPayoutSettings';
 import MyConnectPayouts from './pages/MyConnectPayouts';
@@ -178,7 +180,14 @@ import CooDashboard from './pages/CooDashboard';
 import DailyBriefing from './pages/DailyBriefing';
 import RevenueIntelligence from './pages/RevenueIntelligence';
 import Forecasting from './pages/Forecasting';
-import BusinessHealth from './pages/BusinessHealth';
+import ProfitMap from './pages/ProfitMap';
+import Warehouses from './pages/Warehouses';
+import Pipeline from './pages/Pipeline';
+import ScopeBuilder from './pages/ScopeBuilder';
+import ProposalStudio from './pages/ProposalStudio';
+import FollowUpDesk from './pages/FollowUpDesk';
+import PriceGuide from './pages/PriceGuide';
+import BusinessReview from './pages/BusinessReview';
 import PricingIntelligence from './pages/PricingIntelligence';
 import MarketplaceIntelligence from './pages/MarketplaceIntelligence';
 import CommandCenter from './pages/CommandCenter';
@@ -202,7 +211,7 @@ import DonorProspecting from './pages/DonorProspecting';
 import VendorScorecards from './pages/VendorScorecards';
 
 function Loading() {
-  return <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', color: '#7d776c' }}>Loading…</div>;
+  return <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', color: '#6b6459' }}>Loading…</div>;
 }
 
 // EventWarRoom takes an eventId prop; this wrapper supplies it from the route.
@@ -331,6 +340,7 @@ function Routed() {
       {/* public invite landing */}
       <Route path="/join/:token" element={<JoinInvite />} />
       <Route path="/b/:token" element={<PublicBid />} />
+      <Route path="/p/:token" element={<PublicProposal />} />
       <Route path="/agenda/:eventId" element={<PublicAgenda />} />
       <Route path="/event/:eventId" element={<PublicEventLanding />} />
       <Route path="/tour/:tourId" element={<PublicTour />} />
@@ -367,8 +377,8 @@ function Routed() {
       <Route path="/events/:id" element={<Authed><EventWorkspace /></Authed>} />
       <Route path="/events/:id/day" element={<Authed><EventDayMode /></Authed>} />
       <Route path="/bids" element={<Authed><BidBoard /></Authed>} />
+      <Route path="/vendor-pipeline" element={<Authed><VendorPipeline /></Authed>} />
       <Route path="/quotes/auto/:bidId" element={<Authed><AutoQuoteDraft /></Authed>} />
-      <Route path="/projects" element={<Authed><Projects /></Authed>} />
       <Route path="/search-bids" element={<Authed><SearchBids /></Authed>} />
       <Route path="/vendor-readiness-score" element={<Authed><VendorReadiness /></Authed>} />
 
@@ -440,7 +450,15 @@ function Routed() {
       <Route path="/daily-briefing" element={<Authed><DailyBriefing /></Authed>} />
       <Route path="/revenue-intelligence" element={<Authed><RevenueIntelligence /></Authed>} />
       <Route path="/forecasting" element={<Authed><Forecasting /></Authed>} />
-      <Route path="/business-health" element={<Authed><BusinessHealth /></Authed>} />
+      <Route path="/profit-map" element={<Authed><ProfitMap /></Authed>} />
+      <Route path="/warehouses" element={<Authed><Warehouses /></Authed>} />
+      <Route path="/pipeline" element={<Authed><Pipeline /></Authed>} />
+      <Route path="/divini-scope-builder" element={<Authed><ScopeBuilder /></Authed>} />
+      <Route path="/proposal-studio" element={<Authed><ProposalStudio /></Authed>} />
+      <Route path="/follow-up-desk" element={<Authed><FollowUpDesk /></Authed>} />
+      <Route path="/price-guide" element={<Authed><PriceGuide /></Authed>} />
+      <Route path="/business-review" element={<Authed><BusinessReview /></Authed>} />
+      <Route path="/business-health" element={<Authed><BusinessReview /></Authed>} />
       <Route path="/pricing-intelligence" element={<Authed><PricingIntelligence /></Authed>} />
       <Route path="/marketplace-intelligence" element={<Authed><MarketplaceIntelligence /></Authed>} />
       <Route path="/command-center" element={<Authed><CommandCenter /></Authed>} />
@@ -472,7 +490,6 @@ function Routed() {
 
       {/* admin (pages self-guard on isAdmin) */}
       <Route path="/admin" element={<Authed><AdminConsole /></Authed>} />
-      <Route path="/admin/features" element={<Authed><AdminFeatures /></Authed>} />
       <Route path="/admin/intelligence" element={<Authed><AdminIntelligence /></Authed>} />
       <Route path="/admin/accounts" element={<Authed><AdminAccounts /></Authed>} />
       <Route path="/admin/white-label" element={<Authed><WhiteLabelAdmin /></Authed>} />
@@ -490,6 +507,13 @@ function Routed() {
       <Route path="/admin/revenue-center" element={<Authed><RevenueCenter /></Authed>} />
       <Route path="/admin/audit-log" element={<Authed><AuditViewer /></Authed>} />
       <Route path="/admin/compliance" element={<Authed><ComplianceCenter /></Authed>} />
+      {/* Same component as /admin/compliance -- it already self-scopes by isAdmin (submit
+          request / manage consents for anyone signed in; retention policies admin-only).
+          A second, non-admin-sounding route so every role can actually find their privacy
+          rights UI, not just an admin who already knows the /admin/... URL. Linked from
+          ProfileEditor.tsx's "Your data and privacy" section. */}
+      <Route path="/account/privacy" element={<Authed><ComplianceCenter /></Authed>} />
+      <Route path="/account/developer" element={<Authed><DeveloperSettings /></Authed>} />
       <Route path="/admin/venues" element={<Authed><AdminManageVenues /></Authed>} />
       <Route path="/admin/vendors" element={<Authed><AdminManageVendors /></Authed>} />
       <Route path="/admin/events" element={<Authed><AdminManageEvents /></Authed>} />
@@ -522,6 +546,7 @@ export default function App() {
       <BrowserRouter>
         <Routed />
         <CookieBanner />
+        <InstallPrompt />
       </BrowserRouter>
     </AuthProvider>
   );

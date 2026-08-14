@@ -170,7 +170,7 @@ router.get(
         });
       }
     } catch (err) {
-      // eslint-disable-next-line no-console
+       
       console.error("donorProspectIdentified notify failed (non-fatal):", err);
     }
 

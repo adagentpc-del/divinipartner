@@ -38,7 +38,7 @@ export default function TimelineTab({ eventId }: { eventId: string }) {
       setTl(r.timeline);
     } catch (e) { setErr((e as Error).message); }
   }
-  useEffect(() => { void load(); /* eslint-disable-next-line */ }, [eventId]);
+  useEffect(() => { void load();   }, [eventId]);
 
   async function setStatus(id: string, status: string) {
     try { await apiSend('POST', `/tasks/${id}/status`, { status }); await load(); }

@@ -4897,8 +4897,16 @@ create table if not exists event_landing_settings (
   vendor_cta_enabled boolean not null default true,
   headline text,
   description text,
+  hero_image_url text,
+  logo_url text,
+  sponsors jsonb not null default '[]'::jsonb,
+  faq jsonb not null default '[]'::jsonb,
   updated_at timestamptz default now()
 );
+alter table event_landing_settings add column if not exists hero_image_url text;
+alter table event_landing_settings add column if not exists logo_url text;
+alter table event_landing_settings add column if not exists sponsors jsonb not null default '[]'::jsonb;
+alter table event_landing_settings add column if not exists faq jsonb not null default '[]'::jsonb;
 
 -- General (non-fundraising) ticket tiers for any event.
 create table if not exists event_ticket_tiers (
@@ -5076,3 +5084,1544 @@ create table if not exists event_schedule_sends (
   sent_at timestamptz default now(),
   unique (event_id, milestone, audience)
 );
+
+-- ============================================================================
+-- Divini Partners - Organization memberships (multi-org support).
+--
+-- A user may belong to more than one organization (e.g. one person running
+-- both a venue and a planning company, or a sponsor agency managing several
+-- brand accounts). `users.organization_id` remains the user's ACTIVE org for
+-- the current session -- every existing query that joins through it keeps
+-- working unmodified. This table is the membership ledger: which orgs a user
+-- can switch into, plus their role within each one.
+--
+-- Additive only. Backfilled from the existing single-org rows so today's
+-- users show up as a member of their current org with no behavior change.
+-- Zero em dashes.
+-- ============================================================================
+
+create table if not exists organization_memberships (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  organization_id uuid not null references organizations(id) on delete cascade,
+  role text,
+  is_default boolean not null default false,
+  created_at timestamptz default now(),
+  unique (user_id, organization_id)
+);
+create index if not exists idx_org_memberships_user on organization_memberships(user_id);
+create index if not exists idx_org_memberships_org on organization_memberships(organization_id);
+
+-- Backfill: every user currently pointing at an org becomes a member of it.
+insert into organization_memberships (user_id, organization_id, role, is_default)
+select id, organization_id, role, true
+from users
+where organization_id is not null
+on conflict (user_id, organization_id) do nothing;
+
+-- ============================================================================
+-- Divini Partners - Real recurring subscription billing (Phase 1 of the
+-- role-based subscription/entitlement system).
+--
+-- Adds Stripe Customer + Subscription tracking to organizations so tier
+-- upgrades are backed by an actual recurring charge instead of a
+-- self-declared, unpaid `tier` value. Additive only.
+-- Zero em dashes.
+-- ============================================================================
+
+alter table organizations add column if not exists stripe_customer_id text;
+alter table organizations add column if not exists stripe_subscription_id text;
+
+create unique index if not exists idx_organizations_stripe_customer
+  on organizations(stripe_customer_id) where stripe_customer_id is not null;
+create unique index if not exists idx_organizations_stripe_subscription
+  on organizations(stripe_subscription_id) where stripe_subscription_id is not null;
+
+-- ============================================================================
+-- Divini Partners - Vendor job costing / margin tracking (Vendor Pro feature,
+-- see server/src/lib/planCatalog.ts's "Margin tracking" + "Job costing"
+-- bullets, Vendor Pro only).
+--
+-- A vendor records their true cost for a won job (an accepted/converted
+-- quote), kept in a SEPARATE table from `quotes` -- never joined into the
+-- general quote-listing queries the client side reads, so the vendor's
+-- private cost data can never leak through an existing `select *` on
+-- quotes. Only server/src/db/vendorProfitability.ts reads/writes this table.
+--
+-- Additive only. Zero em dashes.
+-- ============================================================================
+
+create table if not exists quote_costs (
+  quote_id uuid primary key references quotes(id) on delete cascade,
+  organization_id uuid not null references organizations(id) on delete cascade,
+  cost_amount numeric not null check (cost_amount >= 0),
+  notes text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+create index if not exists idx_quote_costs_org on quote_costs(organization_id);
+
+-- ============================================================================
+-- Divini Partners - real Warehouse entities (Supplier Free/Plus capped at 1,
+-- Pro unlocks "Multi warehouse" -- see server/src/lib/planCatalog.ts). Before
+-- this, inventory_items.warehouse_location was free text with no entity and
+-- no limit enforcement at all.
+--
+-- Additive only. inventory_items.warehouse_id is nullable and additive;
+-- warehouse_location (free text) is untouched for backward compatibility.
+-- Zero em dashes.
+-- ============================================================================
+
+create table if not exists warehouses (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references organizations(id) on delete cascade,
+  name text not null,
+  address text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+create index if not exists idx_warehouses_org on warehouses(organization_id);
+
+alter table inventory_items add column if not exists warehouse_id uuid references warehouses(id) on delete set null;
+create index if not exists idx_inventory_items_warehouse on inventory_items(warehouse_id) where warehouse_id is not null;
+
+-- ============================================================================
+-- Divini Pipeline (shared CRM engine, see docs/DIVINI_DETERMINISTIC_TOOLS_SPEC.md
+-- section 6 "Divini Pipeline", build-order slice 1). Deterministic, no LLM
+-- dependency. One shared engine for all 7 roles, not duplicated per profile.
+--
+-- Additive only. Zero em dashes.
+-- ============================================================================
+
+-- ---------- crm_pipeline_stages ----------
+-- Org-scoped, ordered. Seeded from a default 15-stage template on first use
+-- (see db/pipeline.ts's ensureDefaultStages); orgs may add/rename/reorder
+-- beyond the defaults (Divini Pipeline is available on every plan per the
+-- spec's Free tier -- "basic Pipeline").
+create table if not exists crm_pipeline_stages (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references organizations(id) on delete cascade,
+  key text not null,
+  label text not null,
+  sort_order int not null default 0,
+  is_closed_won boolean not null default false,
+  is_closed_lost boolean not null default false,
+  created_at timestamptz default now(),
+  unique (organization_id, key)
+);
+create index if not exists idx_crm_stages_org on crm_pipeline_stages(organization_id, sort_order);
+
+-- ---------- crm_opportunities ----------
+create table if not exists crm_opportunities (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references organizations(id) on delete cascade,
+  owner_user_id uuid references users(id) on delete set null,
+  stage_id uuid not null references crm_pipeline_stages(id) on delete restrict,
+  event_id uuid references events(id) on delete set null,
+  name text not null,
+  category text,
+  source text,
+  client_name text,
+  client_email text,
+  client_phone text,
+  decision_maker_name text,
+  estimated_value_cents bigint,
+  event_date date,
+  expected_close_at date,
+  next_action_note text,
+  next_action_at timestamptz,
+  status text not null default 'open' check (status in ('open', 'won', 'lost')),
+  loss_reason text,
+  closed_at timestamptz,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+create index if not exists idx_crm_opps_org on crm_opportunities(organization_id, status);
+create index if not exists idx_crm_opps_stage on crm_opportunities(stage_id);
+create index if not exists idx_crm_opps_event on crm_opportunities(event_id) where event_id is not null;
+
+-- ---------- crm_opportunity_stage_history ----------
+-- Append-only. Never overwritten (spec constraint 9: preserve revision
+-- history). The current stage still lives on crm_opportunities.stage_id for
+-- fast reads; this table is the audit trail of every movement.
+create table if not exists crm_opportunity_stage_history (
+  id uuid primary key default gen_random_uuid(),
+  opportunity_id uuid not null references crm_opportunities(id) on delete cascade,
+  from_stage_id uuid references crm_pipeline_stages(id) on delete set null,
+  to_stage_id uuid not null references crm_pipeline_stages(id) on delete restrict,
+  changed_by uuid references users(id) on delete set null,
+  changed_at timestamptz default now()
+);
+create index if not exists idx_crm_stage_history_opp on crm_opportunity_stage_history(opportunity_id, changed_at);
+
+-- ---------- crm_activities ----------
+-- Notes/calls/emails/tasks/system events logged against an opportunity.
+create table if not exists crm_activities (
+  id uuid primary key default gen_random_uuid(),
+  opportunity_id uuid not null references crm_opportunities(id) on delete cascade,
+  organization_id uuid not null references organizations(id) on delete cascade,
+  actor_user_id uuid references users(id) on delete set null,
+  activity_type text not null default 'note' check (activity_type in ('note', 'call', 'email', 'task', 'stage_change', 'system')),
+  body text,
+  created_at timestamptz default now()
+);
+create index if not exists idx_crm_activities_opp on crm_activities(opportunity_id, created_at);
+
+-- ============================================================================
+-- Divini Scope Builder (docs/DIVINI_DETERMINISTIC_TOOLS_SPEC.md section 9,
+-- build-order slice 2). A generic, reusable structured-requirements engine
+-- (spec constraint 10: one shared engine, not duplicated per profile) --
+-- field TYPE and definition live in scope_template_fields, not as hardcoded
+-- columns per role, so Venue/Rental/Workforce/Vendor/Planner/Sponsor/Client
+-- templates are all just data.
+--
+-- Additive only. Zero em dashes.
+-- ============================================================================
+
+-- ---------- scope_templates ----------
+-- organization_id null = a platform default template (seeded per role);
+-- an org may clone/customize into its own row (Plus+ per spec section 18:
+-- Free gets "basic Scope Builder", Plus gets "custom scope templates").
+create table if not exists scope_templates (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid references organizations(id) on delete cascade,
+  role text not null,
+  category text,
+  name text not null,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+create index if not exists idx_scope_templates_org on scope_templates(organization_id);
+create index if not exists idx_scope_templates_role on scope_templates(role) where organization_id is null;
+
+-- ---------- scope_template_fields ----------
+create table if not exists scope_template_fields (
+  id uuid primary key default gen_random_uuid(),
+  template_id uuid not null references scope_templates(id) on delete cascade,
+  key text not null,
+  label text not null,
+  field_type text not null check (field_type in ('text', 'textarea', 'number', 'date', 'boolean', 'select', 'multiselect')),
+  options jsonb,
+  required boolean not null default false,
+  sort_order int not null default 0,
+  created_at timestamptz default now(),
+  unique (template_id, key)
+);
+create index if not exists idx_scope_fields_template on scope_template_fields(template_id, sort_order);
+
+-- ---------- scope_instances ----------
+-- A filled-out scope for one real job/opportunity. Optionally linked to a
+-- Divini Pipeline opportunity (the natural handoff: Pipeline -> Scope Builder
+-- -> [future] Proposal Studio).
+create table if not exists scope_instances (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references organizations(id) on delete cascade,
+  template_id uuid not null references scope_templates(id) on delete restrict,
+  opportunity_id uuid references crm_opportunities(id) on delete set null,
+  name text not null,
+  status text not null default 'draft' check (status in ('draft', 'published')),
+  created_by uuid references users(id) on delete set null,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  published_at timestamptz
+);
+create index if not exists idx_scope_instances_org on scope_instances(organization_id, status);
+create index if not exists idx_scope_instances_opp on scope_instances(opportunity_id) where opportunity_id is not null;
+
+-- ---------- scope_responses ----------
+-- One row per answered field. Only the column matching the field's type is
+-- populated; the others stay null. value_json covers multiselect.
+create table if not exists scope_responses (
+  id uuid primary key default gen_random_uuid(),
+  scope_instance_id uuid not null references scope_instances(id) on delete cascade,
+  field_id uuid not null references scope_template_fields(id) on delete cascade,
+  value_text text,
+  value_number numeric,
+  value_bool boolean,
+  value_date date,
+  value_json jsonb,
+  updated_at timestamptz default now(),
+  unique (scope_instance_id, field_id)
+);
+create index if not exists idx_scope_responses_instance on scope_responses(scope_instance_id);
+
+-- ---------- scope_versions ----------
+-- Append-only snapshot on every save (spec constraint 9: preserve revision
+-- history, never overwrite it).
+create table if not exists scope_versions (
+  id uuid primary key default gen_random_uuid(),
+  scope_instance_id uuid not null references scope_instances(id) on delete cascade,
+  version_number int not null,
+  snapshot_json jsonb not null,
+  created_by uuid references users(id) on delete set null,
+  created_at timestamptz default now(),
+  unique (scope_instance_id, version_number)
+);
+create index if not exists idx_scope_versions_instance on scope_versions(scope_instance_id, version_number);
+
+-- ============================================================================
+-- Divini Proposal Studio (docs/DIVINI_DETERMINISTIC_TOOLS_SPEC.md, build-order
+-- slice 3). Converts a Divini Pipeline opportunity (optionally informed by a
+-- Divini Scope Builder instance) into a clear, professional, client-facing
+-- proposal: line items, deterministic totals, a public share link, and
+-- accept/decline tracking. No LLM, no generated pricing -- every number is
+-- entered by the user or arithmetic on numbers the user entered.
+--
+-- Additive only. Zero em dashes.
+-- ============================================================================
+
+-- ---------- proposals ----------
+create table if not exists proposals (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references organizations(id) on delete cascade,
+  opportunity_id uuid references crm_opportunities(id) on delete set null,
+  scope_instance_id uuid references scope_instances(id) on delete set null,
+  title text not null,
+  client_name text,
+  client_email text,
+  status text not null default 'draft' check (status in ('draft', 'sent', 'viewed', 'accepted', 'declined', 'expired')),
+  currency text not null default 'USD',
+  discount_cents bigint not null default 0 check (discount_cents >= 0),
+  tax_cents bigint not null default 0 check (tax_cents >= 0),
+  valid_until date,
+  notes text,
+  decline_reason text,
+  share_token text unique,
+  sent_at timestamptz,
+  viewed_at timestamptz,
+  responded_at timestamptz,
+  created_by uuid references users(id) on delete set null,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+create index if not exists idx_proposals_org on proposals(organization_id, status);
+create index if not exists idx_proposals_opp on proposals(opportunity_id) where opportunity_id is not null;
+
+-- ---------- proposal_line_items ----------
+create table if not exists proposal_line_items (
+  id uuid primary key default gen_random_uuid(),
+  proposal_id uuid not null references proposals(id) on delete cascade,
+  description text not null,
+  quantity numeric not null default 1 check (quantity >= 0),
+  unit_price_cents bigint not null default 0 check (unit_price_cents >= 0),
+  sort_order int not null default 0,
+  created_at timestamptz default now()
+);
+create index if not exists idx_proposal_items_proposal on proposal_line_items(proposal_id, sort_order);
+
+-- ---------- proposal_versions ----------
+-- Append-only snapshot on every save and on every status transition (spec
+-- constraint 9: preserve revision history, never overwrite it).
+create table if not exists proposal_versions (
+  id uuid primary key default gen_random_uuid(),
+  proposal_id uuid not null references proposals(id) on delete cascade,
+  version_number int not null,
+  snapshot_json jsonb not null,
+  created_by uuid references users(id) on delete set null,
+  created_at timestamptz default now(),
+  unique (proposal_id, version_number)
+);
+create index if not exists idx_proposal_versions_proposal on proposal_versions(proposal_id, version_number);
+
+-- ============================================================================
+-- Divini Follow-Up Desk (docs/DIVINI_DETERMINISTIC_TOOLS_SPEC.md, build-order
+-- slice 4). Prevents leads and proposals from being forgotten. Deterministic
+-- rule-based tasks derived from real Pipeline (crm_opportunities) and
+-- Proposal Studio (proposals) data, plus manual tasks a user adds directly.
+-- No LLM, no generated urgency -- every task traces to a real stale field or
+-- a real deadline.
+--
+-- Additive only. Zero em dashes.
+-- ============================================================================
+
+create table if not exists follow_up_tasks (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references organizations(id) on delete cascade,
+  opportunity_id uuid references crm_opportunities(id) on delete cascade,
+  proposal_id uuid references proposals(id) on delete cascade,
+  source text not null default 'manual' check (source in ('manual', 'system')),
+  rule_key text check (rule_key in (
+    'opportunity_next_action_overdue', 'opportunity_stale',
+    'proposal_unresponded', 'proposal_expiring'
+  )),
+  title text not null,
+  note text,
+  due_at timestamptz,
+  status text not null default 'open' check (status in ('open', 'done', 'snoozed', 'dismissed')),
+  snoozed_until timestamptz,
+  created_by uuid references users(id) on delete set null,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  resolved_at timestamptz
+);
+create index if not exists idx_followup_org on follow_up_tasks(organization_id, status);
+create index if not exists idx_followup_due on follow_up_tasks(organization_id, due_at) where status in ('open', 'snoozed');
+
+-- One open system task per rule per opportunity/proposal at a time (a
+-- resolved/dismissed row does not block a fresh one if the condition
+-- reappears later).
+create unique index if not exists uq_followup_system_opp
+  on follow_up_tasks(organization_id, opportunity_id, rule_key)
+  where source = 'system' and opportunity_id is not null and status = 'open';
+create unique index if not exists uq_followup_system_proposal
+  on follow_up_tasks(organization_id, proposal_id, rule_key)
+  where source = 'system' and proposal_id is not null and status = 'open';
+
+-- ============================================================================
+-- Divini Profit Map (docs/DIVINI_DETERMINISTIC_TOOLS_SPEC.md, build-order
+-- slice 5). Generalizes the pre-spec, Vendor-only margin-tracking build
+-- (quote_costs, still used for marketplace quotes) to every role that runs
+-- Divini Proposal Studio: a true cost can now also be recorded against an
+-- accepted proposal, not only a marketplace quote.
+--
+-- Deliberately a separate table from `proposals`, mirroring quote_costs, so
+-- a client-facing proposal read path can never leak the org's private cost
+-- data.
+--
+-- Additive only. Zero em dashes.
+-- ============================================================================
+
+create table if not exists proposal_costs (
+  proposal_id uuid primary key references proposals(id) on delete cascade,
+  organization_id uuid not null references organizations(id) on delete cascade,
+  cost_amount numeric not null check (cost_amount >= 0),
+  notes text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+create index if not exists idx_proposal_costs_org on proposal_costs(organization_id);
+
+-- ============================================================================
+-- Divini Price Guide (docs/DIVINI_DETERMINISTIC_TOOLS_SPEC.md, build-order
+-- slice 6). Calculates a profitable pricing range from a real entered cost
+-- and a target margin -- pure arithmetic, never a generated number. More
+-- useful once Divini Profit Map (slice 5) has real cost/margin history to
+-- show as context alongside the calculation.
+--
+-- Additive only. Zero em dashes.
+-- ============================================================================
+
+create table if not exists price_guide_items (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references organizations(id) on delete cascade,
+  name text not null,
+  category text,
+  typical_cost numeric not null check (typical_cost >= 0),
+  target_margin_pct numeric not null check (target_margin_pct >= 0 and target_margin_pct < 1),
+  floor_margin_pct numeric check (floor_margin_pct >= 0 and floor_margin_pct < 1),
+  notes text,
+  created_by uuid references users(id) on delete set null,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+create index if not exists idx_price_guide_items_org on price_guide_items(organization_id);
+
+-- ============================================================================
+-- Divini Change Desk (docs/DIVINI_DETERMINISTIC_TOOLS_SPEC.md, build-order
+-- slice 8). Generalizes the pre-existing Change Orders feature (blueprint
+-- section 23, db/changeorders.ts) into the spec's Divini Change Desk:
+-- controls scope, price, AND schedule changes -- the original build only
+-- tracked scope/price (line items -> a dollar amount); this adds the
+-- missing schedule half, plus an append-only status history so every
+-- transition is preserved, never overwritten (spec constraint 9).
+--
+-- Additive only (alter table, matching the existing db/schema-phase5.sql
+-- convention for this same table). Zero em dashes.
+-- ============================================================================
+
+alter table change_orders add column if not exists requested_new_date date;
+alter table change_orders add column if not exists schedule_change_note text;
+
+create table if not exists change_order_status_history (
+  id uuid primary key default gen_random_uuid(),
+  change_order_id uuid not null references change_orders(id) on delete cascade,
+  from_status text,
+  to_status text not null,
+  changed_by uuid references users(id) on delete set null,
+  changed_at timestamptz default now()
+);
+create index if not exists idx_co_status_history_co on change_order_status_history(change_order_id, changed_at);
+-- ---------------------------------------------------------------------------
+-- Fix: users.role CHECK constraint was missing roles the app already
+-- supports end to end (server/src/db.ts's ROLES array, App.tsx's dashboard
+-- switch, src/pages/GetStarted.tsx's role picker: sponsor, nonprofit, donor,
+-- volunteer, exhibitor, viewer). registerOrganization() writes payload.role
+-- straight into users.role, so registering as any of these roles hit
+-- "new row for relation users violates check constraint users_role_check"
+-- and failed with a generic 500 -- a real, live registration-blocking bug
+-- found during a full-app QA pass (2026-08-03).
+--
+-- Postgres has no ALTER CONSTRAINT for a CHECK's definition: drop + recreate
+-- with the full, current role list.
+-- ---------------------------------------------------------------------------
+alter table users drop constraint if exists users_role_check;
+alter table users add constraint users_role_check check (role in (
+  'super_admin', 'admin', 'venue', 'vendor', 'supplier', 'installer',
+  'planner', 'client', 'billing', 'sponsor', 'nonprofit', 'donor',
+  'volunteer', 'exhibitor', 'viewer'
+));
+
+-- ====== db/schema-account-deletion.sql ======
+-- ---------------------------------------------------------------------------
+-- Apple Guideline 5.1.1(v): reachable in-app account deletion. Deletion is
+-- anonymize + deactivate (see server/src/db.ts's deleteAccount), not a hard
+-- delete, so audit_logs / quotes / invoices / other members' shared org
+-- records that reference the user stay intact. `status` already exists on
+-- `users` with no check constraint; `deleted_at` records when it happened.
+-- ---------------------------------------------------------------------------
+alter table users add column if not exists deleted_at timestamptz;
+create index if not exists idx_users_deleted_at on users(deleted_at) where deleted_at is not null;
+
+-- ====== db/schema-mfa.sql ======
+-- ---------------------------------------------------------------------------
+-- MFA / 2FA (TOTP). Closes the "no MFA anywhere" gap found in the 2026-08-03
+-- SOC 2 / ISO 27001 audit. See server/src/routes/mfa.ts.
+-- ---------------------------------------------------------------------------
+alter table users add column if not exists totp_secret text;
+alter table users add column if not exists totp_enabled boolean not null default false;
+alter table users add column if not exists totp_enabled_at timestamptz;
+
+create table if not exists mfa_backup_codes (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  code_hash text not null,
+  used_at timestamptz,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_mfa_backup_codes_user on mfa_backup_codes(user_id);
+
+-- ====== db/schema-session-revocation.sql ======
+-- ---------------------------------------------------------------------------
+-- Session revocation: a session JWT issued before sessions_invalidated_before
+-- is treated as logged out even though its signature still verifies. See
+-- server/src/auth.ts's resolve() and server/src/db.ts's
+-- sessionsInvalidatedBefore()/invalidateSessions().
+-- ---------------------------------------------------------------------------
+alter table users add column if not exists sessions_invalidated_before timestamptz;
+
+-- ====== db/schema-stripe-accounts-v2.sql ======
+-- ---------------------------------------------------------------------------
+-- Stripe Accounts v2 (direct-charge model), alongside the existing v1
+-- Express/destination-charge flow. See server/src/lib/stripeAccounts.ts.
+-- ---------------------------------------------------------------------------
+alter table payout_accounts add column if not exists stripe_api_version text not null default 'v1'
+  check (stripe_api_version in ('v1','v2'));
+alter table organizations add column if not exists subscription_payment_source text
+  check (subscription_payment_source in ('card','stripe_balance'));
+
+
+-- ====== db/schema-org-tenant-indexes.sql ======
+-- ---------------------------------------------------------------------------
+-- Missing organization_id tenant indexes, found during the ALFY2 pack
+-- Section 06 (database integrity) audit. See
+-- db/schema-org-tenant-indexes.sql for the full rationale.
+-- ---------------------------------------------------------------------------
+create index if not exists idx_crm_activities_org on crm_activities(organization_id);
+create index if not exists idx_feedback_items_org on feedback_items(organization_id);
+create index if not exists idx_floorplans_org on floorplans(organization_id);
+create index if not exists idx_introductions_org on introductions(organization_id);
+create index if not exists idx_itinerary_items_org on itinerary_items(organization_id);
+create index if not exists idx_nba_dismissals_org on nba_dismissals(organization_id);
+create index if not exists idx_partners_org on partners(organization_id);
+create index if not exists idx_payments_org on payments(organization_id);
+create index if not exists idx_platform_credits_org on platform_credits(organization_id);
+create index if not exists idx_seating_charts_org on seating_charts(organization_id);
+create index if not exists idx_tasks_org on tasks(organization_id);
+create index if not exists idx_visitor_signals_org on visitor_signals(organization_id);
+create index if not exists idx_partners_user on partners(user_id);
+create index if not exists idx_visitor_signals_user on visitor_signals(user_id);
+
+-- ====== db/schema-webhook-events.sql ======
+-- ---------------------------------------------------------------------------
+-- Webhook event ledger, found during the ALFY2 pack Section 09 (payments)
+-- audit. See db/schema-webhook-events.sql for the full rationale.
+-- ---------------------------------------------------------------------------
+create table if not exists webhook_events (
+  id uuid primary key default gen_random_uuid(),
+  provider text not null,
+  event_id text not null,
+  event_type text,
+  received_at timestamptz not null default now(),
+  processed_at timestamptz,
+  status text not null default 'received' check (status in ('received','processed','failed')),
+  attempt_count int not null default 0,
+  last_error text,
+  unique (provider, event_id)
+);
+create index if not exists idx_webhook_events_status on webhook_events(status);
+create index if not exists idx_webhook_events_provider on webhook_events(provider, received_at desc);
+
+-- ====== db/schema-communication-suppressions.sql ======
+-- ---------------------------------------------------------------------------
+-- Communication suppression list, found during the ALFY2 pack Section 10
+-- (email/marketing compliance) audit. See
+-- db/schema-communication-suppressions.sql for the full rationale.
+-- ---------------------------------------------------------------------------
+create table if not exists communication_suppressions (
+  id uuid primary key default gen_random_uuid(),
+  destination text not null,
+  channel text not null default 'email',
+  reason text not null check (reason in ('bounce','complaint','unsubscribe','manual')),
+  source text,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz
+);
+create unique index if not exists idx_comm_suppr_dest
+  on communication_suppressions(lower(destination), channel);
+
+-- ====== db/schema-fix-org-fee-rates.sql ======
+-- ---------------------------------------------------------------------------
+-- Backfill for organizations.platform_fee_rate stamped from the flat TIERS
+-- table instead of the role-aware planCatalog lookup, found during the
+-- ALFY2 pack Section 12 audit. See db/schema-fix-org-fee-rates.sql for the
+-- full rationale. Idempotent.
+-- ---------------------------------------------------------------------------
+update organizations
+   set platform_fee_rate = 0, updated_at = now()
+ where type in ('client', 'installer', 'sponsor')
+   and platform_fee_rate is distinct from 0;
+
+-- ====== db/schema-event-invitations.sql ======
+-- ---------------------------------------------------------------------------
+-- Counterparty Event Invitations + Event Membership, found while building the
+-- Divini Partners 63-section Event Operations spec Phase A (2026-08-09). See
+-- db/schema-event-invitations.sql for the full rationale.
+-- ---------------------------------------------------------------------------
+--     existing Divini org/user or an external, not-yet-registered email into
+--     a specific event with an intended RBAC role. Accepting one creates (or
+--     updates) an event_members row; it never fabricates an event_vendors
+--     row on its own (that still requires the owner-only addEventVendor path,
+--     or the vendor's own quote-submission self-attach).
+--
+--   event_members - the new per-HUMAN, per-ROLE membership record for an
+--     event. event_vendors answers "is org X attached"; event_members
+--     answers "does this specific person have access, and with what role" -
+--     something no existing table can answer today (event_vendors is org-
+--     granular only; vendor_team_members / vendor_account_assignments are
+--     vendor-org-internal and never reach event authorization). Optionally
+--     links back to the event_vendors row it corresponds to via
+--     event_vendor_id, so the org-level fact and the per-human role stay
+--     reconciled instead of duplicated.
+-- ---------------------------------------------------------------------------
+
+create table if not exists event_invitations (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references events(id) on delete cascade,
+  inviter_user_id uuid references users(id) on delete set null,
+  inviter_org_id uuid references organizations(id) on delete set null,
+  recipient_email text not null,
+  -- Resolved server-side only (existing-user / existing-org lookup by email or
+  -- by an id the inviter is already authorized to see) -- never trusted from
+  -- client-submitted user_id/org_id/vendor_id, matching the vendor_id fix in
+  -- db/quotes.ts::createQuote.
+  recipient_user_id uuid references users(id) on delete set null,
+  recipient_org_id uuid references organizations(id) on delete set null,
+  recipient_vendor_id uuid references vendors(id) on delete set null,
+  intended_role text not null check (intended_role in (
+    'planner', 'finance', 'venue', 'vendor_owner', 'vendor_staff',
+    'sponsor', 'event_staff', 'guest_manager', 'read_only')),
+  intended_scope jsonb,
+  token text not null unique,
+  status text not null default 'pending' check (status in (
+    'pending', 'accepted', 'declined', 'expired', 'revoked')),
+  message text,
+  expires_at timestamptz not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  responded_at timestamptz
+);
+create index if not exists idx_event_invitations_event on event_invitations(event_id);
+create index if not exists idx_event_invitations_token on event_invitations(token);
+create index if not exists idx_event_invitations_email on event_invitations(lower(recipient_email));
+-- At most one OPEN invitation per (event, recipient email): resending must
+-- reuse/revoke-and-recreate rather than silently accumulate duplicates.
+create unique index if not exists idx_event_invitations_open
+  on event_invitations(event_id, lower(recipient_email))
+  where status = 'pending';
+
+create table if not exists event_members (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references events(id) on delete cascade,
+  -- Nullable only transiently: a row is created the moment an invitation is
+  -- accepted (which requires a real user_id by then, even a lightweight
+  -- freshly-registered one) or the moment the event owner is seeded. No write
+  -- path in this module ever leaves it null.
+  user_id uuid references users(id) on delete cascade,
+  organization_id uuid references organizations(id) on delete set null,
+  vendor_id uuid references vendors(id) on delete set null,
+  event_vendor_id uuid references event_vendors(id) on delete set null,
+  role text not null check (role in (
+    'event_owner', 'planner', 'finance', 'venue', 'vendor_owner', 'vendor_staff',
+    'sponsor', 'event_staff', 'guest_manager', 'read_only')),
+  status text not null default 'active' check (status in (
+    'invited', 'active', 'declined', 'removed')),
+  invited_by uuid references users(id) on delete set null,
+  invitation_id uuid references event_invitations(id) on delete set null,
+  permission_overrides jsonb,
+  invited_at timestamptz,
+  joined_at timestamptz,
+  removed_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (event_id, user_id)
+);
+create index if not exists idx_event_members_event on event_members(event_id);
+create index if not exists idx_event_members_user on event_members(user_id);
+create index if not exists idx_event_members_org on event_members(organization_id);
+
+-- ====== db/schema-event-record.sql ======
+-- ---------------------------------------------------------------------------
+-- Shared Authoritative Event Record additive columns, found while building
+-- the Divini Partners 63-section Event Operations spec Phase A item 4
+-- (2026-08-09). See db/schema-event-record.sql for the full rationale.
+-- ---------------------------------------------------------------------------
+alter table events add column if not exists load_in_at timestamptz;
+alter table events add column if not exists setup_at timestamptz;
+alter table events add column if not exists rehearsal_at timestamptz;
+alter table events add column if not exists vendor_call_at timestamptz;
+alter table events add column if not exists doors_at timestamptz;
+alter table events add column if not exists end_at timestamptz;
+alter table events add column if not exists strike_at timestamptz;
+
+-- Venue details specific to this event's booking (the venues table itself
+-- stays the venue's general profile, not per-event booking detail).
+alter table events add column if not exists venue_space text;
+alter table events add column if not exists venue_notes text;
+
+-- Attendance breakdown, additive alongside the legacy guest_count.
+alter table events add column if not exists attendance_estimated int;
+alter table events add column if not exists attendance_invited int;
+alter table events add column if not exists attendance_rsvp_yes int;
+alter table events add column if not exists attendance_confirmed int;
+alter table events add column if not exists attendance_guaranteed int;
+alter table events add column if not exists attendance_vip int;
+alter table events add column if not exists attendance_staff int;
+alter table events add column if not exists attendance_vendor_staff int;
+
+-- ====== db/schema-event-changes.sql ======
+-- ---------------------------------------------------------------------------
+-- Event Change Architecture / Propagation, found while building the Divini
+-- Partners 63-section Event Operations spec Phase A item 5 (2026-08-09). See
+-- db/schema-event-changes.sql for the full rationale.
+-- ---------------------------------------------------------------------------
+create table if not exists event_changes (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references events(id) on delete cascade,
+  category text not null check (category in (
+    'schedule', 'venue', 'attendance', 'budget', 'planning', 'vendor', 'status', 'other')),
+  field text not null,
+  old_value jsonb,
+  new_value jsonb,
+  changed_by uuid references users(id) on delete set null,
+  reason text,
+  -- Event roles (see lib/eventRoles.ts) this change is relevant to, or null
+  -- meaning "every active member of the event". Propagation (notifications +
+  -- acknowledgment rows) only ever reaches event_members matching this set,
+  -- never anyone outside the event's roster.
+  affected_scopes text[],
+  requires_acknowledgment boolean not null default false,
+  financial_impact numeric,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_event_changes_event on event_changes(event_id, created_at desc);
+
+create table if not exists event_change_acknowledgments (
+  id uuid primary key default gen_random_uuid(),
+  change_id uuid not null references event_changes(id) on delete cascade,
+  user_id uuid not null references users(id) on delete cascade,
+  acknowledged_at timestamptz,
+  created_at timestamptz not null default now(),
+  unique (change_id, user_id)
+);
+create index if not exists idx_event_change_acks_change on event_change_acknowledgments(change_id);
+create index if not exists idx_event_change_acks_user on event_change_acknowledgments(user_id, acknowledged_at);
+
+-- ====== db/schema-final-count.sql ======
+-- ---------------------------------------------------------------------------
+-- Final Count Workflow, P0, found while building the Divini Partners
+-- 63-section Event Operations spec Phase A item 6 (2026-08-09). See
+-- db/schema-final-count.sql for the full rationale.
+-- ---------------------------------------------------------------------------
+alter table events add column if not exists final_count_due_at timestamptz;
+
+create table if not exists event_final_counts (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references events(id) on delete cascade,
+  version int not null,
+  count int not null,
+  -- Signed difference from the previous version's count, or null for version 1.
+  delta int,
+  -- count - the authoritative attendance figure on record at set-time
+  -- (attendance_confirmed, falling back to attendance_estimated), or null
+  -- when neither exists yet to compare against.
+  discrepancy int,
+  notes text,
+  set_by uuid references users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  unique (event_id, version)
+);
+create index if not exists idx_event_final_counts_event on event_final_counts(event_id, version desc);
+
+-- ====== db/schema-vendor-final-quantity.sql ======
+-- ---------------------------------------------------------------------------
+-- Vendor Final Count / Final Quantity Workflow, found while building the
+-- Divini Partners 63-section Event Operations spec Phase A item 7
+-- (2026-08-09). See db/schema-vendor-final-quantity.sql for the full
+-- rationale.
+-- ---------------------------------------------------------------------------
+create table if not exists vendor_final_quantities (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references events(id) on delete cascade,
+  vendor_id uuid not null references vendors(id) on delete cascade,
+  organization_id uuid not null references organizations(id) on delete cascade,
+  scope text not null,
+  version int not null,
+  quantity numeric not null,
+  unit text not null default 'guests',
+  notes text,
+  discrepancy numeric,
+  submitted_by uuid references users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  unique (event_id, vendor_id, scope, version)
+);
+create index if not exists idx_vendor_final_quantities_event
+  on vendor_final_quantities(event_id, vendor_id, scope, version desc);
+
+-- ====== db/schema-execution-packet.sql ======
+-- ---------------------------------------------------------------------------
+-- Final Event Schedule / Event Execution Packet FOUNDATION, found while
+-- building the Divini Partners 63-section Event Operations spec Phase A
+-- item 8 (2026-08-09). See db/schema-execution-packet.sql for the full
+-- rationale (this is deliberately assembly of already-existing systems,
+-- not a new source of truth).
+-- ---------------------------------------------------------------------------
+create table if not exists event_execution_packets (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references events(id) on delete cascade,
+  version int not null,
+  status text not null default 'generated' check (status in ('generated', 'superseded')),
+  snapshot jsonb not null,
+  generated_by uuid references users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  unique (event_id, version)
+);
+create index if not exists idx_event_execution_packets_event
+  on event_execution_packets(event_id, version desc);
+
+create table if not exists event_execution_packet_acknowledgments (
+  id uuid primary key default gen_random_uuid(),
+  packet_id uuid not null references event_execution_packets(id) on delete cascade,
+  user_id uuid not null references users(id) on delete cascade,
+  acknowledged_at timestamptz,
+  created_at timestamptz not null default now(),
+  unique (packet_id, user_id)
+);
+create index if not exists idx_event_execution_packet_acks_packet
+  on event_execution_packet_acknowledgments(packet_id);
+
+-- ====== db/schema-quantity-comparison.sql ======
+-- ---------------------------------------------------------------------------
+-- Unit-aware vendor final quantity discrepancy semantics, found while
+-- completing the Final Event Schedule / Execution Packet phase (2026-08-09).
+-- See db/schema-quantity-comparison.sql for the full rationale.
+-- ---------------------------------------------------------------------------
+alter table vendor_final_quantities add column if not exists comparison_type text
+  check (comparison_type in (
+    'event_final_count', 'awarded_quantity', 'contract_quantity',
+    'scope_requirement', 'custom_expected_quantity', 'none'));
+alter table vendor_final_quantities add column if not exists comparison_reference jsonb;
+alter table vendor_final_quantities add column if not exists comparison_ratio numeric not null default 1;
+alter table vendor_final_quantities add column if not exists expected_quantity numeric;
+alter table vendor_final_quantities add column if not exists discrepancy_status text
+  check (discrepancy_status in ('not_applicable', 'unresolved', 'match', 'over', 'under'));
+
+-- ====== db/schema-event-logistics.sql ======
+-- ---------------------------------------------------------------------------
+-- Final Event Schedule data-model completion, found while building the
+-- Final Event Schedule / Event Execution Packet completion phase
+-- (2026-08-09). See db/schema-event-logistics.sql for the full rationale.
+-- ---------------------------------------------------------------------------
+alter table events add column if not exists timezone text;
+alter table events add column if not exists venue_access_time timestamptz;
+alter table events add column if not exists venue_parking_info text;
+alter table events add column if not exists venue_loading_dock text;
+alter table events add column if not exists venue_vendor_entrance text;
+alter table events add column if not exists venue_guest_entrance text;
+alter table events add column if not exists venue_restrictions text;
+alter table events add column if not exists emergency_contact_name text;
+alter table events add column if not exists emergency_contact_phone text;
+
+-- ====== db/schema-packet-versioning.sql ======
+-- ---------------------------------------------------------------------------
+-- Packet versioning completion, found while building the Final Event
+-- Schedule / Event Execution Packet completion phase Part 5 (2026-08-09).
+-- See db/schema-packet-versioning.sql for the full rationale.
+-- ---------------------------------------------------------------------------
+alter table event_execution_packets drop constraint if exists event_execution_packets_status_check;
+alter table event_execution_packets add constraint event_execution_packets_status_check
+  check (status in ('draft', 'issued', 'superseded', 'final'));
+update event_execution_packets set status = 'issued' where status = 'generated';
+alter table event_execution_packets alter column status set default 'issued';
+
+alter table event_execution_packets add column if not exists superseded_by uuid
+  references event_execution_packets(id) on delete set null;
+
+-- ====== db/schema-packet-distribution.sql ======
+-- ---------------------------------------------------------------------------
+-- Execution Packet distribution settings + idempotent delivery tracking,
+-- found while building the Final Event Schedule / Event Execution Packet
+-- completion phase Parts 7-9 (2026-08-09). A DIFFERENT job from the
+-- existing event_schedule_sends (lib/scheduleDistribution.ts), which stays
+-- untouched. See db/schema-packet-distribution.sql for the full rationale.
+-- ---------------------------------------------------------------------------
+create table if not exists event_packet_distribution_settings (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null unique references events(id) on delete cascade,
+  enabled boolean not null default false,
+  offset_preset text not null default '7d' check (offset_preset in (
+    '14d', '10d', '7d', '5d', '72h', '48h', '24h', 'custom')),
+  offset_minutes int not null default (7 * 24 * 60),
+  send_time text not null default '09:00',
+  recipient_roles text[] not null default array['event_owner','planner','venue','vendor_owner','vendor_staff','event_staff'],
+  last_run_at timestamptz,
+  distributed_at timestamptz,
+  blocked_at timestamptz,
+  blocked_reason jsonb,
+  override_at timestamptz,
+  override_by uuid references users(id) on delete set null,
+  created_by uuid references users(id) on delete set null,
+  updated_by uuid references users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists event_packet_deliveries (
+  id uuid primary key default gen_random_uuid(),
+  packet_id uuid not null references event_execution_packets(id) on delete cascade,
+  event_id uuid not null references events(id) on delete cascade,
+  recipient_user_id uuid not null references users(id) on delete cascade,
+  recipient_role text,
+  delivery_channel text not null default 'email',
+  status text not null default 'pending' check (status in ('pending', 'sent', 'failed', 'skipped')),
+  sent_at timestamptz,
+  failed_at timestamptz,
+  retry_count int not null default 0,
+  error_classification text,
+  created_at timestamptz not null default now(),
+  unique (packet_id, recipient_user_id)
+);
+create index if not exists idx_event_packet_deliveries_event on event_packet_deliveries(event_id);
+create index if not exists idx_event_packet_deliveries_packet on event_packet_deliveries(packet_id, status);
+
+-- ====== db/schema-system-user.sql ======
+-- ---------------------------------------------------------------------------
+-- System user, found while live-testing runPacketDistribution() in the
+-- Final Event Schedule / Event Execution Packet completion phase Part 8
+-- (2026-08-09). See db/schema-system-user.sql for the full rationale.
+-- ---------------------------------------------------------------------------
+insert into users (id, email, name, role, status)
+values ('00000000-0000-0000-0000-000000000001', null, 'Divini Partners (System)', 'super_admin', 'active')
+on conflict (id) do nothing;
+
+-- ====== db/schema-packet-reminders.sql ======
+-- ---------------------------------------------------------------------------
+-- Execution Packet acknowledgment method + reminder tracking (Final Event
+-- Schedule / Event Execution Packet completion phase, Parts 10-11,
+-- 2026-08-09).
+-- ---------------------------------------------------------------------------
+
+alter table event_execution_packet_acknowledgments add column if not exists method text
+  not null default 'app' check (method in ('app', 'email_link'));
+
+alter table event_packet_distribution_settings add column if not exists reminder_offsets int[]
+  not null default array[4320, 1440]; -- 72h, 24h before the event, by default
+
+-- Idempotent reminder claim: one reminder per (packet, recipient, offset),
+-- same insert-on-conflict claim pattern as event_packet_deliveries.
+create table if not exists event_packet_reminders (
+  id uuid primary key default gen_random_uuid(),
+  packet_id uuid not null references event_execution_packets(id) on delete cascade,
+  event_id uuid not null references events(id) on delete cascade,
+  recipient_user_id uuid not null references users(id) on delete cascade,
+  offset_minutes int not null,
+  sent_at timestamptz not null default now(),
+  unique (packet_id, recipient_user_id, offset_minutes)
+);
+create index if not exists idx_event_packet_reminders_event on event_packet_reminders(event_id);
+
+-- ====== db/schema-itinerary-approval.sql ======
+-- ---------------------------------------------------------------------------
+-- Run of Show finalization (Final Event Schedule / Event Execution Packet
+-- completion phase, Part 15, 2026-08-09). Extends the existing
+-- itinerary_items / buildItinerary() system (Phase 6) rather than
+-- duplicating it: a draft/approved status lives directly on the event,
+-- alongside the other Shared Authoritative Event Record fields.
+-- ---------------------------------------------------------------------------
+
+alter table events add column if not exists itinerary_status text not null default 'draft'
+  check (itinerary_status in ('draft', 'approved'));
+alter table events add column if not exists itinerary_approved_at timestamptz;
+alter table events add column if not exists itinerary_approved_by uuid references users(id) on delete set null;
+
+-- ====== db/schema-packet-invalidation.sql ======
+-- ---------------------------------------------------------------------------
+-- Event Change -> Packet Invalidation (Final Event Schedule / Event
+-- Execution Packet completion phase, Part 18, 2026-08-09).
+--
+-- Adds 'update_required' as an explicit packet status: whenever
+-- source-of-truth event data changes after a packet has been issued, the
+-- current issued/final packet is flipped to 'update_required' instead of
+-- silently continuing to look current. Do not silently leave an issued
+-- packet appearing current when the underlying data has changed.
+-- ---------------------------------------------------------------------------
+
+alter table event_execution_packets drop constraint if exists event_execution_packets_status_check;
+alter table event_execution_packets add constraint event_execution_packets_status_check
+  check (status in ('draft', 'issued', 'superseded', 'final', 'update_required'));
+
+-- ====== db/schema-packet-invalidation-reason.sql ======
+-- ---------------------------------------------------------------------------
+-- Event Change -> Packet Invalidation, human-readable reason (Live Event
+-- Operations phase, Part 2, 2026-08-09).
+--
+-- Extends db/schema-packet-invalidation.sql's update_required status with
+-- WHY: a short, human-readable summary of what changed, so the planner
+-- sees "Run of Show changed: Dinner Service moved from 7:15 PM to 7:30 PM"
+-- instead of just a bare status flag.
+-- ---------------------------------------------------------------------------
+
+alter table event_execution_packets add column if not exists update_required_reason text;
+
+-- ====== db/schema-event-check-ins.sql ======
+-- ---------------------------------------------------------------------------
+-- Event check-in/check-out (live-ops phase, Part 7-8, 2026-08-09).
+--
+-- One durable record per arrival/departure cycle. role and organization_id
+-- are resolved server-side from the target user's real event_members row at
+-- check-in time (never client-supplied), so this table can never be used to
+-- spoof a role or vendor affiliation. The partial unique index prevents two
+-- simultaneous "open" (not yet checked out) check-ins for the same
+-- event/user -- a real concurrency bug this phase's adversarial pass
+-- (Part 42) explicitly calls out; a second check-in attempt while one is
+-- already open is treated as idempotent, not a duplicate row.
+-- ---------------------------------------------------------------------------
+
+create table if not exists event_check_ins (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references events(id) on delete cascade,
+  user_id uuid not null references users(id),
+  organization_id uuid references organizations(id),
+  role text not null,
+  assigned_location text,
+  source_device text,
+  notes text,
+  checked_in_at timestamptz not null default now(),
+  checked_in_by uuid references users(id),
+  checked_out_at timestamptz,
+  checked_out_by uuid references users(id),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_check_ins_event on event_check_ins(event_id);
+create index if not exists idx_check_ins_event_user on event_check_ins(event_id, user_id);
+
+create unique index if not exists idx_check_ins_one_open
+  on event_check_ins(event_id, user_id)
+  where checked_out_at is null;
+
+-- ====== db/schema-event-activity.sql ======
+-- ---------------------------------------------------------------------------
+-- Live Activity Timeline (live-ops phase, Part 11-12, 2026-08-09).
+--
+-- One authoritative, append-only feed of everything that happens on a live
+-- event. Every part of this phase that produces a real, notable event
+-- (check-in, task completion, status transition, and later: change
+-- requests, incidents, inventory movement, sponsor activation, closeout)
+-- writes ONE row here rather than each maintaining its own separate
+-- "recent activity" list. visibility_scope is an explicit allow-list of
+-- PacketAudience buckets (lib/packetProjection.ts); when null, the
+-- category's own default scope (server/src/lib/activityVisibility.ts)
+-- applies. category is a structured type, not just free text, so a
+-- consumer can filter/group without parsing message strings.
+-- ---------------------------------------------------------------------------
+
+create table if not exists event_activity (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references events(id) on delete cascade,
+  actor_id uuid references users(id),
+  actor_org_id uuid references organizations(id),
+  category text not null,
+  related_entity_type text,
+  related_entity_id uuid,
+  message text not null,
+  payload jsonb,
+  severity text not null default 'info',
+  visibility_scope text[],
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_event_activity_event on event_activity(event_id, created_at desc);
+create index if not exists idx_event_activity_org on event_activity(event_id, actor_org_id);
+
+-- ====== db/schema-event-incidents.sql ======
+-- ---------------------------------------------------------------------------
+-- Incident Management (live-ops phase, Part 15-16, 2026-08-09).
+--
+-- One durable record per incident. restricted (explicit, defaults true for
+-- medical/security/guest categories at the application layer) hard-caps
+-- visibility to owner/planner + the assigned responder + the reporter,
+-- regardless of category defaults -- see server/src/lib/incidentVisibility.ts.
+-- ---------------------------------------------------------------------------
+
+create table if not exists event_incidents (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references events(id) on delete cascade,
+  category text not null,
+  severity text not null default 'medium',
+  location text,
+  description text not null,
+  submitted_by uuid references users(id),
+  assigned_to uuid references users(id),
+  status text not null default 'open',
+  resolution text,
+  restricted boolean not null default false,
+  attachments jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  resolved_at timestamptz
+);
+
+create index if not exists idx_event_incidents_event on event_incidents(event_id, created_at desc);
+create index if not exists idx_event_incidents_status on event_incidents(event_id, status);
+
+-- ====== db/schema-event-inventory.sql ======
+-- Event Inventory Model + Locations + Transfers (live-ops phase, Part
+-- 17-20, 2026-08-09).
+--
+-- Deliberately a NEW, event-scoped set of tables, distinct from the
+-- pre-existing org-scoped `inventory_items` (a supplier's sellable/rentable
+-- warehouse catalog, server/src/db/inventory.ts) -- that is a different
+-- domain (pre-event catalog) from this one (day-of physical inventory at
+-- one specific event). Named event_inventory_* to keep the two apart.
+--
+-- event_locations: a hierarchical zone tree (Venue -> Ballroom -> Main Bar
+-- -> VIP Lounge -> ...) that extends the existing floorplans system
+-- (floorplan_id, nullable) rather than replacing it -- a location may
+-- optionally be drawn on an uploaded floorplan.
+--
+-- event_inventory_items: the item TYPE (e.g. "Champagne"), never a
+-- per-location row -- current quantity at any location is DERIVED from
+-- event_inventory_movements, never stored redundantly.
+--
+-- event_inventory_movements: an append-only ledger. from_location_id null
+-- means "arrived from outside the event" (initial delivery/count-in);
+-- to_location_id null means "left the event" (returned/disposed/lost).
+-- A transfer is one row with both set. Current quantity at a location =
+-- sum(quantity where to_location = X) - sum(quantity where from_location =
+-- X). This is what makes "prevent negative inventory" and "prevent
+-- impossible concurrent transfers" enforceable with a single transactional
+-- check against a derived aggregate, guarded by a row lock on the item
+-- (server/src/db/eventInventory.ts's recordMovement).
+create table if not exists event_locations (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references events(id) on delete cascade,
+  name text not null,
+  parent_id uuid references event_locations(id) on delete set null,
+  floorplan_id uuid references floorplans(id) on delete set null,
+  notes text,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_event_locations_event on event_locations(event_id);
+create index if not exists idx_event_locations_parent on event_locations(parent_id);
+
+create table if not exists event_inventory_items (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references events(id) on delete cascade,
+  name text not null,
+  category text not null,
+  unit text not null default 'unit',
+  expected_quantity numeric,
+  source_vendor_org_id uuid references organizations(id),
+  status text not null default 'expected',
+  notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists idx_event_inventory_items_event on event_inventory_items(event_id);
+
+create table if not exists event_inventory_movements (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references events(id) on delete cascade,
+  item_id uuid not null references event_inventory_items(id) on delete cascade,
+  quantity numeric not null check (quantity > 0),
+  from_location_id uuid references event_locations(id),
+  to_location_id uuid references event_locations(id),
+  kind text not null default 'transfer',
+  moved_by uuid references users(id),
+  reason text,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_event_inventory_movements_event on event_inventory_movements(event_id, created_at desc);
+create index if not exists idx_event_inventory_movements_item on event_inventory_movements(item_id);
+
+-- ====== db/schema-event-inventory-counts.sql ======
+-- Inventory Count-In / Count-Out reconciliation (live-ops phase, Part
+-- 21-22, 2026-08-09).
+--
+-- Extends the Part 17-20 inventory system: a count-in/count-out ALWAYS
+-- also writes a real event_inventory_movements row (via
+-- db/eventInventory.ts's recordMovement, the single quantity ledger --
+-- never a second, disconnected count) via movement_id. This table exists
+-- purely for the RECONCILIATION side: a row is only created when there is
+-- something to track (a count-in shortfall, or a count-out damaged/missing
+-- quantity) -- a clean, fully-accounted count-out needs no resolution
+-- workflow and creates no row here, matching "do not create noisy alerts
+-- without useful thresholds."
+--
+-- status covers both kinds' real lifecycles in one column rather than two
+-- near-duplicate tables: count_in issues use open -> acknowledged ->
+-- resolved; count_out issues use damaged/missing -> disputed -> resolved
+-- (or straight to resolved). Never auto-assigns financial liability --
+-- resolution_note is a free-text record of what was decided, not a charge.
+create table if not exists event_inventory_counts (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references events(id) on delete cascade,
+  item_id uuid not null references event_inventory_items(id) on delete cascade,
+  movement_id uuid references event_inventory_movements(id),
+  kind text not null,
+  expected_quantity numeric,
+  counted_quantity numeric not null,
+  status text not null default 'open',
+  notes text,
+  resolution_note text,
+  counted_by uuid references users(id),
+  resolved_by uuid references users(id),
+  created_at timestamptz not null default now(),
+  resolved_at timestamptz
+);
+create index if not exists idx_event_inventory_counts_event on event_inventory_counts(event_id, created_at desc);
+create index if not exists idx_event_inventory_counts_item on event_inventory_counts(item_id);
+
+-- Event Sponsor Activation (live-ops phase, Part 23-24, 2026-08-09).
+--
+-- Distinct from the pre-existing nonprofit fundraising sponsor system
+-- (db/schema-np-sponsor.sql's sponsor_purchases/sponsor_fulfillment_tasks,
+-- which are scoped to fundraising_events, a different domain from this
+-- system's `events` table entirely). This is the day-of, live-ops
+-- activation checklist for a sponsor already attached to THIS event (via
+-- event_members with role 'sponsor', lib/eventRoles.ts): booth setup,
+-- banner placement, signage install, and similar physical deliverables
+-- tracked live as they happen, the sponsor equivalent of Part 21-22's
+-- inventory count-in/count-out and Part 15-16's incidents.
+--
+-- sponsor_org_id is the anchor (matches event_inventory_items's
+-- source_vendor_org_id pattern) rather than requiring an accepted
+-- event_members invitation first, so an owner/planner can pre-build the
+-- activation checklist before the sponsor's rep has even joined.
+create table if not exists event_sponsor_activations (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references events(id) on delete cascade,
+  sponsor_org_id uuid not null references organizations(id) on delete cascade,
+  label text not null,
+  location_id uuid references event_locations(id) on delete set null,
+  status text not null default 'not_started'
+    check (status in ('not_started','in_progress','complete','issue')),
+  notes text,
+  completed_by uuid references users(id),
+  completed_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists idx_event_sponsor_activations_event on event_sponsor_activations(event_id, created_at asc);
+create index if not exists idx_event_sponsor_activations_org on event_sponsor_activations(sponsor_org_id);
+
+-- Event Closeout: vendor completion attestation (live-ops phase, Part
+-- 25-27, 2026-08-09).
+--
+-- Distinct from event_check_ins (Part 7-8, a per-PERSON arrival/departure
+-- timestamp). This is a per-VENDOR-ORG attestation: "our participation at
+-- this event is done -- packed out, no outstanding issues" (or "issue" if
+-- something is wrong, e.g. equipment left behind, a damage claim). One row
+-- per (event, vendor org); a vendor org with no row yet reads as the
+-- implicit default 'pending' via a LEFT JOIN against event_vendors in
+-- db/closeout.ts, never a fabricated pre-seeded row.
+create table if not exists event_vendor_completions (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references events(id) on delete cascade,
+  vendor_org_id uuid not null references organizations(id) on delete cascade,
+  status text not null default 'pending' check (status in ('pending','complete','issue')),
+  notes text,
+  marked_by uuid references users(id),
+  marked_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (event_id, vendor_org_id)
+);
+create index if not exists idx_event_vendor_completions_event on event_vendor_completions(event_id);
+
+-- Event Settlement (live-ops phase, Part 28-31, 2026-08-09).
+--
+-- The one durable record of "this event's finances were reconciled and
+-- signed off" -- a terminal, point-in-time attestation, not a re-runnable
+-- computation (computeEventReconciliation in db/reconciliation.ts IS the
+-- re-runnable, always-fresh computation; this table is the snapshot taken
+-- the moment someone actually settled the books, since invoices/payments
+-- can keep changing after that point and the settlement record should not
+-- silently drift with them). One settlement per event -- re-settling is
+-- not supported in this phase; a correction after the fact is a manual
+-- admin matter, matching the append-only-ledger philosophy the rest of
+-- this codebase's money-adjacent tables already follow.
+create table if not exists event_settlements (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references events(id) on delete cascade unique,
+  settled_by uuid references users(id),
+  invoiced_total numeric not null default 0,
+  paid_total numeric not null default 0,
+  outstanding_total numeric not null default 0,
+  platform_fees_total numeric not null default 0,
+  processing_fees_total numeric not null default 0,
+  net_payable_total numeric not null default 0,
+  state text not null,
+  overrode_blocking boolean not null default false,
+  notes text,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_event_settlements_event on event_settlements(event_id);
+
+-- Divini Partners front-half completion: Award / Contract / Quote Versioning /
+-- Bid Q&A (2026-08-10).
+--
+-- Closes the procurement -> live-ops integration gap found in the front-half
+-- architecture audit: previously, "award" was a dead enum value never set
+-- anywhere, quote acceptance had zero downstream effects, and a losing
+-- bidder's event_vendors row (self-attached at quote SUBMISSION time,
+-- db/quotes.ts::createQuote) stayed at status='added' forever -- which meant
+-- a losing vendor retained live "vendor_owner" event access indefinitely
+-- (db/eventMembers.ts::getEventRole's legacy fallback) and polluted the
+-- closeout vendor-completion roster (db/closeout.ts::listVendorCompletions)
+-- for an event they never won. db/awards.ts::awardQuote() now sets
+-- event_vendors.status = 'declined' for every losing bidder on the same bid,
+-- and both of those read sites now filter it out.
+--
+-- Zero em dashes.
+
+-- ---------- quote_versions: append-only snapshot taken BEFORE every revise ----------
+-- Quotes themselves stay mutable (reviseQuote() still updates the row in
+-- place, since every existing reader expects the current quote state at
+-- `quotes.id`) but the commercial terms that existed right before a revision
+-- overwrote them are now preserved here, mirroring change_order_status_history's
+-- append-only discipline (db/schema-change-desk.sql).
+create table if not exists quote_versions (
+  id uuid primary key default gen_random_uuid(),
+  quote_id uuid not null references quotes(id) on delete cascade,
+  line_items jsonb,
+  subtotal numeric,
+  platform_fee numeric,
+  total numeric,
+  status text,
+  revised_by uuid references users(id),
+  reason text,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_quote_versions_quote on quote_versions(quote_id, created_at);
+
+-- ---------- bid_questions: pre-bid clarification / addenda ----------
+-- visibility: 'private' (only the asking vendor + organizer see it) or
+-- 'public' (an addendum -- every invited/responded vendor on the bid sees
+-- it). An organizer answering a private question can promote it to public
+-- when issuing an addendum; the row itself is never duplicated, just its
+-- visibility flips.
+create table if not exists bid_questions (
+  id uuid primary key default gen_random_uuid(),
+  bid_id uuid not null references bids(id) on delete cascade,
+  asked_by_org_id uuid references organizations(id) on delete set null,
+  question text not null,
+  answer text,
+  answered_by uuid references users(id),
+  answered_at timestamptz,
+  visibility text not null default 'private' check (visibility in ('private','public')),
+  is_addendum boolean not null default false,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_bid_questions_bid on bid_questions(bid_id, created_at);
+
+-- ---------- event_vendor_contracts: the real award -> contract record ----------
+-- Distinct from the pre-existing `contracts` table (server/src/routes/contracts.ts),
+-- which is an unrelated B2B "Contract Pricing Partnerships" rate-agreement
+-- feature with zero relationship to quotes or events. This table is the one
+-- an awarded quote actually produces: it references the winning quote id
+-- (and the quote_versions row current at award time, if any exist yet) and
+-- the awarded amount, so it can never silently drift from what was actually
+-- accepted.
+create table if not exists event_vendor_contracts (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references events(id) on delete cascade,
+  bid_id uuid references bids(id) on delete set null,
+  quote_id uuid not null references quotes(id) on delete restrict,
+  vendor_org_id uuid not null references organizations(id) on delete restrict,
+  awarded_amount numeric not null,
+  status text not null default 'active' check (status in ('active','cancelled')),
+  awarded_by uuid references users(id),
+  created_at timestamptz not null default now(),
+  unique (quote_id)
+);
+create index if not exists idx_event_vendor_contracts_event on event_vendor_contracts(event_id);
+create index if not exists idx_event_vendor_contracts_vendor on event_vendor_contracts(vendor_org_id);
+
+-- ---------- contract_payment_milestones: the commercial payment schedule ----------
+-- Data model only (Phase 31 of the spec is explicit: no live money movement
+-- beyond the existing Stripe/payments gates). due_pct rows must sum to 100
+-- per contract; enforced in application code (db/awards.ts), not a DB
+-- constraint, since partial/interim schedules are edited incrementally.
+create table if not exists contract_payment_milestones (
+  id uuid primary key default gen_random_uuid(),
+  contract_id uuid not null references event_vendor_contracts(id) on delete cascade,
+  label text not null,
+  due_pct numeric not null,
+  due_amount numeric not null,
+  due_date timestamptz,
+  status text not null default 'pending' check (status in ('pending','invoiced','paid')),
+  sort_order int not null default 0,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_contract_milestones_contract on contract_payment_milestones(contract_id);
+
+-- ---------- event_vendor_compliance_gates: per-event document policy ----------
+-- Previously nonexistent (front-half audit, 2026-08-10): the three
+-- pre-existing "requirements" systems (vendor-compliance.ts, global per-vendor
+-- doc status; vendor-requirements.ts, a quote-intake field schema;
+-- vendor-event-requirements.ts, guest-list/deposit gating flags) cover three
+-- unrelated concerns and none of them let an organizer say "insurance must be
+-- verified before this event's vendors can be awarded." One row per
+-- (event_id, requirement_key); requirement_key matches vendor_compliance's
+-- tracked doc types (insurance/coi/w9) so the gate can be checked directly
+-- against the vendor's real compliance status, never a second parallel model.
+create table if not exists event_vendor_compliance_gates (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references events(id) on delete cascade,
+  requirement_key text not null check (requirement_key in ('insurance','coi','w9')),
+  policy text not null check (policy in ('before_bid','before_award','before_event','informational')),
+  created_by uuid references users(id),
+  created_at timestamptz not null default now(),
+  unique (event_id, requirement_key)
+);
+create index if not exists idx_event_compliance_gates_event on event_vendor_compliance_gates(event_id);
+
+-- Widened (moat roadmap P0, 2026-08-14) to add 'coi_carrier_verified': the
+-- existing 'coi'/'insurance' keys check vendor_compliance's self-attested
+-- status (the vendor sets their own "verified"), which a corporate/enterprise
+-- buyer's procurement team correctly does not fully trust. This new key is a
+-- SEPARATE, stronger signal an event owner can opt into requiring instead of
+-- or alongside the self-attested ones -- see vendor_coi_verifications below.
+alter table event_vendor_compliance_gates drop constraint if exists event_vendor_compliance_gates_requirement_key_check;
+alter table event_vendor_compliance_gates add constraint event_vendor_compliance_gates_requirement_key_check
+  check (requirement_key in ('insurance','coi','w9','coi_carrier_verified'));
+
+-- ---------- vendor_coi_verifications: carrier-verified COI (moat roadmap P0) ----------
+-- A real verification record, distinct from vendor_compliance's self-attested
+-- insurance_status/coi_status (which the vendor sets on themselves with no
+-- outside check). Each row is one verification attempt against an insurance
+-- carrier's own system of record via a third-party provider (Certificial,
+-- TrustLayer, etc) -- never a second place to self-declare status. The
+-- provider integration is feature-flagged off (CERTIFICIAL_API_KEY unset) in
+-- every environment until real API credentials are provisioned; see
+-- server/src/lib/certificial.ts. Until then every request row is written with
+-- status='unavailable' and a real, honest error_message -- never a fabricated
+-- 'verified'.
+create table if not exists vendor_coi_verifications (
+  id uuid primary key default gen_random_uuid(),
+  vendor_id uuid not null references vendors(id) on delete cascade,
+  provider text not null default 'certificial',
+  status text not null default 'pending'
+    check (status in ('pending','verified','expired','failed','unavailable')),
+  carrier_name text,
+  policy_number text,
+  coverage_type text,
+  effective_date date,
+  expiration_date date,
+  raw_response jsonb,
+  requested_by uuid references users(id) on delete set null,
+  requested_at timestamptz not null default now(),
+  verified_at timestamptz,
+  error_message text
+);
+create index if not exists idx_vendor_coi_verifications_vendor on vendor_coi_verifications(vendor_id, requested_at desc);
+
+-- ---------- quote_messages: structured counteroffer columns ----------
+-- The pre-existing quote_messages table only ever carried free text plus a
+-- request_revision boolean -- there was no structured commercial
+-- counteroffer object anywhere (front-half audit, 2026-08-10).
+-- proposed_amount + counter_status turn a message row into an optional,
+-- explicit commercial proposal the OTHER side can accept (revises the quote
+-- to that exact number, versioned via quote_versions) or decline.
+alter table quote_messages add column if not exists proposed_amount numeric;
+alter table quote_messages add column if not exists counter_status text
+  check (counter_status in ('open','accepted','declined'));
+
+-- ---------- api_keys + webhook_endpoints + webhook_deliveries (moat roadmap
+-- Phase 2a, 2026-08-14): public REST API + outbound webhooks ----------
+-- An API key authenticates as the CREATING user (key_hash resolves to
+-- user_id in server/src/auth.ts), so every existing route's authorization --
+-- org-scoped checks, requireAdmin, everything -- applies unchanged to
+-- API-key traffic exactly as it does to a session JWT. organization_id is
+-- kept alongside for display/listing only; it is never itself the
+-- authorization boundary. Only key_hash (sha256) is stored -- the plaintext
+-- key is shown to the user exactly once, at creation.
+create table if not exists api_keys (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references organizations(id) on delete cascade,
+  user_id uuid not null references users(id) on delete cascade,
+  name text not null,
+  key_hash text not null unique,
+  key_prefix text not null,
+  created_by uuid references users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  last_used_at timestamptz,
+  revoked_at timestamptz
+);
+create index if not exists idx_api_keys_org on api_keys(organization_id);
+
+-- A webhook endpoint the org registers to receive outbound event
+-- notifications. `secret` signs each delivery (HMAC-SHA256, X-Divini-Signature
+-- header) so the receiver can verify authenticity. `event_types` is an
+-- allowlist of the event type strings (see server/src/lib/webhooks.ts) this
+-- endpoint wants; empty means "all".
+create table if not exists webhook_endpoints (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references organizations(id) on delete cascade,
+  url text not null,
+  secret text not null,
+  enabled boolean not null default true,
+  event_types text[] not null default '{}',
+  created_by uuid references users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists idx_webhook_endpoints_org on webhook_endpoints(organization_id);
+
+-- One row per delivery ATTEMPT. v1 delivery is synchronous, best-effort,
+-- single-attempt (matching lib/notify.ts's fire-and-forget convention) -- no
+-- retry/backoff queue yet. success=false rows are the retry backlog for a
+-- future phase, kept as a real audit trail either way.
+create table if not exists webhook_deliveries (
+  id uuid primary key default gen_random_uuid(),
+  endpoint_id uuid not null references webhook_endpoints(id) on delete cascade,
+  event_type text not null,
+  payload jsonb not null,
+  success boolean not null,
+  response_status integer,
+  error_message text,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_webhook_deliveries_endpoint on webhook_deliveries(endpoint_id, created_at desc);
+
+-- ---------- packages.instant_bookable (moat roadmap Phase 2c, 2026-08-14):
+-- self-service instant book ----------
+-- An 'active' package with instant_bookable=true can be booked by a client
+-- directly against their event with no bid/quote back-and-forth (see
+-- server/src/db/quotes.ts::instantBookPackage) -- the resulting quote is
+-- created and immediately awarded in one atomic step, through the exact
+-- same awardQuote() transaction (compliance gate, contract, payment
+-- milestones, event membership) every negotiated award already goes
+-- through. Off by default: a vendor opts a specific package in explicitly.
+alter table packages add column if not exists instant_bookable boolean not null default false;

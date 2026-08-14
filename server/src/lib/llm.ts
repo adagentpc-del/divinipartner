@@ -13,6 +13,8 @@ import {
   LLM_MODEL,
   LLM_API_KEY,
   LLM_BASE_URL,
+  ANTHROPIC_API_KEY,
+  ANTHROPIC_MODEL,
   llmEnabled,
 } from "../config.js";
 
@@ -88,6 +90,35 @@ export async function llmComplete(prompt: string, opts: LlmOptions = {}): Promis
         if (!res.ok) return { ok: false, text: "", error: `llm ${res.status}` };
         const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
         return { ok: true, text: String(json.choices?.[0]?.message?.content ?? "") };
+      }, timeoutMs);
+    }
+    if (LLM_PROVIDER === "anthropic") {
+      if (!ANTHROPIC_API_KEY) return { ok: false, text: "", error: "ANTHROPIC_API_KEY unset" };
+      // LLM_MODEL defaults to "llama3.1" for the ollama provider, which is
+      // never a valid Anthropic model id -- only honor opts.model here, and
+      // fall back to ANTHROPIC_MODEL, never the shared LLM_MODEL default.
+      const anthropicModel = opts.model ?? ANTHROPIC_MODEL;
+      return await withTimeout(async (signal) => {
+        const res = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": ANTHROPIC_API_KEY,
+            "anthropic-version": "2023-06-01",
+          },
+          signal,
+          body: JSON.stringify({
+            model: anthropicModel,
+            max_tokens: 4096,
+            temperature: 0.2,
+            system: opts.system,
+            messages: [{ role: "user", content: prompt }],
+          }),
+        });
+        if (!res.ok) return { ok: false, text: "", error: `anthropic ${res.status}` };
+        const json = (await res.json()) as { content?: { type?: string; text?: string }[] };
+        const text = (json.content ?? []).find((b) => b.type === "text")?.text ?? "";
+        return { ok: true, text };
       }, timeoutMs);
     }
     return { ok: false, text: "", error: `unknown LLM_PROVIDER: ${LLM_PROVIDER}` };

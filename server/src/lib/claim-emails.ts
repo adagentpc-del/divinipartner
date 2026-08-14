@@ -362,7 +362,7 @@ export async function send(profileId: string, p: Personalization): Promise<SendR
     text: rendered.body,
     trackingRef: outreach.id,
   }).catch(() => null);
-  // eslint-disable-next-line no-console
+   
   console.log(
     `[claim-email] step ${decision.step} (${rendered.cadence}) to ${p.email}: ${rendered.subject}` +
       (delivery?.ok ? ` sent id=${delivery.id ?? ""}` : delivery?.skipped ? " (email disabled, logged)" : ` failed: ${delivery?.error ?? "unknown"}`),

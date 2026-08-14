@@ -20,6 +20,12 @@ import * as claim from "../db/claim.js";
 import * as emails from "./claim-emails.js";
 import * as discovery from "./discovery.js";
 import { runEventScheduleDistribution, type ScheduleDistributionSummary } from "./scheduleDistribution.js";
+import {
+  runPacketDistribution,
+  runPacketReminders,
+  type DistributionRunSummary,
+  type ReminderRunSummary,
+} from "../db/packetDistribution.js";
 import { WORKER_INTERVAL_MINUTES } from "../config.js";
 
 export type OutreachSummary = {
@@ -37,6 +43,8 @@ export type SchedulerSummary = {
   outreach: OutreachSummary & { error?: string };
   expansion: ExpansionSummary & { error?: string };
   scheduleDistribution: ScheduleDistributionSummary & { error?: string };
+  packetDistribution: DistributionRunSummary & { error?: string };
+  packetReminders: ReminderRunSummary & { error?: string };
   ranAt: string;
 };
 
@@ -69,7 +77,7 @@ export async function runDueOutreach(limit = 200): Promise<OutreachSummary> {
       else skipped++;
     } catch (err) {
       failed++;
-      // eslint-disable-next-line no-console
+       
       console.error(
         `[scheduler] outreach send failed for profile ${row.profile_id}: ${
           err instanceof Error ? err.message : String(err)
@@ -146,7 +154,32 @@ export async function runScheduler(): Promise<SchedulerSummary> {
     };
   }
 
-  return { outreach, expansion, scheduleDistribution, ranAt };
+  let packetDistribution: DistributionRunSummary & { error?: string };
+  try {
+    packetDistribution = await runPacketDistribution();
+  } catch (err) {
+    packetDistribution = {
+      candidates: 0,
+      sent: 0,
+      blocked: 0,
+      failed: 0,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+
+  let packetReminders: ReminderRunSummary & { error?: string };
+  try {
+    packetReminders = await runPacketReminders();
+  } catch (err) {
+    packetReminders = {
+      candidates: 0,
+      reminders_sent: 0,
+      failed: 0,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+
+  return { outreach, expansion, scheduleDistribution, packetDistribution, packetReminders, ranAt };
 }
 
 let _timer: ReturnType<typeof setInterval> | null = null;
@@ -165,18 +198,18 @@ export function startSchedulerLoop(): void {
   const tick = () => {
     runScheduler()
       .then((summary) => {
-        // eslint-disable-next-line no-console
+         
         console.log(`[scheduler] tick ${JSON.stringify(summary)}`);
       })
       .catch((err) => {
-        // eslint-disable-next-line no-console
+         
         console.error(
           `[scheduler] tick failed: ${err instanceof Error ? err.message : String(err)}`,
         );
       });
   };
 
-  // eslint-disable-next-line no-console
+   
   console.log(`[scheduler] starting in-process loop every ${WORKER_INTERVAL_MINUTES} minute(s)`);
   _timer = setInterval(tick, intervalMs);
   tick();

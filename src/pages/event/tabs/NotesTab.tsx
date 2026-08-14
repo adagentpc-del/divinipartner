@@ -27,7 +27,7 @@ export default function NotesTab({ eventId }: { eventId: string }) {
       setErr((e as Error).message);
     }
   }
-  useEffect(() => { void load(); /* eslint-disable-next-line */ }, [eventId]);
+  useEffect(() => { void load();   }, [eventId]);
 
   async function add(e: React.FormEvent) {
     e.preventDefault();

@@ -19,7 +19,7 @@
  *
  * Zero em dashes.
  */
-import { q } from "../pool.js";
+import { q, q1 } from "../pool.js";
 import { orgEmails, eventName } from "./recipients.js";
 import { notify } from "./notify.js";
 
@@ -88,4 +88,39 @@ export async function onGuestListChanged(
   }
 }
 
-export const guestSync = { onGuestListChanged };
+/**
+ * Sync the event's live attendance_rsvp_yes / attendance_confirmed columns
+ * from the real guest list. Previously nothing ever wrote these columns from
+ * guest data at all -- they only ever moved via a planner's manual PATCH on
+ * the event, so they could silently drift arbitrarily far from the actual,
+ * current RSVP counts (confirmed found via full grep: no other write site
+ * exists). attendance_estimated (the planner's own rough guess) and
+ * attendance_guaranteed (a vendor minimum-guarantee figure) are untouched --
+ * only the two columns that are, by name, supposed to reflect real RSVPs.
+ * Final Count (db/finalCount.ts) only ever READS attendance_confirmed, never
+ * writes it, so this sync cannot clobber a finalized count; it keeps the
+ * number Final Count reads against honest up to the moment Final Count is
+ * actually taken. Best-effort: never throws, never blocks the guest mutation.
+ */
+export async function syncEventAttendanceFromGuests(eventId: string): Promise<void> {
+  if (!eventId) return;
+  try {
+    const row = await q1<{ rsvp_yes: string; confirmed_heads: string }>(
+      `select
+          count(*) filter (where rsvp_status = 'confirmed') as rsvp_yes,
+          coalesce(sum(coalesce(party_size, 1) + case when plus_one then 1 else 0 end)
+            filter (where rsvp_status = 'confirmed'), 0) as confirmed_heads
+         from guests where event_id = $1`,
+      [eventId],
+    );
+    if (!row) return;
+    await q1(
+      `update events set attendance_rsvp_yes = $2, attendance_confirmed = $3, updated_at = now() where id = $1`,
+      [eventId, Number(row.rsvp_yes) || 0, Number(row.confirmed_heads) || 0],
+    );
+  } catch {
+    // Best-effort: a sync failure must never block the guest mutation.
+  }
+}
+
+export const guestSync = { onGuestListChanged, syncEventAttendanceFromGuests };

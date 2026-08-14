@@ -33,7 +33,7 @@ type Recipient = { email: string; name: string | null };
 type Audience = 'venue' | 'vendor' | 'planner' | 'all';
 
 const STYLES = `
-.acp{--emerald:#1E5D4A;--emerald-deep:#123c2e;--emerald-mid:#174838;--gold:#C9A35B;--champagne:#D9CCB0;--ink:#2c2a26;--muted:#7d776c;--line:#e7e1d6;--ivory:#f7f4ee;background:var(--ivory);color:var(--ink);min-height:100vh;font-family:Inter,system-ui,sans-serif}
+.acp{--emerald:#1E5D4A;--emerald-deep:#123c2e;--emerald-mid:#174838;--gold:#C9A35B;--champagne:#D9CCB0;--ink:#2c2a26;--muted:#6b6459;--line:#e7e1d6;--ivory:#f7f4ee;background:var(--ivory);color:var(--ink);min-height:100vh;font-family:Inter,system-ui,sans-serif}
 .acp .wrap{max-width:1180px;margin:0 auto;padding:26px 28px 60px}
 .acp h1,.acp h2,.acp h3{font-family:'Cormorant Garamond',serif;color:var(--emerald-deep);margin:0}
 .acp .top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:6px}
@@ -106,7 +106,7 @@ export default function AdminCampaigns() {
   useEffect(() => {
     if (isAdmin) void load();
     else setLoadingRows(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [isAdmin]);
 
   async function create(e: React.FormEvent) {

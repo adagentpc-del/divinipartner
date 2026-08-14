@@ -1,12 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { apiSend } from '../lib/api';
+import { isPlanLimitError, UpgradePrompt, type PlanLimitError } from '../lib/entitlements';
 
 /**
  * Comparison view (/compare/:type?ids=a,b,c). Opened in a new tab from a list
- * where a client selected up to 5 venues, vendors, or quotes and clicked Compare.
+ * where a client selected up to 10 venues, vendors, or quotes and clicked Compare.
  * Renders a row-level side-by-side table plus deterministic pros and cons per
  * option. Self-contained styling under .cmp-. Zero em dashes.
+ *
+ * The "quotes" type is docs/DIVINI_DETERMINISTIC_TOOLS_SPEC.md's Divini
+ * Quote Compare (build-order slice 7). Its real, pre-existing plan limit
+ * (quotes.compare -- Client Free 3, Client Plus 10) is enforced server-side;
+ * this page only renders the limit-reached state, never enforces anything.
  */
 
 type Col = { id: string; label: string };
@@ -14,7 +20,7 @@ type Row = { label: string; values: string[]; highlight?: boolean };
 type ProsCons = { id: string; label: string; pros: string[]; cons: string[] };
 type Result = { type: string; columns: Col[]; rows: Row[]; proscons: ProsCons[] };
 
-const TITLES: Record<string, string> = { venues: 'Venue comparison', vendors: 'Vendor comparison', quotes: 'Quote comparison' };
+const TITLES: Record<string, string> = { venues: 'Venue comparison', vendors: 'Vendor comparison', quotes: 'Divini Quote Compare' };
 
 export default function Compare() {
   const { type = '' } = useParams();
@@ -22,6 +28,7 @@ export default function Compare() {
   const [result, setResult] = useState<Result | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
+  const [limitError, setLimitError] = useState<PlanLimitError | null>(null);
 
   useEffect(() => {
     const ids = (params.get('ids') ?? '').split(',').map((s) => s.trim()).filter(Boolean);
@@ -31,8 +38,9 @@ export default function Compare() {
       try {
         const r = await apiSend<{ result: Result }>('POST', `/compare/${type}`, { ids });
         setResult(r.result);
-      } catch (e: any) {
-        setErr(e?.message ?? 'Could not build the comparison.');
+      } catch (e) {
+        if (isPlanLimitError(e)) setLimitError(e.body);
+        else setErr((e as Error)?.message ?? 'Could not build the comparison.');
       } finally {
         setLoading(false);
       }
@@ -48,6 +56,8 @@ export default function Compare() {
 
         {loading ? (
           <div className="cmp-loading">Building the comparison...</div>
+        ) : limitError ? (
+          <UpgradePrompt error={limitError} />
         ) : err ? (
           <div className="cmp-card"><p className="cmp-sub">{err}</p></div>
         ) : result ? (
@@ -99,7 +109,7 @@ const CSS = `
 .cmp-wrap { max-width: 1100px; margin: 0 auto; }
 .cmp-brand { font-family: Georgia, serif; font-size: 18px; color: #123c2e; font-weight: 700; }
 .cmp-title { font-family: Georgia, serif; font-size: 28px; color: #123c2e; margin: 4px 0 18px; }
-.cmp-loading, .cmp-sub { color: #7d776c; }
+.cmp-loading, .cmp-sub { color: #6b6459; }
 .cmp-card { background: #fff; border: 1px solid #e7e1d6; border-radius: 12px; padding: 22px; }
 .cmp-scroll { overflow-x: auto; border: 1px solid #e7e1d6; border-radius: 12px; background: #fff; }
 .cmp-table { border-collapse: collapse; width: 100%; min-width: 520px; }

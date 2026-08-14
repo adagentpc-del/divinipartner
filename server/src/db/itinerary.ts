@@ -12,27 +12,26 @@
  */
 import { q, q1, pool } from "../pool.js";
 import { NotFoundError, ForbiddenError, type Actor } from "../db.js";
-import { getEvent, type EventRow } from "./events.js";
+import { getEvent, canManageEvent, type EventRow } from "./events.js";
+import { getEventRole } from "./eventMembers.js";
+import { audienceForRole, deriveVendorSchedule, type VendorScheduleRow } from "../lib/packetProjection.js";
+import { toIso } from "../lib/dates.js";
 
 async function canSee(actor: Actor, eventId: string): Promise<void> {
   await getEvent(actor, eventId);
 }
-async function owns(actor: Actor, eventId: string): Promise<boolean> {
-  if (actor.user.role === "super_admin" || actor.user.role === "admin") return true;
-  const row = await q1<{ ok: boolean }>(
-    `select true as ok from events
-      where id = $1
-        and (($2::uuid is not null and organization_id = $2)
-             or client_id = $3 or planner_id = $3)
-      limit 1`,
-    [eventId, actor.org?.id ?? null, actor.user.id],
-  );
-  return !!row?.ok;
-}
+/**
+ * Owner or planner-role member (canManageEvent, Phase A item 3) may edit the
+ * itinerary -- previously this duplicated a pre-Phase-A owner-only check
+ * that had no idea an invited planner-role event_members row exists, so a
+ * Planner/Event Manager who could edit the event itself still could not
+ * build its Run of Show. Reuses the canonical check from events.ts rather
+ * than keeping a second, drifted copy.
+ */
 async function requireOwner(actor: Actor, eventId: string): Promise<void> {
   await canSee(actor, eventId);
-  if (!(await owns(actor, eventId))) {
-    throw new ForbiddenError("only the event owner can edit the itinerary");
+  if (!(await canManageEvent(actor, eventId))) {
+    throw new ForbiddenError("only the event owner or planner can edit the itinerary");
   }
 }
 
@@ -121,7 +120,25 @@ export type ItineraryItemInput = {
   sort_order?: number | null;
   is_public?: boolean | null;
   track?: string | null;
+  /** The vendor org this item is attributed to (arrival/delivery/service
+   *  windows). Must already be attached to the event -- validated below --
+   *  so an arrival record can never be attributed to an unrelated org. */
+  responsible_org_id?: string | null;
 };
+
+/** True when orgId is attached to the event as a vendor (event_vendors, or
+ *  an active event_members row with a vendor role). */
+async function isAttachedVendorOrg(eventId: string, orgId: string): Promise<boolean> {
+  const row = await q1<{ ok: boolean }>(
+    `select true as ok from event_vendors where event_id = $1 and organization_id = $2 and status <> 'declined'
+     union select true from event_members
+      where event_id = $1 and organization_id = $2 and status = 'active'
+        and role in ('vendor_owner','vendor_staff')
+     limit 1`,
+    [eventId, orgId],
+  );
+  return !!row?.ok;
+}
 
 export async function addItineraryItem(
   actor: Actor,
@@ -129,12 +146,19 @@ export async function addItineraryItem(
   input: ItineraryItemInput,
 ): Promise<ItineraryItemRow> {
   await requireOwner(actor, eventId);
+  let responsibleOrgId: string | null = null;
+  if (input.responsible_org_id) {
+    if (!(await isAttachedVendorOrg(eventId, input.responsible_org_id))) {
+      throw new ForbiddenError("responsible_org_id must be a vendor already attached to this event");
+    }
+    responsibleOrgId = input.responsible_org_id;
+  }
   const row = await q1<ItineraryItemRow>(
     `insert into itinerary_items
        (event_id, organization_id, title, description, category, start_time, end_time,
         duration_minutes, location, owner_role, owner_label, source, status, pinned, sort_order,
-        is_public, track, created_by)
-     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'manual',$12,$13,$14,$15,$16,$17)
+        is_public, track, created_by, responsible_org_id)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'manual',$12,$13,$14,$15,$16,$17,$18)
      returning *`,
     [
       eventId,
@@ -154,8 +178,10 @@ export async function addItineraryItem(
       input.is_public ?? false,
       input.track ?? null,
       actor.user.id,
+      responsibleOrgId,
     ],
   );
+  await onItineraryItemMutated(eventId);
   return row as ItineraryItemRow;
 }
 
@@ -174,6 +200,13 @@ export async function updateItineraryItem(
 ): Promise<ItineraryItemRow> {
   const eventId = await loadItemEvent(itemId);
   await requireOwner(actor, eventId);
+  let responsibleOrgId: string | null = null;
+  if (patch.responsible_org_id) {
+    if (!(await isAttachedVendorOrg(eventId, patch.responsible_org_id))) {
+      throw new ForbiddenError("responsible_org_id must be a vendor already attached to this event");
+    }
+    responsibleOrgId = patch.responsible_org_id;
+  }
   const row = await q1<ItineraryItemRow>(
     `update itinerary_items set
         title = coalesce($2, title),
@@ -190,6 +223,7 @@ export async function updateItineraryItem(
         sort_order = coalesce($13, sort_order),
         is_public = coalesce($14, is_public),
         track = coalesce($15, track),
+        responsible_org_id = coalesce($16, responsible_org_id),
         updated_at = now()
       where id = $1 returning *`,
     [
@@ -208,8 +242,10 @@ export async function updateItineraryItem(
       patch.sort_order ?? null,
       patch.is_public ?? null,
       patch.track ?? null,
+      responsibleOrgId,
     ],
   );
+  await onItineraryItemMutated(eventId);
   return row as ItineraryItemRow;
 }
 
@@ -217,6 +253,7 @@ export async function deleteItineraryItem(actor: Actor, itemId: string): Promise
   const eventId = await loadItemEvent(itemId);
   await requireOwner(actor, eventId);
   await pool.query(`delete from itinerary_items where id = $1`, [itemId]);
+  await onItineraryItemMutated(eventId);
 }
 
 // ============================================================================
@@ -235,6 +272,11 @@ export type DerivedItem = {
   source: string;
   source_ref: string | null;
   status: string;
+  /** The vendor org this item is attributed to, when known (persisted items
+   *  only -- auto-derived items have no single org). Null for everything
+   *  else. Used by the overlap check below: the same vendor org cannot be
+   *  scheduled in two places at once. */
+  responsible_org_id: string | null;
 };
 
 export type ItineraryCheck = {
@@ -242,6 +284,12 @@ export type ItineraryCheck = {
   severity: "info" | "warning" | "error";
   message: string;
   field?: string;
+};
+
+export type ItineraryApproval = {
+  status: "draft" | "approved";
+  approved_at: string | null;
+  approved_by: string | null;
 };
 
 export type BuiltItinerary = {
@@ -252,6 +300,11 @@ export type BuiltItinerary = {
   checks: ItineraryCheck[];
   statuses: { key: string; label: string }[];
   categories: { key: string; label: string }[];
+  /** Run of Show finalization (Part 15): whether this Run of Show has been
+   *  explicitly approved. Reverts to 'draft' automatically the next time any
+   *  itinerary item is added, edited, or removed -- an "approved" label that
+   *  survives silent edits underneath it would be misleading. */
+  approval: ItineraryApproval;
 };
 
 function addMinutes(iso: string | null, minutes: number): string | null {
@@ -333,6 +386,7 @@ export async function buildItinerary(actor: Actor, eventId: string): Promise<Bui
       source: "auto:event",
       source_ref: null,
       status: "planned",
+      responsible_org_id: null,
     });
     items.push({
       key: "auto_setup",
@@ -347,13 +401,22 @@ export async function buildItinerary(actor: Actor, eventId: string): Promise<Bui
       source: "auto:event",
       source_ref: null,
       status: "planned",
+      responsible_org_id: null,
     });
     items.push({
       key: "auto_doors",
       title: "Doors / guest arrival",
       description: ev.guest_count != null ? `Expecting ${ev.guest_count} guests.` : "Guests arrive.",
       category: "program",
-      start_time: start,
+      // toIso(): `start` is ev.date_time straight off a raw pg query (a
+      // Date object for a timestamptz column, not a string), while every
+      // other item's start_time here already goes through addMinutes()
+      // (which normalizes via .toISOString()). Passing the raw Date object
+      // through would make this ONE item's start_time silently disagree in
+      // TYPE (not value) with a jsonb-round-tripped snapshot's copy of it
+      // -- exactly the bug that made packetInvalidation.ts's staleness
+      // diff falsely report "6:00 PM -> 6:00 PM" as a change.
+      start_time: toIso(start),
       end_time: addMinutes(start, 30),
       location: venueLabel,
       owner_role: "all",
@@ -361,6 +424,7 @@ export async function buildItinerary(actor: Actor, eventId: string): Promise<Bui
       source: "auto:event",
       source_ref: null,
       status: "planned",
+      responsible_org_id: null,
     });
     items.push({
       key: "auto_program",
@@ -375,6 +439,7 @@ export async function buildItinerary(actor: Actor, eventId: string): Promise<Bui
       source: "auto:event",
       source_ref: null,
       status: "planned",
+      responsible_org_id: null,
     });
     items.push({
       key: "auto_breakdown",
@@ -389,6 +454,7 @@ export async function buildItinerary(actor: Actor, eventId: string): Promise<Bui
       source: "auto:event",
       source_ref: null,
       status: "planned",
+      responsible_org_id: null,
     });
     items.push({
       key: "auto_load_out",
@@ -403,6 +469,7 @@ export async function buildItinerary(actor: Actor, eventId: string): Promise<Bui
       source: "auto:event",
       source_ref: null,
       status: "planned",
+      responsible_org_id: null,
     });
   }
 
@@ -432,6 +499,7 @@ export async function buildItinerary(actor: Actor, eventId: string): Promise<Bui
       source: "auto:quote",
       source_ref: qt.id,
       status: qt.status === "accepted" || qt.status === "converted" ? "confirmed" : "planned",
+      responsible_org_id: null,
     });
   }
   if (quotes.length === 0) {
@@ -465,6 +533,7 @@ export async function buildItinerary(actor: Actor, eventId: string): Promise<Bui
       source: "auto:payment",
       source_ref: inv.id,
       status: inv.status === "paid" ? "done" : "planned",
+      responsible_org_id: null,
     });
   }
 
@@ -476,8 +545,13 @@ export async function buildItinerary(actor: Actor, eventId: string): Promise<Bui
       title: p.title ?? "Itinerary item",
       description: p.description,
       category: p.category ?? "program",
-      start_time: p.start_time,
-      end_time: p.end_time,
+      // toIso(): p.start_time/end_time are raw timestamptz columns off
+      // listItineraryItems()'s own query (Date objects), not the strings
+      // ItineraryItemRow's type claims -- the same gap that made
+      // auto_doors's start_time (below) leak a Date object into the
+      // packet snapshot.
+      start_time: toIso(p.start_time),
+      end_time: toIso(p.end_time),
       location: p.location,
       owner_role: (ITINERARY_ROLES as readonly string[]).includes(p.owner_role ?? "")
         ? (p.owner_role as ItineraryRole)
@@ -486,6 +560,7 @@ export async function buildItinerary(actor: Actor, eventId: string): Promise<Bui
       source: p.source ?? "manual",
       source_ref: p.source_ref,
       status: p.status ?? "planned",
+      responsible_org_id: p.responsible_org_id,
     });
   }
 
@@ -505,6 +580,106 @@ export async function buildItinerary(actor: Actor, eventId: string): Promise<Bui
     }
   }
 
+  // --- Run of Show finalization checks (completion phase, Part 15) -----------
+  // Deterministic only -- every check below is a plain comparison of real
+  // stored/derived timestamps, never an inferred or AI-generated suggestion.
+
+  // Impossible timing: an item that ends before it starts.
+  for (const item of items) {
+    if (!item.start_time || !item.end_time) continue;
+    const s = new Date(item.start_time).getTime();
+    const e = new Date(item.end_time).getTime();
+    if (Number.isNaN(s) || Number.isNaN(e)) continue;
+    if (e < s) {
+      checks.push({
+        id: `impossible_timing_${item.key}`,
+        severity: "warning",
+        message: `"${item.title}" is scheduled to end before it starts. Check its start/end time.`,
+      });
+    }
+  }
+
+  // Overlapping activities for the SAME responsible vendor org -- the same
+  // vendor cannot be scheduled in two places at once. Deliberately scoped to
+  // shared responsible_org_id rather than flagging every time-overlap in the
+  // day, since independent teams (e.g. venue setup and vendor load-in)
+  // legitimately run in parallel.
+  const byOrg = new Map<string, DerivedItem[]>();
+  for (const item of items) {
+    if (!item.responsible_org_id || !item.start_time) continue;
+    const bucket = byOrg.get(item.responsible_org_id) ?? [];
+    bucket.push(item);
+    byOrg.set(item.responsible_org_id, bucket);
+  }
+  for (const bucket of byOrg.values()) {
+    const sorted = bucket
+      .slice()
+      .sort((a, b) => new Date(a.start_time as string).getTime() - new Date(b.start_time as string).getTime());
+    for (let i = 0; i < sorted.length - 1; i += 1) {
+      const cur = sorted[i];
+      const next = sorted[i + 1];
+      const curEnd = cur.end_time ? new Date(cur.end_time).getTime() : new Date(cur.start_time as string).getTime();
+      const nextStart = new Date(next.start_time as string).getTime();
+      if (Number.isFinite(curEnd) && Number.isFinite(nextStart) && nextStart < curEnd) {
+        checks.push({
+          id: `overlap_${cur.key}_${next.key}`,
+          severity: "warning",
+          message: `"${cur.title}" and "${next.title}" overlap for the same vendor. The same team cannot be in two places at once.`,
+        });
+      }
+    }
+  }
+
+  // Category-level timing sanity: vendor arrival before setup, setup ending
+  // before doors, and strike not starting until the program/service window
+  // ends. Reads from the FULL assembled items list (auto-derived + manual),
+  // so a manual override of any of these windows is respected.
+  const categoryTime = (
+    category: string,
+    field: "start_time" | "end_time",
+    agg: "min" | "max",
+  ): number | null => {
+    const values = items
+      .filter((i) => i.category === category && i[field])
+      .map((i) => new Date(i[field] as string).getTime())
+      .filter((n) => Number.isFinite(n));
+    if (!values.length) return null;
+    return agg === "min" ? Math.min(...values) : Math.max(...values);
+  };
+
+  const earliestLoadIn = categoryTime("load_in", "start_time", "min");
+  const earliestSetupStart = categoryTime("setup", "start_time", "min");
+  const latestSetupEnd = categoryTime("setup", "end_time", "max");
+  const doorsTime = start ? new Date(start).getTime() : null;
+  const latestServiceEnd = [categoryTime("program", "end_time", "max"), categoryTime("service", "end_time", "max")]
+    .filter((v): v is number => v != null)
+    .reduce((max, v) => (v > max ? v : max), Number.NEGATIVE_INFINITY);
+  const earliestStrike = [categoryTime("breakdown", "start_time", "min"), categoryTime("load_out", "start_time", "min")]
+    .filter((v): v is number => v != null)
+    .reduce((min, v) => (v < min ? v : min), Number.POSITIVE_INFINITY);
+
+  if (earliestLoadIn != null && earliestSetupStart != null && earliestLoadIn > earliestSetupStart) {
+    checks.push({
+      id: "vendor_arrival_after_setup",
+      severity: "warning",
+      message: "Vendor load-in is scheduled to start after setup begins. Vendors should arrive before setup starts.",
+    });
+  }
+  if (latestSetupEnd != null && doorsTime != null && latestSetupEnd > doorsTime) {
+    checks.push({
+      id: "setup_after_doors",
+      severity: "warning",
+      message: "Setup is scheduled to run past doors / guest arrival. Setup should finish before guests arrive.",
+    });
+  }
+  if (Number.isFinite(latestServiceEnd) && Number.isFinite(earliestStrike) && earliestStrike < latestServiceEnd) {
+    checks.push({
+      id: "strike_before_service_ends",
+      severity: "warning",
+      message: "Breakdown / strike is scheduled to begin before the program or service window ends.",
+    });
+  }
+
   // --- Sort all items chronologically (untimed last) -------------------------
   items.sort((a, b) => {
     const ta = a.start_time ? new Date(a.start_time).getTime() : Number.POSITIVE_INFINITY;
@@ -520,12 +695,157 @@ export async function buildItinerary(actor: Actor, eventId: string): Promise<Bui
   }
 
   return {
-    event: { id: ev.id, name: ev.name, date_time: ev.date_time, guest_count: ev.guest_count },
+    // toIso() for the same reason as the auto_doors item above --
+    // ev.date_time is a raw Date object off a timestamptz column, and this
+    // value ends up inside a packet snapshot that gets jsonb-round-tripped
+    // (always a string) and later compared against a fresh rebuild.
+    event: { id: ev.id, name: ev.name, date_time: toIso(ev.date_time), guest_count: ev.guest_count },
     generated_at: new Date().toISOString(),
     items,
     by_role,
     checks,
     statuses: ITINERARY_STATUSES,
     categories: ITINERARY_CATEGORIES,
+    approval: {
+      status: ev.itinerary_status,
+      approved_at: ev.itinerary_approved_at,
+      approved_by: ev.itinerary_approved_by,
+    },
   };
+}
+
+/**
+ * Approve the Run of Show. Owner or planner-role member only. Does not
+ * block on the deterministic checks above (blocking, uncontrolled approval
+ * is not this feature's job -- the packet's own pre-send readiness gate,
+ * Part 9, is where "not ready yet" actually blocks a send); this simply
+ * records that a human reviewed and signed off on the current schedule.
+ */
+export async function approveItinerary(actor: Actor, eventId: string): Promise<ItineraryApproval> {
+  await requireOwner(actor, eventId);
+  const row = await q1<{ itinerary_status: "draft" | "approved"; itinerary_approved_at: string | null; itinerary_approved_by: string | null }>(
+    `update events set itinerary_status = 'approved', itinerary_approved_at = now(), itinerary_approved_by = $2
+      where id = $1
+      returning itinerary_status, itinerary_approved_at, itinerary_approved_by`,
+    [eventId, actor.user.id],
+  );
+  if (!row) throw new NotFoundError("event not found");
+  return { status: row.itinerary_status, approved_at: row.itinerary_approved_at, approved_by: row.itinerary_approved_by };
+}
+
+/** Explicit manual revert to draft. Owner or planner-role member only. */
+export async function revertItineraryToDraft(actor: Actor, eventId: string): Promise<ItineraryApproval> {
+  await requireOwner(actor, eventId);
+  const row = await q1<{ itinerary_status: "draft" | "approved"; itinerary_approved_at: string | null; itinerary_approved_by: string | null }>(
+    `update events set itinerary_status = 'draft', itinerary_approved_at = null, itinerary_approved_by = null
+      where id = $1
+      returning itinerary_status, itinerary_approved_at, itinerary_approved_by`,
+    [eventId],
+  );
+  if (!row) throw new NotFoundError("event not found");
+  return { status: row.itinerary_status, approved_at: row.itinerary_approved_at, approved_by: row.itinerary_approved_by };
+}
+
+/** An "approved" label that silently survives an edit underneath it would
+ *  be misleading, so any itinerary item mutation reverts an approved Run
+ *  of Show back to draft automatically. Best-effort: never blocks the
+ *  actual mutation if this side effect fails. */
+async function revertApprovalOnEdit(eventId: string): Promise<void> {
+  await pool
+    .query(
+      `update events set itinerary_status = 'draft', itinerary_approved_at = null, itinerary_approved_by = null
+        where id = $1 and itinerary_status = 'approved'`,
+      [eventId],
+    )
+    .catch(() => undefined);
+}
+
+/**
+ * Run of Show item mutations are part of the Execution Packet's own
+ * snapshot (schedule.items), so a time/duration/location/responsible-
+ * vendor change, or an item being added or removed, must not leave an
+ * already-issued packet silently looking current (Live Event Operations
+ * phase, Part 2). Reuses the SAME checkAndMarkPacketStale() the event-
+ * record write paths already call (db/packetInvalidation.ts), via dynamic
+ * import to avoid a static circular import (that module imports FROM
+ * executionPacket.ts, which imports FROM this module).
+ */
+async function onItineraryItemMutated(eventId: string): Promise<void> {
+  await revertApprovalOnEdit(eventId);
+  try {
+    const { checkAndMarkPacketStale } = await import("./packetInvalidation.js");
+    await checkAndMarkPacketStale(eventId);
+  } catch {
+    // best-effort, never blocks the actual itinerary mutation
+  }
+}
+
+// ============================================================================
+// VENDOR ARRIVAL / DELIVERY SCHEDULE (completion phase, Part 16)
+// ============================================================================
+
+export type VendorContact = {
+  organization_id: string;
+  vendor_name: string;
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+};
+
+/**
+ * vendor_name (always resolved, from `organizations`) plus contact info
+ * (nullable, from the org's active vendor_owner member if one exists) for a
+ * set of org ids. Shared by getVendorArrivalSchedule below and
+ * executionPacket.ts's buildExecutionPacket, so there is exactly one query
+ * that resolves "who do I call for vendor X" -- previously
+ * getVendorArrivalSchedule required an active vendor_owner member just to
+ * resolve the vendor's NAME (falling back to "Vendor" otherwise), even
+ * though the org's real name is always available independent of who has
+ * joined; the LEFT JOIN here fixes that for every caller at once.
+ */
+export async function getVendorContactsForOrgs(eventId: string, orgIds: string[]): Promise<VendorContact[]> {
+  if (orgIds.length === 0) return [];
+  return q<VendorContact>(
+    `select o.id as organization_id, coalesce(o.name, 'Vendor') as vendor_name,
+            u.name as contact_name, u.email as contact_email, u.phone as contact_phone
+       from organizations o
+       left join event_members em
+         on em.event_id = $1 and em.organization_id = o.id and em.status = 'active' and em.role = 'vendor_owner'
+       left join users u on u.id = em.user_id
+      where o.id = any($2::uuid[])`,
+    [eventId, orgIds],
+  );
+}
+
+/**
+ * A unified Time/Vendor/Action/Location/Contact/Status table -- every
+ * itinerary item attributed to a specific vendor org (responsible_org_id),
+ * built from buildItinerary()'s own item list rather than a second source
+ * of truth. The readiness engine's vendors.arrival_times check and the
+ * packet's vendor roster both already read the same underlying
+ * responsible_org_id data directly from itinerary_items; this endpoint is
+ * the single place that JOINS it with vendor contact info and lays it out
+ * as one operational table. The row-shaping and audience narrowing itself
+ * live in lib/packetProjection.ts's deriveVendorSchedule() -- the exact
+ * same function the Execution Packet's own vendor_schedule projection
+ * uses, so a future Event Command Center view can reuse either without a
+ * third copy of this logic.
+ *
+ * Role-scoped the same way projectPacket() scopes the packet's own vendor
+ * roster: owner/planner/venue see every vendor's rows (they need to
+ * coordinate all of them), a vendor sees only their own org's rows (never
+ * another vendor's contact or schedule), sponsor/event_staff get none.
+ */
+export async function getVendorArrivalSchedule(actor: Actor, eventId: string): Promise<VendorScheduleRow[]> {
+  const built = await buildItinerary(actor, eventId);
+  const role = (await getEventRole(actor, eventId)) ?? "read_only";
+  const audience = audienceForRole(role);
+  const ownOrgId = actor.org?.id ?? null;
+
+  const orgIds = [...new Set(built.items.map((i) => i.responsible_org_id).filter((x): x is string => !!x))];
+  const contacts = await getVendorContactsForOrgs(eventId, orgIds);
+  const vendorNames = new Map(contacts.map((c) => [c.organization_id, c.vendor_name]));
+  const contactMap = new Map(contacts.map((c) => [c.organization_id, c]));
+
+  return deriveVendorSchedule(built.items, vendorNames, contactMap, audience, ownOrgId);
 }

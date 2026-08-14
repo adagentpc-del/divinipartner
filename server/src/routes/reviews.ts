@@ -8,6 +8,7 @@ import { Router, type Request, type Response, type NextFunction } from "express"
 import { getAuth, requireUser } from "../auth.js";
 import * as db from "../db.js";
 import * as reviews from "../db/reviews.js";
+import { getEvent } from "../db/events.js";
 
 const h =
   (fn: (req: Request, res: Response) => Promise<unknown>) =>
@@ -50,6 +51,18 @@ router.get(
     const a = await actor(req);
     if (!a.org) return res.json({ reviews: [] });
     res.json({ reviews: await reviews.listReviewsAboutOrg(a.org.id) });
+  }),
+);
+
+/** Reviews tied to one specific event (live-ops phase, Part 34) --
+ *  requires real event access (getEvent's IDOR gate), unlike the other
+ *  list routes above which are org-relationship-scoped. */
+router.get(
+  "/event/:eventId",
+  h(async (req, res) => {
+    const a = await actor(req);
+    await getEvent(a, req.params.eventId);
+    res.json({ reviews: await reviews.listReviewsForEvent(req.params.eventId) });
   }),
 );
 

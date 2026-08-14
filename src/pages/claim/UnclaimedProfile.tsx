@@ -82,7 +82,7 @@ type Banner = {
 type ApiResponse = { profile: PublicProfile; banner: Banner; noindex: boolean };
 
 const STYLES = `
-.cup{--emerald:#1E5D4A;--emerald-deep:#123c2e;--emerald-mid:#174838;--champagne:#D9CCB0;--ink:#2c2a26;--muted:#7d776c;--line:#e7e1d6;--ivory:#f7f4ee;--bg:#f3efe6;background:var(--bg);color:var(--ink);min-height:100vh;font-family:Inter,system-ui,sans-serif}
+.cup{--emerald:#1E5D4A;--emerald-deep:#123c2e;--emerald-mid:#174838;--champagne:#D9CCB0;--ink:#2c2a26;--muted:#6b6459;--line:#e7e1d6;--ivory:#f7f4ee;--bg:#f3efe6;background:var(--bg);color:var(--ink);min-height:100vh;font-family:Inter,system-ui,sans-serif}
 .cup .wrap{max-width:880px;margin:0 auto;padding:28px 22px 80px}
 .cup h1,.cup h2,.cup h3{font-family:'Cormorant Garamond',serif;color:var(--emerald-deep);margin:0}
 .cup .brandbar{display:flex;align-items:center;gap:11px;margin-bottom:22px}

@@ -436,7 +436,7 @@ export default function AuctionManager(): React.ReactElement {
 }
 
 const CSS = `
-.am { --e:#123c2e; --e2:#1E5D4A; --g:#C9A35B; --iv:#F7F4EE; --ink:#2c2a26; --mut:#7d776c; --ln:#e7e1d6;
+.am { --e:#123c2e; --e2:#1E5D4A; --g:#C9A35B; --iv:#F7F4EE; --ink:#2c2a26; --mut:#6b6459; --ln:#e7e1d6;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink);
   max-width:1100px; margin:0 auto; padding:24px 20px 64px; }
 .am-head h1 { font-size:26px; margin:0 0 4px; color:var(--e); letter-spacing:-.01em; }

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { apiGet } from '../../lib/api';
+import { useNavigate, Link } from 'react-router-dom';
+import { apiGet, apiSend } from '../../lib/api';
 
 /**
  * Bid board - the role/tier bid marketplace. Lists posted bids with the
@@ -24,6 +24,14 @@ type Bid = {
   access: { allowed: boolean; reason: string };
 };
 
+type BidQuestion = {
+  id: string;
+  question: string;
+  answer: string | null;
+  visibility: 'private' | 'public';
+  is_addendum: boolean;
+};
+
 function budget(b: Bid): string {
   const lo = b.budget_min != null ? `$${Number(b.budget_min).toLocaleString()}` : null;
   const hi = b.budget_max != null ? `$${Number(b.budget_max).toLocaleString()}` : null;
@@ -39,6 +47,33 @@ export default function BidBoard() {
   const [category, setCategory] = useState('');
   const [rushOnly, setRushOnly] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [questions, setQuestions] = useState<BidQuestion[]>([]);
+  const [newQuestion, setNewQuestion] = useState('');
+  const [qBusy, setQBusy] = useState(false);
+
+  async function loadQuestions(bidId: string) {
+    try {
+      const r = await apiGet<{ questions: BidQuestion[] }>(`/bids/${bidId}/questions`);
+      setQuestions(r.questions);
+    } catch {
+      setQuestions([]);
+    }
+  }
+
+  async function askQuestion(bidId: string) {
+    const question = newQuestion.trim();
+    if (!question) return;
+    setQBusy(true);
+    try {
+      await apiSend('POST', `/bids/${bidId}/questions`, { question });
+      setNewQuestion('');
+      await loadQuestions(bidId);
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setQBusy(false);
+    }
+  }
 
   async function load() {
     setLoading(true);
@@ -56,7 +91,7 @@ export default function BidBoard() {
       setLoading(false);
     }
   }
-  useEffect(() => { void load(); /* eslint-disable-next-line */ }, [category, rushOnly]);
+  useEffect(() => { void load();   }, [category, rushOnly]);
 
   const categories = useMemo(
     () => Array.from(new Set(rows.map((b) => b.category).filter(Boolean) as string[])).sort(),
@@ -74,6 +109,7 @@ export default function BidBoard() {
           <h1 className="bb-title">Bid Board</h1>
           <p className="bb-sub">Open event requests, gated by tier-access windows.</p>
         </div>
+        <Link to="/vendor-pipeline" className="bb-btn ghost">My pipeline</Link>
       </header>
 
       <div className="bb-legend">
@@ -116,7 +152,7 @@ export default function BidBoard() {
                 <span>{b.access.reason}</span>
               </div>
               <div className="bb-actions">
-                <button type="button" className="bb-btn ghost" onClick={() => setOpenId(b.id)}>View detail</button>
+                <button type="button" className="bb-btn ghost" onClick={() => { setOpenId(b.id); void loadQuestions(b.id); }}>View detail</button>
                 <button type="button" className="bb-btn" onClick={() => nav(`/quotes/auto/${b.id}`)}>Generate quote</button>
               </div>
             </div>
@@ -147,6 +183,33 @@ export default function BidBoard() {
               <span className="bb-access-icon" aria-hidden="true">{open.access.allowed ? '+' : 'x'}</span>
               <span>{open.access.reason}</span>
             </div>
+
+            <div className="bb-qa">
+              <h3 className="bb-qa-head">Questions</h3>
+              {questions.length === 0 ? (
+                <p className="bb-muted">No questions asked yet.</p>
+              ) : (
+                questions.map((q) => (
+                  <div key={q.id} className="bb-qrow">
+                    <p><strong>Q:</strong> {q.question} {q.is_addendum ? <span className="bb-tier rush">Addendum</span> : null}</p>
+                    <p>{q.answer ? <><strong>A:</strong> {q.answer}</> : <em>Awaiting answer.</em>}</p>
+                  </div>
+                ))
+              )}
+              {open.access.allowed ? (
+                <div className="bb-ask">
+                  <input
+                    placeholder="Ask a clarifying question"
+                    value={newQuestion}
+                    onChange={(e) => setNewQuestion(e.target.value)}
+                  />
+                  <button type="button" className="bb-btn ghost" disabled={qBusy} onClick={() => void askQuestion(open.id)}>
+                    Ask
+                  </button>
+                </div>
+              ) : null}
+            </div>
+
             <div className="bb-modal-actions">
               <button type="button" className="bb-btn" onClick={() => nav(`/quotes/auto/${open.id}`)}>Generate quote</button>
             </div>
@@ -160,13 +223,13 @@ export default function BidBoard() {
 const BB_CSS = `
 .bb {
   --dp-emerald: #123c2e; --dp-emerald-2: #1E5D4A; --dp-gold: #C9A35B;
-  --dp-ivory: #F7F4EE; --dp-ink: #2c2a26; --dp-muted: #7d776c; --dp-line: #e7e1d6;
+  --dp-ivory: #F7F4EE; --dp-ink: #2c2a26; --dp-muted: #6b6459; --dp-line: #e7e1d6;
   font-family: 'Inter', system-ui, -apple-system, sans-serif; color: var(--dp-ink);
   background: var(--dp-ivory); min-height: 100vh; padding: 28px 30px 60px; max-width: 1120px; margin: 0 auto;
 }
 .bb *, .bb *::before, .bb *::after { box-sizing: border-box; }
 .bb h1, .bb h2 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 600; margin: 0; }
-.bb-head { margin-bottom: 16px; }
+.bb-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
 .bb-kicker { font-size: 10.5px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--dp-gold); font-weight: 600; }
 .bb-title { font-size: 32px; color: var(--dp-emerald); line-height: 1.05; }
 .bb-sub { margin: 4px 0 0; font-size: 13px; color: var(--dp-muted); }
@@ -205,6 +268,12 @@ const BB_CSS = `
 .bb-btn.ghost:hover { border-color: var(--dp-emerald); background: rgba(18,60,46,.04); }
 .bb-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .bb-modal-actions { display: flex; justify-content: flex-end; margin-top: 16px; }
+.bb-qa { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--dp-line); display: flex; flex-direction: column; gap: 8px; }
+.bb-qa-head { font-size: 14px; color: var(--dp-emerald); margin: 0; }
+.bb-qrow { font-size: 12.5px; color: var(--dp-ink); display: flex; flex-direction: column; gap: 2px; }
+.bb-qrow p { margin: 0; }
+.bb-ask { display: flex; gap: 8px; }
+.bb-ask input { flex: 1 1 auto; font: inherit; padding: 7px 9px; border: 1px solid var(--dp-line); border-radius: 7px; }
 .bb-empty { border: 1px dashed var(--dp-line); border-radius: 12px; padding: 40px; background: rgba(247,244,238,.55); text-align: center; }
 .bb-empty p { margin: 0; font-size: 13px; color: var(--dp-muted); }
 .bb-modal { position: fixed; inset: 0; background: rgba(18,30,24,.5); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 50; }

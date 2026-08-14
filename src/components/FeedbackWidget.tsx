@@ -120,7 +120,7 @@ export default function FeedbackWidget({ context }: { context?: string }) {
 const FBW_CSS = `
 .fbw {
   --dp-emerald: #123c2e; --dp-emerald-2: #1E5D4A; --dp-gold: #C9A35B;
-  --dp-ivory: #F7F4EE; --dp-ink: #2c2a26; --dp-muted: #7d776c; --dp-line: #e7e1d6;
+  --dp-ivory: #F7F4EE; --dp-ink: #2c2a26; --dp-muted: #6b6459; --dp-line: #e7e1d6;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 .fbw *, .fbw *::before, .fbw *::after { box-sizing: border-box; }

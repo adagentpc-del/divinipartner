@@ -20,7 +20,12 @@ type Landing = {
     vendor_cta_enabled: boolean;
     headline: string | null;
     description: string | null;
+    hero_image_url: string | null;
+    logo_url: string | null;
   };
+  sponsors: { name: string; logo_url: string | null; link_url: string | null }[];
+  faq: { question: string; answer: string }[];
+  platform_brand: { display_name: string | null; logo_url: string | null } | null;
   tiers: { id: string; name: string; price_cents: number; sold_out: boolean }[];
   agenda: {
     id: string;
@@ -313,8 +318,19 @@ export default function PublicEventLanding() {
     <div className="el">
       <style>{CSS}</style>
       <div className="el-wrap">
-        <div className="el-brand">Divini Partners</div>
-        <div className="el-by">by Divini Group</div>
+        {landing?.platform_brand?.display_name ? (
+          <>
+            {landing.platform_brand.logo_url ? (
+              <img className="el-platform-logo" src={landing.platform_brand.logo_url} alt={landing.platform_brand.display_name} />
+            ) : null}
+            <div className="el-brand">{landing.platform_brand.display_name}</div>
+          </>
+        ) : (
+          <>
+            <div className="el-brand">Divini Partners</div>
+            <div className="el-by">by Divini Group</div>
+          </>
+        )}
 
         {payState ? (
           <div className={`el-paybanner ${payState}`}>
@@ -337,7 +353,15 @@ export default function PublicEventLanding() {
           </div>
         ) : landing ? (
           <>
+            {landing.settings.hero_image_url && (
+              <div className="el-hero">
+                <img src={landing.settings.hero_image_url} alt="" />
+              </div>
+            )}
             <div className="el-card el-header">
+              {landing.settings.logo_url && (
+                <img className="el-logo" src={landing.settings.logo_url} alt={landing.event.name ?? 'Event logo'} />
+              )}
               {landing.event.type && <div className="el-tag">{landing.event.type}</div>}
               <h1>{landing.event.name ?? 'You are invited'}</h1>
               {landing.settings.headline && <p className="el-headline">{landing.settings.headline}</p>}
@@ -387,6 +411,25 @@ export default function PublicEventLanding() {
                     </ul>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {landing.sponsors.length > 0 && (
+              <div className="el-card">
+                <h2>Sponsors</h2>
+                <div className="el-sponsors">
+                  {landing.sponsors.map((s, i) =>
+                    s.link_url ? (
+                      <a key={i} className="el-sponsor" href={s.link_url} target="_blank" rel="noopener noreferrer">
+                        {s.logo_url ? <img src={s.logo_url} alt={s.name} /> : <span className="el-sponsor-name">{s.name}</span>}
+                      </a>
+                    ) : (
+                      <span key={i} className="el-sponsor">
+                        {s.logo_url ? <img src={s.logo_url} alt={s.name} /> : <span className="el-sponsor-name">{s.name}</span>}
+                      </span>
+                    ),
+                  )}
+                </div>
               </div>
             )}
 
@@ -626,6 +669,20 @@ export default function PublicEventLanding() {
                   </div>
                 </div>
               ))}
+
+            {landing.faq.length > 0 && (
+              <div className="el-card">
+                <h2>FAQ</h2>
+                <div className="el-faq">
+                  {landing.faq.map((f, i) => (
+                    <details key={i} className="el-faqitem">
+                      <summary>{f.question}</summary>
+                      <p>{f.answer}</p>
+                    </details>
+                  ))}
+                </div>
+              </div>
+            )}
           </>
         ) : null}
       </div>
@@ -637,8 +694,9 @@ const CSS = `
 .el { min-height: 100vh; padding: 32px 16px;
   background: radial-gradient(120% 120% at 50% 0%, #10131a 0%, #0a0c11 60%); color: #e9edf4; }
 .el-wrap { width: 100%; max-width: 620px; margin: 0 auto; }
-.el-brand { font-size: 22px; font-weight: 700; letter-spacing: .3px; text-align: center; }
+.el-brand { font-size: 22px; font-weight: 700; letter-spacing: .3px; text-align: center; margin-bottom: 20px; }
 .el-by { font-size: 12px; opacity: .6; margin-bottom: 20px; text-align: center; }
+.el-platform-logo { display: block; max-width: 160px; max-height: 56px; object-fit: contain; margin: 0 auto 10px; }
 .el-card { background: #141821; border: 1px solid #232a37; border-radius: 16px; padding: 24px; margin-bottom: 16px; }
 .el-paybanner { border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; font-size: 14px; border: 1px solid; }
 .el-paybanner.confirming { background: rgba(201,163,91,.12); border-color: rgba(201,163,91,.4); color: #e7cf9c; }
@@ -700,4 +758,16 @@ const CSS = `
 .el-clear:hover { color: #b9c4d6; }
 .el-vendor-alt { margin-top: 20px; padding-top: 16px; border-top: 1px solid #232a37; }
 .el-vendor-alt .el-sub { margin-bottom: 10px; }
+.el-hero { border-radius: 16px; overflow: hidden; margin-bottom: 16px; max-height: 320px; }
+.el-hero img { width: 100%; height: 100%; max-height: 320px; object-fit: cover; display: block; }
+.el-logo { max-width: 140px; max-height: 64px; object-fit: contain; margin-bottom: 12px; display: block; }
+.el-sponsors { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; }
+.el-sponsor { display: inline-flex; align-items: center; justify-content: center; }
+.el-sponsor img { max-width: 140px; max-height: 56px; object-fit: contain; opacity: .9; }
+.el-sponsor:hover img { opacity: 1; }
+.el-sponsor-name { font-size: 14px; font-weight: 600; color: #b9c4d6; padding: 8px 14px; background: #0f131b; border: 1px solid #2a3342; border-radius: 8px; }
+.el-faq { display: grid; gap: 10px; }
+.el-faqitem { background: #0f131b; border: 1px solid #1e2634; border-radius: 10px; padding: 12px 14px; }
+.el-faqitem summary { cursor: pointer; font-size: 14.5px; font-weight: 600; }
+.el-faqitem p { margin: 10px 0 0; opacity: .85; line-height: 1.5; }
 `;

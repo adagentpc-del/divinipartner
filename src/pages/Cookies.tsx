@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { openCookiePreferences } from '../components/CookieBanner';
 
 const h2: React.CSSProperties = { fontFamily: "'Cormorant Garamond', serif", fontSize: 24, color: '#1f3d31', marginTop: 28, marginBottom: 8 };
 
@@ -11,12 +12,12 @@ export default function Cookies() {
       </div>
 
       <h1 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 36, color: '#1f3d31', marginBottom: 6 }}>Cookie Policy</h1>
-      <div style={{ color: '#6b7a72', marginBottom: 28 }}>Effective July 1, 2026</div>
+      <div style={{ color: '#5c6a63', marginBottom: 28 }}>Effective July 1, 2026</div>
 
       <p>
         This Cookie Policy explains how Divini Group LLC ("Divini Partners," "we," "us") uses cookies and
         similar technologies on the Divini Partners websites and applications. It should be read
-        together with our <Link to="/privacy" style={{ color: '#1f6f50' }}>Privacy Policy</Link>.
+        together with our <Link to="/privacy" style={{ color: '#1f6f50', textDecoration: 'underline' }}>Privacy Policy</Link>.
       </p>
 
       <h2 style={h2}>What these technologies are</h2>
@@ -44,15 +45,28 @@ export default function Cookies() {
 
       <h2 style={h2}>Your choices</h2>
       <p>
-        Use the cookie banner to accept or reject non-essential technologies. You can also block or
-        delete cookies in your browser settings, though strictly necessary items may be needed for the
-        Platform to work.
+        Use the cookie banner to accept or reject non-essential technologies when you first visit. You
+        can change that choice at any time with the button below. You can also block or delete cookies
+        in your browser settings, though strictly necessary items may be needed for the Platform to
+        work.
+      </p>
+      <p>
+        <button
+          type="button"
+          onClick={openCookiePreferences}
+          style={{
+            background: '#1f6f50', color: '#fff', border: 'none', borderRadius: 8,
+            padding: '10px 18px', fontSize: 14, fontWeight: 600, cursor: 'pointer', font: 'inherit',
+          }}
+        >
+          Manage cookie preferences
+        </button>
       </p>
 
       <h2 style={h2}>Contact</h2>
-      <p>Questions about this policy: <a href="mailto:support@divinipartners.com" style={{ color: '#1f6f50' }}>support@divinipartners.com</a>.</p>
+      <p>Questions about this policy: <a href="mailto:support@divinipartners.com" style={{ color: '#1f6f50', textDecoration: 'underline' }}>support@divinipartners.com</a>.</p>
 
-      <p style={{ marginTop: 28 }}><Link to="/" style={{ color: '#1f6f50' }}>&larr; Back to Divini Partners</Link></p>
+      <p style={{ marginTop: 28 }}><Link to="/" style={{ color: '#1f6f50', textDecoration: 'underline' }}>&larr; Back to Divini Partners</Link></p>
     </div>
   );
 }

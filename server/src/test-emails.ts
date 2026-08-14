@@ -211,13 +211,13 @@ function renderTable(rows: SuiteRow[]): string {
 async function main(): Promise<void> {
   const target = process.argv[2] || process.env.TEST_EMAIL || "adagentpc@gmail.com";
 
-  // eslint-disable-next-line no-console
+   
   console.log(`\nDivini Partners email test harness`);
-  // eslint-disable-next-line no-console
+   
   console.log(`Target recipient: ${target}\n`);
 
   if (!emailEnabled()) {
-    // eslint-disable-next-line no-console
+     
     console.log(
       [
         "================================================================",
@@ -230,22 +230,22 @@ async function main(): Promise<void> {
       ].join("\n") + "\n",
     );
   } else {
-    // eslint-disable-next-line no-console
+     
     console.log("Email is ENABLED. Sending one sample of each type for real.\n");
   }
 
   const rows = await runEmailSuite(target);
 
-  // eslint-disable-next-line no-console
+   
   console.log(renderTable(rows) + "\n");
 
   const ok = rows.filter((r) => r.outcome === "ok").length;
   const skipped = rows.filter((r) => r.outcome === "skipped").length;
   const errored = rows.filter((r) => r.outcome === "error").length;
-  // eslint-disable-next-line no-console
+   
   console.log(`Totals: ${ok} sent, ${skipped} skipped, ${errored} error(s), ${rows.length} types.\n`);
 
-  // eslint-disable-next-line no-console
+   
   console.log(
     [
       "Note: password reset and login emails are handled by Authentik (OIDC),",
@@ -270,7 +270,7 @@ const invokedDirectly =
 
 if (invokedDirectly) {
   main().catch(async (err) => {
-    // eslint-disable-next-line no-console
+     
     console.error(`[test-emails] run failed: ${err instanceof Error ? err.message : String(err)}`);
     try {
       await pool.end();

@@ -73,6 +73,40 @@ function assertAdmin(actor: Actor): void {
   }
 }
 
+export type PublicBranding = {
+  display_name: string | null;
+  logo_url: string | null;
+};
+
+function normPublicUrl(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const trimmed = v.trim();
+  return trimmed && /^https?:\/\//i.test(trimmed) ? trimmed.slice(0, 2000) : null;
+}
+
+/**
+ * The ONLY white-label accessor callable from a public, unauthenticated route.
+ * Deliberately narrow: returns just the two fields a guest-facing page needs
+ * to render (display_name, logo_url), and ONLY when the deal is active and
+ * branding_enabled is explicitly on -- never fit_score, internal_notes,
+ * contract_value, custom_fee_rate, or any other sales-pipeline field from
+ * whitelabel_records. No actor/admin check on purpose: this is the safe public
+ * subset, not a bypass of the admin-only surface above it.
+ */
+export async function getPublicBranding(organizationId: string): Promise<PublicBranding | null> {
+  const row = await q1<{ branding: unknown }>(
+    `select branding from whitelabel_records
+      where organization_id = $1 and status = 'active' and branding_enabled = true`,
+    [organizationId],
+  );
+  if (!row?.branding || typeof row.branding !== "object") return null;
+  const b = row.branding as Record<string, unknown>;
+  const display_name = typeof b.display_name === "string" ? b.display_name.trim().slice(0, 200) || null : null;
+  const logo_url = normPublicUrl(b.logo_url);
+  if (!display_name && !logo_url) return null;
+  return { display_name, logo_url };
+}
+
 /**
  * The white-label PIPELINE: every record joined to its org. Admin only.
  * Also surfaces orgs that have no record yet as implicit "not_eligible" rows so

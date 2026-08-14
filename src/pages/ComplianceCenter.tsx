@@ -62,7 +62,7 @@ export default function ComplianceCenter() {
       }
     } catch (e) { setErr((e as Error).message); } finally { setLoading(false); }
   }
-  useEffect(() => { void load(); /* eslint-disable-next-line */ }, [isAdmin]);
+  useEffect(() => { void load();   }, [isAdmin]);
 
   async function submitRequest() {
     setErr(null); setMsg(null);
@@ -209,7 +209,7 @@ export default function ComplianceCenter() {
 const CC_CSS = `
 .cc {
   --dp-emerald: #123c2e; --dp-emerald-2: #1E5D4A; --dp-gold: #C9A35B;
-  --dp-ivory: #F7F4EE; --dp-ink: #2c2a26; --dp-muted: #7d776c; --dp-line: #e7e1d6;
+  --dp-ivory: #F7F4EE; --dp-ink: #2c2a26; --dp-muted: #6b6459; --dp-line: #e7e1d6;
   font-family: 'Inter', system-ui, -apple-system, sans-serif; color: var(--dp-ink);
 }
 .cc *, .cc *::before, .cc *::after { box-sizing: border-box; }

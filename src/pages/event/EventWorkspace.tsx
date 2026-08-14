@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { apiGet } from '../../lib/api';
+import { apiGet, apiSend } from '../../lib/api';
 import OverviewTab from './tabs/OverviewTab';
 import PublicPageTab from './tabs/PublicPageTab';
 import ExhibitorsTab from './tabs/ExhibitorsTab';
 import VendorsTab from './tabs/VendorsTab';
 import BidsTab from './tabs/BidsTab';
+import ProcurementPipelineTab from './tabs/ProcurementPipelineTab';
 import QuotesTab from './tabs/QuotesTab';
+import InstantBookTab from './tabs/InstantBookTab';
+import BeoTab from './tabs/BeoTab';
 import MessagesTab from './tabs/MessagesTab';
 import DocumentsTab from './tabs/DocumentsTab';
 import NotesTab from './tabs/NotesTab';
@@ -23,13 +26,27 @@ import PaymentsTab from './tabs/PaymentsTab';
 import ChangeOrdersTab from './tabs/ChangeOrdersTab';
 import ReviewsTab from './tabs/ReviewsTab';
 import EventReadinessPanel from '../EventReadinessPanel';
+import EventWarRoom from '../EventWarRoom';
+import ExecutionReadinessTab from './tabs/ExecutionReadinessTab';
+import EventCommandCenterTab from './tabs/EventCommandCenterTab';
+import IncidentsTab from './tabs/IncidentsTab';
+import EventInventoryTab from './tabs/EventInventoryTab';
+import SponsorActivationTab from './tabs/SponsorActivationTab';
+import CloseoutTab from './tabs/CloseoutTab';
+import ReconciliationTab from './tabs/ReconciliationTab';
+import PostEventReportTab from './tabs/PostEventReportTab';
 
 /**
- * Per-event command center. The tab bar covers every blueprint 13.1 tab.
- * Phase 3 renders Overview, Vendors, Bids, Quotes, Messages, Documents and
- * Notes in full. The rest render a graceful placeholder so later phases
- * (Phase 6: Guest List / Seating / Floorplans / Timeline / Tasks / Itinerary;
- * Phase 5: Invoices / Payments / Change Orders) can fill them in.
+ * Divini Event Command (docs/DIVINI_DETERMINISTIC_TOOLS_SPEC.md, build-order
+ * slice 10): the per-event workspace that coordinates a booked event in one
+ * place. The tab bar covers every blueprint 13.1 tab, plus a "Risk & Alerts"
+ * tab (the pre-existing Event War Room, now embedded here rather than living
+ * only as a separate page -- spec section 18's "advanced Event Command,"
+ * Pro-gated server-side). Phase 3 renders Overview, Vendors, Bids, Quotes,
+ * Messages, Documents and Notes in full. The rest render a graceful
+ * placeholder so later phases (Phase 6: Guest List / Seating / Floorplans /
+ * Timeline / Tasks / Itinerary; Phase 5: Invoices / Payments / Change
+ * Orders) can fill them in.
  */
 
 type Tab = { key: string; label: string; element: React.ReactNode };
@@ -52,6 +69,23 @@ export default function EventWorkspace() {
   const [active, setActive] = useState('overview');
   const [head, setHead] = useState<EventHead | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [dupBusy, setDupBusy] = useState(false);
+
+  // Duplicate / rebook (Part 39): starts a fresh event pre-filled from
+  // this one's reusable config, then jumps to the new event's own
+  // workspace so the planner can fill in the new date/timing.
+  async function duplicateEvent() {
+    setDupBusy(true);
+    setErr(null);
+    try {
+      const r = await apiSend<{ event: EventHead }>('POST', `/events/${id}/duplicate`, {});
+      nav(`/events/${r.event.id}`);
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setDupBusy(false);
+    }
+  }
 
   useEffect(() => {
     apiGet<{ event: EventHead }>(`/events/${id}`)
@@ -64,10 +98,22 @@ export default function EventWorkspace() {
     { key: 'public_page', label: 'Public Page', element: <PublicPageTab eventId={id} /> },
     { key: 'exhibitors', label: 'Exhibitors', element: <ExhibitorsTab eventId={id} /> },
     { key: 'readiness', label: 'Readiness', element: <EventReadinessPanel eventId={id} /> },
+    { key: 'execution_readiness', label: 'Event Readiness', element: <ExecutionReadinessTab eventId={id} onNavigateTab={setActive} /> },
+    { key: 'event_command_center', label: 'Command Center', element: <EventCommandCenterTab eventId={id} /> },
+    { key: 'incidents', label: 'Incidents', element: <IncidentsTab eventId={id} /> },
+    { key: 'event_inventory', label: 'Event Inventory', element: <EventInventoryTab eventId={id} /> },
+    { key: 'sponsor_activation', label: 'Sponsor Activation', element: <SponsorActivationTab eventId={id} /> },
+    { key: 'closeout', label: 'Closeout', element: <CloseoutTab eventId={id} /> },
+    { key: 'reconciliation', label: 'Reconciliation', element: <ReconciliationTab eventId={id} /> },
+    { key: 'post_event_report', label: 'Post-Event Report', element: <PostEventReportTab eventId={id} /> },
+    { key: 'risk_alerts', label: 'Risk & Alerts', element: <EventWarRoom eventId={id} /> },
     { key: 'venue', label: 'Venue', element: <VenueTab eventId={id} /> },
     { key: 'vendors', label: 'Vendors', element: <VendorsTab eventId={id} /> },
+    { key: 'pipeline', label: 'Pipeline', element: <ProcurementPipelineTab eventId={id} /> },
     { key: 'bids', label: 'Bids', element: <BidsTab eventId={id} /> },
     { key: 'quotes', label: 'Quotes', element: <QuotesTab eventId={id} /> },
+    { key: 'instant_book', label: 'Instant Book', element: <InstantBookTab eventId={id} /> },
+    { key: 'beo', label: 'BEO', element: <BeoTab eventId={id} /> },
     { key: 'inventory', label: 'Inventory', element: <InventoryTab eventId={id} /> },
     { key: 'guest_list', label: 'Guest List', element: <GuestListTab eventId={id} /> },
     { key: 'seating_chart', label: 'Seating Chart', element: <SeatingChartTab eventId={id} /> },
@@ -94,10 +140,13 @@ export default function EventWorkspace() {
       <header className="ew-top">
         <button type="button" className="ew-back" onClick={() => nav('/events')}>Back to events</button>
         <div className="ew-titlewrap">
-          <span className="ew-kicker">Event workspace</span>
+          <span className="ew-kicker">Divini Event Command</span>
           <h1 className="ew-title">{head?.name ?? (err ? 'Event' : 'Loading...')}</h1>
         </div>
         {head?.status ? <span className="ew-statuspill">{head.status.replace(/_/g, ' ')}</span> : null}
+        <button type="button" className="ew-btn ghost" onClick={() => void duplicateEvent()} disabled={dupBusy}>
+          {dupBusy ? 'Duplicating...' : 'Duplicate / Rebook'}
+        </button>
         <button type="button" className="ew-btn ghost" onClick={() => nav('/bids')}>
           Bid board and auto-quote
         </button>
@@ -132,7 +181,7 @@ export default function EventWorkspace() {
 const EW_CSS = `
 .ew {
   --dp-emerald: #123c2e; --dp-emerald-2: #1E5D4A; --dp-gold: #C9A35B;
-  --dp-ivory: #F7F4EE; --dp-ink: #2c2a26; --dp-muted: #7d776c; --dp-line: #e7e1d6;
+  --dp-ivory: #F7F4EE; --dp-ink: #2c2a26; --dp-muted: #6b6459; --dp-line: #e7e1d6;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   color: var(--dp-ink); background: var(--dp-ivory); min-height: 100vh;
   padding: 24px 30px 60px; max-width: 1180px; margin: 0 auto;

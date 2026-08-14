@@ -107,10 +107,10 @@ const CSS = `
 .ag-wrap { max-width: 680px; margin: 0 auto; }
 .ag-brand { font-family: Georgia, serif; font-size: 18px; color: #123c2e; font-weight: 700; margin-bottom: 18px; }
 .ag-title { font-family: Georgia, serif; font-size: 30px; color: #123c2e; margin: 0 0 4px; }
-.ag-date { color: #7d776c; margin: 0 0 22px; }
+.ag-date { color: #6b6459; margin: 0 0 22px; }
 .ag-card { background: #fff; border: 1px solid #e7e1d6; border-radius: 12px; padding: 22px; }
-.ag-sub { color: #7d776c; margin: 0; }
-.ag-loading { color: #7d776c; }
+.ag-sub { color: #6b6459; margin: 0; }
+.ag-loading { color: #6b6459; }
 .ag-group { margin-bottom: 22px; }
 .ag-track { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: #1E5D4A; margin: 0 0 8px; }
 .ag-item { display: grid; grid-template-columns: 120px 1fr; gap: 14px; background: #fff; border: 1px solid #ece5d8; border-radius: 12px; padding: 13px 16px; margin-bottom: 8px; }

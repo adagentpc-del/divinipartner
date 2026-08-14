@@ -8,7 +8,8 @@ import { Router, type Request, type Response, type NextFunction } from "express"
 import { getAuth, requireUser } from "../auth.js";
 import * as db from "../db.js";
 import * as quotes from "../db/quotes.js";
-import { autoCloseQuote } from "../db/lifecycle.js";
+import { awardQuote, getContractForQuote, listContractMilestones } from "../db/awards.js";
+import { refreshRelationshipGraphForQuote } from "../db/lifecycle.js";
 import { notify } from "../lib/notify.js";
 import { recipients } from "../lib/recipients.js";
 import { renderQuotePdf } from "../lib/pdf.js";
@@ -109,6 +110,15 @@ router.patch(
   }),
 );
 
+/** Prior versions of a quote (the terms that existed before each revision). */
+router.get(
+  "/:id/versions",
+  h(async (req, res) => {
+    const a = await actor(req);
+    res.json({ versions: await quotes.listQuoteVersions(a, req.params.id) });
+  }),
+);
+
 /** Submit a generated/revised quote. */
 router.post(
   "/:id/submit",
@@ -136,19 +146,42 @@ router.post(
   h(async (req, res) => {
     const a = await actor(req);
     await quotes.authorizeQuoteOwner(a, req.params.id);
-    // Terminal event: accepting a quote wins the deal. Auto-close idempotently
-    // (sets 'accepted' + stamps closed_at only on first close) and incrementally
-    // refresh the relationship graph for the parties. Re-firing is a no-op.
-    await autoCloseQuote(req.params.id);
+    // Terminal event: accepting a quote is the AWARD. awardQuote() is
+    // idempotent (a second call on an already-awarded quote is a no-op) and
+    // atomically closes competing quotes on the same bid, marks the bid
+    // awarded, promotes the winning vendor's event_vendors row so it
+    // connects into the live-ops event membership model, demotes losing
+    // bidders so they stop retaining live event access, and creates the
+    // real contract + payment-milestone schedule.
+    const award = await awardQuote(a, req.params.id, { override: !!req.body?.override });
+    if (award.firstAward) await refreshRelationshipGraphForQuote(req.params.id).catch(() => undefined);
     const quote = await quotes.getQuote(req.params.id);
     // A decision notifies the vendor org that submitted the quote, not the
-    // client who decided. Best-effort.
+    // client who decided. Best-effort. Declined competitors get their own
+    // notification too (award.declinedQuoteIds), not a silent status flip.
     const to = recipients.excluding(
       await recipients.quoteVendorEmails(quote.id).catch(() => [] as string[]),
       a.user.email,
     );
     if (to.length) await notify.quoteDecision(to, "accepted", { quoteId: quote.id }).catch(() => undefined);
-    res.json({ quote });
+    for (const declinedId of award.declinedQuoteIds) {
+      const declinedTo = await recipients.quoteVendorEmails(declinedId).catch(() => [] as string[]);
+      if (declinedTo.length)
+        await notify.quoteDecision(declinedTo, "declined", { quoteId: declinedId }).catch(() => undefined);
+    }
+    res.json({ quote, contract: award.contract });
+  }),
+);
+
+/** The contract created by awarding this quote, if any. */
+router.get(
+  "/:id/contract",
+  h(async (req, res) => {
+    const a = await actor(req);
+    await quotes.authorizeQuoteAccess(a, req.params.id);
+    const contract = await getContractForQuote(req.params.id);
+    const milestones = contract ? await listContractMilestones(contract.id) : [];
+    res.json({ contract, milestones });
   }),
 );
 
@@ -231,6 +264,39 @@ router.post(
         .messagePosted(to, name, { quoteId: req.params.id, requestRevision: message.request_revision })
         .catch(() => undefined);
     res.status(201).json({ message });
+  }),
+);
+
+/** Propose a structured commercial counteroffer on a quote. */
+router.post(
+  "/:id/counteroffer",
+  h(async (req, res) => {
+    const a = await actor(req);
+    const amount = Number(req.body?.amount);
+    if (!(amount > 0)) return res.status(400).json({ error: "a positive amount is required" });
+    const message = await quotes.proposeCounteroffer(a, req.params.id, amount, req.body?.note ?? null);
+    const eventId = (await recipients.quoteEventId(req.params.id).catch(() => null)) ?? "";
+    const name = eventId ? ((await recipients.eventName(eventId).catch(() => null)) ?? "your event") : "your event";
+    const to =
+      message.author_side === "client"
+        ? recipients.excluding(await recipients.quoteVendorEmails(req.params.id).catch(() => [] as string[]), a.user.email)
+        : recipients.excluding(
+            eventId ? await recipients.eventOwnerEmails(eventId).catch(() => [] as string[]) : [],
+            a.user.email,
+          );
+    if (to.length) await notify.messagePosted(to, name, { quoteId: req.params.id, requestRevision: false }).catch(() => undefined);
+    res.status(201).json({ message });
+  }),
+);
+
+/** Accept or decline a still-open counteroffer. Accept revises the quote's terms. */
+router.post(
+  "/:id/counteroffer/:messageId/respond",
+  h(async (req, res) => {
+    const a = await actor(req);
+    const action = req.body?.action === "decline" ? "decline" : "accept";
+    const quote = await quotes.respondToCounteroffer(a, req.params.id, req.params.messageId, action);
+    res.json({ quote });
   }),
 );
 

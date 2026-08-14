@@ -491,7 +491,7 @@ function ListEditor({
 }
 
 const CSS = `
-.dpob{--e:#123c2e;--e2:#1E5D4A;--gold:#C9A35B;--ivory:#F7F4EE;--ink:#2c2a26;--muted:#7d776c;--line:#e7e1d6;
+.dpob{--e:#123c2e;--e2:#1E5D4A;--gold:#C9A35B;--ivory:#F7F4EE;--ink:#2c2a26;--muted:#6b6459;--line:#e7e1d6;
   min-height:100vh;background:var(--ivory);color:var(--ink);font-family:Inter,system-ui,sans-serif;}
 .dpob *{box-sizing:border-box;}
 .dpob-top{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;background:#fff;border-bottom:1px solid var(--line);}

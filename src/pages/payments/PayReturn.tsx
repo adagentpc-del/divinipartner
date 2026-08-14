@@ -122,7 +122,7 @@ const CSS = `
 .dppr-card{background:#fff;border-radius:20px;max-width:460px;width:100%;padding:44px 36px;text-align:center;box-shadow:0 40px 80px -36px rgba(0,0,0,.5)}
 .dppr-mark{width:46px;height:46px;border-radius:11px;background:#123c2e;color:#C9A35B;display:grid;place-items:center;font-family:'Cormorant Garamond',Georgia,serif;font-weight:700;font-size:26px;margin:0 auto 22px}
 .dppr-card h1{font-family:'Cormorant Garamond',Georgia,serif;font-size:28px;color:#123c2e;margin:6px 0 8px;font-weight:600}
-.dppr-card p{font-size:14.5px;color:#7d776c;line-height:1.6;margin:0}
+.dppr-card p{font-size:14.5px;color:#6b6459;line-height:1.6;margin:0}
 .dppr-spin{width:38px;height:38px;border-radius:50%;border:3px solid #e7e1d6;border-top-color:#1E5D4A;margin:0 auto 18px;animation:dpprspin .9s linear infinite}
 @keyframes dpprspin{to{transform:rotate(360deg)}}
 .dppr-check{width:52px;height:52px;border-radius:50%;background:#e7f3ec;color:#1f7a4d;display:grid;place-items:center;font-size:26px;margin:0 auto 16px}
@@ -137,5 +137,5 @@ const CSS = `
 .dppr-v2row:last-of-type{border-bottom:0}
 .dppr-v2row strong{font-variant-numeric:tabular-nums}
 .dppr-v2total{font-weight:700;color:#123c2e;border-top:2px solid #123c2e;border-bottom:0;margin-top:4px;padding-top:10px}
-.dppr-v2note{font-size:11px;color:#7d776c;line-height:1.5;margin:10px 0 0}
+.dppr-v2note{font-size:11px;color:#6b6459;line-height:1.5;margin:10px 0 0}
 `;

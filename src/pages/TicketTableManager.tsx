@@ -100,7 +100,7 @@ export default function TicketTableManager() {
   useEffect(() => {
     if (eventId) void loadPackages(eventId);
     else setPackages([]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [eventId]);
 
   function startCreate() {

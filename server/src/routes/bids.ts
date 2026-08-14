@@ -11,7 +11,7 @@ import * as db from "../db.js";
 import * as bids from "../db/bids.js";
 import * as quotes from "../db/quotes.js";
 import * as bidShares from "../db/bidShares.js";
-import { getEvent } from "../db/events.js";
+import { canManageEvent } from "../db/events.js";
 import { notify } from "../lib/notify.js";
 import { recipients } from "../lib/recipients.js";
 
@@ -64,14 +64,18 @@ router.get(
     const bid = await bids.getBid(req.params.id);
     const access = bids.canVendorAccessBid(bid, a.org?.tier ?? null, new Date(), a.org?.id ?? null);
     // Don't leak a private/invite-only RFP's budget + scope to a vendor who is
-    // not permitted to see it. When vendor access is denied, only the event side
-    // (owner/planner/assigned participant) may view the full bid; everyone else
-    // gets 403 instead of the serialized row.
+    // not permitted to see it. When vendor access is denied, only the actual
+    // event owner/planner may still view the full bid -- NOT merely "any
+    // actor with event access" (getEvent()/actorCanSee() also returns true
+    // for a vendor attached to the event via a completely different,
+    // unrelated bid on the same event, which would otherwise leak a private
+    // bid's budget/scope to a vendor who was never invited to it; found via
+    // live adversarial testing, front-half security pass 2026-08-10).
+    // canManageEvent() is owner-or-planner only, matching the comment's
+    // original intent.
     if (!access.allowed) {
-      try {
-        if (bid.event_id) await getEvent(a, bid.event_id);
-        else throw new Error("no event");
-      } catch {
+      const manages = bid.event_id ? await canManageEvent(a, bid.event_id).catch(() => false) : false;
+      if (!manages) {
         return res.status(403).json({ error: access.reason || "no access to this bid" });
       }
     }
@@ -115,6 +119,59 @@ router.post(
     const name = (await recipients.eventName(bid.event_id).catch(() => null)) ?? "an event";
     if (to.length) await notify.bidInvited(to, name, { bidId: bid.id }).catch(() => undefined);
     res.json({ bid });
+  }),
+);
+
+/** Questions on a bid (owner sees all; vendor sees public + its own private). */
+router.get(
+  "/:id/questions",
+  h(async (req, res) => {
+    const a = await actor(req);
+    res.json({ questions: await bids.listBidQuestions(a, req.params.id) });
+  }),
+);
+
+/** A vendor with bid access asks a clarifying question. */
+router.post(
+  "/:id/questions",
+  h(async (req, res) => {
+    const a = await actor(req);
+    const question = await bids.askBidQuestion(a, req.params.id, req.body?.question ?? "");
+    const bid = await bids.getBid(req.params.id);
+    const to = recipients.excluding(
+      await recipients.eventOwnerEmails(bid.event_id).catch(() => [] as string[]),
+      a.user.email,
+    );
+    if (to.length) await notify.bidInvited(to, "a bid question was asked", { bidId: bid.id }).catch(() => undefined);
+    res.status(201).json({ question });
+  }),
+);
+
+/** Owner answers a question; addendum=true notifies every currently-accessible bidder. */
+router.post(
+  "/:id/questions/:questionId/answer",
+  h(async (req, res) => {
+    const a = await actor(req);
+    const addendum = !!req.body?.addendum;
+    const question = await bids.answerBidQuestion(
+      a,
+      req.params.id,
+      req.params.questionId,
+      req.body?.answer ?? "",
+      addendum,
+    );
+    if (addendum) {
+      // Addendum: every org that has ever engaged with this bid (asked a
+      // question or submitted a quote) gets notified the requirements
+      // changed, not just the one vendor who originally asked -- this is
+      // what keeps two bidders from silently working off different scope.
+      const orgIds = await bids.addendumAudienceOrgIds(req.params.id);
+      const to = await recipients.orgEmails(orgIds).catch(() => [] as string[]);
+      const bid = await bids.getBid(req.params.id);
+      const name = (await recipients.eventName(bid.event_id).catch(() => null)) ?? "an event";
+      if (to.length) await notify.bidInvited(to, `Addendum issued for ${name}`, { bidId: bid.id }).catch(() => undefined);
+    }
+    res.json({ question });
   }),
 );
 

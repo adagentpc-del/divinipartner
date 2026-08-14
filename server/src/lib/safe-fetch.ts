@@ -101,6 +101,20 @@ function validateUrl(raw: string): URL | null {
 export interface SafeFetchOptions {
   signal?: AbortSignal;
   headers?: Record<string, string>;
+  method?: string;
+  body?: string;
+}
+
+/**
+ * True when a URL is safe to register or store for later fetching (only
+ * http/https, host is not a literal loopback/private/link-local/metadata
+ * address or localhost-style name). Use this for registration-time
+ * validation of a user-supplied URL that will be fetched later (e.g. a
+ * webhook endpoint); still route the actual delivery through safeFetch so
+ * redirects are revalidated at delivery time too.
+ */
+export function isSafeUrl(rawUrl: string): boolean {
+  return validateUrl(rawUrl) !== null;
 }
 
 /**
@@ -108,7 +122,8 @@ export interface SafeFetchOptions {
  * redirect target against the private-network rules, following at most 2 hops
  * manually (redirect:"manual"). Returns the final Response, or null on any
  * rejection or error. Timeouts and body-size caps remain the caller's job
- * (pass an AbortSignal; this preserves it across hops).
+ * (pass an AbortSignal; this preserves it across hops). Defaults to GET;
+ * pass method/body for other verbs (e.g. POSTing a webhook payload).
  */
 export async function safeFetch(rawUrl: string, opts: SafeFetchOptions = {}): Promise<Response | null> {
   let current = validateUrl(rawUrl);
@@ -117,10 +132,11 @@ export async function safeFetch(rawUrl: string, opts: SafeFetchOptions = {}): Pr
   try {
     for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
       const res = await fetch(current.toString(), {
-        method: "GET",
+        method: opts.method ?? "GET",
         redirect: "manual",
         signal: opts.signal,
         headers: opts.headers,
+        body: hop === 0 ? opts.body : undefined,
       });
       const status = res.status;
       if (status >= 300 && status < 400) {

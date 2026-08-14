@@ -16,6 +16,7 @@ Source: Divini-Go-Live-Runbook.md, Divini-Security-and-iOS-Hardening-Summary.md,
 - The platform's intended posture is that it does NOT hold funds. Funds settle to the vendor (via Stripe Connect) and the platform takes only an application fee.
 - The "we do not hold funds" language in Terms/policies must match the actual Stripe Connect setup before enabling real money.
 - The on-top fee is presented transparently to the client; the vendor receives the full quote. Anti-circumvention / non-circumvention policy backs the leakage-recovery mechanics.
+- Two Connect account shapes exist as of 2026-08-03 (see `22_APIS_AND_INTEGRATIONS.md`): the original v1 Express/destination-charge flow (charge created on the platform's own account, then auto-split out to the vendor) and a new Accounts v2 direct-charge flow (`server/src/lib/stripeAccounts.ts`, the connected/vendor account IS the merchant of record for the charge, nothing is ever transferred out because it never belonged to the platform). The v2 shape is the more literally accurate match for "we do not hold funds" -- flag both shapes for counsel when T7 (`12_TASK_QUEUE.md`) is unblocked, since the Terms language should describe whichever is actually in use (or both, if v1-onboarded vendors are grandfathered rather than migrated).
 
 ## Attorney-review flags (must clear before real money)
 
@@ -28,7 +29,7 @@ Source: Divini-Go-Live-Runbook.md, Divini-Security-and-iOS-Hardening-Summary.md,
 
 ## App Store / iOS compliance
 
-- Account deletion (Apple Guideline 5.1.1(v)): in-app account deletion must be reachable (not deactivation, not "email us"). The deletion UI lives in the hosted web app and must be reachable from the native shell; verify end-to-end and note the path for App Review.
+- Account deletion (Apple Guideline 5.1.1(v)): RESOLVED 2026-08-03. In-app account deletion is built and reachable at Profile -> Account -> "Delete account" (password re-confirmed), calling `POST /account/delete`. Anonymizes + deactivates rather than hard-deletes (financial/audit records persist); live-verified end to end including the UI. Since the deletion UI lives in the hosted web app that the native Capacitor shell wraps, it is reachable from the native shell automatically -- no separate native-only implementation needed. Note this path for App Review. See `AI_PROJECT_OS/15_KNOWN_ISSUES.md` and `AI_PROJECT_OS/53_SOC2_ISO27001_AUDIT.md` for the full technical detail.
 - Payments (IAP vs external): Apple requires IAP for digital goods/subscriptions consumed in-app, but B2B marketplace transactions for real-world services are generally not required to use IAP (case-by-case). Items to classify and document rationale for in App Review notes: paid placements, listing fees, subscriptions, the Featured Vendor $49/mo upgrade. If borderline, gate paid flows behind the web app; no deceptive external-purchase links.
 - Privacy manifest: `mobile/PrivacyInfo.xcprivacy` declares data types (name, email, payment info, user content, identifiers, usage data) all with `NSPrivacyTracking = false`, and required-reason APIs (UserDefaults CA92.1, File timestamp C617.1). The App Store Connect privacy nutrition label must match exactly.
 - ATS: stays strict (no `NSAllowsArbitraryLoads`); both sites are HTTPS-only, `cleartext false`.
@@ -38,8 +39,16 @@ Source: Divini-Go-Live-Runbook.md, Divini-Security-and-iOS-Hardening-Summary.md,
 - Sensitive vendor documents: recommended S3 + encryption at rest + bucket versioning + backups before scaling. Encryption key backed up separately. (See `51_SECURITY.md`, OBJECT-STORAGE.md.)
 - Email domain authentication: SPF/DKIM/DMARC for the `EMAIL_FROM` domain.
 
+## SOC 2 / ISO 27001
+
+- `AI_PROJECT_OS/53_SOC2_ISO27001_AUDIT.md`: a code-level technical-controls audit mapped to SOC 2 Trust Services Criteria and ISO 27001 Annex A (2026-08-03, updated repeatedly the same day as MFA, the automated-backup mechanism, session revocation, and structured logging/monitoring were all built). Every code-fixable gap the audit found is now closed; what remains is purely operator action (install the backup cron job, point the error-monitoring webhook at a real destination) plus two lower-severity items (encryption at rest is opt-in rather than default, DB TLS is operator-configured rather than enforced).
+- `compliance/policies/` (repo root): DRAFT policy documents an auditor would expect -- Information Security Policy, Access Control Policy, Data Retention & Deletion Policy, Incident Response Plan, and a Subprocessor list. Every document is explicitly marked DRAFT, unsigned, and not yet effective; each needs a named owner and, for the retention/deletion policy, counsel review before it can be relied on. See `compliance/policies/README.md` for what remains before these are real.
+- Formal SOC 2 / ISO 27001 certification requires, beyond this repo's contents: a named ISMS owner, organizational policy adoption (board/exec sign-off on the drafts above), employee security training, vendor risk assessments with the subprocessors listed, a tested incident response process, and an independent third-party audit (SOC 2) or accredited certification body (ISO 27001). None of that exists yet; this repo only prepares the technical and documentary groundwork for it.
+
 ## Status
 
 - Legal pages exist in product. Counsel review is outstanding (Task T8). Real money (Stripe) is intentionally deferred until the above clears.
+- Account deletion (Apple 5.1.1(v)) is built; see above.
+- SOC 2 / ISO 27001 technical audit and draft policies exist (see above); formal certification work has not started.
 
-> TODO(owner): Record completion of counsel review and any redlines, and confirm the final governing-law / arbitration terms once signed off.
+> TODO(owner): Record completion of counsel review and any redlines, and confirm the final governing-law / arbitration terms once signed off. Assign a named ISMS owner and review/approve the drafts in `compliance/policies/`.

@@ -99,12 +99,13 @@ export default function VendorScorecards() {
 
       <header className="vsc-head">
         <span className="vsc-kicker">Vendor Intelligence</span>
-        <h1 className="vsc-title">Vendor Scorecard</h1>
+        <h1 className="vsc-title">Divini Vendor Scorecard</h1>
         <p className="vsc-sub">
           A composite view of vendor performance: the readiness score plus response
           time, quote turnaround, win rate, on-time delivery, change orders, client
-          satisfaction, issues, rework, and revenue generated. Fields with no data
-          yet are shown honestly rather than guessed.
+          satisfaction, issues, rework, and revenue generated (blended across
+          marketplace quotes and Divini Proposal Studio proposals). Fields with no
+          data yet are shown honestly rather than guessed.
         </p>
       </header>
 
@@ -192,7 +193,7 @@ export default function VendorScorecards() {
 const CSS = `
 .vsc {
   --vemerald: #1E5D4A; --vemerald-deep: #123c2e; --vgold: #C9A35B;
-  --vivory: #f7f4ee; --vink: #2c2a26; --vmuted: #7d776c; --vline: #e7e1d6;
+  --vivory: #f7f4ee; --vink: #2c2a26; --vmuted: #6b6459; --vline: #e7e1d6;
   max-width: 1000px; margin: 0 auto; padding: 28px 24px 56px;
   font-family: Inter, system-ui, sans-serif; color: var(--vink);
 }

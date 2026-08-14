@@ -250,7 +250,7 @@ async function attachIntelligence(
       for (const r of rows) healthByOrg.set(r.org_id, num(r.score));
     }
   } catch (err) {
-    // eslint-disable-next-line no-console
+     
     console.error("attachIntelligence failed (non-fatal):", err);
   }
 
@@ -351,7 +351,7 @@ router.get(
         matches,
       );
     } catch (err) {
-      // eslint-disable-next-line no-console
+       
       console.error("persistPartnershipMatches failed (non-fatal):", err);
     }
 

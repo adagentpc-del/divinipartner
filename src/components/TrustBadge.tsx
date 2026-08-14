@@ -39,7 +39,7 @@ export default function TrustBadge({
 }
 
 const CSS = `
-.tb { --e:#123c2e; --g:#C9A35B; --mut:#7d776c; --ln:#e7e1d6;
+.tb { --e:#123c2e; --g:#C9A35B; --mut:#6b6459; --ln:#e7e1d6;
   display:inline-flex; align-items:center; gap:7px; font-family:'Inter',system-ui,sans-serif;
   border:1px solid var(--ln); border-radius:999px; background:#fff; padding:4px 11px; line-height:1; }
 .tb-sm { padding:3px 9px; gap:5px; }

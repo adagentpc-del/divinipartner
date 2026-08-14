@@ -1,0 +1,120 @@
+# Access Control Policy (DRAFT)
+
+**Status:** DRAFT -- not approved, not in effect.
+**Maps to:** SOC 2 CC6.1-CC6.3; ISO/IEC 27001:2022 A.5.15-A.5.18, A.8.2-A.8.5.
+**Version:** 0.1 (draft) **Effective date:** _not yet effective_
+**Owner:** _unassigned -- fill in before approval_
+**Review cadence:** _to be set (recommend annual, or on any access-model change)_
+
+## 1. Purpose
+
+Defines who gets access to what within Divini Partners -- both customer/
+partner-facing access (organization roles) and internal/administrative
+access (the platform admin allowlist and database/infrastructure access) --
+and how access is granted, reviewed, and revoked.
+
+## 2. Customer/partner-facing access model (as implemented)
+
+- Every user authenticates with a verified email + password (native auth,
+  scrypt-hashed, `server/src/lib/passwordHash.ts`). Email verification is
+  required before first login.
+- A user belongs to one or more organizations via
+  `organization_memberships`, with one "active" organization at a time
+  (`users.organization_id`). Data access is organization-scoped throughout
+  the application: a user sees their own organization's quotes, invoices,
+  events, and profile data, not other organizations' data, unless they are
+  a platform admin.
+- Roles (venue, vendor, supplier, installer, planner, client, sponsor,
+  nonprofit, donor, volunteer, exhibitor, viewer, billing) determine which
+  dashboards and features are available. Roles are self-selected at
+  registration and are a product/UX construct, not a security boundary by
+  themselves -- the organization-scoping described above is the actual
+  data-isolation control.
+- Team seats (`team_seats`, keyed by email within an organization) let an
+  organization add additional members without those members owning the
+  organization itself.
+
+## 3. Administrative / privileged access model (as implemented)
+
+- Platform admin authority is granted ONLY via the `ADMIN_ALLOWED_EMAILS`
+  environment variable on the server -- a fixed allowlist of email
+  addresses, evaluated server-side (`server/src/auth.ts`'s `getAuth()`),
+  never trusted from client input. There is no in-product "make this user
+  an admin" button; granting admin access requires editing server
+  configuration and restarting the process.
+- **MFA is REQUIRED for admin access** (built 2026-08-03; see
+  `AI_PROJECT_OS/53_SOC2_ISO27001_AUDIT.md`). `requireAdmin`
+  (`server/src/auth.ts`) checks TOTP enrollment on every admin action and
+  refuses with `mfa_required_for_admin` until the account has enrolled at
+  Profile -> Account -> Two-factor authentication. Logging in itself is not
+  blocked for an unenrolled admin (to avoid a lockout with no path to
+  enroll), but no actual admin action is reachable without it.
+- Database/infrastructure access (direct Postgres access, server SSH,
+  hosting-provider console access) is outside the application's own access
+  control and is currently managed manually by whoever operates the
+  DigitalOcean droplet described in `AI_PROJECT_OS/23_DEPLOYMENT.md`.
+  _This draft cannot state a formal review cadence for infra access because
+  none is documented anywhere in the repository as of 2026-08-03 -- the
+  organization needs to define one._
+
+## 4. Access provisioning and de-provisioning
+
+- **Provisioning (customer/partner):** self-service via registration +
+  email verification. No manual approval step.
+- **Provisioning (admin):** manual -- add an email to
+  `ADMIN_ALLOWED_EMAILS` and restart the server. _Recommend the
+  organization document who is authorized to make this change and require
+  a second approver, since it is currently a single-person action with no
+  in-app record of who made it or when (the change itself is not
+  audit-logged since it happens outside the application)._
+- **De-provisioning (customer/partner):** a user can self-service delete
+  their own account (Profile -> Account -> "Delete account", built
+  2026-08-03; requires password re-confirmation). This anonymizes and
+  deactivates the account rather than hard-deleting it -- see
+  `data-retention-and-deletion-policy.md` for why. An organization admin
+  can also remove a team member's seat (`team_seats`).
+- **De-provisioning (admin):** remove the email from
+  `ADMIN_ALLOWED_EMAILS` and restart. Same "no in-app record" caveat as
+  provisioning above applies to removal.
+
+## 5. Access review
+
+_No periodic access review process exists today._ The organization should
+define one -- at minimum, a scheduled (e.g. quarterly) review of the
+`ADMIN_ALLOWED_EMAILS` list to confirm every entry is still an authorized,
+current employee/operator, since this list is the single highest-privilege
+access point in the system.
+
+## 6. Password policy
+
+- Minimum 8 characters, enforced server-side on registration and reset
+  (`server/src/routes/auth-native.ts`). No composition (uppercase/number/
+  symbol) requirement -- consistent with current NIST 800-63B guidance,
+  which favors length over forced complexity.
+- Passwords are hashed with scrypt (`server/src/lib/passwordHash.ts`),
+  never stored or logged in plaintext.
+- A successful password reset now (as of 2026-08-03) emails the account
+  owner and writes an audit-log entry, so an unauthorized reset is visible
+  rather than silent.
+
+## 7. Session management
+
+- Sessions are signed JWTs (`SESSION_SECRET`-keyed), 30-day fixed expiry,
+  delivered as an httpOnly cookie plus a bearer-token fallback.
+- Session revocation is REQUIRED (and built, 2026-08-03) on two events:
+  account deletion (`AccountDeletedError`, permanent) and password reset
+  (`sessions_invalidated_before`, checked on every authenticated request).
+  A password reset invalidates every OTHER already-issued session for that
+  user, compared with millisecond precision so a reset and a still-valid
+  old session in the same wall-clock second are correctly distinguished.
+- **Remaining gap:** no idle/inactivity timeout -- a session with no
+  revoking event stays valid for its full 30-day life regardless of
+  activity level. Lower priority than the revocation gap this closed, since
+  it affects normal usage rather than a compromised-credential scenario.
+
+## 8. Related documents
+
+- `information-security-policy.md`
+- `data-retention-and-deletion-policy.md`
+- `AI_PROJECT_OS/53_SOC2_ISO27001_AUDIT.md`
+- `AI_PROJECT_OS/51_SECURITY.md`

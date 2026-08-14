@@ -25,8 +25,11 @@
  *     an HTTP concern.
  *   - Virus / malware scanning of uploaded files: requires an external scanner
  *     service (e.g. ClamAV / a cloud AV API) wired into the upload path; headers
- *     do nothing for file content safety.
- *   - MFA / 2FA: provided by the Authentik IdP.
+ *     do nothing for file content safety. See lib/uploadGuard.ts for the
+ *     actual scanning implementation.
+ *   - MFA / 2FA: implemented natively (TOTP + backup codes), not by these
+ *     headers. See lib/totp.ts and routes/mfa.ts; enforced for admin access
+ *     via auth.ts's requireAdmin().
  * ----------------------------------------------------------------------------
  */
 import type { Request, Response, NextFunction, RequestHandler } from "express";

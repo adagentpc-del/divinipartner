@@ -55,7 +55,7 @@ function sessionSecret(): Uint8Array {
     }
     if (!_warned) {
       _warned = true;
-      // eslint-disable-next-line no-console
+       
       console.warn(
         "[auth] SESSION_SECRET is not set. Using an INSECURE dev secret. " +
           "Set SESSION_SECRET in .env.local before deploy.",
@@ -69,6 +69,10 @@ function sessionSecret(): Uint8Array {
 export interface SessionClaims extends JWTPayload {
   sub: string;
   email: string | null;
+  /** Millisecond-precision issued-at. See signSession for why this exists
+   *  alongside the standard (whole-second) `iat`. Absent on any session
+   *  token signed before this field was added. */
+  iam?: number;
 }
 
 /** Name of the session cookie. */
@@ -79,7 +83,21 @@ export const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 
 /** Sign a 30-day HS256 session token { sub, email }. */
 export async function signSession(userId: string, email: string | null): Promise<string> {
-  return new SignJWT({ email })
+  return new SignJWT({
+    email,
+    // Millisecond-precision issued-at, IN ADDITION TO the standard `iat`
+    // claim `.setIssuedAt()` sets below. `iat` per the JWT spec is
+    // whole-second resolution, which is too coarse for session revocation:
+    // a login and a later password reset that land in the SAME wall-clock
+    // second (verified during live testing of this feature -- fast
+    // scripted requests, but a fast attacker/victim sequence is not
+    // impossible either) would be indistinguishable by `iat` alone,
+    // meaning an old, stolen token issued a heartbeat before a reset could
+    // slip through as if it were the freshly-issued replacement. `iam`
+    // (issued-at-milliseconds) resolves that ambiguity exactly -- see
+    // auth.ts's resolve() and lib/sessionRevocation.ts.
+    iam: Date.now(),
+  })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(userId)
     .setIssuedAt()
@@ -93,6 +111,12 @@ export async function verifySession(token: string | null): Promise<SessionClaims
   try {
     const { payload } = await jwtVerify(token, sessionSecret(), { algorithms: ["HS256"] });
     if (!payload.sub) return null;
+    // A real session token never carries a `typ` claim -- only the MFA
+    // challenge token (below) does. Reject it here explicitly so a leaked
+    // 5-minute challenge token can never be replayed as full API access;
+    // without this check it would otherwise pass (it has a valid signature
+    // and a `sub`) and grant the bearer everything a real session grants.
+    if (payload.typ) return null;
     return {
       ...payload,
       sub: String(payload.sub),
@@ -106,4 +130,44 @@ export async function verifySession(token: string | null): Promise<SessionClaims
 /** Random hex token for email verification / password reset. */
 export function randomToken(bytes = 32): string {
   return randomBytes(bytes).toString("hex");
+}
+
+// ---- MFA challenge token -----------------------------------------------
+// A short-lived (5-minute), distinctly-typed JWT issued by /auth/login when
+// the account has MFA enabled, in place of a real session token. It proves
+// "this caller already presented a correct password for this user" without
+// granting any actual access -- /auth/mfa-verify is the ONLY endpoint that
+// accepts it, and it explicitly rejects anything without the mfa_challenge
+// type claim, so a leaked challenge token cannot be replayed as a session
+// even though it is signed with the same SESSION_SECRET.
+
+const MFA_CHALLENGE_TYPE = "mfa_challenge";
+
+export interface MfaChallengeClaims extends JWTPayload {
+  sub: string;
+  typ: typeof MFA_CHALLENGE_TYPE;
+}
+
+/** Sign a 5-minute MFA challenge token for a user who passed the password check. */
+export async function signMfaChallenge(userId: string): Promise<string> {
+  return new SignJWT({ typ: MFA_CHALLENGE_TYPE })
+    .setProtectedHeader({ alg: "HS256" })
+    .setSubject(userId)
+    .setIssuedAt()
+    .setExpirationTime("5m")
+    .sign(sessionSecret());
+}
+
+/** Verify an MFA challenge token. Returns the user id, or null on any failure
+ *  (including a token that is a real session token, not a challenge). */
+export async function verifyMfaChallenge(token: string | null): Promise<string | null> {
+  if (!token) return null;
+  try {
+    const { payload } = await jwtVerify(token, sessionSecret(), { algorithms: ["HS256"] });
+    if (!payload.sub) return null;
+    if (payload.typ !== MFA_CHALLENGE_TYPE) return null;
+    return String(payload.sub);
+  } catch {
+    return null;
+  }
 }

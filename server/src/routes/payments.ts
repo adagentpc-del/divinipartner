@@ -14,7 +14,7 @@ import { Router, type Request, type Response, type NextFunction } from "express"
 import { getAuth, requireUser } from "../auth.js";
 import * as db from "../db.js";
 import { q1, pool } from "../pool.js";
-import { TIERS } from "../db.js";
+import { TIERS, type Tier } from "../db.js";
 import {
   recordPayment,
   recordExternalPayment,
@@ -31,6 +31,7 @@ import {
   type PaymentKind,
 } from "../db/payments.js";
 import { applyPaymentToInvoice, getInvoicePartiesById } from "../db/invoices.js";
+import { recordWebhookEventOnce, markWebhookEventOutcome } from "../db/webhookEvents.js";
 import {
   confirmTicketOrder,
   confirmExhibitorOrder,
@@ -43,6 +44,7 @@ import {
   listPayoutAccounts,
   upsertPayoutAccount,
   activeStripeDestination,
+  activeDirectChargeAccount,
   paypalPayoutEmail,
   syncStripeAccountByExternalId,
 } from "../db/payout-accounts.js";
@@ -67,6 +69,15 @@ import {
 } from "../lib/processors.js";
 import { sendEmail } from "../lib/email.js";
 import { PUBLIC_APP_URL, BASE_PATH, IS_PROD, PRICING_V2 } from "../config.js";
+import {
+  createDirectCheckoutSession,
+  retrieveMerchantAccount,
+  createMerchantAccount,
+  createAccountOnboardingLink,
+  attachAccountBalancePaymentMethod,
+  chargeAccountSubscription,
+} from "../lib/stripeAccounts.js";
+import { resolveSubscriptionPlan } from "../lib/stripeBilling.js";
 
 const h =
   (fn: (req: Request, res: Response) => Promise<unknown>) =>
@@ -481,6 +492,135 @@ router.get(
   }),
 );
 
+/**
+ * Start (or resume) Stripe Accounts v2 merchant-account onboarding: a
+ * connected account configured as BOTH a merchant (accepts DIRECT-charge
+ * payments as the merchant of record -- see routes/payments.ts's checkout
+ * branch above) and a platform customer (can pay the org's own Divini
+ * Partners subscription fee straight from its Stripe balance, see
+ * /connect/stripe/subscribe-from-balance below). This is the newer,
+ * preferred onboarding path alongside the existing v1 Express flow above --
+ * see lib/stripeAccounts.ts's module doc for why both coexist.
+ */
+router.post(
+  "/connect/stripe/merchant-account/onboard",
+  requireUser,
+  h(async (req, res) => {
+    const en = enabledProcessors();
+    if (!en.stripe) return res.status(503).json({ error: "stripe is not configured" });
+    const auth = getAuth(req);
+    const actor = await db.getActor(auth.userId!, auth.email);
+    if (!actor.org) return res.status(400).json({ error: "register an organization first" });
+    if (!actor.user.email) {
+      return res.status(400).json({ error: "a verified email is required to onboard a merchant account" });
+    }
+
+    let acct = await getPayoutAccount(actor.org.id, "stripe");
+    let acctId = acct && acct.stripe_api_version === "v2" ? acct.external_id : null;
+    if (!acctId) {
+      const b = req.body ?? {};
+      const created = await createMerchantAccount({
+        displayName: actor.org.name,
+        contactEmail: actor.user.email,
+        country: String(b.country || "US"),
+        phone: String(b.phone || "0000000000"),
+      });
+      acctId = created.accountId;
+      acct = await upsertPayoutAccount(actor.org.id, "stripe", {
+        external_id: acctId,
+        email: actor.user.email,
+        status: "onboarding",
+        charges_enabled: false,
+        payouts_enabled: false,
+        details_submitted: false,
+        stripe_api_version: "v2",
+      });
+    }
+    const base = appBaseUrl(req);
+    const { url } = await createAccountOnboardingLink(
+      acctId,
+      `${base}/payouts/setup?refresh=stripe-v2`,
+      `${base}/payouts/setup?connected=stripe-v2`,
+    );
+    res.json({ url });
+  }),
+);
+
+/** Re-sync the org's v2 merchant account status from Stripe (called on return). */
+router.get(
+  "/connect/stripe/merchant-account/refresh",
+  requireUser,
+  h(async (req, res) => {
+    const auth = getAuth(req);
+    const actor = await db.getActor(auth.userId!, auth.email);
+    if (!actor.org) return res.status(400).json({ error: "register an organization first" });
+    const acct = await getPayoutAccount(actor.org.id, "stripe");
+    if (!acct?.external_id || acct.stripe_api_version !== "v2") return res.json({ account: null });
+    const status = await retrieveMerchantAccount(acct.external_id);
+    const updated = await upsertPayoutAccount(actor.org.id, "stripe", {
+      external_id: status.accountId,
+      status: status.payoutsEnabled ? "active" : status.detailsSubmitted ? "pending" : "onboarding",
+      charges_enabled: status.chargesEnabled,
+      payouts_enabled: status.payoutsEnabled,
+      details_submitted: status.detailsSubmitted,
+    });
+    res.json({ account: updated });
+  }),
+);
+
+/**
+ * Charge the org's platform subscription fee straight from their v2 merchant
+ * account's Stripe balance -- an alternative to the existing card-based
+ * checkout in lib/stripeBilling.ts, for an org that would rather have their
+ * marketplace earnings cover their subscription than keep a separate card
+ * on file. Requires a payouts-enabled v2 merchant account.
+ */
+router.post(
+  "/connect/stripe/subscribe-from-balance",
+  requireUser,
+  h(async (req, res) => {
+    const en = enabledProcessors();
+    if (!en.stripe) return res.status(503).json({ error: "stripe is not configured" });
+    const auth = getAuth(req);
+    const actor = await db.getActor(auth.userId!, auth.email);
+    if (!actor.org) return res.status(400).json({ error: "register an organization first" });
+    const b = req.body ?? {};
+    const tier = String(b.tier || "");
+    if (!tier || !(TIERS as Record<string, unknown>)[tier]) {
+      return res.status(400).json({ error: "a valid tier is required" });
+    }
+    const acct = await getPayoutAccount(actor.org.id, "stripe");
+    if (!acct?.external_id || acct.stripe_api_version !== "v2" || !acct.charges_enabled) {
+      return res.status(400).json({
+        error: "onboard a Stripe merchant account first (POST /connect/stripe/merchant-account/onboard)",
+      });
+    }
+    const plan = resolveSubscriptionPlan(actor.org.type, tier as Tier);
+    if (!plan) {
+      return res.status(400).json({ error: `${tier} has no flat monthly price and cannot be subscribed to` });
+    }
+    const { paymentMethodId } = await attachAccountBalancePaymentMethod(acct.external_id);
+    const { subscriptionId, status } = await chargeAccountSubscription({
+      accountId: acct.external_id,
+      paymentMethodId,
+      monthlyUsd: plan.monthlyUsd,
+      label: plan.label,
+      orgId: actor.org.id,
+      tier,
+    });
+    // The tier is NOT promoted here -- only the customer.subscription.*
+    // webhook does that (once Stripe confirms the subscription is really
+    // active), same discipline as the card-based path in
+    // lib/stripeBilling.ts's createSubscriptionCheckout. This just records
+    // which payment source the org's active subscription (once confirmed)
+    // will be funded from.
+    await q1(`update organizations set subscription_payment_source = 'stripe_balance' where id = $1`, [
+      actor.org.id,
+    ]);
+    res.status(201).json({ subscription_id: subscriptionId, status });
+  }),
+);
+
 /** Set the org's PayPal payout email (vendor receives payouts here). */
 router.post(
   "/connect/paypal",
@@ -559,12 +699,47 @@ router.post(
       if (v) { feeOrgId = v.orgId; feeTier = v.tier ?? ""; }
     }
 
-    // Stripe Connect auto-split: if the vendor org has an onboarded, payouts-
-    // enabled Stripe account, route their net to them and keep the platform fee.
-    // Fee model (C2/C3): the vendor bears BOTH the platform fee and the
-    // processing fee, so the amount transferred to the vendor equals the
-    // recorded net_payout = amount - platformFee - processingFee. The Stripe
-    // application_fee therefore retains (platformFee + processingFee).
+    const label = (b.label as string) || (invoiceId ? `Invoice ${invoiceId}` : "Divini Partners payment");
+    const metadata = {
+      org_id: feeOrgId,
+      invoice_id: invoiceId,
+      event_id: eventId,
+      tier: feeTier,
+      flow,
+      kind,
+      recorded_by: actor.user.id,
+    };
+
+    // Stripe Connect auto-split, fee model (C2/C3): the vendor bears BOTH the
+    // platform fee and the processing fee, so the amount that ends up with
+    // the vendor equals the recorded net_payout = amount - platformFee -
+    // processingFee; the retained application_fee is (platformFee +
+    // processingFee) either way. Two account shapes:
+    //   - Accounts v2 (direct charge): the connected account IS the merchant
+    //     of record. Checked FIRST -- it is the preferred, newer onboarding
+    //     path (see lib/stripeAccounts.ts's module doc).
+    //   - v1 Express (destination charge, the original flow): the PLATFORM
+    //     is the merchant of record and `transfer_data.destination`
+    //     auto-splits the net out to the vendor. Still fully supported for
+    //     already-onboarded vendors.
+    if (processor === "stripe") {
+      const directAccount = await activeDirectChargeAccount(feeOrgId);
+      if (directAccount) {
+        const fees = recordingFees(amount, feeTier);
+        const applicationFeeCents = Math.round((fees.platformFee + fees.processingFee) * 100);
+        const checkout = await createDirectCheckoutSession({
+          accountId: directAccount,
+          amount,
+          label,
+          successUrl,
+          cancelUrl,
+          applicationFeeCents,
+          metadata,
+        });
+        return res.status(201).json({ processor: "stripe", ...checkout });
+      }
+    }
+
     let destinationAccount: string | undefined;
     let applicationFeeCents: number | undefined;
     if (processor === "stripe") {
@@ -576,7 +751,6 @@ router.post(
       }
     }
 
-    const label = (b.label as string) || (invoiceId ? `Invoice ${invoiceId}` : "Divini Partners payment");
     const checkout = await createCheckout({
       processor,
       amount,
@@ -585,15 +759,7 @@ router.post(
       cancelUrl,
       destinationAccount,
       applicationFeeCents,
-      metadata: {
-        org_id: feeOrgId,
-        invoice_id: invoiceId,
-        event_id: eventId,
-        tier: feeTier,
-        flow,
-        kind,
-        recorded_by: actor.user.id,
-      },
+      metadata,
     });
     res.status(201).json(checkout);
   }),
@@ -638,11 +804,16 @@ router.post(
       const v = await invoiceOrgTier(b.invoice_id);
       if (v) { feeOrgId = v.orgId; feeTier = v.tier; }
     }
-    // Did the money already split to the vendor? Stripe Connect splits at the
-    // charge; PayPal needs a Payout after capture.
-    const stripeDest = processor === "stripe" ? await activeStripeDestination(feeOrgId) : null;
+    // Did the money already reach the vendor? A v1 destination charge
+    // transfers the net at charge time; a v2 direct charge lands with the
+    // vendor directly (it was the merchant of record all along, nothing to
+    // transfer); PayPal needs a separate Payout after capture.
+    const stripeDest =
+      processor === "stripe"
+        ? (await activeStripeDestination(feeOrgId)) || (await activeDirectChargeAccount(feeOrgId))
+        : null;
     const ppEmail = processor === "paypal" ? await paypalPayoutEmail(feeOrgId) : null;
-    const autoSplit = !!stripeDest; // stripe already transferred the net
+    const autoSplit = !!stripeDest; // stripe already sent the net to the vendor, one way or the other
 
     const { payment, created } = await recordProcessorPayment(feeOrgId, feeTier, actor.user.id, {
       invoice_id: b.invoice_id ?? null,
@@ -701,6 +872,16 @@ router.post(
     const raw = (req as unknown as { rawBody?: Buffer }).rawBody;
     const event = verifyStripeEvent(raw ?? "", req.headers["stripe-signature"] as string | undefined);
     if (!event) return res.status(400).json({ error: "invalid signature" });
+    const eventId = String(event.id ?? "");
+    const eventType = String(event.type ?? "");
+    // Event-level idempotency (ALFY2 pack Section 09): a duplicate delivery of
+    // an event that never touches the payments table (account.updated,
+    // customer.subscription.*, the v2 capability event) had no dedup
+    // protection before this -- only checkout.session.completed did, via
+    // payments.reference's unique index. Short-circuit here so a retried
+    // delivery is a cheap no-op instead of re-running every handler below.
+    const isNew = await recordWebhookEventOnce("stripe", eventId, eventType).catch(() => true);
+    if (!isNew) return res.json({ received: true, duplicate: true });
     // H2: only a genuine processing/DB failure returns 500 so Stripe retries.
     // A bad signature above is the only 400.
     try {
@@ -714,9 +895,37 @@ router.post(
           details_submitted: !!acct.details_submitted,
         });
       }
+      // Same idea, for a v2 merchant account (lib/stripeAccounts.ts). This is
+      // a "thin" event by design (a reference, not a full snapshot), so it is
+      // never trusted for embedded fields -- always re-fetch the real,
+      // current status instead. Best-effort at extracting the account id
+      // from whichever field the thin payload actually carries it in.
+      if (event.type === "v2.core.account[configuration.merchant].capability_status_updated") {
+        const data = (event.data ?? {}) as Record<string, unknown>;
+        const obj = (data.object ?? {}) as Record<string, unknown>;
+        const related = (event.related_object ?? {}) as Record<string, unknown>;
+        const accountId =
+          String(obj.id ?? related.id ?? event.account ?? "") || null;
+        if (accountId) {
+          const status = await retrieveMerchantAccount(accountId).catch(() => null);
+          if (status) {
+            await syncStripeAccountByExternalId(accountId, {
+              charges_enabled: status.chargesEnabled,
+              payouts_enabled: status.payoutsEnabled,
+              details_submitted: status.detailsSubmitted,
+            });
+          }
+        }
+      }
       if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
         const s = (event.data as { object?: Record<string, unknown> } | undefined)?.object ?? {};
-        if (s.payment_status === "paid") {
+        const m0 = (s.metadata as Record<string, string> | null) ?? {};
+        // Org subscription checkouts (mode: subscription) are NOT a marketplace
+        // transaction -- the tier promotion is applied by customer.subscription.*
+        // below, once Stripe confirms the recurring subscription itself, not here.
+        if (m0.purpose === "org_subscription") {
+          // no-op: wait for customer.subscription.created/updated.
+        } else if (s.payment_status === "paid") {
           const m = (s.metadata as Record<string, string> | null) ?? {};
           const reference = String((s.payment_intent as string) || s.id);
           // Public event orders (tickets / exhibitor booths): confirm the specific
@@ -730,7 +939,8 @@ router.post(
           const orgId = m.org_id;
           if (orgId) {
             const amt = Number(s.amount_total ?? 0) / 100;
-            const autoSplit = !!(await activeStripeDestination(orgId)); // Connect transferred the net
+            const autoSplit =
+              !!(await activeStripeDestination(orgId)) || !!(await activeDirectChargeAccount(orgId)); // Connect already sent the net to the vendor
             const { created } = await recordProcessorPayment(orgId, m.tier || (await orgTier(orgId)), m.recorded_by || null, {
               invoice_id: m.invoice_id || null,
               event_id: m.event_id || null,
@@ -756,8 +966,50 @@ router.post(
           await releaseExhibitorOrder(m.order_id).catch(() => false);
         }
       }
+      // Org subscription lifecycle: the ONLY place a paid tier is ever promoted
+      // or downgraded. Metadata carries { org_id, tier } (set at checkout, see
+      // lib/stripeBilling.ts's subscription_data.metadata); falls back to the
+      // Stripe customer id when metadata is missing for any reason.
+      if (
+        event.type === "customer.subscription.created" ||
+        event.type === "customer.subscription.updated" ||
+        event.type === "customer.subscription.deleted"
+      ) {
+        const sub = (event.data as { object?: Record<string, unknown> } | undefined)?.object ?? {};
+        const m = (sub.metadata as Record<string, string> | null) ?? {};
+        const status = event.type === "customer.subscription.deleted" ? "canceled" : String(sub.status ?? "");
+        await db.applySubscriptionUpdate({
+          orgId: m.org_id || null,
+          stripeCustomerId: typeof sub.customer === "string" ? sub.customer : null,
+          stripeSubscriptionId: String(sub.id ?? ""),
+          status,
+          tier: m.tier || null,
+        });
+      }
+      // A recurring invoice failed to collect: mark the org past_due immediately
+      // (customer.subscription.updated will also fire, but this is the earliest
+      // signal). No org_id metadata on the invoice object, so resolve by customer.
+      if (event.type === "invoice.payment_failed") {
+        const inv = (event.data as { object?: Record<string, unknown> } | undefined)?.object ?? {};
+        const customerId = typeof inv.customer === "string" ? inv.customer : null;
+        const subscriptionId = typeof inv.subscription === "string" ? inv.subscription : null;
+        // A stripe_balance-funded subscription (lib/stripeAccounts.ts) has no
+        // Stripe Customer at all -- the connected account itself is the
+        // payer -- so customerId is null for those. Still call through with
+        // subscriptionId alone; db.ts's applySubscriptionUpdate falls back to
+        // resolving the org by stripe_subscription_id in that case.
+        if (subscriptionId) {
+          await db.applySubscriptionUpdate({
+            stripeCustomerId: customerId,
+            stripeSubscriptionId: subscriptionId,
+            status: "past_due",
+          });
+        }
+      }
+      await markWebhookEventOutcome("stripe", eventId, "processed").catch(() => undefined);
       return res.json({ received: true });
-    } catch {
+    } catch (e) {
+      await markWebhookEventOutcome("stripe", eventId, "failed", (e as Error)?.message).catch(() => undefined);
       return res.status(500).json({ error: "processing failed" });
     }
   }),
@@ -778,6 +1030,10 @@ router.post(
       // unverified webhook. The skip-and-process path is dev/sandbox only.
       return res.status(400).json({ error: "webhook verification not configured" });
     }
+    const eventId = String(body.id ?? "");
+    const eventType = String(body.event_type ?? "");
+    const isNew = await recordWebhookEventOnce("paypal", eventId, eventType).catch(() => true);
+    if (!isNew) return res.json({ received: true, duplicate: true });
     // H2: only a genuine processing/DB failure returns 500 so PayPal retries.
     try {
       if (body.event_type === "PAYMENT.CAPTURE.COMPLETED") {
@@ -813,8 +1069,10 @@ router.post(
           }
         }
       }
+      await markWebhookEventOutcome("paypal", eventId, "processed").catch(() => undefined);
       return res.json({ received: true });
-    } catch {
+    } catch (e) {
+      await markWebhookEventOutcome("paypal", eventId, "failed", (e as Error)?.message).catch(() => undefined);
       return res.status(500).json({ error: "processing failed" });
     }
   }),

@@ -86,7 +86,7 @@ export default function OverviewTab({ eventId }: { eventId: string }) {
       setErr((e as Error).message);
     }
   }
-  useEffect(() => { void load(); /* eslint-disable-next-line */ }, [eventId]);
+  useEffect(() => { void load();   }, [eventId]);
 
   async function changeStatus(status: string) {
     setBusy(true);
@@ -217,7 +217,7 @@ const OV_CSS = `
 .ew-ov-headactions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .ew-ov-kicker { font-size: 10.5px; letter-spacing: 1.3px; text-transform: uppercase; color: #9a8a5e; font-weight: 600; }
 .ew-ov-status { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 28px; color: #123c2e; line-height: 1.1; }
-.ew-ov-select { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #7d776c; }
+.ew-ov-select { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #6b6459; }
 .ew-ov-select select { font: inherit; padding: 7px 10px; border: 1px solid #e7e1d6; border-radius: 8px; background: #fff; color: #2c2a26; }
 .ew-ov-track { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 14px 0 22px; border-bottom: 1px solid #e7e1d6; margin-bottom: 20px; }
 .ew-ov-step { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #b3aa99; }
@@ -233,7 +233,7 @@ const OV_CSS = `
 .ew-ov-goals { background: rgba(247,244,238,.6); border: 1px dashed #e7e1d6; border-radius: 12px; padding: 16px 18px; }
 .ew-ov-goals p { margin: 6px 0 0; font-size: 13.5px; color: #4a463e; line-height: 1.6; }
 .ew-ov-edit { background: #fff; border: 1px solid #e7e1d6; border-radius: 14px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
-.ew-ov-edit label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 600; color: #7d776c; }
+.ew-ov-edit label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 600; color: #6b6459; }
 .ew-ov-edit input, .ew-ov-edit textarea { font: inherit; font-size: 13px; padding: 8px 10px; border: 1px solid #e7e1d6; border-radius: 8px; background: #fff; color: #2c2a26; }
 .ew-ov-editrow { display: flex; gap: 14px; flex-wrap: wrap; }
 .ew-ov-editrow label { flex: 1 1 160px; }

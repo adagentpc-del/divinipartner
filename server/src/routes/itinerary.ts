@@ -82,4 +82,35 @@ router.delete(
   }),
 );
 
+/** Approve the Run of Show (Part 15). Owner or planner-role member only. */
+router.post(
+  "/event/:eventId/approve",
+  h(async (req, res) => {
+    const a = await actor(req);
+    res.json({ approval: await itinerary.approveItinerary(a, req.params.eventId) });
+  }),
+);
+
+/** Manually revert the Run of Show to draft. Owner or planner-role member only. */
+router.post(
+  "/event/:eventId/revert-to-draft",
+  h(async (req, res) => {
+    const a = await actor(req);
+    res.json({ approval: await itinerary.revertItineraryToDraft(a, req.params.eventId) });
+  }),
+);
+
+/**
+ * Unified vendor arrival/delivery schedule (Part 16): Time/Vendor/Action/
+ * Location/Contact/Status, role-scoped the same way as the packet's own
+ * vendor roster.
+ */
+router.get(
+  "/event/:eventId/vendor-schedule",
+  h(async (req, res) => {
+    const a = await actor(req);
+    res.json({ schedule: await itinerary.getVendorArrivalSchedule(a, req.params.eventId) });
+  }),
+);
+
 export default router;

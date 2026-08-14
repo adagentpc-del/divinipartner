@@ -98,7 +98,7 @@ export default function DeviceShowcase({ screens, label }: { screens: ShowScreen
 }
 
 const DS_CSS = `
-.ds{--em:#123c2e;--em2:#1E5D4A;--gold:#C9A35B;--ivory:#F7F4EE;--ink:#2c2a26;--mut:#7d776c;--line:#e7e1d6;
+.ds{--em:#123c2e;--em2:#1E5D4A;--gold:#C9A35B;--ivory:#F7F4EE;--ink:#2c2a26;--mut:#6b6459;--line:#e7e1d6;
   display:grid;grid-template-columns:1.45fr .9fr;gap:34px;align-items:center;font-family:Inter,system-ui,sans-serif}
 .ds *{box-sizing:border-box}
 .ds-stage{position:relative;display:flex;align-items:flex-end;gap:0;min-height:360px}

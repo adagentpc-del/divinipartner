@@ -7,9 +7,10 @@
  * DEFAULT BEHAVIOR IS UNCHANGED: with no new env set, STORAGE_PROVIDER is
  * "local" and STORAGE_ENCRYPTION_KEY is unset, so files land on local disk under
  *   <FILE_STORAGE_DIR>/<companyId>/<packageId|buildingId|misc>/<ts>-<name>
- * exactly as before, as plaintext, and downloads use the same short-lived
- * HMAC-signed token (`signDownloadUrl(path)` ->
- * `/api/documents/download?path=..&exp=..&sig=..`).
+ * exactly as before, as plaintext. Downloads are served by org-scoped,
+ * session-authenticated routes that look the object up by id and check the
+ * caller before streaming (see routes/profile-decks-programs.ts,
+ * routes/signatures.ts) -- there is no bearer-token signed-URL path.
  *
  * The synchronous writeFile/readPath/fileExists helpers below are preserved for
  * existing call sites and only work in local mode. For provider-agnostic access
@@ -23,8 +24,6 @@ import fs from "node:fs";
 import { FILE_STORAGE_DIR, STORAGE_PROVIDER, s3Enabled } from "./config.js";
 import {
   safeRelKey,
-  signDownloadUrl as osSignDownloadUrl,
-  verifyDownloadUrl as osVerifyDownloadUrl,
   getObject,
   putObject,
   deleteObject as osDeleteObject,
@@ -133,8 +132,3 @@ export async function streamObject(relKey: string, dest: NodeJS.WritableStream):
     Readable.from(bytes).pipe(dest).on("finish", resolve).on("error", reject);
   });
 }
-
-// --- short-lived signed download URLs (unchanged contract) ------------------
-
-export const signDownloadUrl = osSignDownloadUrl;
-export const verifyDownloadUrl = osVerifyDownloadUrl;

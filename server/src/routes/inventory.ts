@@ -9,6 +9,7 @@ import { Router, type Request, type Response, type NextFunction } from "express"
 import { getAuth, requireUser } from "../auth.js";
 import * as db from "../db.js";
 import * as inv from "../db/inventory.js";
+import { checkLimit, limitExceededPayload } from "../lib/entitlements.js";
 
 const h =
   (fn: (req: Request, res: Response) => Promise<unknown>) =>
@@ -17,13 +18,20 @@ const h =
 
 /** Resolve the actor's org id or send 400 if they have no organization yet. */
 async function requireOrg(req: Request, res: Response): Promise<string | null> {
+  const org = await requireOrgRow(req, res);
+  return org?.id ?? null;
+}
+
+/** Same as requireOrg but returns the full org row, needed wherever an
+ *  entitlement check (tier/type) runs before the write. */
+async function requireOrgRow(req: Request, res: Response): Promise<db.DbOrg | null> {
   const auth = getAuth(req);
   const actor = await db.getActor(auth.userId!, auth.email);
   if (!actor.org) {
     res.status(400).json({ error: "no organization for this account" });
     return null;
   }
-  return actor.org.id;
+  return actor.org;
 }
 
 function parseFilters(query: Request["query"]): inv.InventorySearchFilters {
@@ -86,9 +94,14 @@ router.post(
   "/",
   requireUser,
   h(async (req, res) => {
-    const orgId = await requireOrg(req, res);
-    if (!orgId) return;
-    const item = await inv.createInventoryItem(orgId, req.body ?? {});
+    const org = await requireOrgRow(req, res);
+    if (!org) return;
+    const used = await inv.countInventoryItems(org.id);
+    const check = checkLimit(org, "inventory_items", used);
+    if (!check.allowed) {
+      return res.status(402).json(limitExceededPayload(org, "inventory_items", check));
+    }
+    const item = await inv.createInventoryItem(org.id, req.body ?? {});
     res.status(201).json({ item });
   }),
 );

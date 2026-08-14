@@ -73,7 +73,7 @@ export default function AuditViewer() {
       .catch(() => {});
   }, [isAdmin]);
   useEffect(() => { setOffset(0); }, [action, objectType, search, from, to]);
-  useEffect(() => { if (isAdmin) void load(); /* eslint-disable-next-line */ }, [isAdmin, action, objectType, search, from, to, offset]);
+  useEffect(() => { if (isAdmin) void load();   }, [isAdmin, action, objectType, search, from, to, offset]);
 
   async function exportCsv() {
     try {
@@ -170,7 +170,7 @@ export default function AuditViewer() {
 const AV_CSS = `
 .av {
   --dp-emerald: #123c2e; --dp-emerald-2: #1E5D4A; --dp-gold: #C9A35B;
-  --dp-ivory: #F7F4EE; --dp-ink: #2c2a26; --dp-muted: #7d776c; --dp-line: #e7e1d6;
+  --dp-ivory: #F7F4EE; --dp-ink: #2c2a26; --dp-muted: #6b6459; --dp-line: #e7e1d6;
   font-family: 'Inter', system-ui, -apple-system, sans-serif; color: var(--dp-ink);
 }
 .av *, .av *::before, .av *::after { box-sizing: border-box; }

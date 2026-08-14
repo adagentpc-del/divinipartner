@@ -22,7 +22,7 @@ const money = (cents?: number | string) =>
 const pct = (n?: number | string) => (n == null ? '-' : (Number(n) * 100).toFixed(1) + '%');
 
 const STYLES = `
-.apx{--emerald:#1E5D4A;--emerald-deep:#123c2e;--champagne:#D9CCB0;--ink:#2c2a26;--muted:#7d776c;--line:#e7e1d6;--ivory:#f7f4ee;font-family:Inter,system-ui,sans-serif;color:var(--ink)}
+.apx{--emerald:#1E5D4A;--emerald-deep:#123c2e;--champagne:#D9CCB0;--ink:#2c2a26;--muted:#6b6459;--line:#e7e1d6;--ivory:#f7f4ee;font-family:Inter,system-ui,sans-serif;color:var(--ink)}
 .apx h1,.apx h2,.apx h3{font-family:'Cormorant Garamond',serif;color:var(--emerald-deep);margin:0}
 .apx .head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
 .apx h1{font-size:30px}
@@ -120,7 +120,7 @@ export default function AdminPayouts() {
     }
     void loadMeta();
     void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [isAdmin]);
 
   function partnerLabel(id: string | null): string {

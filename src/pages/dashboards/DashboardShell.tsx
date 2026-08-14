@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../lib/auth';
+import { useAuth, type MyOrganization } from '../../lib/auth';
 import OnboardingGuide from '../../components/OnboardingGuide';
 
 export type NavItem = { label: string; icon?: string; to?: string };
@@ -19,14 +19,22 @@ export type Me = {
  * `session`, `company`, `isAdmin`, `loading` and `signOut`; we project those
  * onto a stable `me` object so each role dashboard reads from one contract.
  */
-export function useMe(): { me: Me | null; loading: boolean; signOut: () => void } {
+export function useMe(): {
+  me: Me | null;
+  loading: boolean;
+  signOut: () => void;
+  organizations: MyOrganization[];
+  switchOrg: (organizationId: string) => Promise<void>;
+} {
   const auth = useAuth();
   const loading = !!auth?.loading;
   const session = auth?.session ?? null;
   const company = auth?.company ?? null;
+  const organizations = auth?.organizations ?? [];
+  const switchOrg = auth?.switchOrg ?? (async () => {});
 
   if (!session) {
-    return { me: null, loading, signOut: () => { void auth?.signOut?.(); } };
+    return { me: null, loading, signOut: () => { void auth?.signOut?.(); }, organizations, switchOrg };
   }
 
   const me: Me = {
@@ -34,10 +42,10 @@ export function useMe(): { me: Me | null; loading: boolean; signOut: () => void 
     email: session.user?.email ?? null,
     role: auth?.isAdmin ? 'admin' : company?.kind ?? undefined,
     isAdmin: !!auth?.isAdmin,
-    organization: company ? { name: company.name, tier: undefined } : null,
+    organization: company ? { name: company.name, tier: company.tier } : null,
   };
 
-  return { me, loading, signOut: () => { void auth?.signOut?.(); } };
+  return { me, loading, signOut: () => { void auth?.signOut?.(); }, organizations, switchOrg };
 }
 
 function initials(text?: string | null): string {
@@ -60,12 +68,17 @@ export default function DashboardShell({
   children: React.ReactNode;
 }) {
   const nav = useNavigate();
-  const { me, loading, signOut } = useMe();
+  const { me, loading, signOut, organizations, switchOrg } = useMe();
 
   const orgName = me?.organization?.name ?? me?.name ?? 'Your organization';
   const tier = me?.organization?.tier;
   const personLabel = me?.name ?? me?.email ?? 'Member';
   const roleLabel = me?.role ?? 'Member';
+
+  const handleOrgSwitch: React.ChangeEventHandler<HTMLSelectElement> = (e) => {
+    const id = e.target.value;
+    if (id) void switchOrg(id);
+  };
 
   return (
     <div className="dpdash">
@@ -108,6 +121,21 @@ export default function DashboardShell({
             <h1 className="dpdash-title">{title}</h1>
             {loading ? (
               <span className="dpdash-org dpdash-muted">Loading account</span>
+            ) : organizations.length > 1 ? (
+              <label className="dpdash-orgswitch">
+                <select
+                  className="dpdash-orgswitch-select"
+                  value={organizations.find((o) => o.active)?.id ?? ''}
+                  onChange={handleOrgSwitch}
+                  aria-label="Switch organization"
+                >
+                  {organizations.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.name}{o.tier ? ` (${o.tier})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
             ) : (
               <span className="dpdash-org">
                 {orgName}
@@ -152,7 +180,7 @@ const CSS = `
   --dp-gold: #C9A35B;
   --dp-ivory: #F7F4EE;
   --dp-ink: #2c2a26;
-  --dp-muted: #7d776c;
+  --dp-muted: #6b6459;
   --dp-line: #e7e1d6;
   display: flex;
   min-height: 100vh;
@@ -243,6 +271,16 @@ const CSS = `
   border: 1px solid rgba(201,163,91,.5);
   padding: 1px 7px; border-radius: 999px;
 }
+.dpdash-orgswitch { display: inline-flex; }
+.dpdash-orgswitch-select {
+  font: inherit; font-size: 12.5px; font-weight: 600; color: var(--dp-emerald);
+  background: rgba(201,163,91,.12); border: 1px solid rgba(201,163,91,.5);
+  border-radius: 999px; padding: 3px 26px 3px 11px; cursor: pointer;
+  max-width: 220px; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath fill='%23123c2e' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 9px center; background-size: 10px;
+}
+.dpdash-orgswitch-select:focus { outline: 2px solid var(--dp-gold); outline-offset: 1px; }
 .dpdash-user { display: flex; align-items: center; gap: 11px; flex: 0 0 auto; }
 .dpdash-usermeta { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.2; }
 .dpdash-username { font-size: 13px; font-weight: 600; color: var(--dp-ink); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -340,5 +378,6 @@ const CSS = `
   .dpdash-topbar { padding: 12px 16px; }
   .dpdash-content { padding: 18px 16px 40px; }
   .dpdash-stats { grid-template-columns: 1fr 1fr; }
+  .dpdash-orgswitch-select { max-width: 150px; font-size: 11.5px; }
 }
 `;

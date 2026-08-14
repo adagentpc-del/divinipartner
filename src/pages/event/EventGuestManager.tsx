@@ -369,7 +369,7 @@ export default function EventGuestManager() {
         .egm-danger { color: #8a2222; }
         .egm-vip { background: #C9A35B; color: #1b1b1b; font-size: .66rem; font-weight: 700;
           padding: .05rem .35rem; border-radius: 5px; margin-left: .35rem; }
-        .egm-empty { color: #6b7a72; font-style: italic; margin: 0; }
+        .egm-empty { color: #5c6a63; font-style: italic; margin: 0; }
         .egm-subs { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: .5rem; }
         .egm-subs li { display: flex; align-items: center; gap: .5rem; }
         .egm-mono { font-family: 'SFMono-Regular', Menlo, monospace; font-size: .82rem; color: #4a5d54; }
@@ -426,7 +426,7 @@ export function VendorRequirementToggle({
         }
       })
       .catch(() => undefined);
-    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+     
   }, [eventId]);
 
   async function save(e: React.FormEvent) {

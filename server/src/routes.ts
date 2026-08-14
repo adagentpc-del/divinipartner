@@ -2,11 +2,18 @@
  * API router index. Mounts the foundation routes plus every domain router.
  */
 import { Router, type Request, type Response, type NextFunction } from "express";
-import { ForbiddenError, NotFoundError } from "./db.js";
+import { ForbiddenError, NotFoundError, AccountDeletedError } from "./db.js";
+import { ReadinessBlockedError } from "./db/readiness.js";
+import { CloseoutBlockedError } from "./db/closeout.js";
+import { ReconciliationBlockedError, NotSettledError } from "./db/reconciliation.js";
+import { ComplianceBlockedError } from "./db/eventVendorCompliance.js";
+import { logger } from "./lib/logger.js";
+import { getAuth } from "./auth.js";
 
 import foundation from "./routes/foundation.js";
 // Native email/password auth (replaces Authentik OIDC)
 import authNative from "./routes/auth-native.js";
+import mfa from "./routes/mfa.js";
 // Phase 2
 import profiles from "./routes/profiles.js";
 // Profile decks (pitch decks / collateral) + custom programs / offerings
@@ -60,6 +67,41 @@ import seats from "./routes/seats.js";
 import worker from "./routes/worker.js";
 // Vendor network invites
 import invites from "./routes/invites.js";
+// Counterparty event invitations + event membership roster
+import eventInvitations from "./routes/eventInvitations.js";
+// Event change architecture / propagation
+import eventChanges from "./routes/eventChanges.js";
+// Final Count Workflow
+import finalCount from "./routes/finalCount.js";
+// Vendor Final Count / Final Quantity Workflow
+import vendorFinalQuantity from "./routes/vendorFinalQuantity.js";
+// Event Execution Packet foundation
+import executionPacket from "./routes/executionPacket.js";
+// Event Execution Readiness Engine
+import readiness from "./routes/readiness.js";
+// Event Command Center (live-ops phase, Part 5-6) -- distinct from the
+// unrelated "Divini Command Center" AI COO feature mounted at /command-center.
+import eventCommandCenter from "./routes/eventCommandCenter.js";
+// Vendor/staff check-in (live-ops phase, Part 7-8)
+import checkIns from "./routes/checkIns.js";
+// Live Activity Timeline (live-ops phase, Part 11-12)
+import eventActivity from "./routes/eventActivity.js";
+// Incident Management (live-ops phase, Part 15-16)
+import incidents from "./routes/incidents.js";
+// Event Inventory Model + Locations + Transfers (live-ops phase, Part 17-20)
+import eventInventory from "./routes/eventInventory.js";
+// Event Sponsor Activation (live-ops phase, Part 23-24)
+import eventSponsorActivation from "./routes/eventSponsorActivation.js";
+// Event Closeout (live-ops phase, Part 25-27)
+import closeout from "./routes/closeout.js";
+import eventVendorCompliance from "./routes/eventVendorCompliance.js";
+import procurementPipeline from "./routes/procurementPipeline.js";
+// Event Financial Reconciliation + Settlement (live-ops phase, Part 28-31)
+import reconciliation from "./routes/reconciliation.js";
+// Vendor Event Performance + Post-Event Intelligence Digest (live-ops phase, Part 32-38)
+import postEventIntelligence from "./routes/postEventIntelligence.js";
+// Execution Packet distribution settings
+import packetDistribution from "./routes/packetDistribution.js";
 // Visitor signals (fingerprint/IP logging) + landing personalization
 import signals from "./routes/signals.js";
 import personalize from "./routes/personalize.js";
@@ -109,7 +151,7 @@ import attendeeIntel from "./routes/attendee-intel.js";
 // AI COO V2 layer
 import coo from "./routes/coo.js";
 import revenueIntel from "./routes/revenue-intel.js";
-import businessHealth from "./routes/business-health.js";
+import businessReview from "./routes/business-review.js";
 import eventRisk from "./routes/event-risk.js";
 import pricingIntel from "./routes/pricing-intel.js";
 import marketplaceIntel from "./routes/marketplace-intel.js";
@@ -159,10 +201,28 @@ import vendorMetricsRouter from "./routes/vendor-metrics.js";
 import connectPayouts from "./routes/connect-payouts.js";
 import adminManage from "./routes/admin-manage.js";
 import campaigns from "./routes/campaigns.js";
+// Role-based subscription/entitlement system, Phase 1: multi-org membership
+// switcher + real Stripe recurring subscription billing + entitlements.
+import orgs from "./routes/orgs.js";
+import billing from "./routes/billing.js";
+import entitlementsRouter from "./routes/entitlements.js";
+import plans from "./routes/plans.js";
+import profitMap from "./routes/profit-map.js";
+import warehouses from "./routes/warehouses.js";
+import pipeline from "./routes/pipeline.js";
+import scopeBuilder from "./routes/scope-builder.js";
+import proposalStudio from "./routes/proposal-studio.js";
+import publicProposals from "./routes/public-proposals.js";
+import followUpDesk from "./routes/follow-up-desk.js";
+import priceGuide from "./routes/price-guide.js";
+// Public REST API surface: API keys + outbound webhooks (moat roadmap Phase 2a)
+import apiKeys from "./routes/api-keys.js";
+import webhooks from "./routes/webhooks.js";
 
 const router = Router();
 
 router.use("/auth", authNative);
+router.use("/mfa", mfa);
 router.use("/", foundation);
 router.use("/profile", profiles);
 router.use("/profile-extras", profileDecksPrograms);
@@ -191,6 +251,7 @@ router.use("/event-landing", eventLanding);
 router.use("/public/event", publicEvent);
 router.use("/tours", tours);
 router.use("/public/tour", publicTour);
+router.use("/public/proposals", publicProposals);
 router.use("/compare", compare);
 router.use("/tasks", tasks);
 router.use("/reviews", reviews);
@@ -208,6 +269,24 @@ router.use("/claim", claim);
 router.use("/seats", seats);
 router.use("/worker", worker);
 router.use("/invites", invites);
+router.use("/event-invitations", eventInvitations);
+router.use("/event-changes", eventChanges);
+router.use("/final-count", finalCount);
+router.use("/vendor-final-quantity", vendorFinalQuantity);
+router.use("/execution-packet", executionPacket);
+router.use("/readiness", readiness);
+router.use("/event-command-center", eventCommandCenter);
+router.use("/check-ins", checkIns);
+router.use("/event-activity", eventActivity);
+router.use("/incidents", incidents);
+router.use("/event-inventory", eventInventory);
+router.use("/event-sponsor-activation", eventSponsorActivation);
+router.use("/closeout", closeout);
+router.use("/event-vendor-compliance", eventVendorCompliance);
+router.use("/procurement-pipeline", procurementPipeline);
+router.use("/reconciliation", reconciliation);
+router.use("/post-event", postEventIntelligence);
+router.use("/packet-distribution", packetDistribution);
 router.use("/signals", signals);
 router.use("/personalize", personalize);
 router.use("/signatures", signatures);
@@ -250,7 +329,7 @@ router.use("/attendee-intel", attendeeIntel);
 // AI COO V2 layer
 router.use("/coo", coo);
 router.use("/revenue-intel", revenueIntel);
-router.use("/business-health", businessHealth);
+router.use("/business-review", businessReview);
 router.use("/event-risk", eventRisk);
 router.use("/pricing-intel", pricingIntel);
 router.use("/marketplace-intel", marketplaceIntel);
@@ -296,12 +375,53 @@ router.use("/vendor-metrics", vendorMetricsRouter);
 router.use("/connect-payouts", connectPayouts);
 router.use("/admin/manage", adminManage);
 router.use("/admin/campaigns", campaigns);
+router.use("/orgs", orgs);
+router.use("/billing", billing);
+router.use("/entitlements", entitlementsRouter);
+router.use("/plans", plans);
+router.use("/profit-map", profitMap);
+router.use("/warehouses", warehouses);
+router.use("/pipeline", pipeline);
+router.use("/scope-builder", scopeBuilder);
+router.use("/proposal-studio", proposalStudio);
+router.use("/follow-up-desk", followUpDesk);
+router.use("/price-guide", priceGuide);
+router.use("/api-keys", apiKeys);
+router.use("/webhooks", webhooks);
 
-export function errorHandler(err: any, _req: Request, res: Response, _next: NextFunction) {
+export function errorHandler(err: any, req: Request, res: Response, _next: NextFunction) {
+  if (err instanceof AccountDeletedError) return res.status(401).json({ error: "unauthorized" });
+  if (err instanceof ReadinessBlockedError)
+    return res.status(409).json({ error: err.message, blocking: err.blocking, state: err.state });
+  if (err instanceof CloseoutBlockedError)
+    return res.status(409).json({ error: err.message, blocking: err.blocking, state: err.state });
+  if (err instanceof ReconciliationBlockedError)
+    return res.status(409).json({ error: err.message, blocking: err.blocking, state: err.state });
+  if (err instanceof NotSettledError) return res.status(409).json({ error: err.message });
+  if (err instanceof ComplianceBlockedError) return res.status(409).json({ error: err.message, blocking: err.blocking });
   if (err instanceof ForbiddenError) return res.status(403).json({ error: err.message });
   if (err instanceof NotFoundError) return res.status(404).json({ error: err.message });
-  // eslint-disable-next-line no-console
-  console.error("[api error]", err?.message || err);
+  // Postgres 22P02 (invalid_text_representation): the client sent a
+  // malformed value for a typed column -- most commonly a non-UUID string
+  // in an :id-shaped path param (e.g. GET /api/public/tour/not-a-real-id).
+  // Found via live adversarial testing (ALFY2 pack Section 15, 2026-08-09):
+  // dozens of routes across the app pass a path param straight into a
+  // parameterized query with no format check first, so any malformed ID --
+  // not just an attack payload, a simple typo reaches the same path --
+  // surfaced as an opaque 500 instead of a clean 400. The malformed value
+  // never becomes SQL syntax (it's a bind parameter, not string-concatenated
+  // SQL) so this was never an injection risk, only a robustness/API-quality
+  // gap. One central fix here covers every route with this shape, instead
+  // of adding per-route validation to dozens of files individually.
+  if (err?.code === "22P02") return res.status(400).json({ error: "invalid id" });
+  const auth = getAuth(req);
+  logger.error("unhandled api error", {
+    error: err?.message || String(err),
+    stack: err?.stack,
+    method: req.method,
+    path: req.path,
+    userId: auth.userId,
+  });
   res.status(500).json({ error: "internal error" });
 }
 

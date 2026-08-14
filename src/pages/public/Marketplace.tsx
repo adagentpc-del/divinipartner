@@ -265,8 +265,9 @@ export default function Marketplace() {
               </div>
               <div className="mkt-grid">
                 <div className="mkt-f" style={{ gridColumn: 'span 2' }}>
-                  <label>Search</label>
+                  <label htmlFor="mkt-search">Search</label>
                   <input
+                    id="mkt-search"
                     value={keyword}
                     onChange={(e) => setKeyword(e.target.value)}
                     placeholder={`Search ${ptype.toLowerCase()}s by name, style, or specialty`}
@@ -274,8 +275,9 @@ export default function Marketplace() {
                   />
                 </div>
                 <div className="mkt-f">
-                  <label>Location</label>
+                  <label htmlFor="mkt-location">Location</label>
                   <input
+                    id="mkt-location"
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
                     placeholder="City or region"
@@ -283,26 +285,26 @@ export default function Marketplace() {
                   />
                 </div>
                 <div className="mkt-f">
-                  <label>Capacity</label>
-                  <select value={capacity} onChange={(e) => setCapacity(e.target.value)}>
+                  <label htmlFor="mkt-capacity">Capacity</label>
+                  <select id="mkt-capacity" value={capacity} onChange={(e) => setCapacity(e.target.value)}>
                     {CAPACITIES.map((c) => <option key={c}>{c}</option>)}
                   </select>
                 </div>
                 <div className="mkt-f">
-                  <label>Budget</label>
-                  <select value={budget} onChange={(e) => setBudget(e.target.value)}>
+                  <label htmlFor="mkt-budget">Budget</label>
+                  <select id="mkt-budget" value={budget} onChange={(e) => setBudget(e.target.value)}>
                     {BUDGETS.map((b) => <option key={b}>{b}</option>)}
                   </select>
                 </div>
                 <div className="mkt-f">
-                  <label>Event type</label>
-                  <select value={eventType} onChange={(e) => setEventType(e.target.value)}>
+                  <label htmlFor="mkt-event-type">Event type</label>
+                  <select id="mkt-event-type" value={eventType} onChange={(e) => setEventType(e.target.value)}>
                     {EVENT_TYPES.map((e) => <option key={e}>{e}</option>)}
                   </select>
                 </div>
                 <div className="mkt-f">
-                  <label>Availability</label>
-                  <select value={availability} onChange={(e) => setAvailability(e.target.value)}>
+                  <label htmlFor="mkt-availability">Availability</label>
+                  <select id="mkt-availability" value={availability} onChange={(e) => setAvailability(e.target.value)}>
                     {AVAILABILITY.map((a) => <option key={a}>{a}</option>)}
                   </select>
                 </div>

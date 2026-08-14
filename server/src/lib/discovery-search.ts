@@ -23,6 +23,7 @@ import { searchEnabled, SEARCH_PROVIDER, SEARXNG_URL } from "../config.js";
 import { llmEnabled, llmJson } from "./llm.js";
 import { htmlToText } from "./extract.js";
 import { safeFetch } from "./safe-fetch.js";
+import { wrapUntrustedContent, UNTRUSTED_CONTENT_SYSTEM_SUFFIX } from "./promptSafety.js";
 
 export type SearchedBusiness = {
   business_name: string;
@@ -132,20 +133,25 @@ async function structureCandidate(
     "or imply pricing, availability, capacity, insurance, certifications, or " +
     "email addresses. Only include an email if it is explicitly written in the " +
     "text. If the text does not clearly describe one concrete business, return " +
-    '{"business_name": ""}. Reply with JSON only.';
+    '{"business_name": ""}. Reply with JSON only.' +
+    UNTRUSTED_CONTENT_SYSTEM_SUFFIX;
 
   const prompt =
     "Search hint category: " +
     hints.category +
     (hints.city ? `\nSearch hint city: ${hints.city}` : "") +
     (hints.state ? `\nSearch hint state: ${hints.state}` : "") +
-    "\nResult URL: " +
-    (result.url ?? "") +
-    "\nResult title: " +
-    (result.title ?? "") +
-    "\nResult snippet: " +
-    (result.content ?? "") +
-    (pageText ? "\n\nPage text (truncated):\n" + pageText : "") +
+    "\n\n" +
+    wrapUntrustedContent(
+      "Search result + page text",
+      "Result URL: " +
+        (result.url ?? "") +
+        "\nResult title: " +
+        (result.title ?? "") +
+        "\nResult snippet: " +
+        (result.content ?? "") +
+        (pageText ? "\n\nPage text (truncated):\n" + pageText : ""),
+    ) +
     "\n\nExtract the single business this page is about." +
     ' Return JSON exactly as: {"business_name": string, "website_url": string,' +
     ' "city": string, "state": string, "category": string, "public_email": string}.' +

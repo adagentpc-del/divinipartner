@@ -273,11 +273,17 @@ export function validateUrlUpload(
  * Scan a file on disk with the system ClamAV daemon.
  *
  * SEAM CONTRACT:
- *   - This is OFF by default and NEVER blocks unless explicitly enabled.
- *   - It only runs when AV_SCAN_ENABLED === 'true'. When disabled, or when the
- *     clamdscan binary is missing / errors at the process level, it returns
- *     { clean: true, detail: 'av scan disabled' } (fail-open while unconfigured,
- *     so it cannot break the existing upload flows before clamav is confirmed).
+ *   - OFF by default: when AV_SCAN_ENABLED is not 'true', this is a no-op that
+ *     returns { clean: true, detail: 'av scan disabled' } (fail-open while
+ *     unconfigured, so it cannot break upload flows before clamav is set up).
+ *   - Once EXPLICITLY ENABLED (AV_SCAN_ENABLED='true'), it fails CLOSED: a
+ *     missing binary, a spawn error, or any scan error now BLOCKS the upload
+ *     instead of silently passing it through. An operator who opted into
+ *     scanning gets a loud, obvious failure (the upload is rejected) rather
+ *     than a quiet gap where "enabled" quietly behaved like "disabled" -- the
+ *     previous behavior treated a missing clamdscan binary as fail-open even
+ *     when explicitly enabled, which meant a broken install was
+ *     indistinguishable from a clean scan.
  *   - When ENABLED and clamdscan runs:
  *       exit 0 => clean
  *       exit 1 => infected (clean: false, detail carries the signature line)
@@ -315,9 +321,14 @@ export async function scanWithClamAV(
             ? -1
             : 0;
 
-        // Binary missing / spawn failure (ENOENT etc.): do not block, stay open.
+        // Binary missing / spawn failure (ENOENT etc.) while explicitly ENABLED:
+        // fail closed. The operator asked for scanning; a broken install must
+        // block uploads, not silently let everything through as "clean".
         if (err && (err as NodeJS.ErrnoException).code === "ENOENT") {
-          return resolve({ clean: true, detail: "av scan disabled (clamdscan not found)" });
+          return resolve({
+            clean: false,
+            detail: "av scan is enabled but the clamdscan binary was not found; upload blocked",
+          });
         }
 
         const out = `${stdout || ""}${stderr || ""}`.trim();

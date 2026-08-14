@@ -21,7 +21,7 @@ const AGREEMENT_TEXT =
   'I confirm that I am the partner named above or an authorized representative, that the tax, banking, and identity information I provide is accurate and current, and that Divini Partners by Divini Group may use it to issue commission payouts. I understand that my banking details are stored encrypted and are never displayed in full after submission.';
 
 const STYLES = `
-.pob{--emerald:#1E5D4A;--emerald-deep:#123c2e;--emerald-mid:#174838;--champagne:#D9CCB0;--ink:#2c2a26;--muted:#7d776c;--line:#e7e1d6;--ivory:#f7f4ee;--bg:#f3efe6;background:var(--bg);color:var(--ink);min-height:100vh;font-family:Inter,system-ui,sans-serif}
+.pob{--emerald:#1E5D4A;--emerald-deep:#123c2e;--emerald-mid:#174838;--champagne:#D9CCB0;--ink:#2c2a26;--muted:#6b6459;--line:#e7e1d6;--ivory:#f7f4ee;--bg:#f3efe6;background:var(--bg);color:var(--ink);min-height:100vh;font-family:Inter,system-ui,sans-serif}
 .pob .wrap{max-width:620px;margin:0 auto;padding:34px 22px 80px}
 .pob h1,.pob h2,.pob h3{font-family:'Cormorant Garamond',serif;color:var(--emerald-deep);margin:0}
 .pob .brandbar{display:flex;align-items:center;gap:11px;margin-bottom:22px}

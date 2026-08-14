@@ -10,6 +10,7 @@ import { getAuth, requireAdmin } from "../auth.js";
 import * as db from "../db.js";
 import * as admin from "../db/admin.js";
 import * as whitelabel from "../db/whitelabel.js";
+import * as carrierVerification from "../db/carrierVerification.js";
 import { logAction, readAudit, auditActions } from "../lib/audit.js";
 
 const h =
@@ -130,6 +131,20 @@ router.post(
     await logAction(a, "white_label.status_changed", "organization", req.params.orgId,
       prev, next, { ip: ip(req), summary: `white-label -> ${status}` });
     res.json({ record: next });
+  }),
+);
+
+// ---- Carrier-verified COI review queue (moat roadmap P0) -------------------
+
+/** Every carrier verification still awaiting a provider response, across all
+ *  vendors. Meaningful once a real async/webhook-driven provider is wired in
+ *  (server/src/lib/certificial.ts's stub resolves synchronously today, so
+ *  this is normally empty). */
+router.get(
+  "/carrier-verifications/pending",
+  h(async (req, res) => {
+    const a = await actor(req);
+    res.json({ verifications: await carrierVerification.listPendingCarrierVerifications(a) });
   }),
 );
 

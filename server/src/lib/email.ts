@@ -17,6 +17,9 @@ import {
   COMPANY_POSTAL_ADDRESS,
   emailEnabled,
 } from "../config.js";
+import { isEmailSuppressed, addSuppression } from "../db/communicationSuppressions.js";
+import { RESEND_WEBHOOK_SECRET } from "../config.js";
+import crypto from "node:crypto";
 
 export interface EmailMessage {
   to: string | string[];
@@ -96,10 +99,18 @@ function applyTracking(html: string, ref: string, recipient: string): string {
 }
 
 export async function sendEmail(msg: EmailMessage): Promise<EmailResult> {
-  const to = recipients(msg.to);
+  let to = recipients(msg.to);
   if (to.length === 0) return { ok: false, error: "no recipients" };
+  // Suppression check (ALFY2 pack Section 10): a hard bounce or spam
+  // complaint on any address, from any prior send through this shared
+  // transport, silently drops that address from this send rather than
+  // repeatedly emailing it. Fails open on a DB error (better to attempt
+  // delivery than to silently drop all mail because a check failed).
+  const suppressed = await Promise.all(to.map((addr) => isEmailSuppressed(addr).catch(() => false)));
+  to = to.filter((_, i) => !suppressed[i]);
+  if (to.length === 0) return { ok: false, error: "all recipients suppressed" };
   if (!emailEnabled()) {
-    // eslint-disable-next-line no-console
+     
     console.log(`[email:disabled] to=${to.join(", ")} subject="${msg.subject}"`);
     return { ok: false, skipped: true };
   }
@@ -144,6 +155,73 @@ export async function sendEmail(msg: EmailMessage): Promise<EmailResult> {
   } catch (e) {
     return { ok: false, error: (e as Error).message };
   }
+}
+
+// ---------------------------------------------------------------------------
+// Resend delivery-event webhook (bounce/complaint auto-suppression, ALFY2
+// pack Section 10). Resend signs webhooks the same way Svix does: headers
+// svix-id / svix-timestamp / svix-signature, signed content
+// "{id}.{timestamp}.{body}", secret is "whsec_<base64 key>", HMAC-SHA256,
+// base64-encoded, and svix-signature carries one or more space-separated
+// "v1,<base64sig>" values -- any match is valid (supports secret rotation).
+// ---------------------------------------------------------------------------
+
+/**
+ * Verify a Resend/Svix-signed webhook. Returns the parsed JSON body when the
+ * signature is valid, or null on any failure (unconfigured secret, missing
+ * headers, bad signature, unparseable body). Never throws.
+ */
+export function verifyResendWebhook(
+  rawBody: Buffer | string,
+  headers: { id?: string; timestamp?: string; signature?: string },
+): Record<string, unknown> | null {
+  if (!RESEND_WEBHOOK_SECRET || !headers.id || !headers.timestamp || !headers.signature) return null;
+  // M1 (same rationale as Stripe's verifier): bound the timestamp to defeat replay.
+  const tsec = Number(headers.timestamp);
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  if (!Number.isFinite(tsec) || Math.abs(nowSeconds - tsec) > 300) return null;
+
+  const secretB64 = RESEND_WEBHOOK_SECRET.startsWith("whsec_")
+    ? RESEND_WEBHOOK_SECRET.slice("whsec_".length)
+    : RESEND_WEBHOOK_SECRET;
+  let key: Buffer;
+  try {
+    key = Buffer.from(secretB64, "base64");
+  } catch {
+    return null;
+  }
+  const payload = typeof rawBody === "string" ? rawBody : rawBody.toString("utf8");
+  const signedContent = `${headers.id}.${headers.timestamp}.${payload}`;
+  const expected = crypto.createHmac("sha256", key).update(signedContent).digest("base64");
+  const candidates = headers.signature.split(" ").map((v) => v.split(",")[1]).filter(Boolean) as string[];
+  const a = Buffer.from(expected);
+  const matched = candidates.some((c) => {
+    const b = Buffer.from(c, "base64");
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+  });
+  if (!matched) return null;
+  try {
+    return JSON.parse(payload) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Apply a verified Resend delivery event to the suppression list. Only
+ * bounce and complaint events suppress (delivery/open/click are ignored
+ * here -- open/click for claim outreach specifically is already handled by
+ * the self-hosted tracking pixel/redirect, not this webhook).
+ */
+export async function applyResendDeliveryEvent(event: Record<string, unknown>): Promise<void> {
+  const type = String(event.type ?? "");
+  const data = (event.data as Record<string, unknown> | undefined) ?? {};
+  const to = data.to;
+  const addresses = Array.isArray(to) ? to.filter((x): x is string => typeof x === "string") : typeof to === "string" ? [to] : [];
+  if (addresses.length === 0) return;
+  const reason = type === "email.bounced" ? "bounce" : type === "email.complained" ? "complaint" : null;
+  if (!reason) return;
+  await Promise.all(addresses.map((addr) => addSuppression(addr, reason, "resend_webhook")));
 }
 
 export { emailEnabled };

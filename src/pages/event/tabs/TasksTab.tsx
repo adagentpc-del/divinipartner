@@ -45,7 +45,7 @@ export default function TasksTab({ eventId }: { eventId: string }) {
       setMeta(m);
     } catch (e) { setErr((e as Error).message); }
   }
-  useEffect(() => { void load(); /* eslint-disable-next-line */ }, [eventId]);
+  useEffect(() => { void load();   }, [eventId]);
 
   async function refresh() {
     const t = await apiGet<{ tasks: Task[] }>(`/tasks/event/${eventId}`);
@@ -153,7 +153,7 @@ const T_CSS = `
 .tk-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
 .tk-progress { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .tk-pn { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 24px; color: #123c2e; }
-.tk-pl { font-size: 12px; color: #7d776c; }
+.tk-pl { font-size: 12px; color: #6b6459; }
 .tk-bar { width: 160px; height: 7px; background: #efeadf; border-radius: 999px; overflow: hidden; }
 .tk-fill { height: 100%; background: linear-gradient(90deg, #1E5D4A, #C9A35B); }
 .tk-add { display: flex; flex-wrap: wrap; gap: 8px; background: rgba(247,244,238,.6); border: 1px dashed #e7e1d6; border-radius: 12px; padding: 12px 14px; margin-bottom: 18px; }

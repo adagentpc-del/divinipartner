@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiGet, apiSend } from '../../lib/api';
+import { isPlanLimitError, UpgradePrompt, type PlanLimitError } from '../../lib/entitlements';
 
 type Seat = {
   id: string;
@@ -31,6 +32,7 @@ export default function SeatSettings() {
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [limitError, setLimitError] = useState<PlanLimitError | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -47,14 +49,15 @@ export default function SeatSettings() {
 
   async function addSeat(e: React.FormEvent) {
     e.preventDefault();
-    setBusy('add'); setErr(null); setMsg(null);
+    setBusy('add'); setErr(null); setMsg(null); setLimitError(null);
     try {
       await apiSend('POST', '/seats', { email: email.trim(), name: name.trim() || undefined });
       setEmail(''); setName('');
       setMsg('Seat added.');
       await load();
     } catch (e2) {
-      setErr((e2 as Error)?.message ?? 'Could not add seat');
+      if (isPlanLimitError(e2)) setLimitError(e2.body);
+      else setErr((e2 as Error)?.message ?? 'Could not add seat');
     } finally {
       setBusy(null);
     }
@@ -116,6 +119,7 @@ export default function SeatSettings() {
           time and it stops billing.
         </p>
         {err ? <div className="dss-alert err">{err}</div> : null}
+        {limitError && <UpgradePrompt error={limitError} onDismiss={() => setLimitError(null)} />}
         {msg ? <div className="dss-alert ok">{msg}</div> : null}
 
         <div className="dss-grid">
@@ -213,7 +217,7 @@ export default function SeatSettings() {
 }
 
 const CSS = `
-.dss{--em:#123c2e;--em2:#1E5D4A;--gold:#C9A35B;--ivory:#F7F4EE;--ink:#2c2a26;--mut:#7d776c;--line:#e7e1d6;background:var(--ivory);min-height:100vh;font-family:Inter,system-ui,sans-serif;color:var(--ink)}
+.dss{--em:#123c2e;--em2:#1E5D4A;--gold:#C9A35B;--ivory:#F7F4EE;--ink:#2c2a26;--mut:#6b6459;--line:#e7e1d6;background:var(--ivory);min-height:100vh;font-family:Inter,system-ui,sans-serif;color:var(--ink)}
 .dss-wrap{max-width:880px;margin:0 auto;padding:40px 24px 80px}
 .dss-link{background:none;border:none;color:var(--em);font:inherit;font-size:13px;font-weight:600;cursor:pointer;padding:0;margin-bottom:18px}
 .dss-kicker{display:block;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);margin-bottom:6px}

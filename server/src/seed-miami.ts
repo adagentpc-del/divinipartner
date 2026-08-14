@@ -41,7 +41,7 @@ async function main(): Promise<void> {
   const rows: SeedRow[] = files.flatMap((fp) =>
     fs.existsSync(fp) ? (JSON.parse(fs.readFileSync(fp, "utf8")) as SeedRow[]) : [],
   );
-  // eslint-disable-next-line no-console
+   
   console.log(`[seed-miami] loading ${rows.length} placeholder profiles from ${files.join(", ")}`);
 
   const inputs = rows.map((r) => ({
@@ -60,7 +60,7 @@ async function main(): Promise<void> {
   // forceCreate: these are human-verified, so bypass the discovery confidence
   // floor while still honoring duplicate detection (idempotent re-runs).
   const { summary } = await discovery.ingestMany(inputs, { forceCreate: true });
-  // eslint-disable-next-line no-console
+   
   console.log("[seed-miami] ingest summary:", JSON.stringify(summary));
 
   // Set the placeholder logo on each created profile (clearbit logo by domain).
@@ -79,7 +79,7 @@ async function main(): Promise<void> {
     );
     logos += updated.length;
   }
-  // eslint-disable-next-line no-console
+   
   console.log(`[seed-miami] logos set on ${logos} profiles`);
 
   await pool.end();
@@ -87,7 +87,7 @@ async function main(): Promise<void> {
 }
 
 main().catch((e) => {
-  // eslint-disable-next-line no-console
+   
   console.error("[seed-miami] failed:", e);
   process.exit(1);
 });

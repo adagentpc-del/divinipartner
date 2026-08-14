@@ -72,12 +72,29 @@ export function s3Config(): {
 export const STORAGE_ENCRYPTION_KEY = process.env.STORAGE_ENCRYPTION_KEY || "";
 export const storageEncryptionEnabled = (): boolean => !!STORAGE_ENCRYPTION_KEY;
 
-// Signing secret for short-lived download URLs (HMAC). Falls back to
-// OIDC_CLIENT_ID-derived value in dev but should be set explicitly in prod.
-export const DOWNLOAD_URL_SECRET =
-  process.env.DOWNLOAD_URL_SECRET ||
-  process.env.SESSION_SECRET ||
-  "dev-only-download-secret-change-me";
+/**
+ * Database backups (server/src/scripts/backup-db.ts). Reuses the same
+ * pluggable object storage (local disk or S3-compatible, with
+ * STORAGE_ENCRYPTION_KEY envelope encryption) as file uploads, under a
+ * separate "backups/db/" key prefix -- so if S3 + encryption are already
+ * configured for uploaded documents, backups get both automatically, with
+ * zero new infrastructure. BACKUP_RETENTION_DAYS controls how many days of
+ * backups the prune step (run automatically after each backup) keeps.
+ */
+export const BACKUP_RETENTION_DAYS = Number(process.env.BACKUP_RETENTION_DAYS || 14);
+export const BACKUP_KEY_PREFIX = "backups/db";
+
+/**
+ * Optional error-monitoring sink (lib/logger.ts). When set, every
+ * logger.error() call POSTs a JSON payload to this URL (best-effort,
+ * non-blocking) in addition to the structured stdout/stderr log line that
+ * always happens regardless. A generic webhook rather than a specific
+ * vendor SDK -- point it at a Slack incoming webhook, a custom collector,
+ * or a Sentry-compatible ingestion proxy. Unset by default: structured
+ * logging to stdout/stderr always happens; this only adds real-time
+ * alerting on top of it once an operator has somewhere to send it.
+ */
+export const ERROR_MONITORING_WEBHOOK_URL = process.env.ERROR_MONITORING_WEBHOOK_URL || "";
 
 export const PUBLIC_APP_URL = (process.env.PUBLIC_APP_URL || "").replace(/\/$/, "");
 export const BASE_PATH = (process.env.BASE_PATH || "/").replace(/\/$/, "") || "";
@@ -109,27 +126,6 @@ export function getAllowedOrigins(): string[] {
 }
 
 export const IS_PROD = process.env.NODE_ENV === "production";
-
-/**
- * Security-secret fail-safe. In production, security secrets that still carry a
- * known dev fallback (or are empty) are a forgery hazard, so we THROW at module
- * load to abort startup. Outside production these fall back to dev values so the
- * app still boots and typechecks. SESSION_SECRET is asserted in lib/session.ts.
- */
-const DEV_DOWNLOAD_URL_SECRET = "dev-only-download-secret-change-me";
-if (IS_PROD) {
-  const secretErrors: string[] = [];
-  if (!DOWNLOAD_URL_SECRET || DOWNLOAD_URL_SECRET === DEV_DOWNLOAD_URL_SECRET) {
-    secretErrors.push(
-      "DOWNLOAD_URL_SECRET is unset, empty, or the insecure dev fallback. Download URLs would be forgeable. Set DOWNLOAD_URL_SECRET (or SESSION_SECRET) to a strong unique value.",
-    );
-  }
-  if (secretErrors.length > 0) {
-    throw new Error(
-      "[config] production secret check failed:\n  - " + secretErrors.join("\n  - "),
-    );
-  }
-}
 
 /**
  * Payment processors. Feature-flagged: when keys are absent the processor is
@@ -170,6 +166,9 @@ export const emailEnabled = (): boolean =>
   (EMAIL_PROVIDER === "resend" && !!EMAIL_API_KEY) ||
   (EMAIL_PROVIDER === "postal" && !!EMAIL_API_KEY && !!POSTAL_API_URL);
 
+/** Resend delivery-event webhook (bounce/complaint -> auto-suppression). Svix-signed. */
+export const RESEND_WEBHOOK_SECRET = process.env.RESEND_WEBHOOK_SECRET || "";
+
 /**
  * Background worker / scheduler. WORKER_INTERVAL_MINUTES > 0 starts an in-process
  * loop; 0 means "off, driven by external cron calling worker.js".
@@ -179,13 +178,26 @@ export const WORKER_INTERVAL_MINUTES = Number(process.env.WORKER_INTERVAL_MINUTE
 /**
  * Local-first LLM. Defaults to a local Ollama server; when unreachable or off,
  * callers fall back to deterministic logic (never a hard dependency). An
- * OpenAI-compatible endpoint is supported only if explicitly configured.
+ * OpenAI-compatible endpoint or the Anthropic Messages API is supported only
+ * if explicitly configured.
  */
-export const LLM_PROVIDER = (process.env.LLM_PROVIDER || "ollama").toLowerCase(); // ollama | openai-compat | off
+export const LLM_PROVIDER = (process.env.LLM_PROVIDER || "ollama").toLowerCase(); // ollama | openai-compat | anthropic | off
 export const OLLAMA_URL = (process.env.OLLAMA_URL || "http://localhost:11434").replace(/\/$/, "");
-export const LLM_MODEL = process.env.LLM_MODEL || "llama3.1";
+export const LLM_MODEL = process.env.LLM_MODEL || "llama3.1"; // ollama/openai-compat only
 export const LLM_API_KEY = process.env.LLM_API_KEY || ""; // openai-compat only
 export const LLM_BASE_URL = (process.env.LLM_BASE_URL || "").replace(/\/$/, ""); // openai-compat base
+// Prefers the SDK-conventional ANTHROPIC_API_KEY; falls back to the generic
+// LLM_API_KEY so one key config can cover either provider.
+export const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || process.env.LLM_API_KEY || "";
+export const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || "claude-haiku-4-5-20251001";
+
+/**
+ * Carrier-verified COI (Certificate of Insurance). Off by default: every
+ * environment without a real key returns an honest "unavailable" status from
+ * every verification request, never a fabricated "verified". See
+ * lib/certificial.ts.
+ */
+export const CERTIFICIAL_API_KEY = process.env.CERTIFICIAL_API_KEY || "";
 export const llmEnabled = (): boolean => LLM_PROVIDER !== "off";
 
 /**

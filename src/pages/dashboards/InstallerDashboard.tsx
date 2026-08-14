@@ -19,6 +19,12 @@ const NAV: NavItem[] = [
   { label: 'Messages', icon: 'M' },
   { label: 'Completion Photos', icon: 'C' },
   { label: 'Invoices', icon: 'I', to: '/invoices' },
+  // "Get Paid" (payouts/setup) is the marketplace transaction split rail --
+  // where a job invoice you issue and get paid on. "Payout Bank" /
+  // "My Payouts" below are a SEPARATE rail for referral-partner commissions
+  // (connect_accounts / payout_instructions, released by an admin). Both
+  // can apply to the same installer, so both stay.
+  { label: 'Get Paid', icon: '$', to: '/payouts/setup' },
   { label: 'Referrals', icon: 'r', to: '/referral-dashboard' },
   { label: 'Preferred Partners', icon: 'P', to: '/preferred-partners' },
   { label: 'Campaigns', icon: 'C', to: '/relationship-campaigns' },
