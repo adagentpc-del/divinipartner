@@ -86,6 +86,44 @@ const DEFAULT_MILESTONES = [
 ];
 
 /**
+ * Retire a legacy whole-contract invoice (quote_id set, milestone_id NULL --
+ * the shape an earlier version of this module created, one invoice for the
+ * entire contract, before staged milestone invoices existed) before
+ * generating the new per-milestone ones. Without this, retrying award on a
+ * contract from before this change would leave BOTH the old lump-sum
+ * invoice AND the new staged invoices outstanding at once -- the client
+ * would see a full balance due twice over (Codex review on PR #39).
+ *
+ * If the legacy invoice was already paid in full, the contract is already
+ * settled under the old model: mark every milestone paid and return true so
+ * the caller skips generating new, unpaid invoices on top of money already
+ * collected. Otherwise close it (a terminal, non-payable status) and return
+ * false so the caller proceeds to generate the milestone invoices.
+ */
+async function retireLegacyContractInvoice(
+  quoteId: string,
+  milestones: { id: string }[],
+): Promise<boolean> {
+  const legacy = await q1<{ id: string; status: string | null }>(
+    `select id, status from invoices where quote_id = $1 and milestone_id is null limit 1`,
+    [quoteId],
+  ).catch(() => null);
+  if (!legacy) return false;
+  if (legacy.status === "paid") {
+    for (const m of milestones) {
+      await q1(`update contract_payment_milestones set status = 'paid' where id = $1`, [m.id]).catch(
+        () => undefined,
+      );
+    }
+    return true;
+  }
+  await q1(`update invoices set status = 'closed', updated_at = now() where id = $1`, [legacy.id]).catch(
+    () => undefined,
+  );
+  return false;
+}
+
+/**
  * Convert an awarded quote's payment-milestone schedule into real, separately
  * payable standardized invoices -- one per milestone (Deposit / Progress /
  * Final), rather than one lump-sum invoice for the whole contract. Every
@@ -96,13 +134,17 @@ const DEFAULT_MILESTONES = [
  * (db/invoices.ts's applyPaymentToInvoice) independently -- which in turn
  * syncs contract_payment_milestones.status back to 'paid' via milestone_id.
  *
- * Each milestone's line item is `milestone.due_pct`% of the quote's own
- * SUBTOTAL (the vendor's pre-fee price, not the client-facing
- * fee-inclusive total) -- createInvoice independently computes the platform
- * fee on top of whatever subtotal it is given, so passing the fee-inclusive
- * total here would double-count the fee on every milestone (the same class
- * of bug as invoicing the full quote.total as a single "subtotal" line
- * item).
+ * Each milestone's line item AMOUNT is `milestone.due_pct`% of the quote's
+ * own SUBTOTAL (the vendor's pre-fee price, not the client-facing
+ * fee-inclusive total) -- createInvoice would otherwise independently
+ * compute the platform fee on top of whatever subtotal it is given, double-
+ * counting the fee. Its platform FEE is instead the same `due_pct`% slice
+ * of the quote's own already-computed `platform_fee` (via
+ * platform_fee_override), not an independently recomputed flat rate --
+ * under PRICING_V2 that stored fee may already be BELOW the flat rate
+ * because of the per-event $2,500 cap, and three independently-recomputed
+ * uncapped fees would sum to more than the capped total that was actually
+ * accepted (Codex review on PR #39).
  *
  * Idempotent per milestone (checks invoices.milestone_id before creating),
  * and called from BOTH the first-award success path and the idempotent
@@ -111,14 +153,22 @@ const DEFAULT_MILESTONES = [
  * permanently leaving that stage unpayable.
  */
 async function ensureMilestoneInvoices(
-  quote: { id: string; event_id: string; vendor_id: string | null; subtotal: string | null },
+  quote: {
+    id: string;
+    event_id: string;
+    vendor_id: string | null;
+    subtotal: string | null;
+    platform_fee: string | null;
+  },
   contractId: string,
   milestones: { id: string; label: string; due_pct: string; sort_order: number }[],
   vendorOrgId: string,
   createdBy: string,
 ): Promise<void> {
   if (milestones.length === 0) return;
+  if (await retireLegacyContractInvoice(quote.id, milestones)) return;
   const subtotal = Number(quote.subtotal) || 0;
+  const platformFee = Number(quote.platform_fee) || 0;
   const vendorOrg = await q1<{ name: string | null; tier: string | null }>(
     `select name, tier from organizations where id = $1`,
     [vendorOrgId],
@@ -128,7 +178,9 @@ async function ensureMilestoneInvoices(
       m.id,
     ]).catch(() => null);
     if (existing) continue;
-    const amount = Math.round(subtotal * (Number(m.due_pct) / 100) * 100) / 100;
+    const pct = Number(m.due_pct) / 100;
+    const amount = Math.round(subtotal * pct * 100) / 100;
+    const feePortion = Math.round(platformFee * pct * 100) / 100;
     await createInvoice(vendorOrgId, vendorOrg?.name ?? null, vendorOrg?.tier ?? null, createdBy, {
       event_id: quote.event_id,
       vendor_id: quote.vendor_id,
@@ -136,6 +188,7 @@ async function ensureMilestoneInvoices(
       quote_id: quote.id,
       milestone_id: m.id,
       line_items: [{ description: m.label, amount }],
+      platform_fee_override: feePortion,
       currency: "USD",
       notes: `${m.label} (${m.due_pct}% of contract ${contractId}), generated automatically when awarded.`,
     })
@@ -170,9 +223,10 @@ export async function awardQuote(
         vendor_id: string | null;
         total: string | null;
         subtotal: string | null;
+        platform_fee: string | null;
         status: string | null;
       }>(
-        `select id, bid_id, event_id, vendor_id, total, subtotal, status from quotes where id = $1 for update`,
+        `select id, bid_id, event_id, vendor_id, total, subtotal, platform_fee, status from quotes where id = $1 for update`,
         [quoteId],
       )
     ).rows[0];

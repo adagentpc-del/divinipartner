@@ -120,6 +120,16 @@ export interface CreateInvoiceInput {
   line_items?: InvoiceLineItem[];
   taxes?: number;
   processing_fee?: number;
+  /**
+   * Use this exact platform fee instead of computing subtotal * feeRate.
+   * Needed when the caller already knows the correct fee from elsewhere
+   * (e.g. a proportional slice of a quote's own platform_fee, which may be
+   * BELOW the flat rate due to the PRICING_V2 per-event $2,500 cap --
+   * db/awards.ts's ensureMilestoneInvoices splits a capped quote across
+   * several invoices and must preserve the cap rather than let each one
+   * independently recompute an uncapped fee on its own slice).
+   */
+  platform_fee_override?: number;
   deposit_due?: number;
   due_date?: string | null;
   terms?: string | null;
@@ -149,7 +159,10 @@ export async function createInvoice(
   // receive their full quote), so processing_fee is forced to 0. Legacy keeps
   // the tier-rate fee and any caller-supplied processing fee, unchanged.
   const feeRate = PRICING_V2 ? PLATFORM_FEE_RATE_V2 : feeRateForTier(orgTier);
-  const platformFee = Math.round(subtotal * feeRate * 100) / 100;
+  const platformFee =
+    input.platform_fee_override != null
+      ? Math.round(input.platform_fee_override * 100) / 100
+      : Math.round(subtotal * feeRate * 100) / 100;
   const processingFee = PRICING_V2 ? 0 : Math.round((Number(input.processing_fee) || 0) * 100) / 100;
   const total = Math.round((subtotal + taxes + platformFee + processingFee) * 100) / 100;
   const depositDue = Math.round((Number(input.deposit_due) || 0) * 100) / 100;
