@@ -161,6 +161,14 @@ export async function listMyEvents(actor: Actor): Promise<EventRow[]> {
     return q<EventRow>(`select * from events order by created_at desc limit 500`);
   }
   return q<EventRow>(
+    // ev.status <> 'declined' matches actorCanSee's own event_vendors check
+    // below -- without it, a vendor who lost a competing bid on this event
+    // (awardQuote() sets their event_vendors row to 'declined') still got
+    // listed here via their org's OTHER, non-declined event_vendors row
+    // matching the bare organization_id condition, producing a card that
+    // 404/403s the moment they click it (Codex review on PR #40, verified:
+    // this was reachable but invisible before that PR, since nothing linked
+    // a vendor to /events at all until then).
     `select distinct e.*
        from events e
        left join event_vendors ev on ev.event_id = e.id
@@ -168,7 +176,7 @@ export async function listMyEvents(actor: Actor): Promise<EventRow[]> {
       where ($1::uuid is not null and e.organization_id = $1)
          or e.client_id = $2
          or e.planner_id = $2
-         or ($1::uuid is not null and ev.organization_id = $1)
+         or ($1::uuid is not null and ev.organization_id = $1 and ev.status <> 'declined')
          or em.id is not null
       order by e.created_at desc
       limit 500`,
