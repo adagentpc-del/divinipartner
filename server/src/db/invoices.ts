@@ -256,6 +256,20 @@ export async function getInvoice(orgId: string, id: string): Promise<InvoiceRow 
   return q1<InvoiceRow>(`select * from invoices where id = $1 and organization_id = $2`, [id, orgId]);
 }
 
+/**
+ * Fetch an invoice by id alone, with no org scoping.
+ *
+ * SECURITY: unscoped on purpose, same convention as applyPaymentToInvoice
+ * below. The caller MUST authorize the acting org as a party to the invoice
+ * (see getInvoicePartiesById) BEFORE calling this -- it exists so a party who
+ * is NOT the issuer (the client who owes it, or the vendor/venue it names)
+ * can still view it. getInvoice() above stays issuer-only for callers that
+ * intentionally want that narrower scope.
+ */
+export async function getInvoiceById(id: string): Promise<InvoiceRow | null> {
+  return q1<InvoiceRow>(`select * from invoices where id = $1`, [id]);
+}
+
 const ALLOWED: ReadonlySet<InvoiceStatus> = new Set(INVOICE_STATUSES);
 
 export async function updateInvoiceStatus(
