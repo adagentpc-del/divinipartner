@@ -1,0 +1,23 @@
+-- Staged milestone payments (live persona testing, 2026-08-15).
+--
+-- contract_payment_milestones (db/schema-award-flow.sql) was explicitly
+-- "data model only" (Phase 31): a Deposit/Progress/Final schedule was
+-- computed and stored on award, but nothing ever let a client pay any one
+-- stage of it. The only payable surface (a standardized invoice) covered
+-- the WHOLE contract in one lump sum, so a client could only ever pay
+-- 100% up front despite the schedule's own labels implying otherwise.
+--
+-- Rather than build a second, parallel milestone-payment mechanism, this
+-- links each milestone to its OWN standardized invoice (invoices.milestone_id)
+-- and db/awards.ts now creates one invoice per milestone instead of one for
+-- the whole contract. Every already-built invoice surface (list, detail,
+-- PDF, Stripe/PayPal checkout, party-based view/pay authorization) then
+-- works for staged payments with zero new payment code -- a client sees
+-- three separate invoices (Deposit / Progress payment / Final payment) and
+-- pays each independently.
+--
+-- APPLY: this is folded directly into db/apply-all.sql (the real deploy
+-- target); kept here only for the per-feature migration history other
+-- schema-*.sql files follow.
+alter table invoices add column if not exists milestone_id uuid references contract_payment_milestones(id) on delete set null;
+create index if not exists idx_invoices_milestone on invoices(milestone_id);

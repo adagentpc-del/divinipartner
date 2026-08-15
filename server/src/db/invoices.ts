@@ -61,6 +61,7 @@ export interface InvoiceRow {
   client_id: string | null;
   organization_id: string | null;
   quote_id: string | null;
+  milestone_id: string | null;
   line_items: InvoiceLineItem[] | null;
   subtotal: string | null;
   taxes: string | null;
@@ -115,9 +116,20 @@ export interface CreateInvoiceInput {
   venue_id?: string | null;
   client_id?: string | null;
   quote_id?: string | null;
+  milestone_id?: string | null;
   line_items?: InvoiceLineItem[];
   taxes?: number;
   processing_fee?: number;
+  /**
+   * Use this exact platform fee instead of computing subtotal * feeRate.
+   * Needed when the caller already knows the correct fee from elsewhere
+   * (e.g. a proportional slice of a quote's own platform_fee, which may be
+   * BELOW the flat rate due to the PRICING_V2 per-event $2,500 cap --
+   * db/awards.ts's ensureMilestoneInvoices splits a capped quote across
+   * several invoices and must preserve the cap rather than let each one
+   * independently recompute an uncapped fee on its own slice).
+   */
+  platform_fee_override?: number;
   deposit_due?: number;
   due_date?: string | null;
   terms?: string | null;
@@ -147,7 +159,10 @@ export async function createInvoice(
   // receive their full quote), so processing_fee is forced to 0. Legacy keeps
   // the tier-rate fee and any caller-supplied processing fee, unchanged.
   const feeRate = PRICING_V2 ? PLATFORM_FEE_RATE_V2 : feeRateForTier(orgTier);
-  const platformFee = Math.round(subtotal * feeRate * 100) / 100;
+  const platformFee =
+    input.platform_fee_override != null
+      ? Math.round(input.platform_fee_override * 100) / 100
+      : Math.round(subtotal * feeRate * 100) / 100;
   const processingFee = PRICING_V2 ? 0 : Math.round((Number(input.processing_fee) || 0) * 100) / 100;
   const total = Math.round((subtotal + taxes + platformFee + processingFee) * 100) / 100;
   const depositDue = Math.round((Number(input.deposit_due) || 0) * 100) / 100;
@@ -163,11 +178,11 @@ export async function createInvoice(
     const row = (
       await client.query<InvoiceRow>(
         `insert into invoices
-           (invoice_number, event_id, vendor_id, venue_id, client_id, organization_id, quote_id,
+           (invoice_number, event_id, vendor_id, venue_id, client_id, organization_id, quote_id, milestone_id,
             line_items, subtotal, taxes, platform_fee, platform_fee_rate, processing_fee, total,
             deposit_due, deposit_paid, deposit_status, balance_due, due_date, status, terms, notes,
             payment_link, brand, currency, created_by)
-         values ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,$11,$12,$13,$14,$15,0,$16,$17,$18,$19,$20,$21,$22,$23::jsonb,$24,$25)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11,$12,$13,$14,$15,$16,0,$17,$18,$19,$20,$21,$22,$23,$24::jsonb,$25,$26)
          returning *`,
         [
           invoiceNumber,
@@ -177,6 +192,7 @@ export async function createInvoice(
           input.client_id ?? null,
           orgId,
           input.quote_id ?? null,
+          input.milestone_id ?? null,
           JSON.stringify(lineItems),
           subtotal,
           taxes,
@@ -406,6 +422,16 @@ export async function applyPaymentToInvoice(invoiceId: string, amount: number): 
       event_id: row.event_id,
       total: row.total,
     });
+    // Staged milestone payments: this invoice may BE one stage of a
+    // Deposit/Progress/Final schedule (db/awards.ts's ensureMilestoneInvoices
+    // creates one invoice per milestone, linked via milestone_id). Keep the
+    // milestone's own status in sync so GET /quotes/:id/contract reports the
+    // real, current state, not permanently 'pending'/'invoiced'.
+    if (row.milestone_id) {
+      await q1(`update contract_payment_milestones set status = 'paid' where id = $1`, [row.milestone_id]).catch(
+        () => undefined,
+      );
+    }
   }
   return row;
 }

@@ -6625,3 +6625,14 @@ create index if not exists idx_webhook_deliveries_endpoint on webhook_deliveries
 -- milestones, event membership) every negotiated award already goes
 -- through. Off by default: a vendor opts a specific package in explicitly.
 alter table packages add column if not exists instant_bookable boolean not null default false;
+
+-- ---------- invoices.milestone_id (staged milestone payments, live testing
+-- 2026-08-15, db/schema-milestone-invoices.sql) ----------
+-- contract_payment_milestones was "data model only": a Deposit/Progress/
+-- Final schedule was computed on award but nothing let a client pay any one
+-- stage of it -- the only payable surface was one lump-sum invoice for the
+-- whole contract. db/awards.ts now creates one invoice PER milestone
+-- instead, linked here, so the already-built invoice list/detail/checkout
+-- UI carries staged payments with no new payment code.
+alter table invoices add column if not exists milestone_id uuid references contract_payment_milestones(id) on delete set null;
+create index if not exists idx_invoices_milestone on invoices(milestone_id);

@@ -17,6 +17,7 @@ type Invoice = {
   due_date: string | null;
   currency: string | null;
   created_at: string;
+  line_items?: { description: string }[] | null;
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -72,6 +73,7 @@ export default function InvoicesTab({ eventId }: { eventId: string }) {
         <thead>
           <tr>
             <th>Invoice</th>
+            <th>For</th>
             <th>Status</th>
             <th>Due date</th>
             <th className="ew-inv-right">Total</th>
@@ -82,6 +84,7 @@ export default function InvoicesTab({ eventId }: { eventId: string }) {
           {rows.map((inv) => (
             <tr key={inv.id} className="ew-inv-row" onClick={() => nav(`/invoices/${inv.id}`)}>
               <td className="ew-inv-num">{inv.invoice_number ?? inv.id.slice(0, 8)}</td>
+              <td className="ew-inv-for">{inv.line_items?.[0]?.description ?? '-'}</td>
               <td>
                 <span className={`ew-inv-pill st-${inv.status ?? 'draft'}`}>
                   {STATUS_LABELS[inv.status ?? 'draft'] ?? inv.status}
@@ -103,6 +106,7 @@ const I_CSS = `
 .ew-inv-row { cursor: pointer; transition: background .12s ease; }
 .ew-inv-row:hover { background: rgba(201,163,91,.07); }
 .ew-inv-num { font-weight: 600; color: #123c2e; }
+.ew-inv-for { color: #6b6459; }
 .ew-inv-bal { font-weight: 600; }
 .ew-inv-pill { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 10px; border-radius: 999px; border: 1px solid #e7e1d6; background: #F7F4EE; color: #6b6459; }
 .ew-inv-pill.st-paid { background: rgba(30,93,74,.12); color: #1E5D4A; border-color: rgba(30,93,74,.3); }
