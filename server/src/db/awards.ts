@@ -43,6 +43,7 @@ import { logAction } from "../lib/audit.js";
 import { recordActivity } from "./eventActivity.js";
 import { checkBeforeAwardCompliance, ComplianceBlockedError } from "./eventVendorCompliance.js";
 import { emitWebhookEvent } from "../lib/webhooks.js";
+import { createInvoice, type InvoiceLineItem } from "./invoices.js";
 
 export type ContractRow = {
   id: string;
@@ -102,7 +103,11 @@ export async function awardQuote(
         vendor_id: string | null;
         total: string | null;
         status: string | null;
-      }>(`select id, bid_id, event_id, vendor_id, total, status from quotes where id = $1 for update`, [quoteId])
+        line_items: InvoiceLineItem[] | null;
+      }>(
+        `select id, bid_id, event_id, vendor_id, total, status, line_items from quotes where id = $1 for update`,
+        [quoteId],
+      )
     ).rows[0];
     if (!quote) {
       await client.query("rollback");
@@ -278,6 +283,39 @@ export async function awardQuote(
       relatedEntityType: "contract",
       relatedEntityId: contract?.id ?? null,
     }).catch(() => undefined);
+    // Convert the awarded quote into a real standardized invoice so the
+    // client actually has something to pay -- the invoice list/detail pages
+    // and the Stripe/PayPal checkout on them (routes/invoices.ts,
+    // routes/payments.ts) already exist, but before this nothing ever called
+    // createInvoice outside its own POST /api/invoices handler, which no
+    // frontend page ever calls either. An award produced a contract + a
+    // payment-milestone schedule that was itself never surfaced in the UI
+    // (GET /quotes/:id/contract has no caller), so a client who awarded a
+    // bid had no reachable way to ever pay the vendor. Issued by the vendor
+    // org (their tier sets the platform fee, matching how a manually-created
+    // invoice against this quote would be attributed elsewhere, e.g.
+    // routes/payments.ts's invoiceOrgTier). Best-effort: never blocks award.
+    if (winnerOrg) {
+      const vendorOrg = await q1<{ name: string | null; tier: string | null }>(
+        `select name, tier from organizations where id = $1`,
+        [winnerOrg],
+      ).catch(() => null);
+      const lineItems: InvoiceLineItem[] =
+        Array.isArray(quote.line_items) && quote.line_items.length > 0
+          ? quote.line_items
+          : [{ description: "Awarded quote", amount }];
+      const depositDue = Math.round(amount * 0.3 * 100) / 100; // matches DEFAULT_MILESTONES' Deposit (30%)
+      await createInvoice(winnerOrg, vendorOrg?.name ?? null, vendorOrg?.tier ?? null, actor.user.id, {
+        event_id: quote.event_id,
+        vendor_id: quote.vendor_id,
+        client_id: actor.user.id,
+        quote_id: quoteId,
+        line_items: lineItems,
+        deposit_due: depositDue,
+        currency: "USD",
+        notes: contract ? `Generated automatically when contract ${contract.id} was awarded.` : null,
+      }).catch(() => undefined);
+    }
     void emitWebhookEvent(winnerOrg, "quote.awarded", {
       quote_id: quoteId,
       event_id: quote.event_id,

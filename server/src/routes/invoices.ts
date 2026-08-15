@@ -14,7 +14,8 @@ import {
   createInvoice,
   listInvoices,
   listEventInvoices,
-  getInvoice,
+  getInvoiceById,
+  getInvoicePartiesById,
   updateInvoiceStatus,
   INVOICE_STATUSES,
   INVOICE_STATUS_LABELS,
@@ -111,6 +112,19 @@ router.post(
   }),
 );
 
+/**
+ * True when the acting org is a party to the invoice: the issuer, or the org
+ * behind the vendor/venue/client/event it names (same parties payments.ts
+ * authorizes to pay it, via getInvoicePartiesById). Before this, GET /:id and
+ * GET /:id/pdf were issuer-only (getInvoice scopes by organization_id), so
+ * the client who actually owes the invoice -- the whole reason a "Pay"
+ * button exists on this page -- got a 404 opening their own invoice.
+ */
+async function authorizedInvoiceParty(actorOrgId: string, invoiceId: string): Promise<boolean> {
+  const parties = await getInvoicePartiesById(invoiceId);
+  return !!parties && parties.party_org_ids.includes(actorOrgId);
+}
+
 router.get(
   "/:id",
   requireUser,
@@ -118,7 +132,10 @@ router.get(
     const auth = getAuth(req);
     const actor = await db.getActor(auth.userId!, auth.email);
     if (!actor.org) return res.status(404).json({ error: "not found" });
-    const row = await getInvoice(actor.org.id, req.params.id);
+    if (!(await authorizedInvoiceParty(actor.org.id, req.params.id))) {
+      return res.status(404).json({ error: "not found" });
+    }
+    const row = await getInvoiceById(req.params.id);
     if (!row) return res.status(404).json({ error: "not found" });
     res.json({ invoice: row });
   }),
@@ -132,7 +149,10 @@ router.get(
     const auth = getAuth(req);
     const actor = await db.getActor(auth.userId!, auth.email);
     if (!actor.org) return res.status(404).json({ error: "not found" });
-    const row = await getInvoice(actor.org.id, req.params.id);
+    if (!(await authorizedInvoiceParty(actor.org.id, req.params.id))) {
+      return res.status(404).json({ error: "not found" });
+    }
+    const row = await getInvoiceById(req.params.id);
     if (!row) return res.status(404).json({ error: "not found" });
     const pdf = await renderInvoicePdf(row);
     res.setHeader("Content-Type", "application/pdf");
