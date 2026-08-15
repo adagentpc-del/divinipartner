@@ -31,7 +31,11 @@
  *   5. A real event_vendor_contracts row is created, referencing the exact
  *      quote id and its accepted amount, with a default 30/40/30
  *      deposit/progress/final payment-milestone schedule (editable
- *      afterward; no live money movement here, data model only per spec).
+ *      afterward). Each milestone gets its own real, separately payable
+ *      standardized invoice (ensureMilestoneInvoices, live testing
+ *      2026-08-15) -- the schedule started as data-model-only per the
+ *      original spec, but nothing ever let a client actually pay any stage
+ *      of it, so this closes that.
  *
  * All of this runs inside one transaction so a losing quote's decline and
  * the winner's promotion never observably diverge under concurrent award
@@ -43,8 +47,7 @@ import { logAction } from "../lib/audit.js";
 import { recordActivity } from "./eventActivity.js";
 import { checkBeforeAwardCompliance, ComplianceBlockedError } from "./eventVendorCompliance.js";
 import { emitWebhookEvent } from "../lib/webhooks.js";
-import { createInvoice, type InvoiceLineItem } from "./invoices.js";
-import { type LineItem as QuoteLineItem } from "../lib/quoteMath.js";
+import { createInvoice } from "./invoices.js";
 
 export type ContractRow = {
   id: string;
@@ -83,102 +86,66 @@ const DEFAULT_MILESTONES = [
 ];
 
 /**
- * Map a quote's raw line items into InvoiceLineItem shape ({description,
- * amount}). Quotes store whatever shape the submitting caller sent -- the
- * real production vendor-quote UI (AutoQuoteDraft.tsx) sends
- * {name, quantity, unit_price, line_total}, never {description, amount} --
- * so this uses the SAME field-priority lib/quoteMath.ts's computeSubtotal
- * already uses (amount, else quantity*unit_price) to stay consistent with
- * however the quote's own stored subtotal was computed, falling back to
- * line_total when neither is present. Any item lib/quoteMath.ts's own
- * subtotal calculation could not price is dropped rather than invoiced as
- * $0. If nothing priced out (empty/unrecognized items, or they don't sum to
- * the quote's own recorded subtotal), fall back to one line item at
- * `fallbackSubtotal` -- the quote's already-computed, trustworthy subtotal --
- * rather than risk a $0 invoice (Codex review on PR #37, verified live: an
- * unmapped AutoQuoteDraft quote's items all read `amount: undefined`,
- * pricing every line at $0).
+ * Convert an awarded quote's payment-milestone schedule into real, separately
+ * payable standardized invoices -- one per milestone (Deposit / Progress /
+ * Final), rather than one lump-sum invoice for the whole contract. Every
+ * already-built invoice surface (list, detail, PDF, Stripe/PayPal checkout,
+ * party-based view/pay authorization) then carries staged payments with no
+ * new payment code: a client sees three separate invoices and pays each
+ * independently, and each invoice's own status flips to 'paid'
+ * (db/invoices.ts's applyPaymentToInvoice) independently -- which in turn
+ * syncs contract_payment_milestones.status back to 'paid' via milestone_id.
+ *
+ * Each milestone's line item is `milestone.due_pct`% of the quote's own
+ * SUBTOTAL (the vendor's pre-fee price, not the client-facing
+ * fee-inclusive total) -- createInvoice independently computes the platform
+ * fee on top of whatever subtotal it is given, so passing the fee-inclusive
+ * total here would double-count the fee on every milestone (the same class
+ * of bug as invoicing the full quote.total as a single "subtotal" line
+ * item).
+ *
+ * Idempotent per milestone (checks invoices.milestone_id before creating),
+ * and called from BOTH the first-award success path and the idempotent
+ * already-awarded early return, so a transient failure on any one milestone
+ * is retried the next time anything re-touches the award instead of
+ * permanently leaving that stage unpayable.
  */
-function toInvoiceLineItems(rawItems: unknown, fallbackSubtotal: number): InvoiceLineItem[] {
-  const items = Array.isArray(rawItems) ? (rawItems as QuoteLineItem[]) : [];
-  const mapped: InvoiceLineItem[] = [];
-  for (const li of items) {
-    if (!li || li.kind === "exclusion") continue;
-    const qty = typeof li.quantity === "number" ? li.quantity : li.qty;
-    const amount =
-      typeof li.amount === "number"
-        ? li.amount
-        : typeof qty === "number" && typeof li.unit_price === "number"
-          ? qty * li.unit_price
-          : typeof li.line_total === "number"
-            ? li.line_total
-            : null;
-    if (amount == null) continue;
-    mapped.push({
-      description: li.name ?? li.label ?? "Line item",
-      quantity: qty,
-      unit_price: li.unit_price,
-      amount: Math.round(amount * 100) / 100,
-    });
-  }
-  const mappedTotal = Math.round(mapped.reduce((sum, li) => sum + li.amount, 0) * 100) / 100;
-  if (mapped.length === 0 || mappedTotal <= 0) {
-    return [{ description: "Awarded quote", amount: Math.round(fallbackSubtotal * 100) / 100 }];
-  }
-  return mapped;
-}
-
-/**
- * Convert an awarded quote into a real standardized invoice, if one does not
- * already exist for it. Called from BOTH the first-award success path and
- * the idempotent already-awarded early return, so a transient failure here
- * (this always runs best-effort, after the award transaction has already
- * committed) is retried the next time anything re-calls awardQuote on the
- * same quote, instead of permanently leaving an awarded, un-invoiced
- * contract that nothing will ever revisit (Codex review on PR #37,
- * verified: the original version only ever attempted this once, on
- * firstAward, and the idempotent branch's early return skipped it forever
- * on retry).
- */
-async function ensureContractInvoice(
-  quote: {
-    id: string;
-    event_id: string;
-    vendor_id: string | null;
-    subtotal: string | null;
-    line_items: unknown;
-  },
+async function ensureMilestoneInvoices(
+  quote: { id: string; event_id: string; vendor_id: string | null; subtotal: string | null },
   contractId: string,
-  clientTotal: number, // quote.total / contract.awarded_amount -- what DEFAULT_MILESTONES' pct is applied to
+  milestones: { id: string; label: string; due_pct: string; sort_order: number }[],
   vendorOrgId: string,
   createdBy: string,
 ): Promise<void> {
-  const existing = await q1<{ id: string }>(`select id from invoices where quote_id = $1 limit 1`, [quote.id]).catch(
-    () => null,
-  );
-  if (existing) return;
+  if (milestones.length === 0) return;
   const subtotal = Number(quote.subtotal) || 0;
   const vendorOrg = await q1<{ name: string | null; tier: string | null }>(
     `select name, tier from organizations where id = $1`,
     [vendorOrgId],
   ).catch(() => null);
-  const lineItems = toInvoiceLineItems(quote.line_items, subtotal);
-  // Deposit tracks the CLIENT-facing total (matching the "Deposit" contract
-  // milestone, 30% of contract.awarded_amount), not the vendor subtotal used
-  // for line items above -- those are two different bases (fee-inclusive vs
-  // not) and conflating them would desync the invoice from the milestone
-  // schedule GET /quotes/:id/contract already reports.
-  const depositDue = Math.round(clientTotal * 0.3 * 100) / 100; // matches DEFAULT_MILESTONES' Deposit (30%)
-  await createInvoice(vendorOrgId, vendorOrg?.name ?? null, vendorOrg?.tier ?? null, createdBy, {
-    event_id: quote.event_id,
-    vendor_id: quote.vendor_id,
-    client_id: createdBy,
-    quote_id: quote.id,
-    line_items: lineItems,
-    deposit_due: depositDue,
-    currency: "USD",
-    notes: `Generated automatically when contract ${contractId} was awarded.`,
-  }).catch(() => undefined);
+  for (const m of milestones) {
+    const existing = await q1<{ id: string }>(`select id from invoices where milestone_id = $1 limit 1`, [
+      m.id,
+    ]).catch(() => null);
+    if (existing) continue;
+    const amount = Math.round(subtotal * (Number(m.due_pct) / 100) * 100) / 100;
+    await createInvoice(vendorOrgId, vendorOrg?.name ?? null, vendorOrg?.tier ?? null, createdBy, {
+      event_id: quote.event_id,
+      vendor_id: quote.vendor_id,
+      client_id: createdBy,
+      quote_id: quote.id,
+      milestone_id: m.id,
+      line_items: [{ description: m.label, amount }],
+      currency: "USD",
+      notes: `${m.label} (${m.due_pct}% of contract ${contractId}), generated automatically when awarded.`,
+    })
+      .then(() =>
+        q1(`update contract_payment_milestones set status = 'invoiced' where id = $1 and status = 'pending'`, [
+          m.id,
+        ]),
+      )
+      .catch(() => undefined);
+  }
 }
 
 /**
@@ -204,9 +171,8 @@ export async function awardQuote(
         total: string | null;
         subtotal: string | null;
         status: string | null;
-        line_items: unknown;
       }>(
-        `select id, bid_id, event_id, vendor_id, total, subtotal, status, line_items from quotes where id = $1 for update`,
+        `select id, bid_id, event_id, vendor_id, total, subtotal, status from quotes where id = $1 for update`,
         [quoteId],
       )
     ).rows[0];
@@ -224,14 +190,14 @@ export async function awardQuote(
       // already exists) so a prior best-effort failure to create the invoice
       // is not permanent -- this is the only path anything revisits an
       // already-awarded quote through.
+      const existingMilestones = (
+        await client.query<{ id: string; label: string; due_pct: string; sort_order: number }>(
+          `select id, label, due_pct, sort_order from contract_payment_milestones where contract_id = $1`,
+          [already.id],
+        )
+      ).rows;
       await client.query("commit");
-      await ensureContractInvoice(
-        quote,
-        already.id,
-        Number(quote.total) || 0,
-        already.vendor_org_id,
-        actor.user.id,
-      );
+      await ensureMilestoneInvoices(quote, already.id, existingMilestones, already.vendor_org_id, actor.user.id);
       return { firstAward: false, contract: already, declinedQuoteIds: [] };
     }
 
@@ -359,16 +325,21 @@ export async function awardQuote(
       )
     ).rows[0];
 
+    const insertedMilestones: { id: string; label: string; due_pct: string; sort_order: number }[] = [];
     if (contract) {
       let sortOrder = 0;
       for (const m of DEFAULT_MILESTONES) {
         const dueAmount = Math.round(amount * (m.pct / 100) * 100) / 100;
-        await client.query(
-          `insert into contract_payment_milestones
-             (contract_id, label, due_pct, due_amount, sort_order)
-           values ($1,$2,$3,$4,$5)`,
-          [contract.id, m.label, m.pct, dueAmount, sortOrder++],
-        );
+        const row = (
+          await client.query<{ id: string; label: string; due_pct: string; sort_order: number }>(
+            `insert into contract_payment_milestones
+               (contract_id, label, due_pct, due_amount, sort_order)
+             values ($1,$2,$3,$4,$5)
+             returning id, label, due_pct, sort_order`,
+            [contract.id, m.label, m.pct, dueAmount, sortOrder++],
+          )
+        ).rows[0];
+        if (row) insertedMilestones.push(row);
       }
     }
 
@@ -408,7 +379,7 @@ export async function awardQuote(
     // invoice against this quote would be attributed elsewhere, e.g.
     // routes/payments.ts's invoiceOrgTier).
     if (winnerOrg && contract) {
-      await ensureContractInvoice(quote, contract.id, amount, winnerOrg, actor.user.id);
+      await ensureMilestoneInvoices(quote, contract.id, insertedMilestones, winnerOrg, actor.user.id);
     }
     void emitWebhookEvent(winnerOrg, "quote.awarded", {
       quote_id: quoteId,

@@ -16,6 +16,7 @@ type Invoice = {
   due_date: string | null;
   currency: string | null;
   created_at: string;
+  line_items?: { description: string }[] | null;
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -79,6 +80,7 @@ export default function InvoiceList() {
             <thead>
               <tr>
                 <th>Invoice</th>
+                <th>For</th>
                 <th>Status</th>
                 <th>Due date</th>
                 <th className="right">Total</th>
@@ -89,6 +91,7 @@ export default function InvoiceList() {
               {rows.map((inv) => (
                 <tr key={inv.id} onClick={() => nav(`/invoices/${inv.id}`)} className="dpinv-row">
                   <td className="dpinv-num">{inv.invoice_number ?? inv.id.slice(0, 8)}</td>
+                  <td className="dpinv-for">{inv.line_items?.[0]?.description ?? '-'}</td>
                   <td>
                     <span className={`dpinv-pill st-${inv.status ?? 'draft'}`}>
                       {STATUS_LABELS[inv.status ?? 'draft'] ?? inv.status}
@@ -136,6 +139,7 @@ const CSS = `
 .dpinv-table td { padding: 13px 16px; border-bottom: 1px solid var(--dp-line); }
 .dpinv-table tr:last-child td { border-bottom: 0; }
 .dpinv-num { font-weight: 600; color: var(--dp-emerald); }
+.dpinv-for { color: var(--dp-muted); }
 .dpinv-bal { font-weight: 600; }
 .dpinv-pill {
   display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 10px;

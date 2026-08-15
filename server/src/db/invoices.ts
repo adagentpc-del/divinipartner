@@ -61,6 +61,7 @@ export interface InvoiceRow {
   client_id: string | null;
   organization_id: string | null;
   quote_id: string | null;
+  milestone_id: string | null;
   line_items: InvoiceLineItem[] | null;
   subtotal: string | null;
   taxes: string | null;
@@ -115,6 +116,7 @@ export interface CreateInvoiceInput {
   venue_id?: string | null;
   client_id?: string | null;
   quote_id?: string | null;
+  milestone_id?: string | null;
   line_items?: InvoiceLineItem[];
   taxes?: number;
   processing_fee?: number;
@@ -163,11 +165,11 @@ export async function createInvoice(
     const row = (
       await client.query<InvoiceRow>(
         `insert into invoices
-           (invoice_number, event_id, vendor_id, venue_id, client_id, organization_id, quote_id,
+           (invoice_number, event_id, vendor_id, venue_id, client_id, organization_id, quote_id, milestone_id,
             line_items, subtotal, taxes, platform_fee, platform_fee_rate, processing_fee, total,
             deposit_due, deposit_paid, deposit_status, balance_due, due_date, status, terms, notes,
             payment_link, brand, currency, created_by)
-         values ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,$11,$12,$13,$14,$15,0,$16,$17,$18,$19,$20,$21,$22,$23::jsonb,$24,$25)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11,$12,$13,$14,$15,$16,0,$17,$18,$19,$20,$21,$22,$23,$24::jsonb,$25,$26)
          returning *`,
         [
           invoiceNumber,
@@ -177,6 +179,7 @@ export async function createInvoice(
           input.client_id ?? null,
           orgId,
           input.quote_id ?? null,
+          input.milestone_id ?? null,
           JSON.stringify(lineItems),
           subtotal,
           taxes,
@@ -406,6 +409,16 @@ export async function applyPaymentToInvoice(invoiceId: string, amount: number): 
       event_id: row.event_id,
       total: row.total,
     });
+    // Staged milestone payments: this invoice may BE one stage of a
+    // Deposit/Progress/Final schedule (db/awards.ts's ensureMilestoneInvoices
+    // creates one invoice per milestone, linked via milestone_id). Keep the
+    // milestone's own status in sync so GET /quotes/:id/contract reports the
+    // real, current state, not permanently 'pending'/'invoiced'.
+    if (row.milestone_id) {
+      await q1(`update contract_payment_milestones set status = 'paid' where id = $1`, [row.milestone_id]).catch(
+        () => undefined,
+      );
+    }
   }
   return row;
 }
