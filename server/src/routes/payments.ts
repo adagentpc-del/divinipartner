@@ -144,6 +144,17 @@ router.post(
     if (!Number.isFinite(amount) || amount <= 0) {
       return res.status(400).json({ error: "positive amount required" });
     }
+    // Attribute the fee + payment to the issuing org when paying an invoice,
+    // same as the /checkout and /capture paths below -- otherwise a payment
+    // recorded here (the only path that works without Stripe/PayPal
+    // configured) lands under the PAYER's org, so the vendor being paid
+    // never sees it on their own Payments dashboard and the platform fee is
+    // computed off the payer's tier instead of theirs (live-verified: a
+    // client recording payment against their vendor's invoice left the
+    // vendor's GET /payments and /payments/summary completely empty despite
+    // the invoice itself correctly flipping to paid).
+    let feeOrgId = actor.org.id;
+    let feeTier = actor.org.tier;
     if (b.invoice_id) {
       // IDOR gate: only a party to the invoice may record a payment against it
       // (same guard as the checkout/capture paths).
@@ -151,8 +162,13 @@ router.post(
       if (!authorized) {
         return res.status(403).json({ error: "not authorized to pay this invoice" });
       }
+      const v = await invoiceOrgTier(b.invoice_id);
+      if (v) {
+        feeOrgId = v.orgId;
+        feeTier = v.tier;
+      }
     }
-    const row = await recordPayment(actor.org.id, actor.org.tier, actor.user.id, {
+    const row = await recordPayment(feeOrgId, feeTier, actor.user.id, {
       invoice_id: b.invoice_id ?? null,
       event_id: b.event_id ?? null,
       amount,
