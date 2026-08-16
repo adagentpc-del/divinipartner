@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { apiGet, apiSend, ApiError } from '../../../lib/api';
+import { useMe } from '../../dashboards/DashboardShell';
 
 /**
  * Post-Event Report (live-ops phase, Part 32-38): a single read-only
@@ -45,6 +46,18 @@ function fmtMoney(n: number): string {
 }
 
 export default function PostEventReportTab({ eventId }: { eventId: string }) {
+  const { me } = useMe();
+  // This tab is shared by both the event owner (a client org) and a hired
+  // planner (the doc comment above says "owner/planner" and getEvent's own
+  // access gate lets both in) -- the relationship submitted must match
+  // whichever actually reviewed, since "Client reviews vendor" and "Planner
+  // reviews vendor" are distinct relationship types the trust engine and the
+  // vendor's own Reviews page both surface separately. Previously this was
+  // hardcoded to 'planner_to_vendor' regardless of actor, so a client's
+  // review was silently mislabeled as if a planner had written it (live-
+  // verified: a client-org actor with no planner on the event produced a
+  // reviews row with relationship='planner_to_vendor').
+  const relationship = me?.role === 'planner' ? 'planner_to_vendor' : 'client_to_vendor';
   const [digest, setDigest] = useState<Digest | null>(null);
   const [reviewedOrgIds, setReviewedOrgIds] = useState<Set<string>>(new Set());
   const [err, setErr] = useState<string | null>(null);
@@ -79,7 +92,7 @@ export default function PostEventReportTab({ eventId }: { eventId: string }) {
     setErr(null);
     try {
       await apiSend('POST', '/reviews', {
-        relationship: 'planner_to_vendor',
+        relationship,
         event_id: eventId,
         reviewee_org_id: reviewForm.orgId,
         rating: reviewForm.rating,
