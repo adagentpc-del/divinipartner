@@ -50,6 +50,10 @@ export default function GuestExperienceHub() {
   const [mapUrl, setMapUrl] = useState('');
   const [parking, setParking] = useState('');
   const [updatesText, setUpdatesText] = useState('');
+  // Posted-at timestamps for the updates currently on the server, keyed by
+  // message text, so re-saving (e.g. after adding a new line) does not
+  // silently overwrite when past updates were actually posted.
+  const [originalUpdates, setOriginalUpdates] = useState<{ at?: string; message?: string }[]>([]);
 
   async function load(id: string) {
     if (!id) return;
@@ -80,6 +84,7 @@ export default function GuestExperienceHub() {
     );
     setMapUrl(i?.venue_map_url || '');
     setParking(i?.parking_info || '');
+    setOriginalUpdates(i?.updates || []);
     setUpdatesText((i?.updates || []).map((u) => u.message ?? '').join('\n'));
   }
 
@@ -151,11 +156,18 @@ export default function GuestExperienceHub() {
           return { time: time.trim(), title };
         })
         .filter(Boolean);
+      // Keep each existing update's original posted-at time; only a line with
+      // no matching entry left in the pool is genuinely new and gets now().
+      const pool = [...originalUpdates];
       const updates = updatesText
         .split('\n')
         .map((s) => s.trim())
         .filter(Boolean)
-        .map((message) => ({ at: new Date().toISOString(), message }));
+        .map((message) => {
+          const idx = pool.findIndex((u) => u.message === message);
+          if (idx !== -1) return pool.splice(idx, 1)[0];
+          return { at: new Date().toISOString(), message };
+        });
       const res = await apiSend<{ info: EventInfo }>('PUT', `/guest-hub/info/${activeEvent}`, {
         schedule,
         venue_map_url: mapUrl.trim() || null,

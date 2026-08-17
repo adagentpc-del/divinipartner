@@ -255,7 +255,7 @@ export async function upsertEventInfo(
   await requireOwner(actor, eventId);
   const row = await q1<EventInfoRow>(
     `insert into event_info (event_id, schedule, venue_map_url, parking_info, updates, updated_at)
-       values ($1,$2,$3,$4,$5, now())
+       values ($1,$2::jsonb,$3,$4,$5::jsonb, now())
      on conflict (event_id) do update set
        schedule = coalesce(excluded.schedule, event_info.schedule),
        venue_map_url = coalesce(excluded.venue_map_url, event_info.venue_map_url),
@@ -265,10 +265,10 @@ export async function upsertEventInfo(
      returning *`,
     [
       eventId,
-      input.schedule ?? null,
+      input.schedule != null ? JSON.stringify(input.schedule) : null,
       input.venue_map_url ?? null,
       input.parking_info ?? null,
-      input.updates ?? null,
+      input.updates != null ? JSON.stringify(input.updates) : null,
     ],
   );
   return row as EventInfoRow;
