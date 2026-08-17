@@ -189,15 +189,18 @@ async function gatherMetrics(vendorId: string): Promise<VendorScorecardMetrics> 
   }
 
   // --- reviews: client satisfaction (avg rating where the vendor is reviewee) ---
-  // reviews.reviewee_id is a user; map the vendor to its org's users.
+  // reviews.reviewee_id is a legacy per-user column from the original base
+  // schema that the real review flow (db/reviews.ts::createReview, called
+  // from both PostEventReportTab.tsx and the global Reviews composer) never
+  // populates -- every actual review sets reviewee_org_id instead. Matching
+  // on reviewee_id meant this field could never show real data: live-
+  // verified, a vendor's own scorecard still read "No reviews yet" right
+  // after a real 5-star review was submitted about them.
   if (await tableExists("reviews")) {
     const rv = await q1<{ avg_rating: string | null; n: string }>(
       `select avg(r.rating) as avg_rating, count(*) as n
          from reviews r
-        where r.reviewee_id in (
-                select u.id from users u
-                  join vendors v on v.organization_id = u.organization_id
-                 where v.id = $1)`,
+        where r.reviewee_org_id = (select organization_id from vendors where id = $1)`,
       [vendorId],
     );
     if (num(rv?.n) > 0 && rv?.avg_rating != null) {
