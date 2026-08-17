@@ -21,6 +21,7 @@
  * Zero em dashes by convention.
  */
 import { recomputeScoreInternal } from "../db/divini-score.js";
+import { q1 } from "../pool.js";
 import type { DiviniEntityType } from "./diviniScore.js";
 
 /** A review/feedback row, narrowed to the fields needed to resolve its subject. */
@@ -54,24 +55,61 @@ export async function refreshEntityScore(
 /**
  * Resolve the Divini entity a review is about (its subject) so its score can be
  * refreshed. Maps the review's target columns to a (entityType, entityId) pair:
- *   - target_type 'vendor'  -> vendors.id   (vendor_id, then target_id)
- *   - target_type 'venue'   -> venues.id    (venue_id, then target_id)
+ *   - target_type 'vendor'  -> vendors.id   (vendor_id if set, else the vendor
+ *                              row owned by the reviewee's org)
+ *   - target_type 'venue'   -> venues.id    (venue_id if set, else the venue
+ *                              row owned by the reviewee's org)
  *   - target_type 'client'  -> users.id     (reviewee_id, then target_id)
  *   - target_type 'planner' -> users.id     (reviewee_id, then target_id)
  *   - target_type 'org'     -> no per-entity Divini Score; returns null (skip)
  * Returns null when the subject cannot be resolved to a scored entity type.
+ *
+ * vendor/venue used to fall back straight to target_id when vendor_id/venue_id
+ * were unset -- but the real review composers (Reviews.tsx,
+ * PostEventReportTab.tsx) never send vendor_id or venue_id, and createReview
+ * defaults target_id to reviewee_org_id, an ORGANIZATION id. Handing that
+ * straight to recomputeScoreInternal("vendor"/"venue", <org_id>) always failed
+ * (vendors.id / venues.id is a distinct primary key from organizations.id),
+ * so resolveOwner threw NotFoundError, recomputeScoreInternal swallowed it,
+ * and the post-review refresh silently no-opped for every real vendor/venue
+ * review -- the cached divini_scores row (what partnership matching actually
+ * reads) never picked up new feedback until someone called the recompute
+ * endpoint by hand. Resolve the org id to that org's vendor/venue row instead
+ * (Codex review on #44: "Refresh the entity rather than the reviewee
+ * organization").
+ *
+ * client/planner keep the old (already-inert) reviewee_id/target_id lookup:
+ * unlike vendors/venues, client and planner Divini Scores are keyed per USER,
+ * and a review only ever captures the reviewee's ORG, not which specific user
+ * in that org was reviewed. An org can genuinely have more than one
+ * planner/client-role user, so there is no reliable single user to refresh
+ * from org id alone -- guessing one would risk recomputing the wrong
+ * person's score. Correctly attributing a review to one user needs the write
+ * path to capture that user's id, which is a larger, separate change.
  */
-export function reviewSubject(
+export async function reviewSubject(
   review: ReviewSubjectRef,
-): { entityType: DiviniEntityType; entityId: string } | null {
+): Promise<{ entityType: DiviniEntityType; entityId: string } | null> {
   const t = String(review.target_type ?? "").trim();
   if (t === "vendor") {
-    const id = review.vendor_id ?? review.target_id ?? null;
-    return id ? { entityType: "vendor", entityId: id } : null;
+    if (review.vendor_id) return { entityType: "vendor", entityId: review.vendor_id };
+    const orgId = review.target_id ?? null;
+    if (!orgId) return null;
+    const row = await q1<{ id: string }>(
+      `select id from vendors where organization_id = $1 order by created_at asc limit 1`,
+      [orgId],
+    );
+    return row ? { entityType: "vendor", entityId: row.id } : null;
   }
   if (t === "venue") {
-    const id = review.venue_id ?? review.target_id ?? null;
-    return id ? { entityType: "venue", entityId: id } : null;
+    if (review.venue_id) return { entityType: "venue", entityId: review.venue_id };
+    const orgId = review.target_id ?? null;
+    if (!orgId) return null;
+    const row = await q1<{ id: string }>(
+      `select id from venues where organization_id = $1 order by created_at asc limit 1`,
+      [orgId],
+    );
+    return row ? { entityType: "venue", entityId: row.id } : null;
   }
   if (t === "client") {
     const id = review.reviewee_id ?? review.target_id ?? null;
@@ -92,7 +130,7 @@ export function reviewSubject(
  * Returns the new score, or null when the review has no scored subject.
  */
 export async function refreshAfterReview(review: ReviewSubjectRef): Promise<number | null> {
-  const subject = reviewSubject(review);
+  const subject = await reviewSubject(review);
   if (!subject) return null;
   return refreshEntityScore(subject.entityType, subject.entityId);
 }

@@ -188,10 +188,16 @@ async function gatherVenueSignals(venueId: string): Promise<DiviniSignals> {
   // at the venue -- including vendor reviews with nothing to do with the
   // venue itself -- so a venue's "reviews" signal was contaminated by
   // unrelated ratings. Falls back to venues.review_score when present.
+  // target_type = 'venue' additionally guards against a review whose
+  // reviewee_org_id happens to match this org but whose relationship was
+  // actually about a different target type (the review composer's org-id
+  // field is free text with no cross-check against the chosen relationship)
+  // (Codex review on #44).
   const rev = await q1<{ avg: string | null; cnt: string | null }>(
     `select avg(r.rating) as avg, count(*) as cnt
        from reviews r
       where r.reviewee_org_id = (select organization_id from venues where id = $1)
+        and r.target_type = 'venue'
         and r.status in ('submitted', 'published')
         and r.rating is not null`,
     [venueId],
@@ -277,12 +283,15 @@ async function gatherVendorSignals(vendorId: string): Promise<DiviniSignals> {
   // reviews.ts::createReview); every real review sets reviewee_org_id
   // instead, so joining through it here always returned zero rows. Match the
   // vendor's own org id and the same earned-review status filter
-  // computeTrustForOrg() uses. Fall back to the compliance reviews_score,
-  // then the vendor.review_score column.
+  // computeTrustForOrg() uses; target_type = 'vendor' guards against a
+  // misdirected review whose reviewee_org_id matches this org but whose
+  // relationship was really about a different target type (Codex review on
+  // #44). Fall back to the compliance reviews_score, then vendor.review_score.
   const rev = await q1<{ avg: string | null }>(
     `select avg(rating) as avg
        from reviews r
       where r.reviewee_org_id = (select organization_id from vendors where id = $1)
+        and r.target_type = 'vendor'
         and r.status in ('submitted', 'published')
         and r.rating is not null`,
     [vendorId],
@@ -341,11 +350,19 @@ async function gatherPlannerSignals(plannerUserId: string): Promise<DiviniSignal
   // always returned zero rows and pinned vendor/venue/client_satisfaction at
   // an active 0 -- not graceful absence, an actual penalty -- regardless of
   // how many real reviews the planner had earned. Matched against the
-  // planner's own org since reviews are org-scoped, not per-user.
+  // planner's own org since reviews are org-scoped, not per-user; target_type
+  // = 'planner' guards against a misdirected review of a different type
+  // landing on this org (Codex review on #44). NOTE: because this is
+  // matched at the org level, a planner-role org with more than one
+  // planner user will see the same average on every one of that org's
+  // planner users -- reviews only ever capture the reviewee's org, not
+  // which specific user was reviewed, so there is no finer attribution
+  // available without a review-composer change to capture that.
   const rev = await q1<{ avg: string | null }>(
     `select avg(r.rating) as avg
        from reviews r
       where r.reviewee_org_id = (select organization_id from users where id = $1)
+        and r.target_type = 'planner'
         and r.status in ('submitted', 'published')
         and r.rating is not null`,
     [plannerUserId],
@@ -451,11 +468,14 @@ async function gatherClientSignals(clientUserId: string): Promise<DiviniSignals>
   // Reviews of this client (vendor_to_client). Same reviewee_id -> reviewee_org_id
   // fix as gatherVendorSignals/gatherPlannerSignals above: the legacy column is
   // never populated, so `reliability` silently ignored review data and always
-  // fell back to payment health alone.
+  // fell back to payment health alone. target_type = 'client' guards against a
+  // misdirected review of a different type (Codex review on #44); same
+  // org-level (not per-user) attribution caveat as gatherPlannerSignals.
   const rev = await q1<{ avg: string | null }>(
     `select avg(r.rating) as avg
        from reviews r
       where r.reviewee_org_id = (select organization_id from users where id = $1)
+        and r.target_type = 'client'
         and r.status in ('submitted', 'published')
         and r.rating is not null`,
     [clientUserId],
