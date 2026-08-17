@@ -206,6 +206,36 @@ export async function markAgreed(id: string, agreementDocId: string | null): Pro
 }
 
 /**
+ * Recompute sponsorship_packages.sold from the actual current truth (count of
+ * this package's non-cancelled paid/fulfilled purchases) rather than
+ * maintaining an independently-mutated counter. Codex review on #45 caught
+ * two real problems with the earlier increment-on-paid version: (1) a
+ * nonprofit cancelling an already-paid purchase (the supported
+ * PATCH /:id/status -> 'cancelled' path) never reversed the increment, so a
+ * cancelled deal permanently inflated both the dashboard's committed-revenue
+ * figure and the package's remaining inventory; and (2) the increment and the
+ * paid-status transition were two separate statements, so two concurrent
+ * `/:id/paid` requests could both observe "not yet paid" and each apply their
+ * own +1, double-counting one purchase. Recomputing the count from source on
+ * every status-affecting write sidesteps both: it is idempotent (recomputing
+ * twice from the same truth yields the same number, so a race just means a
+ * harmless redundant write, never a double-count), and self-healing
+ * (cancelling a paid purchase changes what the count query matches, so the
+ * very next recompute -- triggered by that same cancellation -- corrects it).
+ */
+async function recomputeSold(packageId: string | null): Promise<void> {
+  if (!packageId) return;
+  await q(
+    `update sponsorship_packages
+        set sold = (select count(*) from sponsor_purchases
+                      where sponsorship_package_id = $1 and status in ('paid','fulfilled')),
+            updated_at = now()
+      where id = $1`,
+    [packageId],
+  ).catch(() => undefined); // best-effort: never fail the caller's write over this
+}
+
+/**
  * Record the payment id + amount and move to 'paid'.
  *
  * Live-traced (auditing the sponsor/nonprofit fundraising flow): a real
@@ -217,38 +247,24 @@ export async function markAgreed(id: string, agreementDocId: string | null): Pro
  * either. The dashboard's revenue figure -- the nonprofit's headline number --
  * was permanently stuck at $0 no matter how many real sponsors paid, since
  * computeNonprofitRollup's documented fallback (committed revenue = sold *
- * price) only works if `sold` is ever incremented, and nothing did. Increment
- * it here, on the interested/agreed -> paid transition, guarded against
- * double-counting a repeat call (e.g. a retried /paid request) by only
- * incrementing when the row was not already 'paid'.
+ * price) only works if `sold` is ever incremented, and nothing did.
  */
 export async function markPaid(
   id: string,
   paymentId: string | null,
   amount: number | null,
 ): Promise<SponsorPurchase> {
-  const cols = COLS.split(",").map((c) => `sp.${c.trim()}`).join(", ");
-  const row = await q1<SponsorPurchase & { previous_status: string | null; pkg_id: string | null }>(
-    `with old as (
-       select status, sponsorship_package_id from sponsor_purchases where id = $1
-     )
-     update sponsor_purchases sp
-        set payment_id = coalesce($2, sp.payment_id),
-            amount = coalesce($3, sp.amount),
+  const row = await q1<SponsorPurchase>(
+    `update sponsor_purchases
+        set payment_id = coalesce($2, payment_id),
+            amount = coalesce($3, amount),
             status = 'paid'
-       from old
-      where sp.id = $1
-      returning ${cols}, old.status as previous_status, old.sponsorship_package_id as pkg_id`,
+      where id = $1
+      returning ${COLS}`,
     [id, paymentId, amount],
   );
   if (!row) throw new NotFoundError("sponsor purchase not found");
-  if (row.previous_status !== "paid" && row.pkg_id) {
-    await q(
-      `update sponsorship_packages set sold = coalesce(sold, 0) + 1, updated_at = now()
-        where id = $1`,
-      [row.pkg_id],
-    ).catch(() => undefined); // best-effort: never fail the payment confirmation over this
-  }
+  await recomputeSold(row.sponsorship_package_id);
   return row;
 }
 
@@ -273,6 +289,9 @@ export async function setStatus(id: string, status: PurchaseStatus): Promise<Spo
     [id, status],
   );
   if (!row) throw new NotFoundError("sponsor purchase not found");
+  // Cancelling a paid purchase (or advancing to fulfilled) changes what counts
+  // as sold; recompute so a cancellation always reverses out (Codex review on #45).
+  await recomputeSold(row.sponsorship_package_id);
   return row;
 }
 
