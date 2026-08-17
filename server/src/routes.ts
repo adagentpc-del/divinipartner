@@ -167,6 +167,8 @@ import ticketPackages from "./routes/ticket-packages.js";
 import nonprofitDashboard from "./routes/nonprofit-dashboard.js";
 import sponsorPortal from "./routes/sponsor-portal.js";
 import sponsorPurchases from "./routes/sponsor-purchases.js";
+import ticketPortal from "./routes/ticket-portal.js";
+import ticketPurchases from "./routes/ticket-purchases.js";
 // Phase 2/3 nonprofit + vendor upgrade (auction, volunteer, donor, recap + AI assists)
 import auction from "./routes/auction.js";
 import volunteer from "./routes/volunteer.js";
@@ -345,6 +347,8 @@ router.use("/ticket-packages", ticketPackages);
 router.use("/nonprofit-dashboard", nonprofitDashboard);
 router.use("/sponsor-portal", sponsorPortal);
 router.use("/sponsor-purchases", sponsorPurchases);
+router.use("/ticket-portal", ticketPortal);
+router.use("/ticket-purchases", ticketPurchases);
 // Phase 2/3 nonprofit + vendor upgrade
 router.use("/auction", auction);
 router.use("/volunteer", volunteer);
