@@ -225,10 +225,23 @@ async function paypalToken(): Promise<string> {
 function packCustomId(metadata: Record<string, string>): string {
   // PayPal custom_id is capped at 127 chars. Pack the ids we need to record a
   // payment in the webhook backstop; tier/flow are recomputed there.
+  //
+  // A sponsor/ticket purchase only ever needs its own id -- everything else
+  // (seller org, tier, event) is re-derived from the purchase row itself in
+  // completePurchaseCapture (routes/payments.ts) -- so it packs alone rather
+  // than alongside org_id/invoice_id/event_id, keeping real margin under the
+  // 127-char cap instead of risking truncation-corruption from a 4th packed
+  // uuid.
   const out: string[] = [];
-  if (metadata.org_id) out.push(`o:${metadata.org_id}`);
-  if (metadata.invoice_id) out.push(`i:${metadata.invoice_id}`);
-  if (metadata.event_id) out.push(`e:${metadata.event_id}`);
+  if (metadata.sponsor_purchase_id) {
+    out.push(`s:${metadata.sponsor_purchase_id}`);
+  } else if (metadata.ticket_purchase_id) {
+    out.push(`t:${metadata.ticket_purchase_id}`);
+  } else {
+    if (metadata.org_id) out.push(`o:${metadata.org_id}`);
+    if (metadata.invoice_id) out.push(`i:${metadata.invoice_id}`);
+    if (metadata.event_id) out.push(`e:${metadata.event_id}`);
+  }
   return out.join("|").slice(0, 127);
 }
 
@@ -243,6 +256,8 @@ export function unpackCustomId(custom: string | undefined | null): Record<string
     if (key === "o") out.org_id = val;
     else if (key === "i") out.invoice_id = val;
     else if (key === "e") out.event_id = val;
+    else if (key === "s") out.sponsor_purchase_id = val;
+    else if (key === "t") out.ticket_purchase_id = val;
   }
   return out;
 }

@@ -6636,3 +6636,44 @@ alter table packages add column if not exists instant_bookable boolean not null 
 -- UI carries staged payments with no new payment code.
 alter table invoices add column if not exists milestone_id uuid references contract_payment_milestones(id) on delete set null;
 create index if not exists idx_invoices_milestone on invoices(milestone_id);
+
+-- ---------- ticket_purchases (live testing 2026-08-17,
+-- db/schema-ticket-purchases.sql) ----------
+-- ticket_packages (db/schema-np-p1.sql) was CRUD-only: a nonprofit could
+-- publish individual/VIP/table ticket packages for a fundraising event, but
+-- there was no public path for anyone to actually buy one -- the only way
+-- `sold` ever moved was a nonprofit manually typing a number into the admin
+-- edit form. Mirrors sponsor_purchases (Workstream C), simplified: no
+-- agreement-signing or fulfillment-task ladder, since a ticket purchase has
+-- nothing to fulfill beyond the seats themselves. `sold` on ticket_packages
+-- is recomputed from truth (count of this package's paid purchases *
+-- quantity), the same self-healing pattern sponsor_purchases uses after the
+-- Codex review on #45 (cancel-reversal + concurrent-double-count safety),
+-- rather than an independently incremented counter.
+--
+--   ticket_package_id    uuid  - the package being purchased
+--   fundraising_event_id uuid  - denormalized from the package for IDOR/listing
+--   buyer_org_id         uuid  - the purchasing org (every registered user has one)
+--   buyer_user_id         uuid  - the specific user who bought, for receipts
+--   quantity              int   - how many seats/tickets (a "table" package buys many)
+--   status                text  - pending | paid | cancelled
+--   payment_id            uuid  - payments.id once a checkout is initiated/recorded
+--   amount                numeric - price * quantity, stamped at purchase time
+-- ---------------------------------------------------------------------------
+create table if not exists ticket_purchases (
+  id uuid primary key default gen_random_uuid(),
+  ticket_package_id uuid references ticket_packages(id) on delete cascade,
+  fundraising_event_id uuid references fundraising_events(id) on delete set null,
+  buyer_org_id uuid references organizations(id) on delete cascade,
+  buyer_user_id uuid references users(id) on delete set null,
+  quantity int not null default 1,
+  status text not null default 'pending'
+    check (status in ('pending','paid','cancelled')),
+  payment_id uuid,
+  amount numeric default 0,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create index if not exists idx_ticket_purchases_org on ticket_purchases(buyer_org_id);
+create index if not exists idx_ticket_purchases_package on ticket_purchases(ticket_package_id);

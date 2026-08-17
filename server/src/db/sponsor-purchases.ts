@@ -83,6 +83,29 @@ export async function getPackageById(packageId: string): Promise<PackageView | n
   ).catch(() => null);
 }
 
+export interface PackageOwner {
+  orgId: string;
+  orgTier: string | null;
+  platformFeeRate: number | null;
+}
+
+/** The nonprofit org that owns a package, plus its fee context (checkout
+ *  destination routing + platform fee), mirroring publicCheckout.ts's
+ *  getEventOwner. Null when the package or its org cannot be resolved. Named
+ *  orgTier (not tier) to avoid confusion with PackageView.tier, the
+ *  sponsorship tier (gold/silver/...), an unrelated field. */
+export async function getPackageOwner(packageId: string): Promise<PackageOwner | null> {
+  const row = await q1<{ organization_id: string | null; tier: string | null; platform_fee_rate: number | null }>(
+    `select pk.organization_id, o.tier, o.platform_fee_rate
+       from sponsorship_packages pk
+       left join organizations o on o.id = pk.organization_id
+      where pk.id = $1`,
+    [packageId],
+  );
+  if (!row?.organization_id) return null;
+  return { orgId: row.organization_id, orgTier: row.tier, platformFeeRate: row.platform_fee_rate };
+}
+
 /** The nonprofit org that owns the package backing this purchase (for notify). */
 export async function nonprofitOrgForPurchase(purchaseId: string): Promise<string | null> {
   const row = await q1<{ organization_id: string | null }>(
@@ -103,6 +126,21 @@ function sponsorOrgId(actor: Actor): string | null {
 
 function isPrivileged(actor: Actor): boolean {
   return actor.user.role === "super_admin" || actor.user.role === "admin";
+}
+
+/**
+ * Unscoped lookup, no IDOR check. For the payment-completion path only
+ * (synchronous capture and the webhook backstop, server/src/routes/payments.ts):
+ * by the time either calls this, a processor has already verified real money
+ * moved for a purchase id this server itself generated and put in the
+ * checkout metadata, so there is no actor to authorize against (the webhook
+ * has none) and nothing to gain by forging an id here (it can only complete
+ * a purchase that is already genuinely paid for). Never call this from a
+ * route reachable by an unauthenticated request without independently
+ * verifying the payment first.
+ */
+export async function getPurchaseById(id: string): Promise<SponsorPurchase | null> {
+  return q1<SponsorPurchase>(`select ${COLS} from sponsor_purchases where id = $1`, [id]);
 }
 
 /**
@@ -254,6 +292,19 @@ export async function markPaid(
   paymentId: string | null,
   amount: number | null,
 ): Promise<SponsorPurchase> {
+  const existing = await q1<SponsorPurchase>(`select ${COLS} from sponsor_purchases where id = $1`, [id]);
+  if (!existing) throw new NotFoundError("sponsor purchase not found");
+  // Idempotent + guarded: only a not-yet-paid purchase transitions. Called
+  // from both the synchronous checkout-return capture and the Stripe/PayPal
+  // webhook backstop (server/src/routes/payments.ts) for the same
+  // completion, which can race or double-fire; a real processor payment is
+  // real money already collected, so re-confirming an already-paid (or
+  // fulfilled) purchase is a safe no-op rather than silently overwriting
+  // payment_id/amount or resurrecting a purchase the nonprofit cancelled.
+  if (existing.status === "paid" || existing.status === "fulfilled") return existing;
+  if (existing.status !== "interested" && existing.status !== "agreed") {
+    throw new ForbiddenError(`cannot mark paid from status '${existing.status}'`);
+  }
   const row = await q1<SponsorPurchase>(
     `update sponsor_purchases
         set payment_id = coalesce($2, payment_id),

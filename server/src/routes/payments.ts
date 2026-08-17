@@ -29,8 +29,11 @@ import {
   type PayoutStatus,
   type PaymentFlow,
   type PaymentKind,
+  type PaymentRow,
 } from "../db/payments.js";
 import { applyPaymentToInvoice, getInvoicePartiesById } from "../db/invoices.js";
+import * as sponsorPurchases from "../db/sponsor-purchases.js";
+import * as ticketPurchases from "../db/ticket-purchases.js";
 import { recordWebhookEventOnce, markWebhookEventOutcome } from "../db/webhookEvents.js";
 import {
   confirmTicketOrder,
@@ -782,6 +785,97 @@ router.post(
 );
 
 /**
+ * Complete a sponsor/ticket purchase after a VERIFIED processor capture:
+ * record the payment attributed to the NONPROFIT that owns the package (not
+ * the buyer -- the buyer paid, the nonprofit is who the money belongs to),
+ * mark the purchase paid, and disburse a PayPal payout when the seller has
+ * one configured. Called from both the synchronous /capture return handler
+ * and the Stripe/PayPal webhook backstop below, so it must be idempotent:
+ * recordProcessorPayment dedupes by processor reference (only the first
+ * caller for a given reference actually inserts), and both
+ * sponsor-purchases.ts and ticket-purchases.ts's markPaid no-op on an
+ * already-paid/fulfilled purchase -- whichever of capture/webhook arrives
+ * first does the real work, the other is a safe no-op.
+ *
+ * Returns null (no-op) when the purchase/package/owner cannot be resolved --
+ * this can legitimately happen for a stale or malformed id and must never
+ * throw back into a webhook handler (a thrown error there causes Stripe to
+ * retry the whole event indefinitely).
+ */
+async function completePurchaseCapture(
+  purpose: "sponsor_purchase" | "ticket_purchase",
+  purchaseId: string,
+  recordedBy: string | null,
+  processor: Processor,
+  result: { amount: number; currency: string; reference: string },
+): Promise<{ payment: PaymentRow; created: boolean; autoSplit: boolean } | null> {
+  if (purpose === "sponsor_purchase") {
+    const purchase = await sponsorPurchases.getPurchaseById(purchaseId);
+    if (!purchase?.sponsorship_package_id) return null;
+    const owner = await sponsorPurchases.getPackageOwner(purchase.sponsorship_package_id);
+    if (!owner) return null;
+    const stripeDest =
+      processor === "stripe"
+        ? (await activeStripeDestination(owner.orgId)) || (await activeDirectChargeAccount(owner.orgId))
+        : null;
+    const ppEmail = processor === "paypal" ? await paypalPayoutEmail(owner.orgId) : null;
+    const autoSplit = !!stripeDest;
+    const { payment, created } = await recordProcessorPayment(owner.orgId, owner.orgTier, recordedBy, {
+      amount: result.amount,
+      method: processor,
+      flow: "client_to_vendor",
+      kind: "full",
+      reference: result.reference,
+      payout_status: autoSplit ? "payout_sent" : "payment_received",
+    });
+    if (created) await sponsorPurchases.markPaid(purchaseId, payment.id, result.amount);
+    if (created && ppEmail) {
+      const net = recordingFees(result.amount, owner.orgTier).netPayout;
+      if (net > 0) {
+        try {
+          const r = await createPaypalPayout(ppEmail, net, result.currency, `Divini payout for sponsorship ${purchaseId}`, payment.id);
+          await updatePayoutStatus(owner.orgId, payment.id, r.ok ? "payout_sent" : "payout_failed");
+        } catch {
+          await updatePayoutStatus(owner.orgId, payment.id, "payout_failed").catch(() => null);
+        }
+      }
+    }
+    return { payment, created, autoSplit };
+  }
+  const purchase = await ticketPurchases.getPurchaseById(purchaseId);
+  if (!purchase?.ticket_package_id) return null;
+  const owner = await ticketPurchases.getPackageOwner(purchase.ticket_package_id);
+  if (!owner) return null;
+  const stripeDest =
+    processor === "stripe"
+      ? (await activeStripeDestination(owner.orgId)) || (await activeDirectChargeAccount(owner.orgId))
+      : null;
+  const ppEmail = processor === "paypal" ? await paypalPayoutEmail(owner.orgId) : null;
+  const autoSplit = !!stripeDest;
+  const { payment, created } = await recordProcessorPayment(owner.orgId, owner.tier, recordedBy, {
+    amount: result.amount,
+    method: processor,
+    flow: "client_to_vendor",
+    kind: "full",
+    reference: result.reference,
+    payout_status: autoSplit ? "payout_sent" : "payment_received",
+  });
+  if (created) await ticketPurchases.markPaid(purchaseId, payment.id, result.amount);
+  if (created && ppEmail) {
+    const net = recordingFees(result.amount, owner.tier).netPayout;
+    if (net > 0) {
+      try {
+        const r = await createPaypalPayout(ppEmail, net, result.currency, `Divini payout for tickets ${purchaseId}`, payment.id);
+        await updatePayoutStatus(owner.orgId, payment.id, r.ok ? "payout_sent" : "payout_failed");
+      } catch {
+        await updatePayoutStatus(owner.orgId, payment.id, "payout_failed").catch(() => null);
+      }
+    }
+  }
+  return { payment, created, autoSplit };
+}
+
+/**
  * Capture / confirm a checkout after the client returns. Idempotent: re-calling
  * with the same session returns the already-recorded payment. On first success
  * we record the payment (with the standard fee breakdown) and apply it to the
@@ -806,6 +900,39 @@ router.post(
     if (!result.paid) {
       return res.status(402).json({ error: "payment not completed", status: result.raw_status });
     }
+
+    // Sponsor/ticket purchase completion: a wholly different attribution
+    // shape from an invoice (proceeds belong to the nonprofit that owns the
+    // package, not the actor capturing the session), so it is its own
+    // branch rather than reusing feeOrgId/recordProcessorPayment below.
+    if (typeof b.sponsor_purchase_id === "string" && b.sponsor_purchase_id) {
+      // IDOR gate: only the sponsor who owns this purchase may capture it.
+      const sp = await sponsorPurchases.getPurchaseScoped(actor, b.sponsor_purchase_id);
+      if (!sponsorPurchases.actorIsSponsor(actor, sp)) {
+        return res.status(403).json({ error: "not authorized to pay this sponsorship" });
+      }
+      const outcome = await completePurchaseCapture(
+        "sponsor_purchase", b.sponsor_purchase_id, actor.user.id, processor, result,
+      );
+      if (!outcome) return res.status(400).json({ error: "sponsorship purchase not found" });
+      return res.status(outcome.created ? 201 : 200).json({
+        payment: outcome.payment, created: outcome.created, paid: true, auto_split: outcome.autoSplit,
+      });
+    }
+    if (typeof b.ticket_purchase_id === "string" && b.ticket_purchase_id) {
+      const p = await ticketPurchases.getPurchaseScoped(actor, b.ticket_purchase_id);
+      if (!ticketPurchases.actorIsBuyer(actor, p)) {
+        return res.status(403).json({ error: "not authorized to pay for this ticket purchase" });
+      }
+      const outcome = await completePurchaseCapture(
+        "ticket_purchase", b.ticket_purchase_id, actor.user.id, processor, result,
+      );
+      if (!outcome) return res.status(400).json({ error: "ticket purchase not found" });
+      return res.status(outcome.created ? 201 : 200).json({
+        payment: outcome.payment, created: outcome.created, paid: true, auto_split: outcome.autoSplit,
+      });
+    }
+
     const flow: PaymentFlow =
       PAYMENT_FLOWS.includes(b.flow) && b.flow !== "external_recorded" ? b.flow : "client_to_vendor";
     // Attribute to the issuing org when paying an invoice (fee follows their tier).
@@ -951,8 +1078,28 @@ router.post(
             await confirmTicketOrder(m.order_id, reference).catch(() => false);
           } else if (m.purpose === "exhibitor" && m.order_id) {
             await confirmExhibitorOrder(m.order_id, reference).catch(() => false);
+          } else if (m.purpose === "sponsor_purchase" && m.sponsor_purchase_id) {
+            // Backstop for the synchronous /payments/capture return: if the
+            // buyer's browser never made it back (closed the tab, network
+            // drop), this webhook is the only thing that ever marks the
+            // sponsorship paid. completePurchaseCapture is idempotent
+            // against the capture route via recordProcessorPayment's
+            // reference dedupe, so whichever runs first wins.
+            const amt = Number(s.amount_total ?? 0) / 100;
+            await completePurchaseCapture("sponsor_purchase", m.sponsor_purchase_id, m.recorded_by || null, "stripe", {
+              amount: amt,
+              currency: String(s.currency || "usd"),
+              reference,
+            }).catch(() => null);
+          } else if (m.purpose === "ticket_purchase" && m.ticket_purchase_id) {
+            const amt = Number(s.amount_total ?? 0) / 100;
+            await completePurchaseCapture("ticket_purchase", m.ticket_purchase_id, m.recorded_by || null, "stripe", {
+              amount: amt,
+              currency: String(s.currency || "usd"),
+              reference,
+            }).catch(() => null);
           }
-          const orgId = m.org_id;
+          const orgId = m.purpose === "sponsor_purchase" || m.purpose === "ticket_purchase" ? null : m.org_id;
           if (orgId) {
             const amt = Number(s.amount_total ?? 0) / 100;
             const autoSplit =
@@ -1057,7 +1204,25 @@ router.post(
         const amtObj = (r.amount as { value?: string; currency_code?: string } | undefined) ?? {};
         const amount = Number(amtObj.value ?? 0);
         const meta = unpackCustomId(r.custom_id as string | undefined);
-        const orgId = meta.org_id;
+        const reference = String(r.id || "");
+        // Backstop for the synchronous /payments/capture return, same as the
+        // Stripe webhook above: if the buyer never made it back, this is the
+        // only thing that ever marks the purchase paid. Idempotent via
+        // completePurchaseCapture's recordProcessorPayment reference dedupe.
+        if (meta.sponsor_purchase_id && amount > 0) {
+          await completePurchaseCapture("sponsor_purchase", meta.sponsor_purchase_id, null, "paypal", {
+            amount,
+            currency: String(amtObj.currency_code || "USD"),
+            reference,
+          }).catch(() => null);
+        } else if (meta.ticket_purchase_id && amount > 0) {
+          await completePurchaseCapture("ticket_purchase", meta.ticket_purchase_id, null, "paypal", {
+            amount,
+            currency: String(amtObj.currency_code || "USD"),
+            reference,
+          }).catch(() => null);
+        }
+        const orgId = meta.sponsor_purchase_id || meta.ticket_purchase_id ? null : meta.org_id;
         if (orgId && amount > 0) {
           const tier = await orgTier(orgId);
           const { payment, created } = await recordProcessorPayment(orgId, tier, null, {

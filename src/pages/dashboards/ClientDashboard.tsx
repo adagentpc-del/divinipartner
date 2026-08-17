@@ -17,6 +17,7 @@ const NAV: NavItem[] = [
   { label: 'Guest Hub', icon: 'G', to: '/guest-hub' },
   { label: 'Post-Event Feedback', icon: 'K', to: '/post-event-feedback' },
   { label: 'Sponsorships', icon: 'H', to: '/sponsorships' },
+  { label: 'Tickets', icon: 'T', to: '/ticket-portal' },
   { label: 'Opportunities', icon: 'X', to: '/opportunities' },
   { label: 'Founding Member', icon: 'F', to: '/founding-member' },
   { label: 'Profile', icon: 'R', to: '/profile' },

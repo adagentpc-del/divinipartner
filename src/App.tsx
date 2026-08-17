@@ -200,6 +200,7 @@ import FundraisingEventBuilder from './pages/FundraisingEventBuilder';
 import SponsorshipPackages from './pages/SponsorshipPackages';
 import TicketTableManager from './pages/TicketTableManager';
 import SponsorPortal from './pages/SponsorPortal';
+import TicketPortal from './pages/TicketPortal';
 
 // Phase 2/3 nonprofit + vendor upgrade
 import AuctionManager from './pages/AuctionManager';
@@ -472,6 +473,7 @@ function Routed() {
       <Route path="/sponsorship-packages" element={<Authed><SponsorshipPackages /></Authed>} />
       <Route path="/ticket-table" element={<Authed><TicketTableManager /></Authed>} />
       <Route path="/sponsor-portal" element={<Authed><SponsorPortal /></Authed>} />
+      <Route path="/ticket-portal" element={<Authed><TicketPortal /></Authed>} />
 
       {/* Phase 2/3 nonprofit + vendor upgrade */}
       <Route path="/auction-manager" element={<Authed><AuctionManager /></Authed>} />
