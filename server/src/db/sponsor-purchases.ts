@@ -205,22 +205,50 @@ export async function markAgreed(id: string, agreementDocId: string | null): Pro
   return row;
 }
 
-/** Record the payment id + amount and move to 'paid'. */
+/**
+ * Record the payment id + amount and move to 'paid'.
+ *
+ * Live-traced (auditing the sponsor/nonprofit fundraising flow): a real
+ * sponsor going through the complete, real purchase flow (express interest ->
+ * sign agreement -> confirm payment) never moved sponsorship_packages.sold,
+ * and the payment this records is never linked to an `invoices` row (the
+ * sponsor checkout flow has no invoice concept), so getNonprofitDashboard's
+ * paymentsCollected join (payments -> invoices -> event_id) can never see it
+ * either. The dashboard's revenue figure -- the nonprofit's headline number --
+ * was permanently stuck at $0 no matter how many real sponsors paid, since
+ * computeNonprofitRollup's documented fallback (committed revenue = sold *
+ * price) only works if `sold` is ever incremented, and nothing did. Increment
+ * it here, on the interested/agreed -> paid transition, guarded against
+ * double-counting a repeat call (e.g. a retried /paid request) by only
+ * incrementing when the row was not already 'paid'.
+ */
 export async function markPaid(
   id: string,
   paymentId: string | null,
   amount: number | null,
 ): Promise<SponsorPurchase> {
-  const row = await q1<SponsorPurchase>(
-    `update sponsor_purchases
-        set payment_id = coalesce($2, payment_id),
-            amount = coalesce($3, amount),
+  const cols = COLS.split(",").map((c) => `sp.${c.trim()}`).join(", ");
+  const row = await q1<SponsorPurchase & { previous_status: string | null; pkg_id: string | null }>(
+    `with old as (
+       select status, sponsorship_package_id from sponsor_purchases where id = $1
+     )
+     update sponsor_purchases sp
+        set payment_id = coalesce($2, sp.payment_id),
+            amount = coalesce($3, sp.amount),
             status = 'paid'
-      where id = $1
-      returning ${COLS}`,
+       from old
+      where sp.id = $1
+      returning ${cols}, old.status as previous_status, old.sponsorship_package_id as pkg_id`,
     [id, paymentId, amount],
   );
   if (!row) throw new NotFoundError("sponsor purchase not found");
+  if (row.previous_status !== "paid" && row.pkg_id) {
+    await q(
+      `update sponsorship_packages set sold = coalesce(sold, 0) + 1, updated_at = now()
+        where id = $1`,
+      [row.pkg_id],
+    ).catch(() => undefined); // best-effort: never fail the payment confirmation over this
+  }
   return row;
 }
 
