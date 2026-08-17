@@ -86,6 +86,12 @@ function clampProgress(v: number | null | undefined): number | null {
   return Math.max(0, Math.min(100, n));
 }
 
+/** Serialize an optional jsonb input for setup_window/removal_schedule/completion_photos. */
+function jsonbParam(v: unknown): string | null {
+  if (v == null) return null;
+  return JSON.stringify(v);
+}
+
 /** List installations on an event (read access). */
 export async function listInstallations(actor: Actor, eventId: string): Promise<InstallationRow[]> {
   await canSee(actor, eventId);
@@ -118,17 +124,17 @@ export async function createInstallation(
     `insert into installations
        (event_id, vendor_id, arrival_time, setup_window, status, progress,
         completion_photos, removal_schedule, venue_approved, notes)
-     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+     values ($1,$2,$3,$4::jsonb,$5,$6,$7::jsonb,$8::jsonb,$9,$10)
      returning *`,
     [
       eventId,
       input.vendor_id ?? null,
       input.arrival_time ?? null,
-      input.setup_window ?? null,
+      jsonbParam(input.setup_window),
       normStatus(input.status) ?? "scheduled",
       clampProgress(input.progress) ?? 0,
-      input.completion_photos ?? null,
-      input.removal_schedule ?? null,
+      jsonbParam(input.completion_photos),
+      jsonbParam(input.removal_schedule),
       input.venue_approved ?? false,
       input.notes ?? null,
     ],
@@ -158,11 +164,11 @@ export async function updateInstallation(
     `update installations set
         vendor_id = coalesce($2, vendor_id),
         arrival_time = coalesce($3, arrival_time),
-        setup_window = coalesce($4, setup_window),
+        setup_window = coalesce($4::jsonb, setup_window),
         status = coalesce($5, status),
         progress = coalesce($6, progress),
-        completion_photos = coalesce($7, completion_photos),
-        removal_schedule = coalesce($8, removal_schedule),
+        completion_photos = coalesce($7::jsonb, completion_photos),
+        removal_schedule = coalesce($8::jsonb, removal_schedule),
         venue_approved = coalesce($9, venue_approved),
         notes = coalesce($10, notes),
         updated_at = now()
@@ -172,11 +178,11 @@ export async function updateInstallation(
       installId,
       patch.vendor_id ?? null,
       patch.arrival_time ?? null,
-      patch.setup_window ?? null,
+      jsonbParam(patch.setup_window),
       normStatus(patch.status),
       clampProgress(patch.progress),
-      patch.completion_photos ?? null,
-      patch.removal_schedule ?? null,
+      jsonbParam(patch.completion_photos),
+      jsonbParam(patch.removal_schedule),
       patch.venue_approved ?? null,
       patch.notes ?? null,
     ],

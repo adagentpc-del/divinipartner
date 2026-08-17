@@ -123,7 +123,7 @@ export async function createInvitation(
        (event_id, inviter_user_id, inviter_org_id, recipient_email, recipient_user_id,
         recipient_org_id, recipient_vendor_id, intended_role, intended_scope, token,
         message, expires_at)
-     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11,$12)
      returning *`,
     [
       eventId,
@@ -134,7 +134,7 @@ export async function createInvitation(
       resolved.org_id,
       resolved.vendor_id,
       input.role,
-      input.scope ?? null,
+      input.scope != null ? JSON.stringify(input.scope) : null,
       token,
       input.message?.trim() || null,
       new Date(Date.now() + INVITE_TTL_MS).toISOString(),
