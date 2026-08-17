@@ -204,11 +204,19 @@ async function gatherMetrics(vendorId: string): Promise<VendorScorecardMetrics> 
   // consistent with the rest of the codebase's definition of an earned
   // review rather than counting an unfilled request or moderated-out
   // feedback toward a vendor's score (Codex review on PR #43).
+  //
+  // target_type = 'vendor' additionally guards against a misdirected review
+  // whose reviewee_org_id happens to match this vendor's org but whose
+  // relationship was actually about a different target type -- the review
+  // composer's org-id field is free text with no cross-check against the
+  // chosen relationship (Codex review on #44, same fix applied to the
+  // Divini Score vendor/venue/planner/client gatherers in db/divini-score.ts).
   if (await tableExists("reviews")) {
     const rv = await q1<{ avg_rating: string | null; n: string }>(
       `select avg(r.rating) as avg_rating, count(*) as n
          from reviews r
         where r.reviewee_org_id = (select organization_id from vendors where id = $1)
+          and r.target_type = 'vendor'
           and r.status in ('submitted', 'published')`,
       [vendorId],
     );

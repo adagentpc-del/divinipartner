@@ -179,13 +179,27 @@ async function gatherVenueSignals(venueId: string): Promise<DiviniSignals> {
     `select readiness_score from venue_twin where venue_id = $1`,
     [venueId],
   );
-  // Reviews of this venue come in via events held at the venue (reviewee can be
-  // the venue's users); fall back to venues.review_score when present.
+  // Reviews addressed to this venue's own org (client_to_venue /
+  // vendor_to_venue / planner_to_venue -- reviews.reviewee_org_id is what the
+  // real review flow actually populates; see reviews.ts::createReview). Only
+  // 'submitted'/'published' count as earned feedback, matching
+  // computeTrustForOrg() and vendor-scorecard.ts. Previously this joined
+  // through events.venue_id and counted EVERY review tied to any event held
+  // at the venue -- including vendor reviews with nothing to do with the
+  // venue itself -- so a venue's "reviews" signal was contaminated by
+  // unrelated ratings. Falls back to venues.review_score when present.
+  // target_type = 'venue' additionally guards against a review whose
+  // reviewee_org_id happens to match this org but whose relationship was
+  // actually about a different target type (the review composer's org-id
+  // field is free text with no cross-check against the chosen relationship)
+  // (Codex review on #44).
   const rev = await q1<{ avg: string | null; cnt: string | null }>(
     `select avg(r.rating) as avg, count(*) as cnt
        from reviews r
-       join events e on e.id = r.event_id
-      where e.venue_id = $1 and r.rating is not null`,
+      where r.reviewee_org_id = (select organization_id from venues where id = $1)
+        and r.target_type = 'venue'
+        and r.status in ('submitted', 'published')
+        and r.rating is not null`,
     [venueId],
   );
   const evt = await q1<{ total: string | null; completed: string | null }>(
@@ -264,14 +278,22 @@ async function gatherVendorSignals(vendorId: string): Promise<DiviniSignals> {
        from vendor_compliance where vendor_id = $1`,
     [vendorId],
   );
-  // Reviews of this vendor (reviewee_id = a user in the vendor's org). Fall back
-  // to the compliance reviews_score, then the vendor.review_score column.
+  // Reviews of this vendor. reviews.reviewee_id is a legacy per-user column
+  // the real review flow never populates (see vendor-scorecard.ts and
+  // reviews.ts::createReview); every real review sets reviewee_org_id
+  // instead, so joining through it here always returned zero rows. Match the
+  // vendor's own org id and the same earned-review status filter
+  // computeTrustForOrg() uses; target_type = 'vendor' guards against a
+  // misdirected review whose reviewee_org_id matches this org but whose
+  // relationship was really about a different target type (Codex review on
+  // #44). Fall back to the compliance reviews_score, then vendor.review_score.
   const rev = await q1<{ avg: string | null }>(
     `select avg(rating) as avg
        from reviews r
-       join users u on u.id = r.reviewee_id
-       join vendors v on v.organization_id = u.organization_id
-      where v.id = $1 and r.rating is not null`,
+      where r.reviewee_org_id = (select organization_id from vendors where id = $1)
+        and r.target_type = 'vendor'
+        and r.status in ('submitted', 'published')
+        and r.rating is not null`,
     [vendorId],
   );
   // F10 post-event feedback addressed to this vendor (role = 'vendor'), now
@@ -322,9 +344,27 @@ async function gatherPlannerSignals(plannerUserId: string): Promise<DiviniSignal
        from events where planner_id = $1`,
     [plannerUserId],
   );
+  // Reviews of this planner (client_to_planner). reviewee_id is the legacy,
+  // never-populated per-user column (see gatherVendorSignals above); the real
+  // review flow sets reviewee_org_id to the reviewee's org instead, so this
+  // always returned zero rows and pinned vendor/venue/client_satisfaction at
+  // an active 0 -- not graceful absence, an actual penalty -- regardless of
+  // how many real reviews the planner had earned. Matched against the
+  // planner's own org since reviews are org-scoped, not per-user; target_type
+  // = 'planner' guards against a misdirected review of a different type
+  // landing on this org (Codex review on #44). NOTE: because this is
+  // matched at the org level, a planner-role org with more than one
+  // planner user will see the same average on every one of that org's
+  // planner users -- reviews only ever capture the reviewee's org, not
+  // which specific user was reviewed, so there is no finer attribution
+  // available without a review-composer change to capture that.
   const rev = await q1<{ avg: string | null }>(
-    `select avg(rating) as avg from reviews
-      where reviewee_id = $1 and rating is not null`,
+    `select avg(r.rating) as avg
+       from reviews r
+      where r.reviewee_org_id = (select organization_id from users where id = $1)
+        and r.target_type = 'planner'
+        and r.status in ('submitted', 'published')
+        and r.rating is not null`,
     [plannerUserId],
   );
   // F10 post-event feedback addressed to this planner (role = 'planner') across
@@ -425,9 +465,19 @@ async function gatherClientSignals(clientUserId: string): Promise<DiviniSignals>
        from events where client_id = $1`,
     [clientUserId],
   );
+  // Reviews of this client (vendor_to_client). Same reviewee_id -> reviewee_org_id
+  // fix as gatherVendorSignals/gatherPlannerSignals above: the legacy column is
+  // never populated, so `reliability` silently ignored review data and always
+  // fell back to payment health alone. target_type = 'client' guards against a
+  // misdirected review of a different type (Codex review on #44); same
+  // org-level (not per-user) attribution caveat as gatherPlannerSignals.
   const rev = await q1<{ avg: string | null }>(
-    `select avg(rating) as avg from reviews
-      where reviewee_id = $1 and rating is not null`,
+    `select avg(r.rating) as avg
+       from reviews r
+      where r.reviewee_org_id = (select organization_id from users where id = $1)
+        and r.target_type = 'client'
+        and r.status in ('submitted', 'published')
+        and r.rating is not null`,
     [clientUserId],
   );
   // Communication proxy: did the client participate in event message threads.
