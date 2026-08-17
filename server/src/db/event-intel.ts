@@ -98,17 +98,22 @@ export async function gatherEventReadinessSignals(
   );
   const vendorsSelected = (vendorRow?.n ?? 0) > 0 || (quoteAnyRow?.n ?? 0) > 0;
 
-  // Insurance uploaded: a document related to this event whose type names
-  // insurance / COI. documents.related_object_type is free text; match the
-  // event id on related_object_id and look for an insurance-flavored type.
+  // Insurance uploaded: at least one vendor attached to this event (via
+  // event_vendors or a quote) has verified insurance on file. The generic
+  // `documents` table is NOT the source of truth here -- nothing in this
+  // codebase ever writes a documents row with related_object_id set to an
+  // event id, so checking that table (as an earlier version of this signal
+  // did) is always false regardless of actual compliance. vendor_compliance
+  // (db/vendor-compliance.ts, the same table eventVendorCompliance.ts's
+  // checkBeforeAwardCompliance reads) is the real, live-tracked source.
   const insuranceRow = await q1<{ n: number }>(
     `select count(*)::int as n
-       from documents
-      where related_object_id = $1
-        and (
-          document_type ilike '%insurance%'
-          or document_type ilike '%coi%'
-          or document_type ilike '%certificate of insurance%'
+       from vendor_compliance vc
+      where vc.insurance_status = 'verified'
+        and vc.vendor_id in (
+          select vendor_id from event_vendors where event_id = $1 and vendor_id is not null
+          union
+          select vendor_id from quotes where event_id = $1 and vendor_id is not null
         )`,
     [eventId],
   );
