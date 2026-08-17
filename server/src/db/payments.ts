@@ -268,7 +268,7 @@ export function decomposeGrossOnTop(gross: number): {
  * $2,500 cap via applyEventFeeCap. Single chokepoint so every insert path
  * agrees.
  */
-async function resolvePaymentFees(
+export async function resolvePaymentFees(
   amount: number,
   tier: string | null | undefined,
   eventId?: string | null,

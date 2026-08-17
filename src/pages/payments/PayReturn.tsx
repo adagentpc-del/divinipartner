@@ -26,6 +26,11 @@ export default function PayReturn() {
   const eventId = params.get('event_id') || '';
   const flow = params.get('flow') || 'client_to_vendor';
   const kind = params.get('kind') || 'full';
+  // Sponsor/ticket purchase completion (routes/sponsor-purchases.ts,
+  // routes/ticket-purchases.ts /:id/checkout): a different attribution shape
+  // from an invoice, so /payments/capture branches on these instead.
+  const sponsorPurchaseId = params.get('sponsor_purchase_id') || '';
+  const ticketPurchaseId = params.get('ticket_purchase_id') || '';
   // Stripe returns session_ref (we templated it); PayPal appends ?token=ORDERID.
   const sessionRef = params.get('session_ref') || params.get('token') || '';
   const cancelled = params.get('status') === 'cancel';
@@ -45,17 +50,23 @@ export default function PayReturn() {
     if (!processor || !sessionRef) { setPhase('error'); setMessage('Missing checkout reference.'); return; }
     apiSend<{ payment: { amount: string | null }; paid: boolean }>('POST', '/payments/capture', {
       processor, session_ref: sessionRef, invoice_id: invoiceId || null, event_id: eventId || null, flow, kind,
+      sponsor_purchase_id: sponsorPurchaseId || null, ticket_purchase_id: ticketPurchaseId || null,
     })
       .then((r) => {
         setAmount(Number(r.payment?.amount ?? 0));
         setPhase('success');
       })
       .catch((e) => { setPhase('error'); setMessage((e as Error)?.message ?? 'We could not confirm the payment.'); });
-  }, [processor, sessionRef, invoiceId, eventId, flow, kind, cancelled]);
+  }, [processor, sessionRef, invoiceId, eventId, flow, kind, sponsorPurchaseId, ticketPurchaseId, cancelled]);
 
   const money = (n: number | null) =>
     n == null ? '' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
-  const backToInvoice = () => nav(invoiceId ? `/invoices/${invoiceId}` : '/invoices');
+  const backTo = () => {
+    if (sponsorPurchaseId) return nav('/sponsor-portal');
+    if (ticketPurchaseId) return nav('/ticket-portal');
+    return nav(invoiceId ? `/invoices/${invoiceId}` : '/invoices');
+  };
+  const backLabel = sponsorPurchaseId ? 'View sponsorships' : ticketPurchaseId ? 'View tickets' : 'View invoice';
 
   return (
     <div className="dppr">
@@ -77,17 +88,17 @@ export default function PayReturn() {
             {amount ? (
               v2 ? (
                 <div className="dppr-v2fb">
-                  <div className="dppr-v2row"><span>Vendor receives (their full quote)</span><strong>{usd(decomposeClientTotal(amount).subtotal)}</strong></div>
+                  <div className="dppr-v2row"><span>{sponsorPurchaseId || ticketPurchaseId ? 'Nonprofit receives (their full price)' : 'Vendor receives (their full quote)'}</span><strong>{usd(decomposeClientTotal(amount).subtotal)}</strong></div>
                   <div className="dppr-v2row"><span>{feeLineLabel()}</span><strong>{usd(decomposeClientTotal(amount).platformFee)}</strong></div>
                   <div className="dppr-v2row dppr-v2total"><span>You paid</span><strong>{usd(amount)}</strong></div>
-                  <p className="dppr-v2note">The {feeLineLabel().toLowerCase()} was added on top of the vendor's price. Your vendor receives their full quoted amount.</p>
+                  <p className="dppr-v2note">The {feeLineLabel().toLowerCase()} was added on top of the {sponsorPurchaseId || ticketPurchaseId ? "nonprofit's" : "vendor's"} price. They receive their full quoted amount.</p>
                 </div>
               ) : (
                 <FeeBreakdown amountCents={Math.round(amount * 100)} title="Fee transparency" />
               )
             ) : null}
             <div className="dppr-actions">
-              <button className="dppr-btn primary" onClick={backToInvoice}>View invoice</button>
+              <button className="dppr-btn primary" onClick={backTo}>{backLabel}</button>
               <button className="dppr-btn ghost" onClick={() => nav('/app')}>Go to dashboard</button>
             </div>
           </>
@@ -96,9 +107,9 @@ export default function PayReturn() {
           <>
             <div className="dppr-x" aria-hidden="true">&times;</div>
             <h1>Checkout cancelled</h1>
-            <p>No payment was taken. You can return to the invoice and try again whenever you are ready.</p>
+            <p>No payment was taken. You can return and try again whenever you are ready.</p>
             <div className="dppr-actions">
-              <button className="dppr-btn primary" onClick={backToInvoice}>Back to invoice</button>
+              <button className="dppr-btn primary" onClick={backTo}>{backLabel}</button>
             </div>
           </>
         )}
@@ -106,9 +117,9 @@ export default function PayReturn() {
           <>
             <div className="dppr-x" aria-hidden="true">!</div>
             <h1>We could not confirm the payment</h1>
-            <p>{message} If you were charged, it will be reconciled automatically. Please check the invoice or contact support.</p>
+            <p>{message} If you were charged, it will be reconciled automatically. Please check your account or contact support.</p>
             <div className="dppr-actions">
-              <button className="dppr-btn primary" onClick={backToInvoice}>Back to invoice</button>
+              <button className="dppr-btn primary" onClick={backTo}>{backLabel}</button>
             </div>
           </>
         )}

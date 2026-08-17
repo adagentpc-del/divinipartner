@@ -68,6 +68,27 @@ export async function getPackageById(packageId: string): Promise<TicketPackageVi
   ).catch(() => null);
 }
 
+export interface PackageOwner {
+  orgId: string;
+  tier: string | null;
+  platformFeeRate: number | null;
+}
+
+/** The nonprofit org that owns a package, plus its fee context (checkout
+ *  destination routing + platform fee), mirroring publicCheckout.ts's
+ *  getEventOwner. Null when the package or its org cannot be resolved. */
+export async function getPackageOwner(packageId: string): Promise<PackageOwner | null> {
+  const row = await q1<{ organization_id: string | null; tier: string | null; platform_fee_rate: number | null }>(
+    `select tp.organization_id, o.tier, o.platform_fee_rate
+       from ticket_packages tp
+       left join organizations o on o.id = tp.organization_id
+      where tp.id = $1`,
+    [packageId],
+  );
+  if (!row?.organization_id) return null;
+  return { orgId: row.organization_id, tier: row.tier, platformFeeRate: row.platform_fee_rate };
+}
+
 /** The nonprofit org that owns the package backing this purchase. */
 async function nonprofitOrgForPurchase(purchaseId: string): Promise<string | null> {
   const row = await q1<{ organization_id: string | null }>(
@@ -88,6 +109,21 @@ function buyerOrgId(actor: Actor): string | null {
 
 function isPrivileged(actor: Actor): boolean {
   return actor.user.role === "super_admin" || actor.user.role === "admin";
+}
+
+/**
+ * Unscoped lookup, no IDOR check. For the payment-completion path only
+ * (synchronous capture and the webhook backstop, server/src/routes/payments.ts):
+ * by the time either calls this, a processor has already verified real money
+ * moved for a purchase id this server itself generated and put in the
+ * checkout metadata, so there is no actor to authorize against (the webhook
+ * has none) and nothing to gain by forging an id here (it can only complete
+ * a purchase that is already genuinely paid for). Never call this from a
+ * route reachable by an unauthenticated request without independently
+ * verifying the payment first.
+ */
+export async function getPurchaseById(id: string): Promise<TicketPurchase | null> {
+  return q1<TicketPurchase>(`select ${COLS} from ticket_purchases where id = $1`, [id]);
 }
 
 /**

@@ -27,7 +27,9 @@ import { getAuth, requireUser } from "../auth.js";
 import * as db from "../db.js";
 import * as repo from "../db/ticket-purchases.js";
 import { enabledProcessors, createCheckout, type Processor } from "../lib/processors.js";
-import { findPaymentByReference } from "../db/payments.js";
+import { findPaymentByReference, resolvePaymentFees } from "../db/payments.js";
+import { activeStripeDestination, activeDirectChargeAccount } from "../db/payout-accounts.js";
+import { createDirectCheckoutSession } from "../lib/stripeAccounts.js";
 import { PUBLIC_APP_URL, BASE_PATH } from "../config.js";
 
 const h =
@@ -124,25 +126,72 @@ router.post(
     if (!Number.isFinite(amount) || amount <= 0) {
       return res.status(400).json({ error: "positive amount required" });
     }
+    // Proceeds belong to the nonprofit that owns the package, not the buyer
+    // -- resolve THEIR org for destination routing + platform fee, mirroring
+    // routes/public-event.ts's startCheckout (the same "sell on behalf of a
+    // third party" shape) and routes/payments.ts's invoice /checkout,
+    // including its v2 direct-charge vs v1 destination-charge branch.
+    const owner = purchase.ticket_package_id ? await repo.getPackageOwner(purchase.ticket_package_id) : null;
+    const sellerOrgId = owner?.orgId ?? null;
+
     const base = appBaseUrl(req);
     const successUrl =
       `${base}/pay/return?processor=${processor}&flow=client_to_vendor&kind=full` +
+      `&ticket_purchase_id=${encodeURIComponent(purchase.id)}` +
       (processor === "stripe" ? "&session_ref={CHECKOUT_SESSION_ID}" : "");
     const cancelUrl = `${base}/pay/return?status=cancel`;
+    const metadata = {
+      purpose: "ticket_purchase",
+      org_id: sellerOrgId ?? a.org.id,
+      event_id: purchase.fundraising_event_id ?? "",
+      flow: "client_to_vendor",
+      kind: "full",
+      recorded_by: a.user.id,
+      ticket_purchase_id: purchase.id,
+    };
+
+    // Same fee formula resolvePaymentFees uses at capture time (below), so
+    // what Stripe actually retains as application_fee always matches what
+    // gets recorded in the payments ledger -- no separate "estimate" that
+    // could drift from the real recorded fee.
+    if (processor === "stripe" && sellerOrgId) {
+      const directAccount = await activeDirectChargeAccount(sellerOrgId);
+      if (directAccount) {
+        const fees = await resolvePaymentFees(amount, owner?.tier ?? null, null);
+        const applicationFeeCents = Math.round((fees.platformFee + fees.processingFee) * 100);
+        const checkout = await createDirectCheckoutSession({
+          accountId: directAccount,
+          amount,
+          label: `Tickets: ${purchase.id}`,
+          successUrl,
+          cancelUrl,
+          applicationFeeCents,
+          metadata,
+        });
+        return res.status(201).json({ processor: "stripe", ...checkout });
+      }
+    }
+
+    let destinationAccount: string | undefined;
+    let applicationFeeCents: number | undefined;
+    if (processor === "stripe" && sellerOrgId) {
+      const dest = await activeStripeDestination(sellerOrgId);
+      if (dest) {
+        destinationAccount = dest;
+        const fees = await resolvePaymentFees(amount, owner?.tier ?? null, null);
+        applicationFeeCents = Math.round((fees.platformFee + fees.processingFee) * 100);
+      }
+    }
+
     const checkout = await createCheckout({
       processor,
       amount,
       label: `Tickets: ${purchase.id}`,
       successUrl,
       cancelUrl,
-      metadata: {
-        org_id: a.org.id,
-        event_id: purchase.fundraising_event_id ?? "",
-        flow: "client_to_vendor",
-        kind: "full",
-        recorded_by: a.user.id,
-        ticket_purchase_id: purchase.id,
-      },
+      destinationAccount,
+      applicationFeeCents,
+      metadata,
     });
     res.status(201).json(checkout);
   }),
@@ -168,6 +217,13 @@ router.post(
     // purchase creation), never the client-supplied body.amount.
     const amount = purchase.amount != null ? Number(purchase.amount) : null;
     const en = enabledProcessors();
+    // Resolve the real payments.id (a uuid, what payment_id actually stores)
+    // from the client-supplied processor reference, rather than writing the
+    // reference itself -- ticket_purchases.payment_id is `uuid` and a Stripe
+    // (pi_...) or PayPal reference is not (Codex review on #46). This manual
+    // path is now mainly a fallback: the real completion happens
+    // automatically via /payments/capture and the webhook backstop below.
+    let resolvedPaymentId: string | null = null;
     if (en.stripe || en.paypal) {
       if (!paymentId) {
         return res.status(402).json({ error: "payment required: complete checkout before confirming" });
@@ -177,8 +233,9 @@ router.post(
       if (!pay || Number(pay.amount) + 1e-6 < expected) {
         return res.status(402).json({ error: "no matching captured payment found for this purchase" });
       }
+      resolvedPaymentId = pay.id;
     }
-    const updated = await repo.markPaid(purchase.id, paymentId, amount);
+    const updated = await repo.markPaid(purchase.id, resolvedPaymentId, amount);
     res.json({ purchase: updated });
   }),
 );
