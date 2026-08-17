@@ -67,6 +67,16 @@ function money(v: unknown): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
 }
 
+/** Navigate to a hosted checkout url. A plain module-level helper (not a
+ *  component-nested closure) so react-hooks/immutability doesn't mistake the
+ *  click-triggered `window.location.href` assignment for a render-time
+ *  mutation -- the same real navigation SponsorPortal.tsx does inline
+ *  without tripping the rule, since its version is nested inside a deeply
+ *  anonymous closure the rule's heuristic doesn't walk into. */
+function redirectTo(url: string): void {
+  window.location.href = url;
+}
+
 export default function TicketPortal() {
   const [packages, setPackages] = useState<Pkg[]>([]);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
@@ -117,7 +127,7 @@ export default function TicketPortal() {
     setBusyId(p.id);
     try {
       const r = await apiSend<{ redirect_url?: string; record_only?: boolean }>('POST', `/ticket-purchases/${p.id}/checkout`, { processor: 'stripe', amount: Number(p.amount ?? 0) });
-      if (r.redirect_url) { window.location.href = r.redirect_url; return; }
+      if (r.redirect_url) { redirectTo(r.redirect_url); return; }
       await apiSend('POST', `/ticket-purchases/${p.id}/paid`, {});
       setNotice('Payment recorded. Your tickets are confirmed.');
       await loadAll();
@@ -164,7 +174,11 @@ export default function TicketPortal() {
         ) : (
           <div className="tp-grid">
             {packages.map((p) => {
-              const remaining = p.quantity != null ? Math.max(0, Number(p.quantity) - Number(p.sold ?? 0)) : null;
+              // quantity 0/null means unlimited (the backend's own default
+              // for a blank quantity field, and how createPurchase treats
+              // it) -- only a POSITIVE cap has a meaningful remaining count.
+              const cap = p.quantity != null ? Number(p.quantity) : 0;
+              const remaining = cap > 0 ? Math.max(0, cap - Number(p.sold ?? 0)) : null;
               const soldOut = remaining != null && remaining <= 0;
               return (
                 <article key={p.id} className="tp-card">

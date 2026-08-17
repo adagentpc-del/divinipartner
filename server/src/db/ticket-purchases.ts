@@ -158,21 +158,26 @@ async function recomputeSold(packageId: string | null): Promise<void> {
   ).catch(() => undefined); // best-effort: never fail the caller's write over this
 }
 
+const PUBLISHED_STATUSES = new Set([null, "open", "active", "published"]);
+
 /**
  * Create a pending purchase for `quantity` tickets against a package.
- * Rejects when the purchase would oversell the package's remaining capacity
- * (quantity - sold), when the package's own quantity is a set limit (0/null
- * means unlimited, matching how sponsorship_packages.quantity is treated
- * elsewhere in this codebase). Mirrors the "sold out" rejection
- * event_exhibitor_packages already uses (db/eventExhibitor.ts).
+ * Rejects when the package is not in a publicly purchasable status (matches
+ * the discovery filter ticket-portal.ts uses -- without this, a closed or
+ * draft package's id, once known, could be bought directly even though it
+ * never appears in the browse listing). Rejects when the purchase would
+ * oversell the package's remaining capacity (quantity - sold), when the
+ * package's own quantity is a set limit (0/null means unlimited, matching
+ * how sponsorship_packages.quantity is treated elsewhere in this codebase).
+ * Mirrors the "sold out" rejection event_exhibitor_packages already uses
+ * (db/eventExhibitor.ts).
  *
  * This checks capacity against `sold` (paid purchases only, kept that way so
  * ticket_packages.sold stays revenue-accurate for the nonprofit dashboard,
- * unlike an exhibitor package's claim-at-order-time counter) rather than
- * paid+pending, and is a plain check-then-insert rather than an atomic
- * claim: two buyers finalizing the literal last ticket in the same instant
- * could both create a pending purchase, which the payment-verification gate
- * in the route layer resolves at checkout time, not here.
+ * unlike an exhibitor package's claim-at-order-time counter), so it is only
+ * a soft/advisory check here -- two buyers can each pass it by reserving
+ * concurrently before either pays. markPaid re-checks capacity atomically
+ * against the real committed count at the point that actually matters.
  */
 export async function createPurchase(
   buyerOrgIdValue: string,
@@ -182,6 +187,9 @@ export async function createPurchase(
 ): Promise<TicketPurchase> {
   const pkg = await getPackageById(packageId);
   if (!pkg) throw new NotFoundError("ticket package not found");
+  if (!PUBLISHED_STATUSES.has(pkg.status)) {
+    throw new ForbiddenError("that ticket package is not currently available for purchase");
+  }
   const quantity = Number.isFinite(quantityIn) && quantityIn > 0 ? Math.trunc(quantityIn) : 1;
   const cap = pkg.quantity != null ? Number(pkg.quantity) : 0;
   if (cap > 0) {
@@ -200,12 +208,48 @@ export async function createPurchase(
   return row as TicketPurchase;
 }
 
-/** Record the payment id + amount and move to 'paid'. */
+/**
+ * Record the payment id + amount and move to 'paid'.
+ *
+ * createPurchase's capacity check is only advisory (checked against `sold`,
+ * which counts paid purchases only): two buyers can each reserve the same
+ * last seat concurrently, before either has paid, and both would pass it.
+ * Codex review on #46 caught that nothing re-verified capacity at the point
+ * that actually matters -- both could then finalize sequentially (no race
+ * even required) and `sold` would exceed the package's quantity after real
+ * money was accepted for the second one. Close it here with an atomic claim
+ * against ticket_packages (the same row-locked "sold = sold + n WHERE ...
+ * fits" pattern event_exhibitor_packages already uses), which genuinely
+ * serializes two concurrent paid-transitions against the same package
+ * because the second UPDATE blocks on the row lock and re-evaluates the
+ * capacity predicate against the first's already-committed increment once
+ * unblocked. Skipped for unlimited (quantity <= 0) packages.
+ */
 export async function markPaid(
   id: string,
   paymentId: string | null,
   amount: number | null,
 ): Promise<TicketPurchase> {
+  const purchase = await q1<TicketPurchase>(`select ${COLS} from ticket_purchases where id = $1`, [id]);
+  if (!purchase) throw new NotFoundError("ticket purchase not found");
+  if (purchase.status === "paid") return purchase; // idempotent replay
+  if (purchase.status !== "pending") {
+    throw new ForbiddenError(`cannot mark paid from status '${purchase.status}'`);
+  }
+
+  if (purchase.ticket_package_id) {
+    const claimed = await q1<{ id: string }>(
+      `update ticket_packages
+          set sold = sold + $2
+        where id = $1 and (quantity is null or quantity <= 0 or sold + $2 <= quantity)
+        returning id`,
+      [purchase.ticket_package_id, purchase.quantity],
+    );
+    if (!claimed) {
+      throw new ForbiddenError("that ticket package sold out before your payment could be confirmed");
+    }
+  }
+
   const row = await q1<TicketPurchase>(
     `update ticket_purchases
         set payment_id = coalesce($2, payment_id),
@@ -217,6 +261,10 @@ export async function markPaid(
     [id, paymentId, amount],
   );
   if (!row) throw new NotFoundError("ticket purchase not found");
+  // Recompute from truth: the claim above is a capacity GATE; this
+  // converges `sold` to the exact real count so it stays correct and
+  // self-healing (e.g. a crash between the claim and this write, or a
+  // later cancellation) rather than trusting the claim's increment forever.
   await recomputeSold(row.ticket_package_id);
   return row;
 }
